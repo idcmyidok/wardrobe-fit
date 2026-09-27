@@ -164,6 +164,11 @@ export function NewGarmentView() {
   );
 
   const register = () => {
+    // 브랜드·제품명은 필수: 비어 있으면 등록하지 않고 해당 칸으로 보낸다.
+    if (!form.brand.trim() || !form.productName.trim()) {
+      document.getElementById(form.brand.trim() ? "f-name" : "f-brand")?.focus();
+      return;
+    }
     const measurements: Measurements = {};
     Object.entries(form.m).forEach(([k, v]) => {
       if (v !== "" && !isNaN(Number(v))) measurements[k as keyof Measurements] = Number(v);
@@ -172,8 +177,8 @@ export function NewGarmentView() {
     const garment = addGarment({
       categoryId: form.categoryId,
       subcategoryId: form.subcategoryId || null,
-      brand: form.brand || "브랜드 미입력",
-      productName: form.productName || "제품명 미입력",
+      brand: form.brand.trim(),
+      productName: form.productName.trim(),
       sizeLabel: form.size || null,
       colorName: form.color || null,
       material: form.material || null,
@@ -191,7 +196,7 @@ export function NewGarmentView() {
   };
 
   const hint =
-    !form.brand || !form.productName
+    !form.brand.trim() || !form.productName.trim()
       ? "브랜드와 제품명은 꼭 입력해야 합니다."
       : isReview && !form.size
         ? "구매한 사이즈를 선택하세요."
