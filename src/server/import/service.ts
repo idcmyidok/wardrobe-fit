@@ -8,11 +8,11 @@ import { normalizeProductUrl } from "./url";
 /**
  * 링크 분석 1건을 실행하고 product_imports에 남긴다(PROJECT_SPEC.md 12.1 [6], 12.3).
  * - 같은 사용자·같은 주소는 10분 동안 이전 결과를 다시 쓴다(쇼핑몰에 다시 요청하지 않음).
- * - 사용자당 한 시간에 30번까지.
+ * - 사용자당 24시간에 30번까지(PROJECT_SPEC.md 19장 비용 남용).
  */
 
 export const IMPORT_REUSE_MINUTES = 10;
-export const IMPORT_HOURLY_LIMIT = 30;
+export const IMPORT_DAILY_LIMIT = 30;
 
 type Client = SupabaseClient<Database>;
 
@@ -60,8 +60,8 @@ export async function runImport(
     .from("product_imports")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
-    .gte("created_at", minutesAgo(60));
-  if ((count ?? 0) >= IMPORT_HOURLY_LIMIT) return fail("rate_limited");
+    .gte("created_at", minutesAgo(24 * 60));
+  if ((count ?? 0) >= IMPORT_DAILY_LIMIT) return fail("rate_limited");
 
   const { data: recent } = await supabase
     .from("product_imports")
