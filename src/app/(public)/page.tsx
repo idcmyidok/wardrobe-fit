@@ -2,7 +2,8 @@ import { parseAuthMode } from "@/components/auth/auth-mode";
 import { AuthPanel } from "@/components/auth/auth-panel";
 import { ServiceIntro } from "@/components/landing/service-intro";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { isAuthConfigured, safeNextPath } from "@/lib/supabase/config";
+import { cookies } from "next/headers";
+import { isAuthConfigured, LAST_EMAIL_COOKIE, safeNextPath } from "@/lib/supabase/config";
 import { AUTH_MESSAGES } from "@/server/auth/messages";
 
 export default async function LandingPage({
@@ -14,6 +15,7 @@ export default async function LandingPage({
   const mode = parseAuthMode(params.mode);
   const next = typeof params.next === "string" ? safeNextPath(params.next) : undefined;
   const notice = params.error === "link" ? AUTH_MESSAGES.expiredLink : undefined;
+  const savedEmail = (await cookies()).get(LAST_EMAIL_COOKIE)?.value;
 
   return (
     <main className="grid min-h-dvh grid-cols-[repeat(auto-fit,minmax(min(100%,440px),1fr))]">
@@ -25,7 +27,7 @@ export default async function LandingPage({
         <div className="absolute top-5 right-[clamp(16px,3vw,32px)]">
           <ThemeToggle />
         </div>
-        <AuthPanel mode={mode} next={next} notice={notice} configured={isAuthConfigured()} />
+        <AuthPanel mode={mode} next={next} notice={notice} savedEmail={savedEmail} configured={isAuthConfigured()} />
       </section>
     </main>
   );

@@ -44,6 +44,10 @@ export function isAuthConfigured() {
 export const REMEMBER_COOKIE = "wf_remember";
 export const REMEMBER_MAX_AGE = 60 * 60 * 24 * 30;
 
+/** 마지막으로 로그인한 이메일. 로그아웃해도 남겨 두고 다음 로그인 화면에 미리 채운다. */
+export const LAST_EMAIL_COOKIE = "wf_email";
+export const LAST_EMAIL_MAX_AGE = 60 * 60 * 24 * 365;
+
 /** 쿠키가 없으면(가입 인증 링크로 들어온 경우 등) 상태 유지로 본다. 로그인 폼의 기본값과 같다. */
 export function readRemember(value: string | undefined) {
   return value !== "0";
