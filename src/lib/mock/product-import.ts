@@ -27,10 +27,10 @@ export const EXTRACTED = {
 
 /** 사이즈표: 사이즈를 고르면 실측이 채워진다. */
 export const EXTRACTED_SIZE_CHART: Record<string, Record<string, string>> = {
-  S: { shoulder: "44", chest: "55", length: "73", sleeve: "61", armhole: "23", hemWidth: "54" },
-  M: { shoulder: "46", chest: "57.5", length: "75", sleeve: "62.5", armhole: "24", hemWidth: "56.5" },
-  L: { shoulder: "48", chest: "60", length: "77", sleeve: "64", armhole: "25", hemWidth: "59" },
-  XL: { shoulder: "50", chest: "62.5", length: "79", sleeve: "65.5", armhole: "26", hemWidth: "61.5" },
+  S: { shoulder: "44", chest: "55", length: "73", sleeve: "61" },
+  M: { shoulder: "46", chest: "57.5", length: "75", sleeve: "62.5" },
+  L: { shoulder: "48", chest: "60", length: "77", sleeve: "64" },
+  XL: { shoulder: "50", chest: "62.5", length: "79", sleeve: "65.5" },
 };
 
 export const EXTRACTED_COLORS = ["다크 네이비", "스톤", "블랙"];

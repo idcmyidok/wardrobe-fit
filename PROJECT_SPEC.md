@@ -76,8 +76,9 @@ Wardrobe Fit은 사용자가 실제로 입어본 옷의 **실측 치수**와 **�
 
 **옷 데이터**
 - 기본정보: 제품 사진, 대분류, 세부분류, 브랜드, 제품명, 표기 사이즈, 컬러명, 소재, 시즌, 구매 날짜, 구매가, 상품 링크.
-- 상의 / 아우터 실측: 어깨, 가슴, 총장, 소매, 암홀, 밑단너비.
-- 하의 실측: 허리단면, 총장, 밑위, 허벅지단면, 밑단단면, 인심.
+- 상의 / 아우터 실측: 총장, 어깨, 가슴, 소매.
+- 하의 실측: 총장, 허리단면, 엉덩이단면, 허벅지단면, 밑위, 밑단단면.
+- 실측 항목은 옷장 Table에 보이는 열과 같다. 상세·입력·AI 구매 판단 어디에서도 이 밖의 치수(암홀, 상의 밑단너비, 인심 등)를 쓰지 않는다.
 - 착용 후기: 자유 텍스트 필드 하나. 점수나 세부 평가 항목으로 나누지 않는다.
 
 **컬러**
@@ -376,7 +377,7 @@ middleware.ts                 # 세션 갱신 + 보호 Route
                   상품 링크 [                         ]
 
 실측 (cm, 단면 기준)
-  어깨 [  ]  가슴 [  ]  총장 [  ]  소매 [  ]  암홀 [  ]  밑단너비 [  ]
+  총장 [  ]  어깨 [  ]  가슴 [  ]  소매 [  ]
 
 착용 후기
   [                                                    ]
@@ -739,13 +740,11 @@ create table garments (
   m_chest         numeric(5,1) check (m_chest     > 0 and m_chest     < 200),  -- 가슴
   m_length        numeric(5,1) check (m_length    > 0 and m_length    < 200),  -- 총장 (상/하 공통)
   m_sleeve        numeric(5,1) check (m_sleeve    > 0 and m_sleeve    < 200),  -- 소매
-  m_armhole       numeric(5,1) check (m_armhole   > 0 and m_armhole   < 200),  -- 암홀
-  m_hem_width     numeric(5,1) check (m_hem_width > 0 and m_hem_width < 200),  -- 밑단너비 (상의)
   m_waist         numeric(5,1) check (m_waist     > 0 and m_waist     < 200),  -- 허리단면
+  m_hip           numeric(5,1) check (m_hip       > 0 and m_hip       < 200),  -- 엉덩이단면
   m_rise          numeric(5,1) check (m_rise      > 0 and m_rise      < 200),  -- 밑위
   m_thigh         numeric(5,1) check (m_thigh     > 0 and m_thigh     < 200),  -- 허벅지단면
   m_leg_opening   numeric(5,1) check (m_leg_opening > 0 and m_leg_opening < 200), -- 밑단단면 (하의)
-  m_inseam        numeric(5,1) check (m_inseam    > 0 and m_inseam    < 200),  -- 인심
 
   -- 착용 후기 (자유 텍스트 하나)
   fit_review      text check (char_length(fit_review) <= 2000),
@@ -855,16 +854,17 @@ DB 타입은 `supabase gen types typescript`로 생성하고, 도메인 타입�
 
 ```ts
 // lib/constants/measurements.ts
-export const TOP_MEASUREMENTS = ['shoulder', 'chest', 'length', 'sleeve', 'armhole', 'hemWidth'] as const;
-export const BOTTOM_MEASUREMENTS = ['waist', 'length', 'rise', 'thigh', 'legOpening', 'inseam'] as const;
+// 옷장 Table에 보이는 실측만 둔다.
+export const TOP_MEASUREMENTS = ['length', 'shoulder', 'chest', 'sleeve'] as const;
+export const BOTTOM_MEASUREMENTS = ['length', 'waist', 'hip', 'thigh', 'rise', 'legOpening'] as const;
 export type MeasurementKey =
   | (typeof TOP_MEASUREMENTS)[number]
   | (typeof BOTTOM_MEASUREMENTS)[number];
 
 export const MEASUREMENT_LABELS: Record<MeasurementKey, string> = {
-  shoulder: '어깨', chest: '가슴', length: '총장', sleeve: '소매', armhole: '암홀',
-  hemWidth: '밑단너비', waist: '허리단면', rise: '밑위', thigh: '허벅지단면',
-  legOpening: '밑단단면', inseam: '인심',
+  shoulder: '어깨', chest: '가슴', length: '총장', sleeve: '소매',
+  waist: '허리단면', hip: '엉덩이단면', rise: '밑위', thigh: '허벅지단면',
+  legOpening: '밑단단면',
 };
 
 // lib/types/domain.ts
@@ -1198,7 +1198,7 @@ export interface NormalizedSizeChart {
 | 가격 | 숫자만 추출, 통화 확인. 할인가와 정가가 모두 있으면 판매가(할인가)를 기본값으로. |
 | 컬러 | 14.3(요구사항 1.3)의 우선순위 적용. 옵션 문자열에서 사이즈 부분 분리(`BLACK / M` → `BLACK`). 대문자 표준화, 한/영 동의어 사전(`검정 → BLACK`, `차콜 → CHARCOAL`, `아이보리 → IVORY`)은 **표시용 제안**으로만 사용하고 원문을 기본값으로 둔다. |
 | 사이즈 옵션 | 공백/품절 표기 제거(`M (품절)` → `M`), 중복 제거, 순서 유지. |
-| 사이즈표 헤더 | 동의어 사전으로 `MeasurementKey` 매핑: `어깨너비|어깨 → shoulder`, `가슴단면|가슴 → chest`, `총장|총기장|기장 → length`, `소매길이|소매 → sleeve`, `암홀 → armhole`, `밑단|밑단단면 → hemWidth(상의) / legOpening(하의)`, `허리단면|허리 → waist`, `밑위 → rise`, `허벅지단면|허벅지 → thigh`, `인심|안쪽기장 → inseam`. |
+| 사이즈표 헤더 | 동의어 사전으로 `MeasurementKey` 매핑: `어깨너비|어깨 → shoulder`, `가슴단면|가슴 → chest`, `총장|총기장|기장 → length`, `소매길이|소매 → sleeve`, `밑단|밑단단면 → legOpening(하의)`, `허리단면|허리 → waist`, `엉덩이단면|엉덩이|힙 → hip`, `밑위 → rise`, `허벅지단면|허벅지 → thigh`. 이 밖의 헤더(암홀, 상의 밑단, 인심 등)는 버린다. |
 | 단위 | 인치 표기(`inch`, `in`, `"`) 감지 시 ×2.54 변환 후 소수 1자리 반올림, warning 추가. |
 | 단면/둘레 | 헤더에 `둘레`가 있거나 가슴·허리 값이 상식 범위의 약 2배이면 ÷2 하여 단면으로 변환하고 warning을 남겨 사용자 확인을 요구. |
 | 범위 값 | `58~60` 같은 범위는 중간값을 기본값으로, warning 추가. |
@@ -1272,7 +1272,7 @@ function pickColor(p: RawProduct, selectedOption?: string): Extracted<string> | 
 ### 16.1 비교 가능 치수
 
 - 신규 상품과 기존 옷 모두 값이 있는 치수만 비교한다.
-- 그룹별 핵심 치수(가중치 높음): 상의·아우터 = 어깨, 가슴, 총장, 소매 / 하의 = 허리, 허벅지, 총장(또는 인심), 밑위.
+- 그룹별 핵심 치수(가중치 높음): 상의·아우터 = 어깨, 가슴, 총장, 소매 / 하의 = 허리, 허벅지, 총장, 밑위.
 - 기존 옷 중 비교 가능 치수가 1개 이하인 옷은 참고에서 제외(목록에는 "실측 부족"으로 표시).
 
 ### 16.2 후기 신호 추출
@@ -1294,7 +1294,7 @@ function pickColor(p: RawProduct, selectedOption?: string): Extracted<string> | 
 | 만족 범위 | 치수 d에 대해 "good" 신호가 있거나 해당 치수에 부정 신호가 없는 옷(단, 후기가 있는 옷만)의 `old[d]` 집합 → min, max, median, n. n < 2면 "범위 산출 불가". |
 | 신호 앵커 | 치수 d에 long/short/tight/loose 신호가 있는 옷의 값. 신규 값이 앵커 값 ±허용오차 이내이면 "그 옷과 비슷 → 같은 느낌 가능성" 판정. |
 | 방향 판정 | 신규 값이 만족 범위 안 → `within`; 범위보다 크면 `above` (길이 치수는 "길게", 폭 치수는 "여유 있게"), 작으면 `below`. 범위 경계와의 거리(cm)를 함께 기록. |
-| 허용오차 | 치수별 기본값: 어깨·가슴·허리·허벅지·밑단 ±1.0cm, 총장·소매·인심 ±1.5cm, 밑위·암홀 ±1.0cm (설정 상수, 추후 조정). |
+| 허용오차 | 치수별 기본값: 어깨·가슴·허리·허벅지·밑단 ±1.0cm, 엉덩이 ±1.0cm, 총장·소매 ±1.5cm, 밑위 ±1.0cm (설정 상수, 추후 조정). |
 | 최근접 옷 | 핵심 치수 차이의 가중 거리(정규화된 L1) 기준 가장 가까운 기존 옷 top 3. |
 | 동일 브랜드 참고 | 같은 브랜드·같은 표기 사이즈의 기존 옷이 있으면 별도 표시(브랜드 사이징 일관성 참고). |
 | 다중 사이즈 비교 | 후보 사이즈마다 위 계산을 반복하고, `within` 치수 개수와 경계 거리 합으로 사이즈별 요약 비교를 만든다. |

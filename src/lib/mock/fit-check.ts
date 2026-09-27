@@ -24,40 +24,34 @@ export const FIT_BY_SIZE: Record<
   { m: Measurements; judge: Partial<Record<MeasurementKey, [FitTag, string]>>; summary: string }
 > = {
   "46": {
-    m: { shoulder: 45, chest: 56.5, length: 70.5, sleeve: 63, armhole: 24, hemWidth: null },
+    m: { shoulder: 45, chest: 56.5, length: 70.5, sleeve: 63 },
     judge: {
       shoulder: ["주의", "가장 좁은 베드포드 자켓보다 0.5 좁음. 어깨가 끼일 수 있음"],
       chest: ["주의", "니트 위에 입으면 답답할 수 있음"],
       length: ["주의", "만족 범위보다 0.5 김. 체감 차이는 작음"],
       sleeve: ["범위 내", "A.P.C. 자켓과 같은 길이"],
-      armhole: ["근거 부족", "후기 언급 없음"],
-      hemWidth: ["비교 불가", "신규 실측 없음"],
     },
     summary:
       "총장은 평소 입던 자켓과 거의 같지만, 어깨와 가슴이 가장 작은 자켓보다 0.5cm씩 작습니다. 니트 위에 겹쳐 입으면 답답하게 느낄 수 있습니다.",
   },
   "48": {
-    m: { shoulder: 46.5, chest: 59, length: 72, sleeve: 64.5, armhole: 25, hemWidth: null },
+    m: { shoulder: 46.5, chest: 59, length: 72, sleeve: 64.5 },
     judge: {
       shoulder: ["범위 내", "만족했던 자켓들과 비슷함"],
       chest: ["범위 내", "만족했던 자켓들과 비슷함"],
       length: ["주의", "길다고 기록한 베드포드 자켓(71.5)보다도 김"],
       sleeve: ["주의", "소매가 길다고 적은 코치 자켓(64)보다 0.5 김"],
-      armhole: ["근거 부족", "후기 언급 없음. 수치는 기존 자켓 사이"],
-      hemWidth: ["비교 불가", "신규 실측 없음"],
     },
     summary:
       "어깨와 가슴은 평소 만족하던 자켓 범위 안에 있습니다. 총장은 72cm로, 길다고 기록한 베드포드 자켓(71.5cm)보다도 길어 길게 느낄 가능성이 높습니다. 소매도 조금 긴 편입니다.",
   },
   "50": {
-    m: { shoulder: 48, chest: 61, length: 73.5, sleeve: 65.5, armhole: 26, hemWidth: null },
+    m: { shoulder: 48, chest: 61, length: 73.5, sleeve: 65.5 },
     judge: {
       shoulder: ["주의", "만족 범위보다 1.0 넓음. 어깨선이 떨어질 수 있음"],
       chest: ["주의", "만족 범위보다 1.0 여유"],
       length: ["주의", "기존 자켓 중 가장 긴 것보다 2.0 김"],
       sleeve: ["주의", "손등을 덮을 가능성"],
-      armhole: ["근거 부족", "후기 언급 없음"],
-      hemWidth: ["비교 불가", "신규 실측 없음"],
     },
     summary:
       "모든 치수가 만족 범위를 넘습니다. 어깨 48cm, 총장 73.5cm로 기존 자켓을 한 치수 크게 입는 느낌에 가깝습니다. 오버핏을 의도하지 않는다면 48이 더 가깝습니다.",
@@ -103,10 +97,9 @@ export const FIT_QUOTES = [
 ];
 
 export const FIT_LIMITS = [
-  "밑단너비: 신규 상품 사이즈표에 없어 비교하지 않았습니다.",
-  "암홀: 기존 옷의 후기에 언급이 없어 수치만 표시했습니다.",
+  "소매: 기존 옷 중 1벌의 후기에만 언급이 있어 근거가 약합니다.",
   "비교한 자켓이 3벌입니다. 자켓 기록이 늘면 범위가 더 정확해집니다.",
 ];
 
 export const FIT_WARNING =
-  "암홀과 밑단너비는 근거가 없어 판단하지 않았습니다. 소매는 비교한 옷 중 1벌의 후기에만 근거합니다.";
+  "소매는 비교한 옷 중 1벌의 후기에만 근거합니다.";
