@@ -1,94 +1,112 @@
 import { SUBCATEGORY_NAME } from "@/lib/constants/categories";
-import { TABLE_MEASUREMENTS } from "@/lib/constants/measurements";
+import { colorChip } from "@/lib/constants/colors";
+import { TABLE_MEASUREMENTS, formatCm } from "@/lib/constants/measurements";
 import { SEASON_NAME } from "@/lib/constants/seasons";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format/date";
 import { formatPrice } from "@/lib/format/price";
-import type { CategoryId, GarmentListItem } from "@/lib/types/domain";
-import type { ColumnSort, SortableColumn } from "./filter-state";
+import type { CategoryId, Garment } from "@/lib/types/domain";
+import { currentSort, type SortableColumn, type WardrobeFilters } from "./filter-state";
 import { GarmentThumbnail } from "./garment-thumbnail";
 
-const EMPTY = <span className="text-text-subtle">—</span>;
+const cell = "border-r border-neutral-300 px-2 py-2 text-center align-middle";
+const head = "border-r border-b border-r-neutral-300 border-b-text bg-surface font-mono text-[10.5px] font-medium tracking-[0.06em] text-neutral-700";
+const mono = "font-mono tabular-nums whitespace-nowrap";
 
-const cell = "border-r border-border px-3 text-center";
-const numeric = "font-mono tabular-nums whitespace-nowrap";
-
-/** 대분류 하나의 표. 실측 열은 대분류에 맞춰 바뀐다(상의·아우터 / 하의). */
+/** 대분류 하나의 표. 실측 열은 대분류에 맞춰 바뀐다(상의·아우터 / 하의). 행을 누르면 옷 정보가 열린다. */
 export function WardrobeTable({
   categoryId,
   items,
   sort,
   onSort,
+  selectedId,
+  onOpen,
 }: {
   categoryId: CategoryId;
-  items: GarmentListItem[];
-  sort: ColumnSort | null;
+  items: Garment[];
+  sort: WardrobeFilters["sort"];
   onSort: (key: SortableColumn) => void;
+  selectedId: string | null;
+  onOpen: (id: string) => void;
 }) {
   const measurements = TABLE_MEASUREMENTS[categoryId];
-  const head = (key: SortableColumn, label: string, className?: string) => (
-    <SortHeader key={key} column={key} label={label} sort={sort} onSort={onSort} className={className} />
+  const cur = currentSort(sort);
+  const sortHead = (key: SortableColumn, label: string, className: string, narrow = false) => (
+    <SortHeader key={key} column={key} label={label} active={cur.key === key ? cur.dir : null} onSort={onSort} className={className} narrow={narrow} />
   );
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-300 table-fixed border-collapse border-t border-l border-border bg-surface text-sm">
+      <table className="w-full min-w-295 table-fixed border-collapse border-t border-l border-neutral-300 bg-surface text-sm">
         <thead>
-          <tr className="font-mono text-label text-text-muted">
-            <th scope="col" className={cn(cell, "w-20 border-b border-b-text py-2.5 font-medium")}>
+          <tr>
+            <th scope="col" className={cn(head, "w-20 py-2")}>
               이미지
             </th>
-            <th scope="col" className={cn(cell, "w-28 border-b border-b-text font-medium")}>
+            <th scope="col" className={cn(head, "w-25")}>
               세부분류
             </th>
-            {head("brand", "브랜드", "w-36")}
-            <th scope="col" className={cn(cell, "border-b border-b-text font-medium")}>
+            {sortHead("brand", "브랜드", "w-35")}
+            <th scope="col" className={head}>
               제품명
             </th>
-            {head("size", "사이즈", "w-20")}
-            {head("color", "컬러", "w-24")}
-            {head("season", "시즌", "w-28")}
-            {measurements.map((m) => (
-              <th
-                key={m.key}
-                scope="col"
-                className={cn(cell, "w-14 border-b border-b-text bg-surface-muted px-0 font-medium")}
-              >
-                {m.label}
-              </th>
-            ))}
-            {head("purchasedOn", "구매일", "w-28")}
-            {head("price", "구매가", "w-32")}
+            {sortHead("size", "사이즈", "w-9.5", true)}
+            {sortHead("color", "컬러", "w-24")}
+            {sortHead("season", "시즌", "w-26")}
+            {measurements.map((m) => sortHead(m.key, m.label, "w-11.25 bg-neutral-100", true))}
+            {sortHead("purchasedOn", "구매일", "w-32")}
+            {sortHead("price", "구매가", "w-32")}
           </tr>
         </thead>
         <tbody>
-          {items.map((item) => (
-            <tr key={item.id} className="border-b border-border transition-colors hover:bg-surface-muted">
-              <td className="border-r border-border p-0">
-                <GarmentThumbnail item={item} />
-              </td>
-              <td className={cn(cell, "truncate text-text-muted")}>
-                {item.subcategoryId ? SUBCATEGORY_NAME[item.subcategoryId] : EMPTY}
-              </td>
-              <td className={cn(cell, "font-semibold text-balance text-text")}>{item.brand}</td>
-              <td className={cn(cell, "text-balance text-text")}>{item.productName}</td>
-              <td className={cn(cell, numeric, "px-1 text-xs text-text")}>{item.sizeLabel ?? EMPTY}</td>
-              <td className={cn(cell, "text-text")}>{item.colorName ?? EMPTY}</td>
-              <td className={cn(cell, "text-text-muted")}>
-                {item.seasons.length ? item.seasons.map((s) => SEASON_NAME[s]).join(" · ") : EMPTY}
-              </td>
-              {measurements.map((m) => {
-                const v = item.measurements[m.key];
-                return (
-                  <td key={m.key} className={cn(cell, numeric, "bg-surface-muted/60 px-0 text-xs text-text")}>
-                    {v == null ? EMPTY : v.toFixed(1)}
+          {items.map((item) => {
+            const chip = colorChip(item.colorName);
+            return (
+              <tr
+                key={item.id}
+                onClick={() => onOpen(item.id)}
+                className={cn(
+                  "cursor-pointer border-b border-neutral-300 transition-colors hover:bg-neutral-100",
+                  selectedId === item.id && "bg-accent-100 hover:bg-accent-100",
+                )}
+              >
+                <td className="h-24 border-r border-neutral-300 p-0">
+                  <GarmentThumbnail item={item} />
+                </td>
+                <td className={cn(cell, "truncate")}>{item.subcategoryId ? SUBCATEGORY_NAME[item.subcategoryId] : "—"}</td>
+                <td className={cn(cell, "leading-tight font-semibold text-balance")}>{item.brand}</td>
+                <td className={cn(cell, "leading-snug text-balance")}>
+                  {/* 키보드로도 옷 정보를 열 수 있게 제품명을 버튼으로 둔다. */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpen(item.id);
+                    }}
+                    className="cursor-pointer text-balance"
+                  >
+                    {item.productName}
+                  </button>
+                </td>
+                <td className={cn(cell, mono, "px-0 text-xs")}>{item.sizeLabel ?? "—"}</td>
+                <td className={cn(cell, "text-sm")}>
+                  <span className="inline-block rounded-sm px-1.5 py-0.5" style={chip}>
+                    {item.colorName ?? "—"}
+                  </span>
+                </td>
+                <td className={cn(cell, "text-neutral-700")}>
+                  {item.seasons.length ? item.seasons.map((s) => SEASON_NAME[s]).join(" · ") : "—"}
+                </td>
+                {measurements.map((m) => (
+                  <td key={m.key} className={cn(cell, mono, "bg-neutral-100/60 px-0 text-xs tracking-[-0.02em]")}>
+                    {formatCm(item.measurements[m.key])}
                   </td>
-                );
-              })}
-              <td className={cn(cell, numeric, "text-text-muted")}>{formatDate(item.purchasedOn)}</td>
-              <td className={cn(cell, numeric, "text-text")}>{formatPrice(item.purchasePrice)}</td>
-            </tr>
-          ))}
+                ))}
+                <td className={cn(cell, mono, "text-neutral-700")}>{formatDate(item.purchasedOn)}</td>
+                <td className={cn(cell, mono)}>{formatPrice(item.purchasePrice)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -98,31 +116,32 @@ export function WardrobeTable({
 function SortHeader({
   column,
   label,
-  sort,
+  active,
   onSort,
   className,
+  narrow,
 }: {
   column: SortableColumn;
   label: string;
-  sort: ColumnSort | null;
+  active: "asc" | "desc" | null;
   onSort: (key: SortableColumn) => void;
-  className?: string;
+  className: string;
+  narrow: boolean;
 }) {
-  const active = sort?.key === column;
-  const ariaSort = active ? (sort.dir === "asc" ? "ascending" : "descending") : "none";
   return (
-    <th scope="col" aria-sort={ariaSort} className={cn(cell, "border-b border-b-text p-0 font-medium", className)}>
+    <th
+      scope="col"
+      aria-sort={active ? (active === "asc" ? "ascending" : "descending") : "none"}
+      className={cn(head, narrow && "px-0 text-2xs tracking-[-0.02em]", className)}
+    >
       <button
         type="button"
         onClick={() => onSort(column)}
-        className={cn(
-          "inline-flex h-full min-h-10 w-full cursor-pointer items-center justify-center gap-1 px-2 transition-colors hover:bg-surface-muted hover:text-text",
-          active && "text-text",
-        )}
+        className="inline-flex min-h-9 w-full cursor-pointer items-center justify-center gap-0.5 hover:text-text"
       >
         {label}
-        <span aria-hidden className={active ? "text-accent" : "text-border-strong"}>
-          {active ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}
+        <span aria-hidden className={cn("text-2xs", active ? "text-accent" : "text-neutral-400")}>
+          {active ? (active === "asc" ? "▲" : "▼") : "↕"}
         </span>
       </button>
     </th>

@@ -1,0 +1,275 @@
+import { CATEGORY_NAME, SUBCATEGORY_NAME } from "@/lib/constants/categories";
+import { findColorHex, luminance } from "@/lib/constants/colors";
+import { SEASONS, SEASON_NAME } from "@/lib/constants/seasons";
+import type { CategoryId, Garment, Season } from "@/lib/types/domain";
+
+/** 옷장 분석 화면의 계산. 서버 통계(PROJECT_SPEC.md 16장)로 옮기기 전까지 클라이언트에서 계산한다. */
+
+export type CategoryTab = "all" | CategoryId;
+
+/** 10000 → "1만", 1450000 → "145만" */
+export const man = (v: number) =>
+  v >= 10000 ? `${(v / 10000).toFixed(v >= 1000000 ? 0 : 1).replace(/\.0$/, "")}만` : v.toLocaleString("ko-KR");
+export const won = (v: number) => `${v.toLocaleString("ko-KR")}원`;
+
+/** 받침이 있으면 a, 없으면 b를 붙인다. 예: 블랙을 / 네이비를 */
+const josa = (w: string, a: string, b: string) => {
+  const c = w.charCodeAt(w.length - 1);
+  return w + (c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 ? a : b);
+};
+
+const CATEGORY_FILL: Record<CategoryId, string> = {
+  outer: "var(--text)",
+  top: "var(--n-500)",
+  bottom: "var(--a-400)",
+};
+
+export function priceSummary(G: Garment[]) {
+  const priced = G.filter((g) => g.purchasePrice != null);
+  const total = priced.reduce((a, g) => a + (g.purchasePrice ?? 0), 0);
+  const cats = (["outer", "top", "bottom"] as CategoryId[]).map((c) => {
+    const gs = priced.filter((g) => g.categoryId === c);
+    const amount = gs.reduce((a, g) => a + (g.purchasePrice ?? 0), 0);
+    const count = G.filter((g) => g.categoryId === c).length;
+    return {
+      id: c,
+      label: CATEGORY_NAME[c],
+      fill: CATEGORY_FILL[c],
+      amount: won(amount),
+      width: total ? `${((amount / total) * 100).toFixed(1)}%` : "0%",
+      pct: total ? `${Math.round((amount / total) * 100)}%` : "—",
+      meta: `${count}벌${gs.length ? ` · 평균 ${man(Math.round(amount / gs.length))}원` : ""}`,
+    };
+  });
+  const avg = priced.length ? total / priced.length : 0;
+  const highN = priced.filter((g) => (g.purchasePrice ?? 0) >= 400000).length;
+  const highShare = priced.length ? highN / priced.length : 0;
+  const score = total / 1000000 + (avg / 100000) * 1.5 + highShare * 4;
+  const tail = priced.length ? ` 한 벌 평균 ${man(Math.round(avg))}원, 40만 원이 넘는 옷이 ${highN}벌입니다.` : "";
+  const tiers: [number, string, string][] = [
+    [4, "가성비를 즐기는 패션 러버!", "합리적인 가격대에서 알차게 고르는 옷장입니다."],
+    [8, "패션에 돈을 좀 쓴 패션 러버!", "기본은 실속 있게, 마음에 드는 옷에는 과감하게 쓰는 편입니다."],
+    [14, "밥보다 패션이 중요한 패션 러버!", "한 벌 한 벌에 확실히 투자하는 옷장입니다. 그만큼 사이즈 실패는 아깝겠죠."],
+    [Infinity, "옷장에 진심인 헤비 패션 러버!", "고가의 옷이 옷장의 중심입니다. 구매 전 치수 비교가 꼭 필요한 타입이에요."],
+  ];
+  const tier = tiers.find((t) => score < t[0])!;
+  const top = priced.slice().sort((a, b) => (b.purchasePrice ?? 0) - (a.purchasePrice ?? 0))[0];
+  return {
+    totalShort: man(total),
+    totalFull: `${won(total)} · ${priced.length}벌 합산`,
+    tierTitle: tier[1],
+    tierBody: tier[2] + tail,
+    cats,
+    avg: priced.length ? won(Math.round(avg)) : "—",
+    topItem: top ? `${top.brand} ${top.productName} · ${man(top.purchasePrice ?? 0)}원` : "—",
+  };
+}
+
+export function monthlySummary(G: Garment[]) {
+  const dated = G.filter((g) => g.purchasedOn && g.purchasePrice != null);
+  const keys = dated.map((g) => g.purchasedOn!.slice(0, 7)).sort();
+  const months: { k: string; y: number; m: number; amt: number; n: number }[] = [];
+  if (keys.length) {
+    let [y, m] = keys[0].split("-").map(Number);
+    const [ey, em] = keys[keys.length - 1].split("-").map(Number);
+    while (y < ey || (y === ey && m <= em)) {
+      const k = `${y}-${String(m).padStart(2, "0")}`;
+      const gs = dated.filter((g) => g.purchasedOn!.startsWith(k));
+      months.push({ k, y, m, amt: gs.reduce((a, g) => a + (g.purchasePrice ?? 0), 0), n: gs.length });
+      m++;
+      if (m > 12) {
+        m = 1;
+        y++;
+      }
+    }
+  }
+  const max = Math.max(1, ...months.map((x) => x.amt));
+  const top = months.slice().sort((a, b) => b.amt - a.amt)[0];
+  const active = months.filter((x) => x.amt).length;
+  return {
+    bars: months.map((x, i) => ({
+      key: x.k,
+      label: `${x.m}월`,
+      year: i === 0 || x.m === 1 ? String(x.y) : "",
+      short: x.amt ? man(x.amt) : "",
+      height: `${((x.amt / max) * 100).toFixed(1)}%`,
+      hasValue: x.amt > 0,
+      isTop: top?.k === x.k,
+      title: `${x.y}년 ${x.m}월 · ${won(x.amt)} · ${x.n}벌`,
+    })),
+    topMonth: top ? `${top.y}.${String(top.m).padStart(2, "0")}` : "—",
+    topMonthAmount: top ? `${won(top.amt)} · ${top.n}벌` : "",
+    topMonthNote: top
+      ? dated
+          .filter((g) => g.purchasedOn!.startsWith(top.k))
+          .map((g) => `${g.brand} ${g.productName}`)
+          .join(", ")
+      : "구매일이 있는 옷이 없습니다.",
+    span: months.length ? `${months.length}개월 중 ${active}개월 구매` : "",
+    average: active ? `구매한 달 평균 ${won(Math.round(dated.reduce((a, g) => a + (g.purchasePrice ?? 0), 0) / active))}` : "",
+  };
+}
+
+export interface DonutSlice {
+  name: string;
+  count: number;
+  amount: number;
+  color: string;
+  pct: string;
+  dash: string;
+  offset: string;
+}
+
+/** 도넛 조각: 반지름 80 원 둘레를 비율대로 나눈다. 조각 사이에 2px 틈을 둔다. */
+const CIRCUMFERENCE = 2 * Math.PI * 80;
+function toSlices(list: { name: string; count: number; amount: number; color: string }[], total: number): DonutSlice[] {
+  const n = total || 1;
+  let acc = 0;
+  return list.map((x) => {
+    const len = (x.count / n) * CIRCUMFERENCE;
+    const slice = {
+      ...x,
+      pct: `${Math.round((x.count / n) * 100)}%`,
+      dash: `${Math.max(len - 2, 0.5).toFixed(2)} ${CIRCUMFERENCE.toFixed(2)}`,
+      offset: (-acc).toFixed(2),
+    };
+    acc += len;
+    return slice;
+  });
+}
+
+const tabName = (tab: CategoryTab) => (tab === "all" ? "옷장" : CATEGORY_NAME[tab]);
+const tabLabel = (tab: CategoryTab) => (tab === "all" ? "전체" : CATEGORY_NAME[tab]);
+
+const BRAND_PALETTE = [
+  "var(--text)",
+  "var(--a-600)",
+  "var(--n-500)",
+  "var(--a-300)",
+  "var(--n-700)",
+  "var(--a-800)",
+  "var(--n-400)",
+  "var(--a-500)",
+  "var(--n-300)",
+  "var(--a-200)",
+];
+
+export function brandSummary(G: Garment[], tab: CategoryTab) {
+  const pool = G.filter((g) => tab === "all" || g.categoryId === tab);
+  const map = new Map<string, { count: number; amount: number }>();
+  pool.forEach((g) => {
+    const o = map.get(g.brand) ?? { count: 0, amount: 0 };
+    o.count++;
+    o.amount += g.purchasePrice ?? 0;
+    map.set(g.brand, o);
+  });
+  const list = [...map.entries()].sort((a, b) => b[1].count - a[1].count || b[1].amount - a[1].amount);
+  const slices = toSlices(
+    list.map(([name, o], i) => ({ name, count: o.count, amount: o.amount, color: BRAND_PALETTE[i % BRAND_PALETTE.length] })),
+    pool.length,
+  );
+  let message = "등록한 옷이 없습니다.";
+  if (list.length) {
+    const [b1, o1] = list[0];
+    const byAmount = list.slice().sort((a, b) => b[1].amount - a[1].amount)[0];
+    message =
+      o1.count >= 2 && o1.count / (pool.length || 1) >= 0.25
+        ? `${b1}의 팬이시군요. ${tabName(tab)}에서 ${o1.count}벌로 가장 많습니다.`
+        : `${list.length}개 브랜드를 고르게 입는 편식 없는 옷장입니다.`;
+    if (byAmount[1].amount && byAmount[0] !== b1) message += ` 가장 많이 쓴 브랜드는 ${byAmount[0]}(${man(byAmount[1].amount)}원)입니다.`;
+  }
+  return { message, slices, total: list.length, totalLabel: `${tabLabel(tab)} · ${pool.length}벌` };
+}
+
+export function colorSummary(G: Garment[], tab: CategoryTab) {
+  const pool = G.filter((g) => tab === "all" || g.categoryId === tab);
+  const map = new Map<string, number>();
+  pool.forEach((g) => map.set(g.colorName || "미입력", (map.get(g.colorName || "미입력") ?? 0) + 1));
+  const list = [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"));
+  const slices = toSlices(
+    list.map(([name, count]) => ({ name, count, amount: 0, color: findColorHex(name) ?? "var(--n-400)" })),
+    pool.length,
+  );
+  const n = pool.length || 1;
+  const known = list.filter(([k]) => k !== "미입력");
+  let message = "컬러를 입력한 옷이 없습니다.";
+  if (known.length) {
+    const [c1, c1n] = known[0];
+    const share = c1n / n;
+    const dark =
+      pool.filter((g) => {
+        const hex = findColorHex(g.colorName);
+        return hex && luminance(hex) < 0.05;
+      }).length / n;
+    message =
+      share >= 0.3
+        ? `${josa(c1, "을", "를")} 사랑하시는군요. ${tabName(tab)}의 ${Math.round(share * 100)}%가 ${c1}입니다.`
+        : known[1]
+          ? `${c1}와 ${known[1][0]}을 중심으로 고르게 섞인 팔레트입니다.`
+          : `${c1} 위주의 팔레트입니다.`;
+    if (dark >= 0.4) message += ` 어두운 톤이 ${Math.round(dark * 100)}%로, 차분한 색을 즐겨 입으시네요.`;
+  }
+  return { message, slices, total: pool.length, totalLabel: `${tabLabel(tab)} · ${list.length}가지 컬러` };
+}
+
+export function seasonSummary(G: Garment[]) {
+  const counts = SEASONS.map((s) => ({ id: s.id, count: G.filter((g) => g.seasons.includes(s.id)).length }));
+  const max = Math.max(1, ...counts.map((x) => x.count));
+  const least = counts.slice().sort((a, b) => a.count - b.count)[0];
+  const most = counts.slice().sort((a, b) => b.count - a.count)[0];
+  return {
+    least: least.id,
+    bars: counts.map((x) => ({
+      id: x.id,
+      label: SEASON_NAME[x.id],
+      count: x.count,
+      pct: G.length ? `${Math.round((x.count / G.length) * 100)}%` : "—",
+      height: `${Math.max((x.count / max) * 100, 12).toFixed(1)}%`,
+      isLeast: x.id === least.id,
+    })),
+    message: G.length
+      ? `${SEASON_NAME[most.id]} 옷이 ${most.count}벌로 가장 많고, ${SEASON_NAME[least.id]} 옷은 ${least.count}벌로 가장 적습니다.`
+      : "등록한 옷이 없습니다.",
+  };
+}
+
+/** 종류별 기본 구성(세부분류, 기본 벌 수, 주로 입는 시즌) */
+const ESSENTIALS: [string, number, Season][] = [
+  ["outer.jacket", 2, "fall"],
+  ["outer.coat", 1, "winter"],
+  ["outer.padding", 1, "winter"],
+  ["outer.cardigan", 1, "spring"],
+  ["top.short_tee", 3, "summer"],
+  ["top.long_tee", 2, "spring"],
+  ["top.shirt", 2, "spring"],
+  ["top.knit", 2, "winter"],
+  ["top.sweatshirt", 1, "fall"],
+  ["bottom.denim", 2, "fall"],
+  ["bottom.slacks", 2, "spring"],
+  ["bottom.chino", 1, "spring"],
+  ["bottom.shorts", 1, "summer"],
+];
+
+/** 기본 구성 대비 부족한 순으로 3개. 가장 적은 시즌의 옷은 우선순위를 높인다. */
+export function recommendations(G: Garment[], leastSeason: Season) {
+  return ESSENTIALS.map(([sub, target, season]) => {
+    const have = G.filter((g) => g.subcategoryId === sub).length;
+    const def = target - have;
+    return { sub, target, have, season, def, score: def / target + (season === leastSeason ? 0.35 : 0) };
+  })
+    .filter((x) => x.def > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map((x, i) => ({
+      rank: `0${i + 1}`,
+      label: SUBCATEGORY_NAME[x.sub],
+      category: CATEGORY_NAME[x.sub.split(".")[0] as CategoryId],
+      have: `보유 ${x.have}벌 · 기본 ${x.target}벌`,
+      dots: Array.from({ length: x.target }, (_, j) => j < x.have),
+      reason:
+        (x.have === 0 ? "아직 한 벌도 없습니다. " : `${x.def}벌 더 있으면 기본 구성이 채워집니다. `) +
+        (x.season === leastSeason
+          ? `${SEASON_NAME[x.season]} 옷이 가장 부족해 우선순위를 높였습니다.`
+          : `${SEASON_NAME[x.season]}에 자주 입는 종류입니다.`),
+    }));
+}

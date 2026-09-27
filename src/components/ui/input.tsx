@@ -1,23 +1,19 @@
 import { cn } from "@/lib/cn";
 
-type ControlSize = "sm" | "md";
+type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
 
-const controlSizes: Record<ControlSize, string> = {
-  sm: "h-8 text-sm",
-  md: "h-10 text-base",
-};
-
-/** active: 값이 선택된 필터처럼 강조가 필요한 상태 */
-export function inputClassName(size: ControlSize = "md", active = false) {
-  return cn(
-    "w-full rounded-sm border bg-surface px-3 transition-colors focus:border-accent focus:outline-none focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/25",
-    active ? "border-accent text-accent" : "border-border text-text hover:border-text-subtle",
-    controlSizes[size],
-  );
+export function Input({ className, ...props }: InputProps) {
+  return <input className={cn("input", className)} {...props} />;
 }
 
-type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> & { size?: ControlSize };
-
-export function Input({ className, size, ...props }: InputProps) {
-  return <input className={cn(inputClassName(size), className)} {...props} />;
+/** 입력칸 오른쪽 안에 단위(cm, 원)를 붙인다. 숫자는 오른쪽 정렬 + 고정폭 글꼴 */
+export function UnitInput({ unit, className, ...props }: InputProps & { unit: string }) {
+  return (
+    <div className="relative">
+      <input className={cn("input pr-9 text-right font-mono tabular-nums", className)} {...props} />
+      <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-xs text-neutral-700">
+        {unit}
+      </span>
+    </div>
+  );
 }

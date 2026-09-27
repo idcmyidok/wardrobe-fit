@@ -3,23 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
 const NAV = [
   { href: "/wardrobe", label: "내 옷장" },
   { href: "/fit-check", label: "AI 구매 판단기" },
+  { href: "/analysis", label: "옷장 분석" },
 ];
 
 export function AppHeader() {
   const pathname = usePathname();
   return (
-    <header className="sticky top-0 z-10 border-b border-text bg-bg">
+    <header className="sticky top-0 z-30 border-b border-text bg-bg">
       {/* 좁은 화면에서는 메뉴가 두 번째 줄로 내려간다. */}
-      <div className="mx-auto flex min-h-14 max-w-screen-2xl flex-wrap items-center gap-x-7 px-4 sm:flex-nowrap sm:px-8">
-        <Link href="/wardrobe" className="py-2 font-display text-brand whitespace-nowrap text-text hover:text-text">
+      <div className="relative flex min-h-14 flex-wrap items-center gap-x-7 gap-y-1 px-[clamp(16px,3vw,32px)] md:flex-nowrap">
+        <Link href="/wardrobe" className="py-2 font-display text-brand whitespace-nowrap text-text no-underline">
           Wardrobe Fit
         </Link>
-        <nav aria-label="주요 메뉴" className="order-last -mx-2 flex w-full items-center gap-1 sm:order-none sm:mx-0 sm:w-auto sm:gap-3">
+        <nav aria-label="주요 메뉴" className="order-last -mx-2 flex w-full gap-1 md:order-none md:mx-0 md:mr-auto md:w-auto md:gap-5">
           {NAV.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -28,8 +30,10 @@ export function AppHeader() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "px-2 py-2.5 text-base whitespace-nowrap underline-offset-[6px] transition-colors",
-                  active ? "text-text underline decoration-1" : "text-text-muted hover:text-accent-hover",
+                  "px-2 py-2.5 text-base whitespace-nowrap no-underline transition-colors md:px-0",
+                  active
+                    ? "text-text underline decoration-1 underline-offset-[6px]"
+                    : "text-text hover:text-accent-700",
                 )}
               >
                 {item.label}
@@ -37,7 +41,8 @@ export function AppHeader() {
             );
           })}
         </nav>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3 md:ml-0">
+          <ThemeToggle />
           <UserMenu />
         </div>
       </div>

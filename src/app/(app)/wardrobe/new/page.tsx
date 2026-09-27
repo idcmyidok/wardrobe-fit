@@ -1,9 +1,13 @@
-import { ComingSoon } from "@/components/layout/coming-soon";
+import { Suspense } from "react";
+import { NewGarmentView } from "@/components/garment-form/new-garment-view";
 
 export const metadata = { title: "새 옷 추가 · Wardrobe Fit" };
 
 export default function NewGarmentPage() {
+  // ?mode=manual 을 읽기 때문에 Suspense 경계가 필요하다.
   return (
-    <ComingSoon title="새 옷 추가" description="링크 또는 직접 입력으로 옷을 등록하는 화면은 다음 단계에서 구현합니다." />
+    <Suspense>
+      <NewGarmentView />
+    </Suspense>
   );
 }

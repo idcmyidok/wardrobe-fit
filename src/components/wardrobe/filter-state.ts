@@ -1,9 +1,10 @@
+import { MEASUREMENT_LABELS, type MeasurementKey } from "@/lib/constants/measurements";
 import { SEASONS } from "@/lib/constants/seasons";
 import type { WardrobeSort } from "@/lib/constants/sort";
-import type { CategoryId, GarmentListItem, Season } from "@/lib/types/domain";
+import type { CategoryId, Garment, Season } from "@/lib/types/domain";
 
-/** 표 헤더를 눌러 정렬할 수 있는 열. 이미지·제품명·실측 열은 정렬하지 않는다. */
-export type SortableColumn = "brand" | "size" | "color" | "season" | "purchasedOn" | "price";
+/** 표 헤더를 눌러 정렬할 수 있는 열. 이미지·세부분류·제품명은 정렬하지 않는다. */
+export type SortableColumn = "brand" | "size" | "color" | "season" | "purchasedOn" | "price" | MeasurementKey;
 export type SortDirection = "asc" | "desc";
 export interface ColumnSort {
   key: SortableColumn;
@@ -12,7 +13,7 @@ export interface ColumnSort {
 
 /**
  * 지금은 화면 확인용 로컬 상태다. 6단계에서 URL searchParams + 서버 조회로 옮긴다.
- * column이 있으면 정렬 Select(sort)보다 우선한다.
+ * sort는 정렬 Select의 값이거나, 표 헤더를 눌러 만든 열 정렬이다.
  */
 export interface WardrobeFilters {
   categories: CategoryId[];
@@ -22,9 +23,10 @@ export interface WardrobeFilters {
   size: string;
   color: string;
   q: string;
-  sort: WardrobeSort;
-  column: ColumnSort | null;
+  sort: WardrobeSort | ColumnSort;
 }
+
+export const DEFAULT_SORT: WardrobeSort = "purchased_desc";
 
 export const DEFAULT_FILTERS: WardrobeFilters = {
   categories: ["outer", "top", "bottom"],
@@ -34,76 +36,85 @@ export const DEFAULT_FILTERS: WardrobeFilters = {
   size: "",
   color: "",
   q: "",
-  sort: "purchased_desc",
-  column: null,
+  sort: DEFAULT_SORT,
 };
 
-/** 날짜·가격은 큰 값부터, 나머지는 가나다·작은 값부터 시작한다. */
-const FIRST_DIRECTION: Record<SortableColumn, SortDirection> = {
-  brand: "asc",
-  size: "asc",
-  color: "asc",
-  season: "asc",
-  purchasedOn: "desc",
-  price: "desc",
-};
-
-/** 같은 열을 누를 때마다 첫 방향 → 반대 방향 → 해제(정렬 Select 기준) 순서로 바뀐다. */
-export function nextColumnSort(current: ColumnSort | null, key: SortableColumn): ColumnSort | null {
-  const first = FIRST_DIRECTION[key];
-  if (current?.key !== key) return { key, dir: first };
-  if (current.dir === first) return { key, dir: first === "asc" ? "desc" : "asc" };
-  return null;
+export function isFiltered(f: WardrobeFilters): boolean {
+  return f.categories.length < 3 || Boolean(f.subcategory || f.brand || f.season || f.size || f.color || f.q);
 }
 
-const LETTER_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"];
-
-/** 문자 사이즈(XS~XXXL)는 치수 순서대로, 숫자 사이즈는 숫자 순서대로, 그 외는 가나다순 */
-function compareSize(a: string, b: string): number {
-  const ia = LETTER_SIZES.indexOf(a.toUpperCase());
-  const ib = LETTER_SIZES.indexOf(b.toUpperCase());
-  if (ia !== -1 && ib !== -1) return ia - ib;
-  if (ia !== -1) return -1;
-  if (ib !== -1) return 1;
-  return a.localeCompare(b, "ko", { numeric: true });
-}
-
-const SEASON_ORDER = SEASONS.map((s) => s.id);
-const seasonRank = (item: GarmentListItem) => Math.min(...item.seasons.map((s) => SEASON_ORDER.indexOf(s)));
-
-function columnValue(item: GarmentListItem, key: SortableColumn): string | number | null {
-  switch (key) {
-    case "brand":
-      return item.brand;
-    case "size":
-      return item.sizeLabel;
-    case "color":
-      return item.colorName;
-    case "season":
-      return item.seasons.length ? seasonRank(item) : null;
-    case "purchasedOn":
-      return item.purchasedOn;
-    case "price":
-      return item.purchasePrice;
-  }
-}
-
-function compareColumn(a: GarmentListItem, b: GarmentListItem, key: SortableColumn): number {
-  const va = columnValue(a, key);
-  const vb = columnValue(b, key);
-  if (typeof va === "number" && typeof vb === "number") return va - vb;
-  if (key === "size") return compareSize(String(va), String(vb));
-  return String(va).localeCompare(String(vb), "ko", { numeric: true });
-}
-
-const PRESET_COLUMN: Record<WardrobeSort, ColumnSort> = {
+const PRESET: Record<WardrobeSort, { key: SortableColumn | "created"; dir: SortDirection }> = {
   purchased_desc: { key: "purchasedOn", dir: "desc" },
   purchased_asc: { key: "purchasedOn", dir: "asc" },
+  created_desc: { key: "created", dir: "desc" },
   price_desc: { key: "price", dir: "desc" },
   price_asc: { key: "price", dir: "asc" },
 };
 
-export function applyFilters(items: GarmentListItem[], f: WardrobeFilters): GarmentListItem[] {
+/** 지금 정렬 기준(열 + 방향) */
+export function currentSort(sort: WardrobeFilters["sort"]): { key: SortableColumn | "created"; dir: SortDirection } {
+  return typeof sort === "string" ? PRESET[sort] : sort;
+}
+
+/** 날짜·가격은 큰 값부터, 나머지는 가나다·작은 값부터 시작한다. */
+const firstDirection = (key: SortableColumn): SortDirection =>
+  key === "purchasedOn" || key === "price" ? "desc" : "asc";
+
+/**
+ * 같은 열을 누를 때마다 첫 방향 → 반대 방향 → 기본 정렬(최근 구매순) 순서로 바뀐다.
+ * 정렬 Select로 고른 기준과 같은 열을 누르면 반대 방향부터 시작한다.
+ */
+export function nextSort(sort: WardrobeFilters["sort"], key: SortableColumn): WardrobeFilters["sort"] {
+  const cur = currentSort(sort);
+  const first = firstDirection(key);
+  if (cur.key !== key) return { key, dir: first };
+  const flipped: SortDirection = cur.dir === "asc" ? "desc" : "asc";
+  if (typeof sort === "string" || cur.dir === first) return { key, dir: flipped };
+  return DEFAULT_SORT;
+}
+
+const COLUMN_LABEL: Record<SortableColumn, string> = {
+  ...MEASUREMENT_LABELS,
+  brand: "브랜드",
+  size: "사이즈",
+  color: "컬러",
+  season: "시즌",
+  purchasedOn: "구매일",
+  price: "구매가",
+};
+
+/** 헤더 정렬 중일 때 정렬 Select에 보여줄 이름. 예: "브랜드 오름차순" */
+export function columnSortLabel(sort: ColumnSort): string {
+  return `${COLUMN_LABEL[sort.key].replace("단면", "")} ${sort.dir === "asc" ? "오름차순" : "내림차순"}`;
+}
+
+const LETTER_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"];
+const SEASON_ORDER = SEASONS.map((s) => s.id);
+
+/** 정렬용 값. 문자 사이즈(XS~XXXL)는 치수 순서, 숫자 사이즈는 그 뒤에 숫자 순서 */
+function sortValue(g: Garment, key: SortableColumn): string | number | null {
+  switch (key) {
+    case "brand":
+      return g.brand;
+    case "color":
+      return g.colorName;
+    case "purchasedOn":
+      return g.purchasedOn;
+    case "price":
+      return g.purchasePrice;
+    case "season":
+      return g.seasons.length ? Math.min(...g.seasons.map((s) => SEASON_ORDER.indexOf(s))) : null;
+    case "size": {
+      if (!g.sizeLabel) return null;
+      const i = LETTER_SIZES.indexOf(g.sizeLabel.toUpperCase());
+      return i >= 0 ? i : 100 + (parseFloat(g.sizeLabel) || 0);
+    }
+    default:
+      return g.measurements[key] ?? null;
+  }
+}
+
+export function applyFilters(items: Garment[], f: WardrobeFilters): Garment[] {
   const q = f.q.trim().toLowerCase();
   const filtered = items.filter(
     (item) =>
@@ -116,19 +127,23 @@ export function applyFilters(items: GarmentListItem[], f: WardrobeFilters): Garm
       (!q || `${item.brand} ${item.productName}`.toLowerCase().includes(q)),
   );
 
-  const { key, dir } = f.column ?? PRESET_COLUMN[f.sort];
-  // 값이 없는 항목은 정렬 방향과 관계없이 뒤로 보낸다.
-  const missing = (item: GarmentListItem) => columnValue(item, key) == null;
+  const { key, dir } = currentSort(f.sort);
+  const value = (g: Garment) => (key === "created" ? items.indexOf(g) : sortValue(g, key));
+  const sign = dir === "asc" ? 1 : -1;
 
+  // 값이 없는 항목은 정렬 방향과 관계없이 뒤로 보낸다.
   return filtered.sort((a, b) => {
-    const m = Number(missing(a)) - Number(missing(b));
-    if (m !== 0) return m;
-    const c = compareColumn(a, b, key);
-    return dir === "asc" ? c : -c;
+    const va = value(a);
+    const vb = value(b);
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    const c = typeof va === "string" ? va.localeCompare(String(vb), "ko", { numeric: true }) : va - Number(vb);
+    return c * sign;
   });
 }
 
-export function uniqueValues(items: GarmentListItem[], pick: (item: GarmentListItem) => string | null): string[] {
+export function uniqueValues(items: Garment[], pick: (item: Garment) => string | null): string[] {
   return [...new Set(items.map(pick).filter((v): v is string => Boolean(v)))].sort((a, b) =>
     a.localeCompare(b, "ko", { numeric: true }),
   );
