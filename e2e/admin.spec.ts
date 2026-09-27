@@ -6,7 +6,10 @@ test("관리자가 아니면 관리자 페이지가 없는 페이지로 보인�
   await expect(page).toHaveURL(/\/wardrobe$/);
   await page.goto("/admin");
   await expect(page.getByRole("heading", { name: "페이지를 찾을 수 없습니다" })).toBeVisible();
+  await page.goto("/wardrobe");
+  await expect(page.getByText("아직 등록한 옷이 없습니다")).toBeVisible();
   await page.getByRole("button", { name: /e2e-plain/ }).click();
+  await expect(page.getByRole("menuitem", { name: "로그아웃" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "관리자 페이지" })).toHaveCount(0);
 });
 
@@ -24,7 +27,8 @@ test("관리자는 통계를 보고 사용자를 정지·해제·삭제한다", 
   await expect(memberPage).toHaveURL(/\/wardrobe$/);
 
   await login(page, boss);
-  await expect(page).toHaveURL(/\/wardrobe$/);
+  // 옷 목록을 읽는 동안에는 임시 머리글이 보이다가 바뀐다. 다 뜬 뒤에 메뉴를 연다.
+  await expect(page.getByText("아직 등록한 옷이 없습니다")).toBeVisible();
   await page.getByRole("button", { name: /e2e-boss/ }).click();
   await page.getByRole("menuitem", { name: "관리자 페이지" }).click();
   await expect(page.getByRole("heading", { name: "관리자", exact: true })).toBeVisible();

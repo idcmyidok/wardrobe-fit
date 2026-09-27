@@ -12,13 +12,14 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const supabase = await createSupabaseServerClient();
   if (!supabase) redirect("/");
-  const { data } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getUser();
   if (data.user && !isBanned(data.user)) redirect("/wardrobe");
+  const suspended = Boolean(data.user) || error?.code === "user_banned";
 
   await supabase.auth.signOut({ scope: "local" });
   // 로그아웃 요청이 실패해도 쿠키는 반드시 지운다.
   const store = await cookies();
   for (const { name } of store.getAll()) if (name.startsWith("sb-")) store.delete(name);
   store.delete(REMEMBER_COOKIE);
-  redirect(data.user ? "/?error=suspended" : "/");
+  redirect(suspended ? "/?error=suspended" : "/");
 }
