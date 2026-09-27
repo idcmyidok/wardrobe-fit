@@ -2,7 +2,7 @@ import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server
 import { runImport } from "@/server/import/service";
 
 /**
- * POST /api/imports { url, purpose? } → NDJSON 스트림(PROJECT_SPEC.md 12.2)
+ * POST /api/imports { url, purpose?, photosOnly? } → NDJSON 스트림(PROJECT_SPEC.md 12.2)
  *   {"type":"stage","stage":"fetching"} … {"type":"result", ...ImportOutcome}
  * 전체 20초 안에 끝나도록 fetcher가 10초에서 끊는다.
  */
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   const user = supabase ? await getActiveUser(supabase) : null;
   if (!supabase || !user) return Response.json({ type: "result", status: "failed", errorCode: "signed_out" }, { status: 401 });
 
-  let body: { url?: unknown; purpose?: unknown };
+  let body: { url?: unknown; purpose?: unknown; photosOnly?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -32,7 +32,9 @@ export async function POST(request: Request) {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (value: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`));
-      const outcome = await runImport(supabase, user.id, url, purpose, (stage) => send({ type: "stage", stage }));
+      const outcome = await runImport(supabase, user.id, url, purpose, (stage) => send({ type: "stage", stage }), {
+        photosOnly: body.photosOnly === true,
+      });
       send({ type: "result", ...outcome });
       controller.close();
     },

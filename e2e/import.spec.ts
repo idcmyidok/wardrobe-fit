@@ -130,3 +130,39 @@ test("분석 API는 로그인하지 않으면 거절하고, 사설 주소는 분
   expect(result.status).toBe("failed");
   expect(["blocked_host", "blocked_port"]).toContain(result.errorCode);
 });
+
+test("옷 정보 수정: 쇼핑몰 사진 불러오기로 상품 링크의 사진 중 하나를 골라 바꾼다", async ({ page, browser, admin, makeUser, seedGarments }) => {
+  const user = await makeUser("shop-photo");
+  const sourceUrl = "https://shop.example/p/10";
+  await seedGarments(user, [{ category_id: "top", product_name: "링크 있는 셔츠", product_url: sourceUrl }]);
+  const { data: imp, error } = await admin
+    .from("product_imports")
+    .insert({ user_id: user.id, purpose: "wardrobe", source_url: sourceUrl, normalized_url: sourceUrl, domain: "shop.example", parser_id: "generic", parser_version: "v1", status: "partial", result: PRODUCT, warnings: [], duration_ms: 500 })
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  const photo = await samplePhoto(browser, "#a54a4a");
+  let requestBody: Record<string, unknown> = {};
+  await page.route("**/api/imports", async (route) => {
+    requestBody = route.request().postDataJSON();
+    const result = { type: "result", importId: imp.id, status: "partial", reused: false, domain: "shop.example", sourceUrl, parserId: "generic", durationMs: 500, product: PRODUCT, errorCode: null, errorDetail: null };
+    await route.fulfill({ status: 200, contentType: "application/x-ndjson", body: JSON.stringify(result) + "\n" });
+  });
+  await page.route("**/api/imports/*/image*", (route) => route.fulfill({ status: 200, contentType: "image/png", body: photo.buffer }));
+
+  await login(page, user, "/wardrobe");
+  await page.locator("table:visible").getByRole("button", { name: "링크 있는 셔츠" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "옷 정보 수정" }).click();
+  await dialog.getByRole("button", { name: "쇼핑몰 사진 불러오기" }).click();
+  await expect(dialog.getByText("페이지 사진 2장")).toBeVisible();
+  expect(requestBody).toMatchObject({ url: sourceUrl, photosOnly: true });
+  await dialog.getByRole("button", { name: "페이지 사진 2" }).click();
+  await expect(dialog.getByRole("button", { name: "페이지 사진 2 (옷 사진으로 선택됨)" })).toBeVisible();
+  await dialog.getByRole("button", { name: "저장" }).click();
+
+  await expect
+    .poll(async () => (await admin.from("garments").select("image_path").eq("user_id", user.id).single()).data?.image_path ?? null)
+    .not.toBeNull();
+});

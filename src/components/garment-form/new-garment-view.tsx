@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useWardrobe, type GarmentDraft, type ImageChange } from "@/components/wardrobe/wardrobe-store";
 import { ImagePicker } from "./image-picker";
+import { PageImageGrid } from "./page-image-grid";
 import { UnitInput } from "@/components/ui/input";
 import { SUBCATEGORIES } from "@/lib/constants/categories";
 import { BOTTOM_MEASUREMENTS, TOP_MEASUREMENTS, measurementFields } from "@/lib/constants/measurements";
 import { SEASONS, toggleSeason } from "@/lib/constants/seasons";
 import { cn } from "@/lib/cn";
-import { importImageUrl, streamImport, type AnalyzeStage, type ImportOutcome } from "@/lib/import/client";
+import { importImageFile, importImageUrl, streamImport, type AnalyzeStage, type ImportOutcome } from "@/lib/import/client";
 import { importFailure } from "@/lib/import/messages";
 import { takeStashedDraft } from "@/lib/session-expiry";
 import type { CategoryId, Measurements, Season } from "@/lib/types/domain";
@@ -247,7 +248,7 @@ export function NewGarmentView() {
       imageUrl: null,
       measurements,
       fitReview: form.review || null,
-    }, image === undefined && isReview && chosenUrl ? await pageImageFile(chosenUrl) : image, imported?.importId ?? null);
+    }, image === undefined && isReview && chosenUrl ? await importImageFile(chosenUrl) : image, imported?.importId ?? null);
     setSaving(false);
     if (!result.ok) {
       const fields = result.fieldErrors ?? {};
@@ -417,54 +418,15 @@ export function NewGarmentView() {
                       : "사진 없이 저장합니다"}
                 </p>
               )}
-              {shownImages.length > 0 && (
-                <>
-                  <div className="mt-1 flex items-baseline justify-between">
-                    <span className="text-xs font-semibold">페이지 사진 {shownImages.length}장</span>
-                    <span className="text-label text-neutral-700">눌러서 고르기</span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {shownImages.map(({ src, i }, n) => {
-                      const selected = chosen === i && image === undefined;
-                      return (
-                        <button
-                          key={src}
-                          type="button"
-                          aria-pressed={selected}
-                          aria-label={`페이지 사진 ${n + 1}${selected ? " (옷 사진으로 선택됨)" : ""}`}
-                          onClick={() => {
-                            setImageIndex(i);
-                            setImage(undefined);
-                          }}
-                          className={cn(
-                            "relative aspect-[4/5] cursor-pointer overflow-hidden rounded-sm bg-neutral-200 transition-opacity",
-                            selected ? "ring-2 ring-text ring-offset-2 ring-offset-bg" : "opacity-60 ring-1 ring-neutral-300 ring-inset hover:opacity-100",
-                          )}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element -- 서버가 대신 받아 주는 미리보기 */}
-                          <img
-                            src={src}
-                            alt=""
-                            loading="lazy"
-                            className="size-full object-cover"
-                            onError={() => dropImage(i)}
-                            onLoad={(e) => {
-                              if (Math.max(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight) < 150) dropImage(i);
-                            }}
-                          />
-                          {selected && (
-                            <span className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-text text-bg" aria-hidden>
-                              <svg viewBox="0 0 16 16" className="size-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3.5 8.5l3 3 6-7" />
-                              </svg>
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
+              <PageImageGrid
+                images={shownImages}
+                selected={image === undefined ? chosen : -1}
+                onSelect={(i) => {
+                  setImageIndex(i);
+                  setImage(undefined);
+                }}
+                onBroken={dropImage}
+              />
             </div>
 
             <div className="flex min-w-0 flex-col gap-4 sm:col-span-3">
@@ -652,18 +614,6 @@ export function NewGarmentView() {
       )}
     </main>
   );
-}
-
-/** 고른 페이지 이미지를 받아 등록할 사진 파일로. 실패하면 사진 없이 등록한다(PROJECT_SPEC.md 12.4). */
-async function pageImageFile(src: string): Promise<File | undefined> {
-  try {
-    const res = await fetch(src);
-    if (!res.ok) return undefined;
-    const blob = await res.blob();
-    return new File([blob], "product-image", { type: blob.type || "image/jpeg" });
-  } catch {
-    return undefined;
-  }
 }
 
 /** 서버 검증 오류 키 → 입력 칸 id(첫 오류 칸으로 포커스) */

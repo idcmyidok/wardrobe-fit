@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ImagePicker } from "@/components/garment-form/image-picker";
+import { ShopPhotos } from "@/components/garment-form/shop-photos";
 import { UnitInput } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
 import { CATEGORY_NAME, SUBCATEGORIES, SUBCATEGORY_NAME } from "@/lib/constants/categories";
@@ -435,6 +436,7 @@ function InfoEditor({
       <section className="flex flex-col gap-3.5">
         <SectionTitle>기본 정보 수정</SectionTitle>
         <ImagePicker currentUrl={imageUrl} value={image} onChange={setImage} placeholder="사진 없음" className="w-40" />
+        <ShopPhotos productUrl={info.productUrl} value={image} onPick={setImage} />
         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
           <div className="field">
             <label htmlFor="ie-cat">대분류</label>
