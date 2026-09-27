@@ -10,6 +10,9 @@ import { normalizeProductUrl } from "./url";
  * 저장(product_imports)과 화면 연결은 9단계의 /api/imports가 맡는다.
  */
 
+/** 화면의 진행 단계: 페이지 불러오는 중 → 상품 정보 읽는 중 → 사이즈표·컬러 정리 중 */
+export type AnalyzeStage = "fetching" | "parsing" | "normalizing";
+
 export interface AnalyzeResult {
   sourceUrl: string;
   /** 추적 파라미터를 지운 주소 */
@@ -31,11 +34,13 @@ function statusOf(p: NormalizedProduct): AnalyzeResult["status"] {
 
 export async function analyzeProductUrl(
   input: string,
-  options: { fetch?: FetchOptions; normalize?: NormalizeOptions } = {},
+  options: { fetch?: FetchOptions; normalize?: NormalizeOptions; onStage?: (stage: AnalyzeStage) => void } = {},
 ): Promise<AnalyzeResult> {
   const started = Date.now();
   const url = normalizeProductUrl(input);
+  options.onStage?.("fetching");
   const page = await safeFetch(url, { ...options.fetch, accept: "html" });
+  options.onStage?.("parsing");
 
   // 같은 사이트의 공개 JSON만 부를 수 있다(Shopify 상품 JSON 등). SSRF 방어는 safeFetch가 다시 한다.
   const fetchJson = async (target: string) => {
@@ -47,6 +52,7 @@ export async function analyzeProductUrl(
 
   const ctx = createParseContext(page.url, page.body, fetchJson);
   const run = await runParsers(ctx);
+  options.onStage?.("normalizing");
   const siteName = ctx.$('meta[property="og:site_name"]').attr("content");
   const product = normalizeProduct(run.product, run.sources, { siteName, ...options.normalize });
   if (run.failed.length) product.warnings.push({ code: "parser_failed", message: `일부 분석 단계가 실패했습니다: ${run.failed.join(", ")}` });

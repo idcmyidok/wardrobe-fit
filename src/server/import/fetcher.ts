@@ -25,7 +25,7 @@ export interface FetchedPage {
 }
 
 export interface FetchOptions {
-  accept?: "html" | "json";
+  accept?: "html" | "json" | "image";
   maxBytes?: number;
   timeoutMs?: number;
   maxRedirects?: number;
@@ -43,6 +43,19 @@ const defaultResolve = (hostname: string) =>
   );
 
 export async function safeFetch(input: string | URL, options: FetchOptions = {}): Promise<FetchedPage> {
+  const { bytes, ...rest } = await safeFetchBytes(input, options);
+  return { ...rest, body: decode(bytes, rest.contentType) };
+}
+
+/** 이미지 미리보기용. JPEG/PNG/WebP/GIF/AVIF만, 기본 5MB */
+export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export async function safeFetchImage(input: string | URL, options: FetchOptions = {}) {
+  return safeFetchBytes(input, { maxBytes: IMAGE_MAX_BYTES, ...options, accept: "image" });
+}
+
+type FetchedBytes = Omit<FetchedPage, "body"> & { bytes: Buffer };
+
+async function safeFetchBytes(input: string | URL, options: FetchOptions): Promise<FetchedBytes> {
   const limits = {
     maxBytes: options.maxBytes ?? FETCH_LIMITS.maxBytes,
     timeoutMs: options.timeoutMs ?? FETCH_LIMITS.timeoutMs,
@@ -61,7 +74,7 @@ export async function safeFetch(input: string | URL, options: FetchOptions = {})
   throw new ImportError("too_many_redirects");
 }
 
-type OnceResult = { redirect: string; page?: never } | { redirect?: never; page: Omit<FetchedPage, "url"> };
+type OnceResult = { redirect: string; page?: never } | { redirect?: never; page: Omit<FetchedBytes, "url"> };
 
 function requestOnce(url: URL, options: FetchOptions, maxBytes: number, deadline: number): Promise<OnceResult> {
   const resolve = options.resolve ?? defaultResolve;
@@ -83,7 +96,16 @@ function requestOnce(url: URL, options: FetchOptions, maxBytes: number, deadline
   };
 
   const client = url.protocol === "https:" ? https : http;
-  const accept = options.accept === "json" ? "application/json" : "text/html,application/xhtml+xml,application/json;q=0.8";
+  const accept =
+    options.accept === "json"
+      ? "application/json"
+      : options.accept === "image"
+        ? "image/avif,image/webp,image/png,image/jpeg,image/gif"
+        : "text/html,application/xhtml+xml,application/json;q=0.8";
+  const allowedType =
+    options.accept === "image"
+      ? /^image\/(jpeg|png|webp|gif|avif)\b/
+      : /text\/html|application\/xhtml\+xml|application\/(ld\+)?json|text\/plain/;
 
   return new Promise<OnceResult>((resolvePromise, reject) => {
     const req = client.request(
@@ -114,7 +136,7 @@ function requestOnce(url: URL, options: FetchOptions, maxBytes: number, deadline
           return;
         }
         const contentType = String(res.headers["content-type"] ?? "").toLowerCase();
-        if (!/text\/html|application\/xhtml\+xml|application\/(ld\+)?json|text\/plain/.test(contentType)) {
+        if (!allowedType.test(contentType)) {
           res.resume();
           reject(new ImportError("unsupported_content", contentType || "unknown"));
           return;
@@ -152,8 +174,7 @@ function requestOnce(url: URL, options: FetchOptions, maxBytes: number, deadline
         });
         stream.on("end", () => {
           if (aborted) return;
-          const buffer = Buffer.concat(chunks);
-          resolvePromise({ page: { status, contentType, body: decode(buffer, contentType) } });
+          resolvePromise({ page: { status, contentType, bytes: Buffer.concat(chunks) } });
         });
         stream.on("error", (err) => reject(err instanceof ImportError ? err : new ImportError("network_error", err.message)));
       },

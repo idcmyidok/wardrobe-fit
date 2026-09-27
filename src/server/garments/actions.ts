@@ -76,7 +76,13 @@ export async function createGarment(input: unknown): Promise<GarmentActionResult
 
   const { data, error } = await s.supabase
     .from("garments")
-    .insert({ ...inputToRow(parsed.data), category_id: parsed.data.categoryId, product_name: parsed.data.productName, user_id: s.userId })
+    .insert({
+      ...inputToRow(parsed.data),
+      category_id: parsed.data.categoryId,
+      product_name: parsed.data.productName,
+      source_import_id: parsed.data.sourceImportId,
+      user_id: s.userId,
+    })
     .select("id")
     .single();
   if (error) return dbError(error);
