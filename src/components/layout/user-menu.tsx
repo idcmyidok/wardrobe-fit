@@ -1,13 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { signOut } from "@/server/auth/actions";
 
-/** 사용자 메뉴. 3단계(인증)에서 실제 계정 정보와 로그아웃을 연결한다. */
-export function UserMenu() {
+/** 사용자 메뉴. email이 null이면 미리보기 모드라 로그아웃 대신 첫 화면으로 돌아간다. */
+export function UserMenu({ email }: { email: string | null }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const router = useRouter();
 
   useEffect(() => {
     if (!open) return;
@@ -23,6 +23,8 @@ export function UserMenu() {
     };
   }, [open]);
 
+  const itemClass = "btn w-full justify-start rounded-none border-t border-t-divider px-3.5 py-2.5 font-normal hover:bg-neutral-200";
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -30,27 +32,27 @@ export function UserMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="btn btn-secondary font-normal"
+        className="btn btn-secondary max-w-40 font-normal"
       >
-        minjun.k
+        <span className="truncate">{email ? email.split("@")[0] : "미리보기"}</span>
         <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>
       {open && (
         <div role="menu" className="elev-md absolute top-[calc(100%+6px)] right-0 z-40 flex w-55 flex-col border border-text bg-bg">
-          <div className="border-b border-neutral-300 px-3.5 py-3 text-sm text-neutral-700">minjun.k@gmail.com</div>
-          <button type="button" role="menuitem" className="btn justify-start rounded-none px-3.5 py-2.5 font-normal hover:bg-neutral-200">
-            계정 설정
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => router.push("/")}
-            className="btn justify-start rounded-none border-t border-t-divider px-3.5 py-2.5 font-normal hover:bg-neutral-200"
-          >
-            로그아웃
-          </button>
+          <div className="truncate px-3.5 py-3 text-sm text-neutral-700">{email ?? "로그인하지 않은 미리보기"}</div>
+          {email ? (
+            <form action={signOut}>
+              <button type="submit" role="menuitem" className={itemClass}>
+                로그아웃
+              </button>
+            </form>
+          ) : (
+            <Link href="/" role="menuitem" className={`${itemClass} no-underline`}>
+              첫 화면으로
+            </Link>
+          )}
         </div>
       )}
     </div>
