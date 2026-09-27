@@ -117,6 +117,11 @@ function SearchBox({ value, onCommit }: { value: string; onCommit: (value: strin
   const [committed, setCommitted] = useState(value);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
+  // 입력을 멈춘 사이 다른 필터를 바꿨을 수 있으므로, 적용할 때는 가장 최근 onCommit(최근 필터 값)을 쓴다.
+  const latestCommit = useRef(onCommit);
+  useEffect(() => {
+    latestCommit.current = onCommit;
+  });
 
   if (value !== committed) {
     setCommitted(value);
@@ -134,7 +139,7 @@ function SearchBox({ value, onCommit }: { value: string; onCommit: (value: strin
         const next = e.target.value;
         setText(next);
         clearTimeout(timer.current);
-        timer.current = setTimeout(() => onCommit(next), SEARCH_DEBOUNCE_MS);
+        timer.current = setTimeout(() => latestCommit.current(next), SEARCH_DEBOUNCE_MS);
       }}
     />
   );

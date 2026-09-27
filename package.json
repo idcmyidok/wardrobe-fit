@@ -12,7 +12,8 @@
     "test:rls": "node scripts/db/remote-rls-test.mjs",
     "db:apply": "node scripts/db/apply-remote.mjs",
     "db:types": "node scripts/db/apply-remote.mjs --types-only",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "1.56.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
