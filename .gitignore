@@ -33,3 +33,7 @@ Thumbs.db
 
 # Local uploads (user wardrobe photos)
 uploads/
+
+# Next.js
+next-env.d.ts
+*.tsbuildinfo

@@ -1,0 +1,30 @@
+/*
+ * Design tokens (PROJECT_SPEC.md 6장).
+ * 컬러는 semantic 토큰으로만 사용한다. Dark mode는 구조만 대비하고 MVP에서는 구현하지 않는다.
+ */
+:root {
+  --bg: #faf9f7;
+  --surface: #ffffff;
+  --surface-muted: #f3f1ee;
+  --border: #e4e1dc;
+  --border-strong: #cfcac3;
+  --text: #1c1b19;
+  --text-muted: #6b6760;
+  --text-subtle: #9a958d;
+  --accent: #2f4a3f;
+  --accent-hover: #253b32;
+  --accent-subtle: #e7eeea;
+  --positive: #3e6b4f;
+  --caution: #9a6b1f;
+  --negative: #a23b2c;
+  --focus-ring: rgb(47 74 63 / 0.4);
+
+  --shadow-popover: 0 4px 12px rgb(28 27 25 / 0.08);
+  --shadow-dialog: 0 8px 24px rgb(28 27 25 / 0.12);
+  --overlay: rgb(28 27 25 / 0.32);
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 220ms;
+}
