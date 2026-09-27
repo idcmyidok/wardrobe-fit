@@ -28,7 +28,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - name: Next.js 빌드 캐시
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .next/cache
           key: next-check-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'next.config.*') }}
@@ -85,7 +85,7 @@ jobs:
             echo "E2E_MAILPIT_URL=$MAILPIT_URL"
           } >> "$GITHUB_ENV"
       - name: Next.js 빌드 캐시
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .next/cache
           key: next-e2e-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'next.config.*') }}
