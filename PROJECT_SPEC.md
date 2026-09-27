@@ -1468,7 +1468,7 @@ getFitCheck(id: string): Promise<FitCheckView | null>;
 | 위협 | 대응 |
 |---|---|
 | 타 사용자 데이터 접근(IDOR) | 모든 테이블 RLS, Storage 정책, 서버에서 service_role 미사용, A/B 계정 교차 접근 테스트. |
-| AI API Key 노출 | 서버 전용 환경 변수(`NEXT_PUBLIC_` 접두어 금지), `server-only` 모듈에서만 참조, 번들 검사. |
+| AI API Key 노출 | 서버 전용 환경 변수(`NEXT_PUBLIC_` 접두어 금지), `server-only` 모듈에서만 참조, 번들 검사(CI가 가짜 키로 빌드한 뒤 `npm run check:bundle`로 `.next/static`에 값이 없는지 확인). |
 | SSRF (URL import) | 12.3의 IP 대역 차단, redirect 재검사, 포트 제한, 크기·시간 제한. 이미지 프록시도 동일 적용. |
 | Prompt injection (상품 페이지·후기) | 외부 텍스트를 구분 태그로 감싸 데이터로 명시, structured output 강제 + Zod 검증, AI에 도구 실행 권한 없음, AI 출력의 인용·ID·수치를 서버가 검증, AI 출력은 텍스트로만 렌더링(HTML 불허). |
 | 과도한 입력 | URL 길이 2048, HTML 3MB, AI 입력 텍스트 약 15,000자, 후기 2000자, 이미지 5MB 제한. |

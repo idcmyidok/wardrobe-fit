@@ -13,7 +13,8 @@
     "db:apply": "node scripts/db/apply-remote.mjs",
     "db:types": "node scripts/db/apply-remote.mjs --types-only",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "check:bundle": "node scripts/security/check-bundle.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
