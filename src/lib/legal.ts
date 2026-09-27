@@ -4,9 +4,8 @@
  */
 export const SERVICE_NAME = "Wardrobe Fit";
 export const PRIVACY_OFFICER = {
-  // TODO(운영자): 개인정보 보호책임자 이름과 문의 이메일
-  name: "운영자",
-  email: "문의 이메일 준비 중",
+  name: "장세현",
+  email: "s1206h@naver.com",
 };
 export const PRIVACY_EFFECTIVE_DATE = "2026년 9월 27일";
 export const PRIVACY_HISTORY: string[] = [];
