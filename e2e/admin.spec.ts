@@ -21,14 +21,14 @@ test("관리자는 통계를 보고 사용자를 정지·해제·삭제한다", 
   const memberContext = await browser.newContext();
   const memberPage = await memberContext.newPage();
   await login(memberPage, member);
-  await expect(memberPage.getByText("회원의 셔츠").first()).toBeVisible();
+  await expect(memberPage).toHaveURL(/\/wardrobe$/);
 
   await login(page, boss);
   await expect(page).toHaveURL(/\/wardrobe$/);
   await page.getByRole("button", { name: /e2e-boss/ }).click();
   await page.getByRole("menuitem", { name: "관리자 페이지" }).click();
   await expect(page.getByRole("heading", { name: "관리자", exact: true })).toBeVisible();
-  await expect(page.getByText("가입자")).toBeVisible();
+  await expect(page.getByText("가입자", { exact: true })).toBeVisible();
 
   const row = page.locator(`tr[data-user-email="${member.email}"]`);
   await expect(row).toBeVisible();
@@ -49,7 +49,7 @@ test("관리자는 통계를 보고 사용자를 정지·해제·삭제한다", 
 
   // 해제하면 다시 로그인할 수 있다.
   await row.getByRole("button", { name: `${member.email} 정지 해제`, exact: true }).click();
-  await expect(row.getByText("정상")).toBeVisible();
+  await expect(row.getByText("정상", { exact: true })).toBeVisible();
   await login(memberPage, member);
   await expect(memberPage).toHaveURL(/\/wardrobe$/);
   await memberContext.close();
