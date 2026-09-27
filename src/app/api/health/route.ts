@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAuthConfigured } from "@/lib/supabase/config";
+import { getAiProvider } from "@/server/ai/provider";
 
 export const dynamic = "force-dynamic";
 
@@ -12,11 +13,14 @@ export function GET() {
   return NextResponse.json(
     {
       auth: isAuthConfigured(),
+      // 구매 판단기 AI 요약에 쓰일 모델(키가 없으면 null = 규칙 요약만)
+      aiModel: getAiProvider()?.model ?? null,
       env: {
         NEXT_PUBLIC_SUPABASE_URL: has("NEXT_PUBLIC_SUPABASE_URL"),
         NEXT_PUBLIC_SUPABASE_ANON_KEY: has("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: has("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
         NEXT_PUBLIC_SITE_URL: has("NEXT_PUBLIC_SITE_URL"),
+        GEMINI_API_KEY: has("GEMINI_API_KEY"),
         ANTHROPIC_API_KEY: has("ANTHROPIC_API_KEY"),
       },
       deployment: {
