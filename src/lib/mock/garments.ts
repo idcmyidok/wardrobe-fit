@@ -1,6 +1,6 @@
 import type { Garment } from "@/lib/types/domain";
 
-/** UI 확인용 샘플 데이터(시안과 같은 10벌). DB 연결(4단계) 후 삭제한다. 배열 순서가 등록 순서다. */
+/** Supabase 키가 없는 미리보기 배포에서만 보여주는 예시 데이터(시안과 같은 10벌). 배열 순서가 등록 순서다. */
 export const MOCK_GARMENTS: Garment[] = [
   {
     id: "g1",

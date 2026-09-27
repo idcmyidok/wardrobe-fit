@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import type { Database } from "./database.types";
 import { getSupabaseEnv, readRemember, REMEMBER_COOKIE, withRemember } from "./config";
 
 /**
@@ -13,7 +14,7 @@ export async function createSupabaseServerClient(options: { remember?: boolean }
   const store = await cookies();
   const remember = options.remember ?? readRemember(store.get(REMEMBER_COOKIE)?.value);
 
-  return createServerClient(env.url, env.key, {
+  return createServerClient<Database>(env.url, env.key, {
     cookies: {
       getAll: () => store.getAll(),
       setAll(cookiesToSet) {

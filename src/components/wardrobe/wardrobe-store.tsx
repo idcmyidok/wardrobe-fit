@@ -1,15 +1,32 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { MOCK_GARMENTS } from "@/lib/mock/garments";
+import { ImagePrepareError, prepareGarmentImage } from "@/lib/images/prepare-image";
+import { GARMENT_IMAGE_BUCKET, uploadGarmentImages } from "@/lib/images/upload-garment-image";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Garment } from "@/lib/types/domain";
+import {
+  createGarment,
+  deleteGarment,
+  restoreGarment,
+  setGarmentImage,
+  updateGarment as updateGarmentAction,
+  type GarmentActionResult,
+} from "@/server/garments/actions";
 
 /**
- * 로그인 후 화면이 함께 쓰는 옷장 상태. 지금은 mock 데이터를 메모리에 두고,
- * 4단계(DB 연결)에서 Server Action + 서버 조회로 바꾼다. 새로고침하면 처음 상태로 돌아간다.
+ * 로그인 후 화면이 함께 쓰는 옷장 상태. 첫 목록은 서버(layout)에서 읽어 오고,
+ * 등록·수정·삭제는 Server Action으로 DB에 저장한 뒤 돌려받은 값으로 화면을 바꾼다.
+ * Supabase 키가 없는 미리보기 배포(userId 없음)에서는 예시 데이터를 메모리에서만 바꾼다.
  */
 
 export type GarmentDraft = Omit<Garment, "id">;
+
+/** 사진 변경: File이면 새 사진, null이면 제거, undefined면 그대로 */
+export type ImageChange = File | null | undefined;
+
+/** warning: 옷은 저장했지만 사진을 올리지 못한 경우의 안내 */
+export type SaveResult = { ok: true; garment: Garment; warning?: string } | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
 interface Toast {
   message: string;
@@ -18,9 +35,9 @@ interface Toast {
 
 interface WardrobeStore {
   garments: Garment[];
-  addGarment: (draft: GarmentDraft) => Garment;
-  updateGarment: (id: string, patch: Partial<GarmentDraft>) => void;
-  removeGarment: (id: string) => void;
+  addGarment: (draft: GarmentDraft, image?: ImageChange) => Promise<SaveResult>;
+  updateGarment: (id: string, patch: Partial<GarmentDraft>, image?: ImageChange) => Promise<SaveResult>;
+  removeGarment: (id: string) => Promise<void>;
 
   /** 옷 정보 Drawer. 어느 화면에서든 열 수 있다. */
   drawerId: string | null;
@@ -39,8 +56,44 @@ const Ctx = createContext<WardrobeStore | null>(null);
 
 const TOAST_MS = 5000;
 
-export function WardrobeProvider({ children }: { children: React.ReactNode }) {
-  const [garments, setGarments] = useState<Garment[]>(MOCK_GARMENTS);
+const IMAGE_ERRORS: Record<ImagePrepareError["code"], string> = {
+  not_image: "사진 파일만 올릴 수 있습니다.",
+  too_large: "30MB 이하 사진만 올릴 수 있습니다.",
+  decode_failed: "사진을 읽지 못했습니다. 다른 사진을 골라 주세요.",
+  encode_failed: "사진을 줄이지 못했습니다. 다른 사진을 골라 주세요.",
+};
+
+/** 서버에 보낼 입력. 화면용 필드(id, 사진 URL)는 뺀다. */
+const toInput = (g: GarmentDraft) => ({
+  categoryId: g.categoryId,
+  subcategoryId: g.subcategoryId,
+  brand: g.brand,
+  productName: g.productName,
+  sizeLabel: g.sizeLabel,
+  colorName: g.colorName,
+  material: g.material,
+  seasons: g.seasons,
+  purchasedOn: g.purchasedOn,
+  purchasePrice: g.purchasePrice,
+  productUrl: g.productUrl,
+  measurements: g.measurements,
+  fitReview: g.fitReview,
+});
+
+const fromAction = (r: GarmentActionResult): SaveResult =>
+  r.ok ? { ok: true, garment: r.data } : { ok: false, error: r.error, fieldErrors: r.fieldErrors };
+
+export function WardrobeProvider({
+  children,
+  initialGarments,
+  userId,
+}: {
+  children: React.ReactNode;
+  initialGarments: Garment[];
+  /** 로그인한 사용자 id. null이면 미리보기 모드 */
+  userId: string | null;
+}) {
+  const [garments, setGarments] = useState<Garment[]>(initialGarments);
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
   const [pendingDraft, setPendingDraft] = useState<GarmentDraft | null>(null);
@@ -53,33 +106,109 @@ export function WardrobeProvider({ children }: { children: React.ReactNode }) {
   }, []);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-  const addGarment = useCallback((draft: GarmentDraft) => {
-    const garment: Garment = { ...draft, id: `n${Date.now()}` };
-    setGarments((list) => [...list, garment]);
-    return garment;
+  const replace = useCallback((garment: Garment) => {
+    setGarments((list) => (list.some((g) => g.id === garment.id) ? list.map((g) => (g.id === garment.id ? garment : g)) : [...list, garment]));
   }, []);
 
-  const updateGarment = useCallback((id: string, patch: Partial<GarmentDraft>) => {
-    setGarments((list) => list.map((g) => (g.id === id ? { ...g, ...patch } : g)));
-  }, []);
+  /** 사진을 줄여 올리고 옷에 연결한다. 실패하면 옷은 그대로 두고 오류 문구를 돌려준다. */
+  const applyImage = useCallback(
+    async (garment: Garment, image: ImageChange): Promise<SaveResult> => {
+      if (image === undefined) return { ok: true, garment };
+      if (!userId) {
+        // 미리보기: 브라우저 안에서만 보여준다.
+        const url = image ? URL.createObjectURL(image) : null;
+        return { ok: true, garment: { ...garment, imageUrl: url, thumbUrl: url } };
+      }
+      if (image === null) return fromAction(await setGarmentImage(garment.id, null));
+
+      const supabase = createSupabaseBrowserClient();
+      if (!supabase) return { ok: false, error: "사진을 올릴 수 없습니다." };
+      try {
+        const prepared = await prepareGarmentImage(image);
+        const paths = await uploadGarmentImages(supabase, userId, garment.id, prepared);
+        const result = await setGarmentImage(garment.id, paths);
+        if (!result.ok) await supabase.storage.from(GARMENT_IMAGE_BUCKET).remove([paths.imagePath, paths.thumbPath]);
+        return fromAction(result);
+      } catch (e) {
+        return { ok: false, error: e instanceof ImagePrepareError ? IMAGE_ERRORS[e.code] : "사진을 올리지 못했습니다." };
+      }
+    },
+    [userId],
+  );
+
+  const addGarment = useCallback(
+    async (draft: GarmentDraft, image?: ImageChange): Promise<SaveResult> => {
+      let created: Garment;
+      if (userId) {
+        const result = await createGarment(toInput(draft));
+        if (!result.ok) return fromAction(result);
+        created = result.data;
+      } else {
+        created = { ...draft, id: `n${Date.now()}` };
+      }
+      replace(created);
+      const withImage = await applyImage(created, image);
+      if (!withImage.ok) return { ok: true, garment: created, warning: `옷은 등록했지만 ${withImage.error}` };
+      replace(withImage.garment);
+      return withImage;
+    },
+    [userId, replace, applyImage],
+  );
+
+  const updateGarment = useCallback(
+    async (id: string, patch: Partial<GarmentDraft>, image?: ImageChange): Promise<SaveResult> => {
+      const current = garments.find((g) => g.id === id);
+      if (!current) return { ok: false, error: "옷을 찾을 수 없습니다." };
+      const next = { ...current, ...patch };
+
+      let saved: Garment = next;
+      if (userId) {
+        const result = await updateGarmentAction(id, toInput(next));
+        if (!result.ok) return fromAction(result);
+        saved = result.data;
+      }
+      replace(saved);
+      const withImage = await applyImage(saved, image);
+      if (!withImage.ok) return withImage;
+      replace(withImage.garment);
+      return withImage;
+    },
+    [garments, userId, replace, applyImage],
+  );
 
   const removeGarment = useCallback(
-    (id: string) => {
+    async (id: string) => {
       const index = garments.findIndex((g) => g.id === id);
       if (index === -1) return;
       const removed = garments[index];
+      if (userId) {
+        const result = await deleteGarment(id);
+        if (!result.ok) {
+          showToast(result.error);
+          return;
+        }
+      }
       setGarments((list) => list.filter((g) => g.id !== id));
       setDrawerId((current) => (current === id ? null : current));
-      showToast("삭제했습니다", () => {
+      showToast("삭제했습니다", async () => {
+        setToast(null);
+        let restored = removed;
+        if (userId) {
+          const result = await restoreGarment(id);
+          if (!result.ok) {
+            showToast(result.error);
+            return;
+          }
+          restored = result.data;
+        }
         setGarments((list) => {
-          const next = list.slice();
-          next.splice(Math.min(index, next.length), 0, removed);
+          const next = list.filter((g) => g.id !== id);
+          next.splice(Math.min(index, next.length), 0, restored);
           return next;
         });
-        setToast(null);
       });
     },
-    [garments, showToast],
+    [garments, userId, showToast],
   );
 
   const value = useMemo<WardrobeStore>(
