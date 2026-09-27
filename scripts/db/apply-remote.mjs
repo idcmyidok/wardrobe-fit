@@ -12,7 +12,9 @@ import { join } from "node:path";
 
 const root = new URL("../../", import.meta.url).pathname;
 const token = process.env.SUPABASE_ACCESS_TOKEN;
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+// 대시보드에서 /rest/v1/ 경로까지 복사해 넣은 값도 받도록 origin만 쓴다(src/lib/supabase/config.ts와 같은 규칙).
+const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+const url = rawUrl ? new URL(rawUrl).origin : undefined;
 if (!token || !url) {
   console.error("NEXT_PUBLIC_SUPABASE_URL과 SUPABASE_ACCESS_TOKEN이 필요합니다.");
   process.exit(1);
