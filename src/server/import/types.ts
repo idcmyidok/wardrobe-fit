@@ -31,7 +31,6 @@ export interface RawProduct {
   /** breadcrumb, 카테고리 텍스트 */
   categoryHints?: string[];
   price?: { amount: number; currency?: string };
-  material?: string;
   colorOptions?: string[];
   colorFromDetail?: string;
   sizeOptions?: string[];
@@ -40,9 +39,11 @@ export interface RawProduct {
   detailText?: string;
   /** 필드별 출처(generic parser처럼 한 parser 안에서 출처가 섞일 때). 없으면 parser 종류를 쓴다. */
   fieldSources?: Partial<Record<RawField, ExtractedSource>>;
+  /** 어떤 경로로 값을 얻었는지(화면에는 안 보이고 product_imports.result에만 남는다) */
+  diagnostics?: Record<string, unknown>;
 }
 
-export type RawField = Exclude<keyof RawProduct, "fieldSources">;
+export type RawField = Exclude<keyof RawProduct, "fieldSources" | "diagnostics">;
 
 export interface ProductParser {
   id: string;
@@ -95,12 +96,13 @@ export interface NormalizedProduct {
   imageUrls: string[];
   /** KRW 정수 */
   price: Extracted<number> | null;
-  material: Extracted<string> | null;
   colorOptions: string[];
   colorCandidate: Extracted<string> | null;
   sizeOptions: string[];
   sizeChart: NormalizedSizeChart | null;
   warnings: ImportWarning[];
+  /** parser 진단 정보(화면에 안 보임) */
+  diagnostics?: Record<string, unknown>;
 }
 
 /** 분석 실패 원인. 화면의 "자세히"와 product_imports.error_code에 남긴다. */

@@ -1,15 +1,16 @@
 import type { FieldSources } from "./normalize";
 import { cafe24Parser } from "./parsers/cafe24";
 import { genericParser } from "./parsers/generic";
+import { musinsaParser } from "./parsers/musinsa";
 import { shopifyParser } from "./parsers/shopify";
 import type { ExtractedSource, ParseContext, ProductParser, RawField, RawProduct } from "./types";
 
 /**
  * Parser 실행 순서(PROJECT_SPEC.md 13.2): 쇼핑몰 전용 → 플랫폼(Shopify, Cafe24) → generic.
  * 앞 단계가 채운 필드는 뒤 단계가 덮지 않는다.
- * 쇼핑몰 전용 parser(무신사·29CM 등)는 실제 페이지 구조를 확인한 뒤 siteParsers에 더한다.
+ * 쇼핑몰 전용 parser는 siteParsers에 더한다.
  */
-export const siteParsers: ProductParser[] = [];
+export const siteParsers: ProductParser[] = [musinsaParser];
 export const platformParsers: ProductParser[] = [shopifyParser, cafe24Parser];
 
 export function selectParsers(url: URL, html: string): ProductParser[] {
@@ -30,6 +31,8 @@ const KIND_SOURCE: Record<ProductParser["kind"], ExtractedSource> = {
 export interface ParserRun {
   product: RawProduct;
   sources: FieldSources;
+  /** parser id별 진단 정보 */
+  diagnostics: Record<string, unknown>;
   /** 값을 하나라도 채운 parser들. 첫 번째가 대표 parser */
   used: Array<{ id: string; version: string }>;
   failed: string[];
@@ -42,6 +45,7 @@ export async function runParsers(ctx: ParseContext, parsers = selectParsers(ctx.
   const sources: FieldSources = {};
   const used: ParserRun["used"] = [];
   const failed: string[] = [];
+  const diagnostics: Record<string, unknown> = {};
 
   for (const parser of parsers) {
     let result: RawProduct;
@@ -51,7 +55,8 @@ export async function runParsers(ctx: ParseContext, parsers = selectParsers(ctx.
       failed.push(parser.id);
       continue;
     }
-    const { fieldSources, ...fields } = result;
+    const { fieldSources, diagnostics: parserDiagnostics, ...fields } = result;
+    if (parserDiagnostics) diagnostics[parser.id] = parserDiagnostics;
     let filled = false;
     for (const [key, value] of Object.entries(fields) as [RawField, RawProduct[RawField]][]) {
       if (isEmpty(value) || !isEmpty(product[key])) continue;
@@ -63,5 +68,5 @@ export async function runParsers(ctx: ParseContext, parsers = selectParsers(ctx.
     }
     if (filled) used.push({ id: parser.id, version: parser.version });
   }
-  return { product, sources, used, failed };
+  return { product, sources, diagnostics, used, failed };
 }

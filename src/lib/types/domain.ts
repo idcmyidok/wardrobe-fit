@@ -16,7 +16,6 @@ export interface Garment {
   productName: string;
   sizeLabel: string | null;
   colorName: string | null;
-  material: string | null;
   seasons: Season[];
   purchasedOn: string | null; // YYYY-MM-DD
   purchasePrice: number | null; // KRW 정수

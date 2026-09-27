@@ -43,7 +43,6 @@ export const garmentInputSchema = z
       .max(200, "제품명은 200자 이하로 입력해 주세요."),
     sizeLabel: optionalText(30, "사이즈"),
     colorName: optionalText(50, "컬러"),
-    material: optionalText(300, "소재"),
     seasons: z.array(z.enum(["spring", "summer", "fall", "winter", "all"])).max(5).default([]),
     purchasedOn: z
       .string()

@@ -1,4 +1,4 @@
-import { load, type CheerioAPI } from "cheerio";
+import { load } from "cheerio";
 import { cleanText, textOrUndefined } from "../normalize/text";
 import type { ParseContext, ProductParser, RawProduct } from "../types";
 import { absoluteUrl, findSizeTable, meta } from "./helpers";
@@ -21,16 +21,6 @@ interface ShopifyProductJs {
 }
 
 const COLOR = /색상|컬러|color|colour/i;
-const MATERIAL = /^(?:소재|혼용률|재질|material|fabric|composition)\s*[:：]\s*(.{2,120})$/i;
-
-/** 설명의 문단·목록 중 "소재: ..." 줄 */
-function materialLine($: CheerioAPI): string | undefined {
-  for (const el of $("p, li, div").toArray()) {
-    const match = cleanText($(el).text(), 200).match(MATERIAL);
-    if (match) return textOrUndefined(match[1], 300);
-  }
-  return undefined;
-}
 const SIZE = /사이즈|size/i;
 
 export const shopifyParser: ProductParser = {
@@ -69,7 +59,6 @@ export const shopifyParser: ProductParser = {
       colorOptions: optionValues(COLOR),
       sizeOptions: optionValues(SIZE),
       sizeChart: description ? findSizeTable(description) : undefined,
-      material: description ? materialLine(description) : undefined,
     };
   },
 };

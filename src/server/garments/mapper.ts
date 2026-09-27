@@ -7,7 +7,7 @@ type GarmentWrite = Database["public"]["Tables"]["garments"]["Update"];
 
 /** 목록·상세에 필요한 열만 읽는다. */
 export const GARMENT_COLUMNS =
-  "id, category_id, subcategory_id, brand, product_name, size_label, color_name, material, seasons, purchased_on, purchase_price, product_url, image_path, thumb_path, m_length, m_shoulder, m_chest, m_sleeve, m_waist, m_hip, m_thigh, m_rise, m_leg_opening, fit_review, created_at";
+  "id, category_id, subcategory_id, brand, product_name, size_label, color_name, seasons, purchased_on, purchase_price, product_url, image_path, thumb_path, m_length, m_shoulder, m_chest, m_sleeve, m_waist, m_hip, m_thigh, m_rise, m_leg_opening, fit_review, created_at";
 
 export type GarmentListRow = Pick<
   GarmentRow,
@@ -18,7 +18,6 @@ export type GarmentListRow = Pick<
   | "product_name"
   | "size_label"
   | "color_name"
-  | "material"
   | "seasons"
   | "purchased_on"
   | "purchase_price"
@@ -61,7 +60,6 @@ export function rowToGarment(row: GarmentListRow, urls: { imageUrl: string | nul
     productName: row.product_name,
     sizeLabel: row.size_label,
     colorName: row.color_name,
-    material: row.material,
     seasons: row.seasons,
     purchasedOn: row.purchased_on,
     purchasePrice: row.purchase_price,
@@ -84,7 +82,6 @@ export function inputToRow(input: GarmentInput): GarmentWrite {
     size_label: input.sizeLabel,
     color_name: input.colorName,
     color_source: input.colorName ? "manual" : null,
-    material: input.material,
     seasons: input.seasons,
     purchased_on: input.purchasedOn,
     purchase_price: input.purchasePrice,

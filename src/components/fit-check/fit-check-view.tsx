@@ -191,7 +191,6 @@ export function FitCheckView() {
       <FitResultView
         {...result}
         productUrl={manual ? null : (imported?.sourceUrl ?? null)}
-        material={manual ? null : (product?.material?.value ?? null)}
         onBack={() => {
           request.current?.abort();
           setBusy(false);
@@ -333,7 +332,6 @@ export function FitCheckView() {
               <span className="text-xs text-neutral-700">{imported?.domain}에서 읽은 상품</span>
               <span className="text-base font-semibold">{product.brand?.value ?? "브랜드 없음"}</span>
               <span className="text-lg">{product.productName?.value}</span>
-              {product.material?.value && <span className="text-sm text-neutral-700">소재 {product.material.value}</span>}
             </div>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4">
               {categoryFields(

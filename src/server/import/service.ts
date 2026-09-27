@@ -13,6 +13,8 @@ import { normalizeProductUrl } from "./url";
 
 export const IMPORT_REUSE_MINUTES = 10;
 export const IMPORT_DAILY_LIMIT = 30;
+/** 분석 방식이 바뀌면 올린다. 이전 방식의 결과는 다시 쓰지 않는다(product_imports.parser_version). */
+export const IMPORT_ENGINE_VERSION = "v2";
 
 type Client = SupabaseClient<Database>;
 
@@ -70,6 +72,7 @@ export async function runImport(
     .eq("normalized_url", normalizedUrl.toString())
     .eq("purpose", purpose)
     .in("status", ["succeeded", "partial"])
+    .eq("parser_version", IMPORT_ENGINE_VERSION)
     .gte("created_at", minutesAgo(IMPORT_REUSE_MINUTES))
     .order("created_at", { ascending: false })
     .limit(1)
@@ -83,7 +86,7 @@ export async function runImport(
       domain: recent.domain,
       parserId: recent.parser_id,
       durationMs: Date.now() - started,
-      product: recent.result as unknown as NormalizedProduct,
+      product: { ...(recent.result as unknown as NormalizedProduct), diagnostics: undefined },
       errorCode: null,
       errorDetail: null,
     };
@@ -122,7 +125,7 @@ export async function runImport(
       normalized_url: normalizedUrl.toString(),
       domain: (outcome.domain ?? normalizedUrl.hostname).slice(0, 255),
       parser_id: outcome.parserId,
-      parser_version: outcome.parserId ? "v1" : null,
+      parser_version: outcome.parserId ? IMPORT_ENGINE_VERSION : null,
       status: outcome.status,
       result: outcome.product as unknown as Json,
       warnings: (outcome.product?.warnings ?? []) as unknown as Json,
@@ -131,5 +134,7 @@ export async function runImport(
     })
     .select("id")
     .single();
-  return { ...outcome, importId: row?.id ?? null };
+  // 진단 정보는 기록에만 남기고 화면으로는 보내지 않는다.
+  const product = outcome.product ? { ...outcome.product, diagnostics: undefined } : null;
+  return { ...outcome, product, importId: row?.id ?? null };
 }

@@ -57,7 +57,6 @@ export const cafe24Parser: ProductParser = {
       productName: textOrUndefined(infoValue(/^(상품명|제품명|productname)$/i) ?? scriptName, 200),
       brand: textOrUndefined(infoValue(/브랜드|brand|제조사/i) ?? meta($, "product:brand"), 100),
       price: amount ? { amount, currency: meta($, "product:price:currency") ?? "KRW" } : undefined,
-      material: textOrUndefined(infoValue(/소재|재질|혼용|material/i), 300),
       colorFromDetail: textOrUndefined(infoValue(/^(색상|컬러|color)$/i), 50),
       colorOptions: options(COLOR),
       sizeOptions: options(SIZE),

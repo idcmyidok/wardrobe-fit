@@ -27,6 +27,13 @@ export interface AnalyzeResult {
   durationMs: number;
 }
 
+/** 등록 가능한 도메인(www.musinsa.com → musinsa.com, shop.example.co.kr → example.co.kr) */
+export function siteOf(hostname: string): string {
+  const labels = hostname.toLowerCase().split(".");
+  const twoLevel = labels.length >= 3 && /^(co|or|ne|go|ac|re|pe|com|net|org)$/.test(labels.at(-2)!) && labels.at(-1)!.length === 2;
+  return labels.slice(twoLevel ? -3 : -2).join(".");
+}
+
 /** 브랜드·제품명·사이즈표가 모두 있으면 성공, 하나라도 없으면 부분 성공 */
 function statusOf(p: NormalizedProduct): AnalyzeResult["status"] {
   return p.productName && p.brand && p.sizeChart ? "succeeded" : "partial";
@@ -42,10 +49,10 @@ export async function analyzeProductUrl(
   const page = await safeFetch(url, { ...options.fetch, accept: "html" });
   options.onStage?.("parsing");
 
-  // 같은 사이트의 공개 JSON만 부를 수 있다(Shopify 상품 JSON 등). SSRF 방어는 safeFetch가 다시 한다.
+  // 같은 사이트(하위 도메인 포함)의 공개 JSON만 부를 수 있다(Shopify 상품 JSON, 무신사 실측 등). SSRF 방어는 safeFetch가 다시 한다.
   const fetchJson = async (target: string) => {
     const t = new URL(target, page.url);
-    if (t.hostname !== page.url.hostname) throw new ImportError("blocked_host", t.hostname);
+    if (siteOf(t.hostname) !== siteOf(page.url.hostname)) throw new ImportError("blocked_host", t.hostname);
     const res = await safeFetch(t, { ...options.fetch, accept: "json" });
     return JSON.parse(res.body) as unknown;
   };
@@ -55,6 +62,7 @@ export async function analyzeProductUrl(
   options.onStage?.("normalizing");
   const siteName = ctx.$('meta[property="og:site_name"]').attr("content");
   const product = normalizeProduct(run.product, run.sources, { siteName, ...options.normalize });
+  if (Object.keys(run.diagnostics).length) product.diagnostics = run.diagnostics;
   if (run.failed.length) product.warnings.push({ code: "parser_failed", message: `일부 분석 단계가 실패했습니다: ${run.failed.join(", ")}` });
 
   const main = run.used[0] ?? { id: "generic", version: "v1" };

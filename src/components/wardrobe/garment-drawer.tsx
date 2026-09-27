@@ -30,7 +30,6 @@ interface InfoDraft {
   productName: string;
   sizeLabel: string;
   colorName: string;
-  material: string;
   purchasedOn: string;
   purchasePrice: string;
   productUrl: string;
@@ -46,7 +45,6 @@ const toDraft = (g: Garment): InfoDraft => ({
   productName: g.productName,
   sizeLabel: g.sizeLabel ?? "",
   colorName: g.colorName ?? "",
-  material: g.material ?? "",
   purchasedOn: g.purchasedOn ?? "",
   purchasePrice: g.purchasePrice == null ? "" : String(g.purchasePrice),
   productUrl: g.productUrl ?? "",
@@ -120,7 +118,6 @@ export function GarmentDetail({
       productName: info.productName.trim(),
       sizeLabel: info.sizeLabel || null,
       colorName: info.colorName || null,
-      material: info.material || null,
       purchasedOn: info.purchasedOn || null,
       purchasePrice: price ? Number(price) : null,
       productUrl: info.productUrl || null,
@@ -152,7 +149,6 @@ export function GarmentDetail({
   };
 
   const details: [string, string][] = [
-    ["소재", g.material || "—"],
     ["시즌", g.seasons.map((s) => SEASON_NAME[s]).join(" · ") || "—"],
     ["구매일", formatDate(g.purchasedOn)],
     ["구매가", formatPrice(g.purchasePrice)],
@@ -427,7 +423,7 @@ function InfoEditor({
   image: ImageChange;
   setImage: (value: ImageChange) => void;
 }) {
-  const text = (key: "brand" | "productName" | "sizeLabel" | "colorName" | "material" | "productUrl", label: string, span = false) => (
+  const text = (key: "brand" | "productName" | "sizeLabel" | "colorName" | "productUrl", label: string, span = false) => (
     <div className={span ? "field col-span-full" : "field"}>
       <label htmlFor={`ie-${key}`}>{label}</label>
       <input id={`ie-${key}`} className="input" value={info[key]} onChange={(e) => setField(key, e.target.value)} />
@@ -471,7 +467,6 @@ function InfoEditor({
           {text("sizeLabel", "표기 사이즈")}
           {text("productName", "제품명", true)}
           {text("colorName", "컬러")}
-          {text("material", "소재")}
           <div className="field">
             <label htmlFor="ie-date">구매일</label>
             <input id="ie-date" type="date" className="input font-mono" value={info.purchasedOn} onChange={(e) => setField("purchasedOn", e.target.value)} />
