@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { Database } from "./database.types";
 import { getSupabaseEnv, readRemember, REMEMBER_COOKIE, withRemember } from "./config";
@@ -37,6 +38,18 @@ export async function createSupabaseServerClient(options: { remember?: boolean }
 export async function getCurrentUser() {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return null;
+  return getActiveUser(supabase);
+}
+
+/**
+ * 토큰을 확인한 사용자. 관리자가 정지한 계정이면 null로 본다.
+ * 정지하면 새 로그인과 토큰 갱신은 Supabase가 막지만, 이미 받은 토큰은 만료(최대 1시간)까지 남기 때문이다.
+ */
+export async function getActiveUser(supabase: SupabaseClient<Database>) {
   const { data } = await supabase.auth.getUser();
-  return data.user;
+  return data.user && !isBanned(data.user) ? data.user : null;
+}
+
+export function isBanned(user: Pick<User, "banned_until">, now = Date.now()) {
+  return Boolean(user.banned_until && Date.parse(user.banned_until) > now);
 }

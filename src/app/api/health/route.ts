@@ -22,6 +22,8 @@ export function GET() {
         NEXT_PUBLIC_SITE_URL: has("NEXT_PUBLIC_SITE_URL"),
         GEMINI_API_KEY: has("GEMINI_API_KEY"),
         ANTHROPIC_API_KEY: has("ANTHROPIC_API_KEY"),
+        // 관리자 페이지가 전체 통계를 읽는 데 쓴다(서버 전용).
+        SUPABASE_SERVICE_ROLE_KEY: has("SUPABASE_SERVICE_ROLE_KEY"),
       },
       deployment: {
         environment: process.env.VERCEL_ENV ?? null,

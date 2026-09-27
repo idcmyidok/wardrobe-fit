@@ -8,6 +8,7 @@ import { WardrobeProvider, WardrobeToast } from "@/components/wardrobe/wardrobe-
 import { MOCK_GARMENTS } from "@/lib/mock/garments";
 import { getSupabaseEnv, isAuthConfigured } from "@/lib/supabase/config";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { isAdmin } from "@/server/admin/guard";
 import { listMyGarments } from "@/server/garments/queries";
 
 /**
@@ -19,8 +20,11 @@ import { listMyGarments } from "@/server/garments/queries";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const configured = isAuthConfigured();
   const user = configured ? await getCurrentUser() : null;
-  if (configured && !user) redirect("/");
+  // 쿠키는 있는데 사용자를 확인할 수 없으면(정지·삭제된 계정 등) 쿠키를 지우러 간다.
+  // "/"로 바로 보내면 proxy가 쿠키만 보고 다시 /wardrobe로 보내서 계속 돈다.
+  if (configured && !user) redirect("/auth/signout");
   const email = user?.email ?? null;
+  const admin = user ? await isAdmin(user.id) : false;
 
   return (
     <>
@@ -29,12 +33,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Suspense
         fallback={
           <>
-            <AppHeader email={email} />
+            <AppHeader email={email} admin={admin} />
             <WardrobeSkeleton />
           </>
         }
       >
-        <WardrobeData userId={user?.id ?? null} email={email}>
+        <WardrobeData userId={user?.id ?? null} email={email} admin={admin}>
           {children}
         </WardrobeData>
       </Suspense>
@@ -42,11 +46,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   );
 }
 
-async function WardrobeData({ userId, email, children }: { userId: string | null; email: string | null; children: React.ReactNode }) {
+async function WardrobeData({
+  userId,
+  email,
+  admin,
+  children,
+}: {
+  userId: string | null;
+  email: string | null;
+  admin: boolean;
+  children: React.ReactNode;
+}) {
   const garments = userId ? await listMyGarments() : MOCK_GARMENTS;
   return (
     <WardrobeProvider initialGarments={garments} userId={userId} supabaseEnv={userId ? getSupabaseEnv() : null}>
-      <AppHeader email={email} />
+      <AppHeader email={email} admin={admin} />
       {children}
       {/* 주소의 ?item=을 읽는다 */}
       <Suspense>

@@ -12,8 +12,8 @@ const NAV = [
   { href: "/analysis", label: "옷장 분석" },
 ];
 
-/** email이 null이면 인증 서버가 없는 미리보기 모드다. */
-export function AppHeader({ email }: { email: string | null }) {
+/** email이 null이면 인증 서버가 없는 미리보기 모드다. admin이면 사용자 메뉴에 관리자 링크가 생긴다. */
+export function AppHeader({ email, admin = false }: { email: string | null; admin?: boolean }) {
   const pathname = usePathname();
   return (
     <header className="sticky top-0 z-30 border-b border-text bg-bg">
@@ -46,7 +46,7 @@ export function AppHeader({ email }: { email: string | null }) {
           <div className="hidden sm:block">
             <ThemeToggle />
           </div>
-          <UserMenu email={email} />
+          <UserMenu email={email} admin={admin} />
         </div>
       </div>
     </header>

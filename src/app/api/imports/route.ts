@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
 import { runImport } from "@/server/import/service";
 
 /**
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const user = supabase ? (await supabase.auth.getUser()).data.user : null;
+  const user = supabase ? await getActiveUser(supabase) : null;
   if (!supabase || !user) return Response.json({ type: "result", status: "failed", errorCode: "signed_out" }, { status: 401 });
 
   let body: { url?: unknown; purpose?: unknown };
