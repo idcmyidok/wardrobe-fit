@@ -6,7 +6,11 @@ export type { ImportOutcome, AnalyzeStage };
 /** POST /api/imports를 부르고 NDJSON 진행 단계를 받는다. 마지막 줄이 결과다. */
 export async function streamImport(
   url: string,
-  { signal, onStage }: { signal?: AbortSignal; onStage?: (stage: AnalyzeStage) => void } = {},
+  {
+    signal,
+    onStage,
+    purpose = "wardrobe",
+  }: { signal?: AbortSignal; onStage?: (stage: AnalyzeStage) => void; purpose?: "wardrobe" | "fit_check" } = {},
 ): Promise<ImportOutcome> {
   const failed = (errorCode: ImportOutcome["errorCode"], errorDetail: string | null = null): ImportOutcome => ({
     importId: null,
@@ -24,7 +28,7 @@ export async function streamImport(
   const res = await fetch("/api/imports", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url, purpose: "wardrobe" }),
+    body: JSON.stringify({ url, purpose }),
     signal,
   });
   if (res.status === 401) return failed("signed_out");

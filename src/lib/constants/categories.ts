@@ -42,3 +42,23 @@ export const SUBCATEGORIES: { id: string; categoryId: CategoryId; name: string }
 export const SUBCATEGORY_NAME: Record<string, string> = Object.fromEntries(
   SUBCATEGORIES.map((s) => [s.id, s.name]),
 );
+
+/** 유사 카테고리(구매 판단 비교 3순위). supabase/migrations/…_seed_categories.sql의 similar_to와 같아야 한다. */
+export const SIMILAR_SUBCATEGORIES: Record<string, string[]> = {
+  "outer.jacket": ["outer.blazer", "outer.blouson"],
+  "outer.blazer": ["outer.jacket"],
+  "outer.blouson": ["outer.jacket", "outer.padding"],
+  "outer.padding": ["outer.blouson"],
+  "outer.cardigan": ["top.knit"],
+  "top.knit": ["outer.cardigan", "top.sweatshirt"],
+  "top.sweatshirt": ["top.hoodie", "top.long_tee"],
+  "top.hoodie": ["top.sweatshirt"],
+  "top.long_tee": ["top.short_tee", "top.sweatshirt"],
+  "top.short_tee": ["top.long_tee", "top.polo"],
+  "top.polo": ["top.short_tee"],
+  "bottom.denim": ["bottom.chino"],
+  "bottom.chino": ["bottom.slacks", "bottom.denim", "bottom.cargo"],
+  "bottom.slacks": ["bottom.chino"],
+  "bottom.cargo": ["bottom.chino"],
+  "bottom.sweatpants": ["bottom.chino"],
+};
