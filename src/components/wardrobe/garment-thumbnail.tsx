@@ -1,19 +1,22 @@
-import { CATEGORY_NAME } from "@/lib/constants/categories";
-import type { GarmentListItem } from "@/lib/types/domain";
+import { cn } from "@/lib/cn";
+import type { Garment } from "@/lib/types/domain";
 
-/** 40px 썸네일. 이미지가 없으면 중립 배경 + 대분류 이니셜 (PROJECT_SPEC.md 20장). */
-export function GarmentThumbnail({ item }: { item: GarmentListItem }) {
+/** 옷 사진 자리. 이미지가 없으면 중립 배경 + 브랜드 이니셜, 브랜드가 없으면 제품명 첫 글자 (PROJECT_SPEC.md 20장). */
+export function GarmentThumbnail({ item, className }: { item: Pick<Garment, "brand" | "productName" | "imageUrl">; className?: string }) {
   if (item.imageUrl) {
     // 4~5단계에서 Supabase Storage signed URL + next/image로 교체한다.
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={item.imageUrl} alt="" className="size-10 rounded-sm object-cover" />;
+    return <img src={item.imageUrl} alt="" className={cn("h-24 w-full object-cover", className)} />;
   }
   return (
     <div
       aria-hidden
-      className="flex size-10 items-center justify-center rounded-sm border border-border bg-surface-muted text-xs text-text-subtle"
+      className={cn(
+        "flex h-24 w-full items-end bg-neutral-200 px-1.25 py-1 text-2xs font-semibold text-neutral-600",
+        className,
+      )}
     >
-      {CATEGORY_NAME[item.categoryId].slice(0, 1)}
+      {(item.brand || item.productName).slice(0, 1)}
     </div>
   );
 }
