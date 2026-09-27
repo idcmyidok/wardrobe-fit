@@ -6,9 +6,23 @@ import type { CookieOptions } from "@supabase/ssr";
  * NEXT_PUBLIC_* 값은 빌드 때 번들에 들어가므로 반드시 속성 이름을 그대로 적는다.
  */
 export function getSupabaseEnv(): { url: string; key: string } | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   return url && key ? { url, key } : null;
+}
+
+/**
+ * 대시보드에서 "https://xxx.supabase.co/rest/v1/"처럼 경로까지 복사해 넣어도 동작하도록
+ * 프로젝트 주소(origin)만 남긴다. 주소 형식이 아니면 그대로 둔다.
+ */
+export function normalizeSupabaseUrl(value: string | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return trimmed;
+  }
 }
 
 export function isAuthConfigured() {
