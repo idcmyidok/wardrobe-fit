@@ -1,5 +1,5 @@
 import type { MeasurementKey } from "@/lib/constants/measurements";
-import { SEASONS } from "@/lib/constants/seasons";
+import { SEASONS, wearsInSeason } from "@/lib/constants/seasons";
 import type { CategoryId, Garment, Season } from "@/lib/types/domain";
 
 /** 표 헤더를 눌러 정렬할 수 있는 열. 이미지·세부분류·제품명은 정렬하지 않는다. */
@@ -88,7 +88,7 @@ export function applyFilters(items: Garment[], f: WardrobeFilters): Garment[] {
       f.categories.includes(item.categoryId) &&
       (!f.subcategory || item.subcategoryId === f.subcategory) &&
       (!f.brand || item.brand === f.brand) &&
-      (!f.season || item.seasons.includes(f.season)) &&
+      (!f.season || wearsInSeason(item.seasons, f.season)) &&
       (!f.color || item.colorName === f.color) &&
       (!q || `${item.brand} ${item.productName}`.toLowerCase().includes(q)),
   );

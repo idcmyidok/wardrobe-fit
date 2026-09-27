@@ -76,6 +76,7 @@ Wardrobe Fit은 사용자가 실제로 입어본 옷의 **실측 치수**와 **�
 
 **옷 데이터**
 - 기본정보: 제품 사진, 대분류, 세부분류, 브랜드, 제품명, 표기 사이즈, 컬러명, 소재, 시즌, 구매 날짜, 구매가, 상품 링크.
+- 시즌: 봄, 여름, 가을, 겨울, 사계절. 사계절은 단독으로 선택하고(네 계절을 모두 고르면 사계절로 바뀐다), 계절 필터·통계에서는 모든 계절에 포함된다.
 - 상의 / 아우터 실측: 총장, 어깨, 가슴, 소매.
 - 하의 실측: 총장, 허리단면, 엉덩이단면, 허벅지단면, 밑위, 밑단단면.
 - 실측 항목은 옷장 Table에 보이는 열과 같다. 상세·입력·AI 구매 판단 어디에서도 이 밖의 치수(암홀, 상의 밑단너비, 인심 등)를 쓰지 않는다.
@@ -372,7 +373,7 @@ middleware.ts                 # 세션 갱신 + 보호 Route
 │ 변경 / 제거   │  브랜드 [      ]    제품명 [                 ]
 └──────────────┘  표기 사이즈 [ ]    컬러명 [      ]
                   소재 [                              ]
-                  시즌 [봄][여름][가을][겨울]
+                  시즌 [봄][여름][가을][겨울][사계절]
                   구매 날짜 [    ]   구매가 [       ]원
                   상품 링크 [                         ]
 
@@ -667,7 +668,7 @@ auth.users 1 ─── * fit_checks ─── * fit_check_comparables ─── 
 
 ```sql
 create type measurement_group as enum ('top', 'bottom');   -- 상의·아우터 = top
-create type season as enum ('spring', 'summer', 'fall', 'winter');
+create type season as enum ('spring', 'summer', 'fall', 'winter', 'all');  -- all = 사계절, 다른 값과 함께 저장하지 않는다
 create type color_source as enum ('selected_option', 'page_option', 'product_name', 'detail_field', 'manual');
 create type import_status as enum ('pending', 'succeeded', 'partial', 'failed');
 create type fit_check_status as enum ('computing', 'interpreting', 'completed', 'failed');
@@ -870,7 +871,7 @@ export const MEASUREMENT_LABELS: Record<MeasurementKey, string> = {
 // lib/types/domain.ts
 export type CategoryId = 'outer' | 'top' | 'bottom';
 export type MeasurementGroup = 'top' | 'bottom';
-export type Season = 'spring' | 'summer' | 'fall' | 'winter';
+export type Season = 'spring' | 'summer' | 'fall' | 'winter' | 'all'; // all = 사계절
 export type ColorSource = 'selected_option' | 'page_option' | 'product_name' | 'detail_field' | 'manual';
 
 /** cm, 단면 기준. 없으면 null */

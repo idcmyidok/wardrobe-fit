@@ -45,7 +45,7 @@ export const MOCK_GARMENTS: Garment[] = [
     sizeLabel: "32",
     colorName: "인디고",
     material: "면 100%",
-    seasons: ["spring","fall","winter"],
+    seasons: ["all"],
     purchasedOn: "2024-11-20",
     purchasePrice: 139000,
     productUrl: null,

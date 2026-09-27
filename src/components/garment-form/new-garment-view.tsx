@@ -7,7 +7,7 @@ import { useWardrobe, type GarmentDraft } from "@/components/wardrobe/wardrobe-s
 import { UnitInput } from "@/components/ui/input";
 import { SUBCATEGORIES } from "@/lib/constants/categories";
 import { measurementFields } from "@/lib/constants/measurements";
-import { SEASONS } from "@/lib/constants/seasons";
+import { SEASONS, toggleSeason } from "@/lib/constants/seasons";
 import { cn } from "@/lib/cn";
 import {
   ANALYZE_STEPS,
@@ -432,7 +432,7 @@ export function NewGarmentView() {
                           onChange={() =>
                             update(
                               "seasons",
-                              form.seasons.includes(s.id) ? form.seasons.filter((x) => x !== s.id) : [...form.seasons, s.id],
+                              toggleSeason(form.seasons, s.id),
                               "seasons",
                             )
                           }

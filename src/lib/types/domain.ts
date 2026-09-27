@@ -1,7 +1,8 @@
 import type { MeasurementKey } from "@/lib/constants/measurements";
 
 export type CategoryId = "outer" | "top" | "bottom";
-export type Season = "spring" | "summer" | "fall" | "winter";
+/** "all"(사계절)은 다른 시즌과 함께 고르지 않는다. */
+export type Season = "spring" | "summer" | "fall" | "winter" | "all";
 
 /** cm, 단면 기준. 없으면 null */
 export type Measurements = Partial<Record<MeasurementKey, number | null>>;

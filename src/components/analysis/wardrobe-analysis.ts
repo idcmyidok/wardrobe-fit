@@ -1,6 +1,6 @@
 import { CATEGORY_NAME, SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { findColorHex, luminance } from "@/lib/constants/colors";
-import { SEASONS, SEASON_NAME } from "@/lib/constants/seasons";
+import { FOUR_SEASONS, SEASON_NAME, wearsInSeason } from "@/lib/constants/seasons";
 import type { CategoryId, Garment, Season } from "@/lib/types/domain";
 
 /** 옷장 분석 화면의 계산. 서버 통계(PROJECT_SPEC.md 16장)로 옮기기 전까지 클라이언트에서 계산한다. */
@@ -217,7 +217,8 @@ export function colorSummary(G: Garment[], tab: CategoryTab) {
 }
 
 export function seasonSummary(G: Garment[]) {
-  const counts = SEASONS.map((s) => ({ id: s.id, count: G.filter((g) => g.seasons.includes(s.id)).length }));
+  // 사계절 옷은 네 계절에 모두 센다.
+  const counts = FOUR_SEASONS.map((s) => ({ id: s.id, count: G.filter((g) => wearsInSeason(g.seasons, s.id)).length }));
   const max = Math.max(1, ...counts.map((x) => x.count));
   const least = counts.slice().sort((a, b) => a.count - b.count)[0];
   const most = counts.slice().sort((a, b) => b.count - a.count)[0];
