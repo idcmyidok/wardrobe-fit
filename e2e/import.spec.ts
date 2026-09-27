@@ -23,7 +23,10 @@ const PRODUCT = {
       { sizeLabel: "L", measurements: { length: 74, shoulder: 49, chest: 58, sleeve: 63 } },
     ],
   },
-  warnings: [{ code: "unmapped_columns", message: "사이즈표의 암홀 열은 저장하지 않습니다." }],
+  warnings: [
+    { code: "size_chart_unmapped_columns", message: "옷장에서 쓰지 않는 항목은 뺐습니다: 암홀" },
+    { code: "circumference_converted", message: "둘레로 보이는 값을 단면(÷2)으로 바꿨습니다. 확인해 주세요." },
+  ],
 };
 
 test("링크 분석 → 검토(사이즈 고르면 실측 채움) → 등록, 분석 기록과 페이지 사진 연결", async ({ page, browser, admin, makeUser }) => {
@@ -63,14 +66,18 @@ test("링크 분석 → 검토(사이즈 고르면 실측 채움) → 등록, �
   await login(page, user, "/wardrobe/new");
   await page.fill("#new-url", sourceUrl);
   await page.getByRole("button", { name: "분석", exact: true }).click();
-  await expect(page.getByText("shop.example에서")).toBeVisible();
-  await expect(page.getByText("암홀 열은 저장하지 않습니다")).toBeVisible();
+  await expect(page.getByText("구매한 사이즈와 컬러를 고른 뒤 등록하세요.")).toBeVisible();
+  await expect(page.getByText("단면(÷2)으로 바꿨습니다")).toBeVisible();
+  // 항목별 "자동"·"확인 필요" 배지와 뺀 항목 안내는 보이지 않는다.
+  await expect(page.getByText("뺐습니다")).toHaveCount(0);
+  await expect(page.getByText("확인 필요")).toHaveCount(0);
+  await expect(page.getByText("자동", { exact: true })).toHaveCount(0);
   await expect(page.locator("#f-brand")).toHaveValue("테스트랩");
   await expect(page.locator("#f-price")).toHaveValue("59000");
   await expect(page.locator("#f-sub")).toHaveValue("top.shirt");
 
   // 자동 추출만으로는 저장되지 않는다(사이즈를 고르기 전 상태 표시).
-  await expect(page.getByText("선택 필요").first()).toBeVisible();
+  await expect(page.getByText("구매한 사이즈를 선택하세요.")).toBeVisible();
   await page.getByRole("radiogroup", { name: "사이즈" }).locator("label", { hasText: /^M$/ }).click();
   await expect(page.locator("#f-m-chest")).toHaveValue("55");
   await expect(page.locator("#f-m-sleeve")).toHaveValue("61.5");

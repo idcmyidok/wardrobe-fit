@@ -1,6 +1,7 @@
 import { cleanText, textOrUndefined } from "../normalize/text";
 import type { ExtractedSource, ParseContext, ProductParser, RawField, RawProduct } from "../types";
-import { absoluteUrl, detailText, findSizeTable, meta, selectOptions } from "./helpers";
+import { absoluteUrl, blockText, findSizeTable, imagesIn, meta, selectOptions } from "./helpers";
+import { sizeChartFromText, sizeTableInEmbeddedHtml } from "./size-text";
 
 /**
  * 어느 쇼핑몰이든 시도하는 parser(PROJECT_SPEC.md 13.3).
@@ -36,6 +37,11 @@ function offerPrice(offers: unknown): RawProduct["price"] | undefined {
   }
   return undefined;
 }
+
+/** 상품 사진·상세 설명이 흔히 놓이는 영역 */
+const DETAIL = '[class*="detail" i], [id*="detail" i], [class*="description" i], [id*="description" i], [class*="product-info" i]';
+const GALLERY = `[class*="gallery" i], [class*="product-image" i], [class*="product_image" i], ${DETAIL}, [itemprop="image"]`;
+const detailScope = ($: ParseContext["$"]) => ($(DETAIL).length ? DETAIL : "body");
 
 export const genericParser: ProductParser = {
   id: "generic",
@@ -102,7 +108,11 @@ export const genericParser: ProductParser = {
     const options = selectOptions($);
     set("colorOptions", options.colors, "heuristic");
     set("sizeOptions", options.sizes, "heuristic");
-    set("sizeChart", findSizeTable($), "heuristic");
+    set("sizeChart", findSizeTable($) ?? sizeTableInEmbeddedHtml(ctx.html) ?? sizeChartFromText(blockText($, detailScope($))), "heuristic");
+    // 대표 사진 뒤에 상품 사진 영역·상세 설명의 사진을 더한다(사용자가 고른다).
+    const more = imagesIn($, GALLERY, url);
+    if (more.length) out.imageUrls = [...new Set([...(out.imageUrls ?? []), ...more])];
+    if (out.imageUrls?.length && !sources.imageUrls) sources.imageUrls = "heuristic";
     set(
       "categoryHints",
       $('[class*="breadcrumb"] a, nav[aria-label*="breadcrumb" i] a, .location a')
@@ -111,7 +121,7 @@ export const genericParser: ProductParser = {
         .filter(Boolean),
       "heuristic",
     );
-    out.detailText = detailText($);
+    out.detailText = blockText($).slice(0, 15_000);
 
     out.fieldSources = sources;
     return out;

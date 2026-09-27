@@ -15,6 +15,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      admins: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           id: string
@@ -408,7 +423,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_import_failures: {
+        Args: never
+        Returns: {
+          domain: string
+          error_code: string
+          failures: number
+          last_at: string
+        }[]
+      }
+      admin_stats: { Args: never; Returns: Json }
+      admin_user_counts: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          fit_checks: number
+          garments: number
+          imports: number
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       color_source:

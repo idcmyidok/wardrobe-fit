@@ -38,6 +38,28 @@ export function cleanProductName(name: string, brand: string | null, siteName?: 
   return n.trim() || cleanText(name, 200);
 }
 
+/** 검토 화면에서 고를 수 있는 페이지 사진 수 */
+export const MAX_IMAGES = 20;
+
+/** 같은 사진의 크기별 주소(Cafe24 big/medium, 무신사 _500/_big, 쿼리 문자열)는 앞의 것 하나만 */
+export function dedupeImages(urls: string[]): string[] {
+  const key = (u: string) =>
+    u
+      .replace(/^https?:/i, "")
+      .replace(/[?#].*$/, "")
+      .replace(/\/web\/product\/(extra\/)?(big|medium|small|tiny)\//, "/web/product/$1_/")
+      .replace("/thumbnails/images/", "/images/")
+      .replace(/_(\d{2,4}|big|small|org|tiny)(?=\.\w+$)/i, "");
+  const seen = new Set<string>();
+  return urls.filter((u) => {
+    if (!/^https?:\/\//i.test(u)) return false;
+    const k = key(u);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
 export interface NormalizeOptions {
   /** 사용자가 이미 쓰는 브랜드 표기. 대소문자만 다르면 이 표기로 맞춘다. */
   knownBrands?: string[];
@@ -87,7 +109,7 @@ export function normalizeProduct(raw: RawProduct, sources: FieldSources, options
   const sizeOptions = cleanOptions(raw.sizeOptions);
   if (!sizeOptions.length && sizeChart) sizeOptions.push(...sizeChart.rows.map((r) => r.sizeLabel));
 
-  const imageUrls = [...new Set((raw.imageUrls ?? []).filter((u) => /^https?:\/\//i.test(u)))].slice(0, 12);
+  const imageUrls = dedupeImages(raw.imageUrls ?? []).slice(0, MAX_IMAGES);
 
   return {
     brand,

@@ -1,12 +1,19 @@
 import { cleanText, textOrUndefined } from "../normalize/text";
 import type { ParseContext, ProductParser, RawProduct } from "../types";
-import { absoluteUrl, findSizeTable, meta } from "./helpers";
+import { absoluteUrl, blockText, findSizeTable, imagesIn, meta } from "./helpers";
+import { sizeChartFromText, sizeTableInEmbeddedHtml } from "./size-text";
 
 /**
  * Cafe24로 만든 자사몰. 공통 상품 정보 표(.infoArea / xans-product-detaildesign),
  * 옵션 select(option_title 속성), 상품 meta를 읽는다(PROJECT_SPEC.md 13.3).
- * 사이즈표는 상세 영역(#prdDetail 등)의 표에서 찾는다. 이미지로만 된 사이즈표는 읽지 못한다.
+ * 사진: 대표 사진 + 추가 사진(작은 썸네일은 큰 사진 주소로) + 상세 설명 사진.
+ * 사이즈표는 상세 영역(#prdDetail 등)의 표 → 숨겨 둔 HTML의 표 → 글로 적힌 사이즈 순으로 찾는다. 이미지로만 된 사이즈표는 읽지 못한다.
  */
+
+const DETAIL = "#prdDetail, .xans-product-additional, .detailArea, #prdInfo, .cont";
+
+/** Cafe24 썸네일 주소(small/medium/tiny) → 큰 사진 주소 */
+const bigImage = (u: string) => u.replace(/\/web\/product\/(extra\/)?(small|medium|tiny)\//, "/web/product/$1big/");
 
 const COLOR = /색상|컬러|color|colour/i;
 const SIZE = /사이즈|size|치수/i;
@@ -52,6 +59,12 @@ export const cafe24Parser: ProductParser = {
 
     const scriptName = ctx.html.match(/product_name\s*[:=]\s*['"]([^'"]{1,200})['"]/)?.[1];
     const mainImage = $(".keyImg img, .xans-product-image img.BigImage, #big_img_box img").first().attr("src");
+    // 추가 사진 썸네일, 그리고 페이지 어디든 큰 상품 사진(/web/product/big, /extra/) 주소. 관련 상품 목록은 medium·small이라 빠진다.
+    const gallery = [
+      ...imagesIn($, ".xans-product-addimage, .xans-product-image, .keyImg, .thumbnail, .prdImgView", url).map(bigImage),
+      ...imagesIn($, "body", url, 200).filter((u) => /\/web\/product\/(big|extra)\//.test(u)).map(bigImage),
+    ];
+    const detailImages = imagesIn($, DETAIL, url);
 
     return {
       productName: textOrUndefined(infoValue(/^(상품명|제품명|productname)$/i) ?? scriptName, 200),
@@ -60,8 +73,9 @@ export const cafe24Parser: ProductParser = {
       colorFromDetail: textOrUndefined(infoValue(/^(색상|컬러|color)$/i), 50),
       colorOptions: options(COLOR),
       sizeOptions: options(SIZE),
-      imageUrls: [absoluteUrl(mainImage, url)].filter((u): u is string => Boolean(u)),
-      sizeChart: findSizeTable($, "#prdDetail, .xans-product-additional, .detailArea, #prdInfo, .cont") ?? findSizeTable($),
+      imageUrls: [...new Set([absoluteUrl(mainImage, url), ...gallery, ...detailImages].filter((u): u is string => Boolean(u)))],
+      sizeChart:
+        findSizeTable($, DETAIL) ?? findSizeTable($) ?? sizeTableInEmbeddedHtml(ctx.html) ?? sizeChartFromText(blockText($, $(DETAIL).length ? DETAIL : "body")),
       categoryHints: $(".xans-product-headcategory a, .path a")
         .toArray()
         .map((a) => cleanText($(a).text(), 40))

@@ -83,11 +83,52 @@ export function selectOptions($: CheerioAPI): { colors: string[]; sizes: string[
   return { colors, sizes };
 }
 
-/** AI fallback용 본문 텍스트(스크립트·스타일 제외, 약 15,000자) */
-export function detailText($: CheerioAPI): string {
-  const body = $("body").clone();
-  body.find("script, style, noscript, svg, iframe, header, footer, nav").remove();
-  return cleanText(body.text(), 15_000);
+/** 지연 로딩 사진은 src 대신 이 속성에 진짜 주소를 둔다(Cafe24 ec-data-src 등). */
+const IMAGE_ATTRS = ["ec-data-src", "data-src", "data-original", "data-lazy-src", "data-lazy", "data-zoom-image", "data-large", "src"];
+/** 상품 사진이 아닌 것(아이콘, 로고, 버튼, 배너 등) */
+const JUNK_IMAGE = /icon|logo|btn_|button|banner|sprite|blank|spacer|loading|placeholder|badge|arrow|sns|kakao|naver|facebook|instagram|youtube|\.(gif|svg)(\?|$)|^data:/i;
+
+/** 다른 상품 추천·목록, 머리글·바닥글 영역 */
+const NOT_THIS_PRODUCT = '[class*="relat" i], [class*="recommend" i], [class*="together" i], [class*="similar" i], [class*="best" i], [class*="review" i], header, footer, nav';
+
+/** 범위 안 <img>의 사진 주소(지연 로딩 속성 포함). 작게 그려지는 아이콘과 흔한 장식 이미지는 뺀다. */
+export function imagesIn($: CheerioAPI, scope: string, base: URL, max = 40): string[] {
+  const out: string[] = [];
+  $(scope)
+    .find("img")
+    .add($(scope).filter("img"))
+    .each((_, el) => {
+      if (out.length >= max) return false;
+      const $el = $(el);
+      if ($el.closest(NOT_THIS_PRODUCT).length) return;
+      const size = Math.max(Number($el.attr("width")) || 0, Number($el.attr("height")) || 0);
+      if (size > 0 && size < 120) return;
+      const raw = IMAGE_ATTRS.map((a) => $el.attr(a)).find((v) => v && !/^data:/i.test(v.trim()));
+      const url = absoluteUrl(raw, base);
+      if (url && !JUNK_IMAGE.test(url) && !out.includes(url)) out.push(url);
+    });
+  return out;
+}
+
+/** 줄바꿈을 살린 본문 텍스트(블록 요소·<br>마다 줄을 나눈다). 사이즈를 글로 적은 상세 설명 읽기용. */
+export function blockText($: CheerioAPI, scope = "body"): string {
+  const root = $(scope).first().clone();
+  if (!root.length) return "";
+  root.find("script, style, noscript, svg, iframe, select, button, header, footer, nav").remove();
+  root.find("br").replaceWith("\n");
+  root.find("p, div, li, tr, h1, h2, h3, h4, h5, h6, dt, dd, table, section, article, pre").each((_, el) => {
+    $(el).append("\n");
+  });
+  root.find("td, th").each((_, el) => {
+    $(el).append(" \t ");
+  });
+  return root
+    .text()
+    .split(/\n+/)
+    .map((line) => cleanText(line, 400))
+    .filter(Boolean)
+    .join("\n")
+    .slice(0, 30_000);
 }
 
 export const meta = ($: CheerioAPI, key: string) =>
