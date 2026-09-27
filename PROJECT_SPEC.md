@@ -652,7 +652,7 @@ src/
 
 ## 8. Database Schema 초안
 
-> 아래 SQL은 설계 초안이며 아직 실행하지 않는다. 실제 migration은 개발 4단계(Database 및 RLS)에서 작성한다.
+> 실제 migration은 `supabase/migrations/`에 있다. 아래는 설계 설명이며, 둘이 다르면 migration이 기준이다.
 
 ### 8.1 ERD 개요
 
@@ -723,7 +723,7 @@ create table garments (
   -- 기본정보
   category_id     text not null references categories(id),
   subcategory_id  text references subcategories(id),
-  brand           text not null check (char_length(brand) between 1 and 100),
+  brand           text check (char_length(brand) <= 100),                -- 선택 입력(표에는 "—")
   product_name    text not null check (char_length(product_name) between 1 and 200),
   size_label      text check (char_length(size_label) <= 30),     -- 표기 사이즈 (M, 48, 30 ...)
   color_name      text check (char_length(color_name) <= 50),     -- 텍스트 저장
@@ -735,6 +735,7 @@ create table garments (
   currency        char(3) not null default 'KRW',
   product_url     text check (char_length(product_url) <= 2048),
   image_path      text,                                           -- Storage 경로
+  thumb_path      text,                                           -- 약 300px 썸네일 경로
 
   -- 실측 (cm, 단면 기준, 소수 1자리)
   m_shoulder      numeric(5,1) check (m_shoulder  > 0 and m_shoulder  < 200),  -- 어깨
