@@ -115,6 +115,19 @@ const stats = await db.query("select public.admin_stats() as s").catch((error) =
 await db.exec("reset role");
 check("service role은 통계를 읽음", stats.rows[0]?.s?.users_total === 2, stats.error?.message);
 
+// 사용자당 개수 상한(마이그레이션 8): 옷 2,000벌(삭제 포함), 사진 파일 5,000개
+await db.query(
+  "insert into public.garments (user_id, category_id, product_name, deleted_at) select $1, 'top', 'q', now() from generate_series(1, 2000)",
+  [B],
+);
+check("옷 2,000벌이 차면 더 등록 불가", Boolean((await as(B, "insert into public.garments (category_id, product_name) values ('top', 'x')")).error));
+check("다른 사용자는 상한과 무관하게 등록", !(await as(A, "insert into public.garments (category_id, product_name) values ('top', 'q2')")).error);
+await db.query("insert into storage.objects (bucket_id, name) select 'garment-images', $1 || '/g/' || i || '.webp' from generate_series(1, 5000) i", [B]);
+check("사진 5,000개가 차면 더 업로드 불가", Boolean((await as(B, "insert into storage.objects (bucket_id, name) values ('garment-images', $1)", [`${B}/g/over.webp`])).error));
+check("A는 계속 사진 업로드", !(await as(A, "insert into storage.objects (bucket_id, name) values ('garment-images', $1)", [`${A}/g/more.webp`])).error);
+check("상한 함수는 비로그인이 호출 불가", Boolean((await as(null, "select public.garment_image_quota_ok()")).error));
+check("옷 상한 trigger 함수는 API로 호출 불가", Boolean((await as(A, "select public.enforce_garment_quota()")).error));
+
 check("trigger 함수는 API로 호출 불가", Boolean((await as(A, "select public.handle_new_user()")).error));
 check("A가 자기 옷 삭제", (await as(A, "delete from public.garments where id = $1", [gid])).affectedRows === 1);
 
