@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useWardrobe, type GarmentDraft } from "@/components/wardrobe/wardrobe-store";
+import { useWardrobe, type GarmentDraft, type ImageChange } from "@/components/wardrobe/wardrobe-store";
+import { ImagePicker } from "./image-picker";
 import { UnitInput } from "@/components/ui/input";
 import { SUBCATEGORIES } from "@/lib/constants/categories";
 import { measurementFields } from "@/lib/constants/measurements";
@@ -97,6 +98,9 @@ export function NewGarmentView() {
   const [form, setForm] = useState<FormState>(() => (pendingDraft ? draftToForm(pendingDraft) : EMPTY_FORM));
   const [edited, setEdited] = useState<Partial<Record<TagKey, boolean>>>({});
   const [imageIndex, setImageIndex] = useState(0);
+  const [image, setImage] = useState<ImageChange>(undefined);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // 판단기에서 넘어온 값은 한 번만 쓴다.
@@ -163,7 +167,8 @@ export function NewGarmentView() {
     </>
   );
 
-  const register = () => {
+  const register = async () => {
+    if (saving) return;
     // 제품명은 필수(브랜드는 비워도 된다): 비어 있으면 등록하지 않고 제품명 칸으로 보낸다.
     if (!form.productName.trim()) {
       document.getElementById("f-name")?.focus();
@@ -174,7 +179,9 @@ export function NewGarmentView() {
       if (v !== "" && !isNaN(Number(v))) measurements[k as keyof Measurements] = Number(v);
     });
     const price = form.price.replace(/\D/g, "");
-    const garment = addGarment({
+    setSaving(true);
+    setError(null);
+    const result = await addGarment({
       categoryId: form.categoryId,
       subcategoryId: form.subcategoryId || null,
       brand: form.brand.trim(),
@@ -189,14 +196,20 @@ export function NewGarmentView() {
       imageUrl: null,
       measurements,
       fitReview: form.review || null,
-    });
-    openDrawer(garment.id);
-    showToast("옷장에 등록했습니다");
+    }, image);
+    setSaving(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    openDrawer(result.garment.id);
+    showToast(result.warning ?? "옷장에 등록했습니다");
     router.push("/wardrobe");
   };
 
-  const hint =
-    !form.productName.trim()
+  const hint = error
+    ? error
+    : !form.productName.trim()
       ? "제품명은 꼭 입력해야 합니다."
       : isReview && !form.size
         ? "구매한 사이즈를 선택하세요."
@@ -333,9 +346,12 @@ export function NewGarmentView() {
 
           <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-6 border-b border-text py-7">
             <div className="flex max-w-60 flex-col gap-2">
-              <div className="flex aspect-[4/5] items-end rounded-md bg-neutral-200 p-2.5 text-xs text-neutral-700">
-                {isReview ? (imageIndex === 0 ? "상품 페이지 대표 이미지" : `페이지 이미지 ${imageIndex + 1} 선택됨`) : "사진 끌어다 놓기"}
-              </div>
+              <ImagePicker
+                currentUrl={null}
+                value={image}
+                onChange={setImage}
+                placeholder={isReview ? (imageIndex === 0 ? "상품 페이지 대표 이미지" : `페이지 이미지 ${imageIndex + 1} 선택됨`) : "사진 끌어다 놓기"}
+              />
               {isReview && (
                 <>
                   <div className="mt-1 flex items-baseline justify-between">
@@ -361,14 +377,6 @@ export function NewGarmentView() {
                   </div>
                 </>
               )}
-              <div className="flex gap-1">
-                <button type="button" className="btn btn-ghost text-sm">
-                  변경
-                </button>
-                <button type="button" className="btn btn-ghost text-sm text-neutral-700">
-                  제거
-                </button>
-              </div>
             </div>
 
             <div className="flex min-w-0 flex-col gap-4 sm:col-span-3">
@@ -534,13 +542,15 @@ export function NewGarmentView() {
           </section>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-text pt-4">
-            <span className="text-sm text-neutral-700">{hint}</span>
+            <span role={error ? "alert" : undefined} className={cn("text-sm", error ? "text-accent-700" : "text-neutral-700")}>
+              {hint}
+            </span>
             <div className="flex gap-2">
               <Link href="/wardrobe" className="btn btn-secondary min-h-10">
                 취소
               </Link>
-              <button type="button" className="btn btn-primary min-h-10 min-w-30" onClick={register}>
-                등록
+              <button type="button" className="btn btn-primary min-h-10 min-w-30" disabled={saving} onClick={register}>
+                {saving ? "등록 중…" : "등록"}
               </button>
             </div>
           </div>

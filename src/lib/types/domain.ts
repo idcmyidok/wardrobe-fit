@@ -21,7 +21,10 @@ export interface Garment {
   purchasedOn: string | null; // YYYY-MM-DD
   purchasePrice: number | null; // KRW 정수
   productUrl: string | null;
+  /** 사진(약 1600px). 비공개 bucket의 signed URL이라 잠시 뒤 만료된다. */
   imageUrl: string | null;
+  /** 목록용 썸네일(약 300px). 없으면 imageUrl을 쓴다. */
+  thumbUrl?: string | null;
   measurements: Measurements;
   fitReview: string | null;
 }

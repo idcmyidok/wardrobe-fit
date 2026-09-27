@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ImagePicker } from "@/components/garment-form/image-picker";
 import { UnitInput } from "@/components/ui/input";
 import { CATEGORY_NAME, SUBCATEGORIES, SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { formatCm, measurementFields } from "@/lib/constants/measurements";
@@ -9,7 +10,7 @@ import { SEASONS, SEASON_NAME, toggleSeason } from "@/lib/constants/seasons";
 import { formatDate } from "@/lib/format/date";
 import { formatPrice } from "@/lib/format/price";
 import type { CategoryId, Garment, Measurements, Season } from "@/lib/types/domain";
-import { useWardrobe } from "./wardrobe-store";
+import { useWardrobe, type ImageChange } from "./wardrobe-store";
 
 /** Drawer 안 소제목. 시안의 모노 라벨 + 잉크 밑줄 */
 function SectionTitle({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
@@ -75,23 +76,40 @@ function DrawerBody({ garment: g }: { garment: Garment }) {
   const router = useRouter();
   const [info, setInfo] = useState<InfoDraft | null>(null);
   const [reviewDraft, setReviewDraft] = useState<string | null>(null);
+  const [image, setImage] = useState<ImageChange>(undefined);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const setField = <K extends keyof InfoDraft>(key: K, value: InfoDraft[K]) => setInfo((d) => (d ? { ...d, [key]: value } : d));
 
-  const saveInfo = () => {
-    if (!info) return;
+  const startEdit = () => {
+    setReviewDraft(null);
+    setImage(undefined);
+    setError(null);
+    setInfo(toDraft(g));
+  };
+
+  const saveInfo = async () => {
+    if (!info || saving) return;
+    if (!info.productName.trim()) {
+      setError("제품명은 꼭 입력해야 합니다.");
+      document.getElementById("ie-productName")?.focus();
+      return;
+    }
     const measurements: Measurements = {};
     for (const { key } of measurementFields(info.categoryId)) {
       const v = info.measurements[key];
       measurements[key] = v == null || v === "" || isNaN(Number(v)) ? null : Number(v);
     }
     const price = info.purchasePrice.replace(/\D/g, "");
-    updateGarment(g.id, {
+    setSaving(true);
+    setError(null);
+    const result = await updateGarment(g.id, {
       categoryId: info.categoryId,
       subcategoryId: info.subcategoryId || null,
       brand: info.brand.trim(),
-      productName: info.productName || g.productName,
+      productName: info.productName.trim(),
       sizeLabel: info.sizeLabel || null,
       colorName: info.colorName || null,
       material: info.material || null,
@@ -101,13 +119,26 @@ function DrawerBody({ garment: g }: { garment: Garment }) {
       seasons: info.seasons,
       measurements,
       fitReview: info.fitReview.trim() || null,
-    });
+    }, image);
+    setSaving(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
     setInfo(null);
     showToast("옷 정보를 저장했습니다");
   };
 
-  const saveReview = () => {
-    updateGarment(g.id, { fitReview: reviewDraft?.trim() || null });
+  const saveReview = async () => {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    const result = await updateGarment(g.id, { fitReview: reviewDraft?.trim() || null });
+    setSaving(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
     setReviewDraft(null);
     showToast("착용 후기를 저장했습니다");
   };
@@ -149,10 +180,7 @@ function DrawerBody({ garment: g }: { garment: Garment }) {
                 <button
                   type="button"
                   className="btn btn-primary min-h-0 px-3 py-1.5 text-sm"
-                  onClick={() => {
-                    setReviewDraft(null);
-                    setInfo(toDraft(g));
-                  }}
+                  onClick={startEdit}
                 >
                   옷 정보 수정
                 </button>
@@ -164,7 +192,12 @@ function DrawerBody({ garment: g }: { garment: Garment }) {
             {!info ? (
               <>
                 <div className="grid grid-cols-[112px_1fr] gap-5">
-                  <div className="aspect-[4/5] bg-neutral-200" />
+                  {g.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={g.imageUrl} alt="" className="aspect-[4/5] w-full bg-neutral-200 object-cover" />
+                  ) : (
+                    <div className="aspect-[4/5] bg-neutral-200" />
+                  )}
                   <div className="flex min-w-0 flex-col gap-1.5">
                     {g.brand && <span className="text-base font-semibold">{g.brand}</span>}
                     <h2 className="text-xl leading-tight">{g.productName}</h2>
@@ -198,7 +231,7 @@ function DrawerBody({ garment: g }: { garment: Garment }) {
                 </section>
               </>
             ) : (
-              <InfoEditor info={info} setField={setField} />
+              <InfoEditor info={info} setField={setField} imageUrl={g.imageUrl} image={image} setImage={setImage} />
             )}
 
             <section>
@@ -231,13 +264,18 @@ function DrawerBody({ garment: g }: { garment: Garment }) {
                     onChange={(e) => setReviewDraft(e.target.value)}
                   />
                   <div className="mt-2 flex justify-end gap-2">
-                    <button type="button" className="btn btn-secondary" onClick={() => setReviewDraft(null)}>
+                    <button type="button" className="btn btn-secondary" onClick={() => { setReviewDraft(null); setError(null); }}>
                       취소
                     </button>
-                    <button type="button" className="btn btn-primary" onClick={saveReview}>
-                      저장
+                    <button type="button" className="btn btn-primary" disabled={saving} onClick={saveReview}>
+                      {saving ? "저장 중…" : "저장"}
                     </button>
                   </div>
+                  {error && (
+                    <p role="alert" className="mt-2 text-right text-xs text-accent-700">
+                      {error}
+                    </p>
+                  )}
                 </>
               )}
             </section>
@@ -255,12 +293,14 @@ function DrawerBody({ garment: g }: { garment: Garment }) {
               </>
             ) : (
               <>
-                <span className="mr-auto self-center text-xs text-neutral-700">빈 칸은 —로 저장됩니다</span>
-                <button type="button" className="btn btn-secondary" onClick={() => setInfo(null)}>
+                <span role={error ? "alert" : undefined} className={error ? "mr-auto self-center text-xs text-accent-700" : "mr-auto self-center text-xs text-neutral-700"}>
+                  {error ?? "빈 칸은 —로 저장됩니다"}
+                </span>
+                <button type="button" className="btn btn-secondary" onClick={() => { setInfo(null); setError(null); }}>
                   취소
                 </button>
-                <button type="button" className="btn btn-primary" onClick={saveInfo}>
-                  저장
+                <button type="button" className="btn btn-primary" disabled={saving} onClick={saveInfo}>
+                  {saving ? "저장 중…" : "저장"}
                 </button>
               </>
             )}
@@ -286,7 +326,7 @@ function DrawerBody({ garment: g }: { garment: Garment }) {
                 className="btn btn-primary"
                 onClick={() => {
                   setConfirmDelete(false);
-                  removeGarment(g.id);
+                  void removeGarment(g.id);
                 }}
               >
                 삭제
@@ -302,9 +342,15 @@ function DrawerBody({ garment: g }: { garment: Garment }) {
 function InfoEditor({
   info,
   setField,
+  imageUrl,
+  image,
+  setImage,
 }: {
   info: InfoDraft;
   setField: <K extends keyof InfoDraft>(key: K, value: InfoDraft[K]) => void;
+  imageUrl: string | null;
+  image: ImageChange;
+  setImage: (value: ImageChange) => void;
 }) {
   const text = (key: "brand" | "productName" | "sizeLabel" | "colorName" | "material" | "productUrl", label: string, span = false) => (
     <div className={span ? "field col-span-full" : "field"}>
@@ -317,17 +363,7 @@ function InfoEditor({
     <>
       <section className="flex flex-col gap-3.5">
         <SectionTitle>기본 정보 수정</SectionTitle>
-        <div className="grid grid-cols-[96px_minmax(0,1fr)] items-end gap-4">
-          <div className="aspect-[4/5] rounded-sm bg-neutral-200" />
-          <div className="flex flex-wrap gap-1.5">
-            <button type="button" className="btn btn-secondary">
-              사진 변경
-            </button>
-            <button type="button" className="btn btn-ghost">
-              제거
-            </button>
-          </div>
-        </div>
+        <ImagePicker currentUrl={imageUrl} value={image} onChange={setImage} placeholder="사진 없음" className="w-40" />
         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
           <div className="field">
             <label htmlFor="ie-cat">대분류</label>
