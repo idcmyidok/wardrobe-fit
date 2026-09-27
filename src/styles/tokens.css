@@ -1,27 +1,91 @@
 /*
- * Design tokens (PROJECT_SPEC.md 6장).
- * 컬러는 semantic 토큰으로만 사용한다. Dark mode는 구조만 대비하고 MVP에서는 구현하지 않는다.
+ * Design tokens (Claude Design 시안 "Wardrobe Fit", 2026-09-27 / PROJECT_SPEC.md 6장 구조).
+ * 원시 램프(--n-*, --a-*)를 라이트·다크 두 벌로 두고, 컴포넌트는 semantic 토큰만 쓴다.
+ * 테마는 <html data-theme="light|dark">로 고른다. 속성이 없으면 기기 설정을 따른다.
  */
-:root {
-  --bg: #faf9f7;
-  --surface: #ffffff;
-  --surface-muted: #f3f1ee;
-  --border: #e4e1dc;
-  --border-strong: #cfcac3;
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f2ee;
+  --surface: #fbfaf8;
   --text: #1c1b19;
-  --text-muted: #6b6760;
-  --text-subtle: #9a958d;
-  --accent: #2f4a3f;
-  --accent-hover: #253b32;
-  --accent-subtle: #e7eeea;
+  --divider: #d8d4cc;
+
+  --n-100: #efece7;
+  --n-200: #e5e1da;
+  --n-300: #d3cec5;
+  --n-400: #b5afa5;
+  --n-500: #948e84;
+  --n-600: #77726a;
+  --n-700: #5c5852;
+  --n-800: #42403b;
+  --n-900: #2b2a27;
+
+  --a-100: #eef0e6;
+  --a-200: #e0e3d1;
+  --a-300: #c8cdb0;
+  --a-400: #a6ad86;
+  --a-500: #838b61;
+  --a-600: #5b6340;
+  --a-700: #4a5134;
+  --a-800: #363b26;
+  --a-900: #24271a;
+
+  --shadow-sm: 0 1px 2px rgb(28 27 25 / 0.06);
+  --shadow-md: 0 6px 20px rgb(28 27 25 / 0.08);
+  --shadow-lg: 0 16px 40px rgb(28 27 25 / 0.12);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141412;
+  --surface: #1c1c19;
+  --text: #ebe8e1;
+  --divider: #34332f;
+
+  --n-100: #1f1e1b;
+  --n-200: #292825;
+  --n-300: #373632;
+  --n-400: #4f4d48;
+  --n-500: #6e6b65;
+  --n-600: #8e8a83;
+  --n-700: #aeaaa2;
+  --n-800: #cbc7bf;
+  --n-900: #e2dfd8;
+
+  --a-100: #22251a;
+  --a-200: #2e3222;
+  --a-300: #414730;
+  --a-400: #5d6545;
+  --a-500: #7f885f;
+  --a-600: #b3bb8c;
+  --a-700: #c6cca3;
+  --a-800: #dadfc0;
+  --a-900: #eceedd;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 6px 20px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.55);
+}
+
+/* semantic 토큰: 램프에서 파생하므로 테마가 바뀌면 함께 바뀐다. */
+:root {
+  --surface-muted: var(--n-100);
+  --border: var(--n-300);
+  --border-strong: var(--n-400);
+  --text-muted: var(--n-700);
+  --text-subtle: var(--n-600);
+  --accent: var(--a-600);
+  --accent-hover: var(--a-700);
+  --accent-subtle: var(--a-100);
   --positive: #3e6b4f;
   --caution: #9a6b1f;
   --negative: #a23b2c;
-  --focus-ring: rgb(47 74 63 / 0.4);
+  --focus-ring: var(--a-600);
+  --overlay: color-mix(in srgb, var(--n-900) 35%, transparent);
 
-  --shadow-popover: 0 4px 12px rgb(28 27 25 / 0.08);
-  --shadow-dialog: 0 8px 24px rgb(28 27 25 / 0.12);
-  --overlay: rgb(28 27 25 / 0.32);
+  --shadow-popover: var(--shadow-md);
+  --shadow-dialog: var(--shadow-lg);
 
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --duration-fast: 120ms;

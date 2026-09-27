@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { parseAuthMode } from "@/components/auth/auth-mode";
 import { AuthPanel } from "@/components/auth/auth-panel";
 import { ServiceIntro } from "@/components/landing/service-intro";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export default async function LandingPage({
   searchParams,
@@ -11,17 +11,15 @@ export default async function LandingPage({
   const mode = parseAuthMode((await searchParams).mode);
 
   return (
-    <main className="grid min-h-dvh lg:grid-cols-2">
-      <section className="order-2 flex items-center px-4 py-12 sm:px-8 lg:order-1 lg:px-16">
+    <main className="grid min-h-dvh grid-cols-[repeat(auto-fit,minmax(min(100%,440px),1fr))]">
+      <section className="flex flex-col justify-between gap-10 border-neutral-300 p-[clamp(24px,5vw,64px)] md:border-r">
         <ServiceIntro />
       </section>
-
-      <section className="order-1 flex flex-col items-center justify-center gap-8 border-b border-border bg-surface px-4 py-12 sm:px-8 lg:order-2 lg:border-b-0 lg:border-l">
+      <section className="relative flex items-center bg-surface p-[clamp(24px,5vw,64px)]">
+        <div className="absolute top-5 right-[clamp(16px,3vw,32px)]">
+          <ThemeToggle />
+        </div>
         <AuthPanel mode={mode} />
-        {/* 인증 연결 전 개발 확인용 진입점. 3단계에서 제거한다. */}
-        <Link href="/wardrobe" className="text-xs text-text-subtle hover:text-text-muted hover:underline">
-          개발 확인용: 내 옷장 화면 보기
-        </Link>
       </section>
     </main>
   );

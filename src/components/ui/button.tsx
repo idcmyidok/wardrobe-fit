@@ -1,25 +1,24 @@
 import { cn } from "@/lib/cn";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "ghost" | "plain";
 type Size = "sm" | "md" | "lg";
 
-const base =
-  "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50";
-
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-white hover:bg-accent-hover",
-  secondary: "border border-border-strong bg-surface text-text hover:bg-surface-muted",
-  ghost: "text-text-muted hover:bg-surface-muted hover:text-text",
+  primary: "btn-primary",
+  secondary: "btn-secondary",
+  ghost: "btn-ghost",
+  plain: "",
 };
 
+/** 시안 기준 높이: sm 32 / md 40 / lg 44. Primary는 페이지당 1개. */
 const sizes: Record<Size, string> = {
-  sm: "h-8 px-3 text-sm",
-  md: "h-9 px-3.5 text-base",
-  lg: "h-10 px-4 text-base",
+  sm: "min-h-8 px-3 text-sm",
+  md: "min-h-10",
+  lg: "min-h-11",
 };
 
 export function buttonClassName({ variant = "secondary", size = "md" }: { variant?: Variant; size?: Size } = {}) {
-  return cn(base, variants[variant], sizes[size]);
+  return cn("btn", variants[variant], sizes[size]);
 }
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size };
