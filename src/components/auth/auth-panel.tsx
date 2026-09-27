@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -98,20 +98,64 @@ function SignUpForm() {
       <Field label="비밀번호 확인" htmlFor="signup-password-confirm" error={state.fieldErrors?.passwordConfirm}>
         <Input id="signup-password-confirm" name="passwordConfirm" type="password" autoComplete="new-password" required />
       </Field>
-      <SignUpNotice error={state.fieldErrors?.agree} />
+      <SignUpNotice errors={state.fieldErrors} />
       <SubmitButton label="가입하고 인증 메일 받기" pendingLabel="메일 보내는 중…" />
       <SwitchLine text="이미 계정이 있으신가요?" href="/" label="로그인" />
     </form>
   );
 }
 
-/** 가입 전 개인정보 수집·이용 안내(개인정보 보호법 제15조·제22조)와 만 14세 이상 확인. */
-function SignUpNotice({ error }: { error?: string }) {
+/**
+ * 가입 동의(개인정보 보호법 제15조·제22조). 만 14세 미만은 법정대리인 동의가 필요해 받지 않으므로
+ * 나이는 본인 확인 체크로 받는다. 약관·처리방침은 새 탭에서, 수집 항목은 펼쳐서 볼 수 있다.
+ */
+const CONSENTS = [
+  { name: "age", label: "만 14세 이상입니다" },
+  { name: "terms", label: "이용약관에 동의합니다", href: "/terms" },
+  { name: "privacy", label: "개인정보 수집·이용에 동의합니다", href: "/privacy" },
+] as const;
+
+function SignUpNotice({ errors }: { errors?: Record<string, string> }) {
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const all = CONSENTS.every((c) => checked[c.name]);
+  const error = CONSENTS.map((c) => errors?.[c.name]).find(Boolean);
   return (
-    <div className="flex flex-col gap-3">
-      <div className="border border-neutral-300 p-3.5 text-sm leading-relaxed text-neutral-700">
-        <p className="mb-1.5 font-medium text-text">개인정보 수집·이용 안내</p>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+    <div className="flex flex-col gap-2.5 border border-neutral-300 p-3.5 text-base">
+      <label className="flex cursor-pointer items-center gap-2 border-b border-neutral-300 pb-2.5 font-medium">
+        <input
+          type="checkbox"
+          checked={all}
+          onChange={(e) => setChecked(Object.fromEntries(CONSENTS.map((c) => [c.name, e.target.checked])))}
+          className="size-4 shrink-0 accent-accent"
+        />
+        모두 동의
+      </label>
+      {CONSENTS.map((c) => (
+        <div key={c.name} className="flex items-center justify-between gap-2">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              name={c.name}
+              checked={Boolean(checked[c.name])}
+              onChange={(e) => setChecked((v) => ({ ...v, [c.name]: e.target.checked }))}
+              aria-invalid={Boolean(errors?.[c.name])}
+              aria-describedby={error ? "signup-consent-error" : undefined}
+              className="size-4 shrink-0 accent-accent"
+            />
+            <span>
+              {c.label} <span className="text-sm text-neutral-600">(필수)</span>
+            </span>
+          </label>
+          {"href" in c && (
+            <Link href={c.href} target="_blank" className="shrink-0 text-sm text-neutral-700 underline underline-offset-2">
+              보기
+            </Link>
+          )}
+        </div>
+      ))}
+      <details className="text-sm text-neutral-700">
+        <summary className="cursor-pointer">수집 항목 요약</summary>
+        <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 leading-relaxed">
           <dt>수집 항목</dt>
           <dd>이메일, 비밀번호(암호화 저장)</dd>
           <dt>이용 목적</dt>
@@ -119,33 +163,9 @@ function SignUpNotice({ error }: { error?: string }) {
           <dt>보유 기간</dt>
           <dd>회원 탈퇴 시까지(탈퇴하면 바로 삭제)</dd>
         </dl>
-        <p className="mt-1.5">
-          가입 후 입력하는 옷 정보와 사진은 옷장 기록에만 씁니다. 해외 클라우드 저장 등 자세한 내용은{" "}
-          <Link href="/privacy" target="_blank" className="underline underline-offset-2">
-            개인정보처리방침
-          </Link>
-          을 확인해 주세요.
-        </p>
-      </div>
-      <label className="flex cursor-pointer items-start gap-2 text-base">
-        <input
-          type="checkbox"
-          name="agree"
-          required
-          aria-invalid={Boolean(error)}
-          aria-describedby={error ? "signup-agree-error" : undefined}
-          className="mt-1 size-4 shrink-0 accent-accent"
-        />
-        <span>
-          만 14세 이상이며,{" "}
-          <Link href="/terms" target="_blank" className="underline underline-offset-2">
-            이용약관
-          </Link>
-          과 위 개인정보 수집·이용에 동의합니다.
-        </span>
-      </label>
+      </details>
       {error && (
-        <p id="signup-agree-error" role="alert" className="text-sm text-negative">
+        <p id="signup-consent-error" role="alert" className="text-sm text-negative">
           {error}
         </p>
       )}
