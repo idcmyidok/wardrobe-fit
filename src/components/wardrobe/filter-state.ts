@@ -19,7 +19,6 @@ export interface WardrobeFilters {
   subcategory: string;
   brand: string;
   season: Season | "";
-  size: string;
   color: string;
   q: string;
 }
@@ -32,13 +31,12 @@ export const DEFAULT_FILTERS: WardrobeFilters = {
   subcategory: "",
   brand: "",
   season: "",
-  size: "",
   color: "",
   q: "",
 };
 
 export function isFiltered(f: WardrobeFilters): boolean {
-  return f.categories.length < 3 || Boolean(f.subcategory || f.brand || f.season || f.size || f.color || f.q);
+  return f.categories.length < 3 || Boolean(f.subcategory || f.brand || f.season || f.color || f.q);
 }
 
 /** 날짜·가격은 큰 값부터, 나머지는 가나다·작은 값부터 시작한다. */
@@ -91,7 +89,6 @@ export function applyFilters(items: Garment[], f: WardrobeFilters): Garment[] {
       (!f.subcategory || item.subcategoryId === f.subcategory) &&
       (!f.brand || item.brand === f.brand) &&
       (!f.season || item.seasons.includes(f.season)) &&
-      (!f.size || item.sizeLabel === f.size) &&
       (!f.color || item.colorName === f.color) &&
       (!q || `${item.brand} ${item.productName}`.toLowerCase().includes(q)),
   );

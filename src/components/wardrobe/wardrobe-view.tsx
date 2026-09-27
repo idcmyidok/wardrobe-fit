@@ -24,7 +24,6 @@ export function WardrobeView() {
   const options = useMemo(
     () => ({
       brands: uniqueValues(garments, (g) => g.brand),
-      sizes: uniqueValues(garments, (g) => g.sizeLabel),
       colors: uniqueValues(garments, (g) => g.colorName),
     }),
     [garments],

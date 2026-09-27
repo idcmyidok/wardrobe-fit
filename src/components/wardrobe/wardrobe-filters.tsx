@@ -16,7 +16,7 @@ export function WardrobeFilters({
 }: {
   value: Filters;
   onChange: (next: Filters) => void;
-  options: { brands: string[]; sizes: string[]; colors: string[] };
+  options: { brands: string[]; colors: string[] };
 }) {
   const set = <K extends keyof Filters>(key: K, v: Filters[K]) => onChange({ ...value, [key]: v });
   const subcategories = SUBCATEGORIES.filter((s) => value.categories.includes(s.categoryId));
@@ -72,7 +72,6 @@ export function WardrobeFilters({
           onChange={(v) => set("season", v as Season | "")}
           options={SEASONS.map((s) => ({ value: s.id, name: s.name }))}
         />
-        <FilterSelect label="사이즈" width="w-30" value={value.size} onChange={(v) => set("size", v)} options={toOptions(options.sizes)} />
         <FilterSelect label="컬러" width="w-32.5" value={value.color} onChange={(v) => set("color", v)} options={toOptions(options.colors)} />
         {isFiltered(value) && (
           <button type="button" className="btn btn-ghost text-sm" onClick={() => onChange(DEFAULT_FILTERS)}>
