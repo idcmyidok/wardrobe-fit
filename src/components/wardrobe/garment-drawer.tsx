@@ -9,6 +9,7 @@ import { CATEGORY_NAME, SUBCATEGORIES, SUBCATEGORY_NAME } from "@/lib/constants/
 import { formatCm, measurementFields } from "@/lib/constants/measurements";
 import { SEASONS, SEASON_NAME, toggleSeason } from "@/lib/constants/seasons";
 import { formatDate } from "@/lib/format/date";
+import { DateLabel } from "@/components/garment-form/date-label";
 import { formatPrice } from "@/lib/format/price";
 import type { CategoryId, Garment, Measurements, Season } from "@/lib/types/domain";
 import { useOpenGarmentId, useWardrobe, type ImageChange } from "./wardrobe-store";
@@ -468,7 +469,7 @@ function InfoEditor({
           {text("productName", "제품명", true)}
           {text("colorName", "컬러")}
           <div className="field">
-            <label htmlFor="ie-date">구매일</label>
+            <DateLabel htmlFor="ie-date" label="구매일" filled={Boolean(info.purchasedOn)} onClear={() => setField("purchasedOn", "")} />
             <input id="ie-date" type="date" className="input font-mono" value={info.purchasedOn} onChange={(e) => setField("purchasedOn", e.target.value)} />
           </div>
           <div className="field">

@@ -27,6 +27,7 @@ test("가입 → 메일 인증 → 옷장 → 로그아웃 → 보호된 경로�
   await page.fill("#signup-email", email);
   await page.fill("#signup-password", password);
   await page.fill("#signup-password-confirm", password);
+  await page.getByRole("checkbox", { name: /만 14세 이상/ }).check();
   await page.getByRole("button", { name: "가입하고 인증 메일 받기" }).click();
   await expect(page).toHaveURL(/mode=sent/);
 

@@ -9,5 +9,5 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const me = await requireAdmin();
   const requested = Number((await searchParams).page);
   const page = Number.isInteger(requested) && requested > 0 ? requested : 1;
-  return <AdminView overview={await getAdminOverview(page)} myId={me.id} />;
+  return <AdminView overview={await getAdminOverview(me.id, page)} myId={me.id} />;
 }

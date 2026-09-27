@@ -15,7 +15,9 @@ import type { FitComputed, FitInterpretation } from "@/lib/fit/types";
 import { streamImport, type ImportOutcome } from "@/lib/import/client";
 import { IMPORT_FAILURE } from "@/lib/import/messages";
 import { goToSignIn } from "@/lib/session-expiry";
+import { notifyUsageChanged } from "@/lib/usage";
 import type { CategoryId, Measurements } from "@/lib/types/domain";
+import { UsageNote } from "@/components/usage/usage-note";
 import { FitResultView, type ResultAiStatus } from "./fit-result-view";
 
 /**
@@ -119,6 +121,7 @@ export function FitCheckView() {
     }
     if (controller.signal.aborted) return;
     setImporting(false);
+    notifyUsageChanged();
     if (outcome.errorCode === "signed_out") return goToSignIn();
     if (outcome.status === "failed" || !outcome.product || !outcome.importId) {
       setImportError(IMPORT_FAILURE[outcome.errorCode ?? "unknown"]);
@@ -176,6 +179,7 @@ export function FitCheckView() {
     );
     if (controller.signal.aborted) return;
     setBusy(false);
+    notifyUsageChanged();
     if (!r.ok) {
       if (r.error === "signed_out") return goToSignIn();
       if (shown) setResult((prev) => prev && { ...prev, aiStatus: "failed" });
@@ -235,6 +239,7 @@ export function FitCheckView() {
       <div className="flex flex-col gap-1.5 border-b border-text pb-4">
         <h1 className="text-title">AI 구매 판단기</h1>
         <p className="text-body text-neutral-800">사려는 옷의 링크와 고민 중인 사이즈를 넣으면, 옷장에 기록한 옷과 치수별로 비교합니다.</p>
+        <UsageNote kind="fit" />
       </div>
 
       {!manual ? (

@@ -9,7 +9,13 @@ export const signInSchema = z.object({
 });
 
 export const signUpSchema = z
-  .object({ email, password: newPassword, passwordConfirm: z.string() })
+  .object({
+    email,
+    password: newPassword,
+    passwordConfirm: z.string(),
+    // 만 14세 이상 확인과 약관·개인정보 수집 안내 확인(체크박스 값 "on")
+    agree: z.literal("on", { error: "만 14세 이상인지, 약관과 개인정보 수집 안내를 확인해 주세요." }),
+  })
   .refine((v) => v.password === v.passwordConfirm, {
     path: ["passwordConfirm"],
     message: "비밀번호가 서로 다릅니다.",
