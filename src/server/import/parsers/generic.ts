@@ -61,7 +61,6 @@ export const genericParser: ProductParser = {
       set("brand", textOrUndefined(nameOf(product.brand) ?? nameOf(product.manufacturer), 100), "json_ld");
       set("imageUrls", imageUrls(product.image, url), "json_ld");
       set("price", offerPrice(product.offers) ?? offerPrice(variants[0]?.offers), "json_ld");
-      set("material", textOrUndefined(str(product.material), 300), "json_ld");
       set("colorFromDetail", textOrUndefined(str(product.color), 50), "json_ld");
       set("categoryHints", list(product.category).map(str).filter((c): c is string => Boolean(c)), "json_ld");
       set("colorOptions", [...new Set(variants.map((v) => str(v.color)).filter((c): c is string => Boolean(c)))], "json_ld");

@@ -82,7 +82,6 @@ const toInput = (g: GarmentDraft) => ({
   productName: g.productName,
   sizeLabel: g.sizeLabel,
   colorName: g.colorName,
-  material: g.material,
   seasons: g.seasons,
   purchasedOn: g.purchasedOn,
   purchasePrice: g.purchasePrice,

@@ -47,7 +47,6 @@ const g = (over: Partial<Garment>): Garment => ({
   productName: "자켓",
   sizeLabel: "M",
   colorName: null,
-  material: null,
   seasons: [],
   purchasedOn: "2025-01-01",
   purchasePrice: 100000,

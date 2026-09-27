@@ -11,7 +11,6 @@ const PRODUCT = {
   subcategoryId: { value: "top.shirt", source: "keyword", confidence: "low" },
   imageUrls: ["https://shop.example/a.jpg", "https://shop.example/b.jpg"],
   price: { value: 59000, source: "json_ld", confidence: "high" },
-  material: null,
   colorOptions: ["화이트", "블루"],
   colorCandidate: null,
   sizeOptions: ["S", "M", "L"],

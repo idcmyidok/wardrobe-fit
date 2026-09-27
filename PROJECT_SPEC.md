@@ -75,7 +75,7 @@ Wardrobe Fit은 사용자가 실제로 입어본 옷의 **실측 치수**와 **�
 - 실제 구매한 사이즈와 컬러 옵션을 사용자가 선택하거나 입력한다.
 
 **옷 데이터**
-- 기본정보: 제품 사진, 대분류, 세부분류, 브랜드, 제품명, 표기 사이즈, 컬러명, 소재, 시즌, 구매 날짜, 구매가, 상품 링크.
+- 기본정보: 제품 사진, 대분류, 세부분류, 브랜드, 제품명, 표기 사이즈, 컬러명, 시즌, 구매 날짜, 구매가, 상품 링크.
 - 시즌: 봄, 여름, 가을, 겨울, 사계절. 사계절은 단독으로 선택하고(네 계절을 모두 고르면 사계절로 바뀐다), 계절 필터·통계에서는 모든 계절에 포함된다.
 - 상의 / 아우터 실측: 총장, 어깨, 가슴, 소매.
 - 하의 실측: 총장, 허리단면, 엉덩이단면, 허벅지단면, 밑위, 밑단단면.
@@ -372,7 +372,6 @@ middleware.ts                 # 세션 갱신 + 보호 Route
 │ [이미지]      │  대분류 [아우터 ▾]  세부분류 [자켓 ▾]
 │ 변경 / 제거   │  브랜드 [      ]    제품명 [                 ]
 └──────────────┘  표기 사이즈 [ ]    컬러명 [      ]
-                  소재 [                              ]
                   시즌 [봄][여름][가을][겨울][사계절]
                   구매 날짜 [    ]   구매가 [       ]원
                   상품 링크 [                         ]
@@ -728,7 +727,7 @@ create table garments (
   size_label      text check (char_length(size_label) <= 30),     -- 표기 사이즈 (M, 48, 30 ...)
   color_name      text check (char_length(color_name) <= 50),     -- 텍스트 저장
   color_source    color_source,
-  material        text check (char_length(material) <= 300),
+  material        text check (char_length(material) <= 300),   -- 사용 안 함(2026-09-27 소재 항목 삭제, 기존 값만 남음)
   seasons         season[] not null default '{}',
   purchased_on    date,
   purchase_price  integer check (purchase_price >= 0),            -- 원 단위 정수
@@ -887,7 +886,6 @@ export interface Garment {
   sizeLabel: string | null;
   colorName: string | null;
   colorSource: ColorSource | null;
-  material: string | null;
   seasons: Season[];
   purchasedOn: string | null;      // YYYY-MM-DD
   purchasePrice: number | null;    // KRW 정수
@@ -1097,7 +1095,6 @@ export interface RawProduct {
   imageUrls?: string[];
   categoryHints?: string[];      // 페이지의 breadcrumb, 카테고리 텍스트
   price?: { amount: number; currency?: string };
-  material?: string;
   colorOptions?: string[];
   colorFromDetail?: string;
   sizeOptions?: string[];
@@ -1143,8 +1140,10 @@ const aiParser: ProductParser = aiStructuredExtractor;    // 선택적 fallback
 |---|---|
 | Site-specific | 쇼핑몰별 구조(내장 JSON 상태, 공개 상품 API 응답, 옵션·사이즈표 DOM) 사용. 대상 쇼핑몰의 실제 구조는 개발 8단계에서 조사 후 결정한다. 1차 후보: 무신사, 29CM, W컨셉. |
 | Platform | Shopify: 상품 JSON 엔드포인트(`/products/{handle}.json` 류)와 JSON-LD. Cafe24: 공통 DOM/스크립트 변수 패턴. |
-| Generic | ① JSON-LD `Product`(name, brand, image, offers.price, color, material) ② OpenGraph(`og:title`, `og:image`, `product:price:amount`) ③ meta 태그 ④ Heuristic: `<select>`/옵션 버튼 텍스트에서 컬러·사이즈 후보, "사이즈", "실측" 근처의 `<table>`을 사이즈표 후보로 추출. |
+| Generic | ① JSON-LD `Product`(name, brand, image, offers.price, color) ② OpenGraph(`og:title`, `og:image`, `product:price:amount`) ③ meta 태그 ④ Heuristic: `<select>`/옵션 버튼 텍스트에서 컬러·사이즈 후보, "사이즈", "실측" 근처의 `<table>`을 사이즈표 후보로 추출. |
 | AI 구조화 추출 | 정제된 텍스트(스크립트/스타일 제거, 최대 약 15,000자)를 신뢰할 수 없는 데이터로 감싸 전달하고, 정해진 JSON 스키마로만 출력받는다. 결과 필드는 모두 `confidence: 'low'`로 표시해 사용자 확인을 요구한다. |
+
+- 무신사(`parsers/musinsa.ts`): 페이지의 상품 상태 JSON(`window.__MSS__.product.state` 등)에서 제품명·브랜드·사진 여러 장, 페이지의 `image.msscdn.net` 상품 사진 주소, 실측은 `goods-detail.musinsa.com`의 공개 JSON. 제목 꼬리("- 사이즈 & 후기 | 무신사")는 뗀다. 개발 환경은 무신사가 막아서 배포 환경의 `product_imports.result.diagnostics`로 어떤 경로가 통했는지 확인한다.
 
 ### 13.4 분리와 유지보수
 
@@ -1174,7 +1173,6 @@ export interface NormalizedProduct {
   subcategoryId: Extracted<string> | null;
   imageUrls: string[];
   price: Extracted<number> | null;             // KRW 정수
-  material: Extracted<string> | null;
   colorOptions: string[];                       // 정규화된 컬러명 목록
   colorCandidate: Extracted<string> | null;     // 우선순위 규칙 적용 결과
   sizeOptions: string[];

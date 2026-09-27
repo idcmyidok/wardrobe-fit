@@ -84,7 +84,6 @@ test("링크 분석 결과에서 사이즈 2개를 골라 함께 비교", async 
     subcategoryId: { value: "outer.jacket", source: "heuristic", confidence: "low" },
     imageUrls: [],
     price: { value: 459000, source: "json_ld", confidence: "high" },
-    material: { value: "코튼 100%", source: "json_ld", confidence: "high" },
     colorOptions: [],
     colorCandidate: null,
     sizeOptions: ["46", "48", "50"],

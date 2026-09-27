@@ -26,7 +26,6 @@ describe("generic parser: JSON-LD", () => {
     expect(p.productName?.value).toBe("헤비 코튼 오버셔츠");
     expect(p.price?.value).toBe(119000);
     expect(p.imageUrls).toEqual(["https://shop.example.com/images/main.jpg", "https://cdn.example.com/2.jpg"]);
-    expect(p.material?.value).toBe("면 100%");
     expect(p.categoryId?.value).toBe("top");
     expect(p.subcategoryId?.value).toBe("top.shirt");
     expect(p.sizeOptions).toEqual(["S", "M", "L"]);
@@ -75,7 +74,6 @@ describe("platform parser: Shopify", () => {
     expect(p.subcategoryId?.value).toBe("bottom.chino");
     expect(p.colorOptions).toEqual(["Beige", "Navy"]);
     expect(p.sizeOptions).toEqual(["30", "32"]);
-    expect(p.material?.value).toBe("Cotton 100%");
     expect(p.sizeChart?.rows[0]).toEqual({
       sizeLabel: "30",
       measurements: { length: 104.1, waist: 38.1, hip: 52.1, thigh: 33, rise: 29.2, legOpening: 21.6 },
@@ -94,7 +92,6 @@ describe("platform parser: Cafe24", () => {
     expect(p.productName?.value).toBe("울 블렌드 워크 자켓");
     expect(p.brand?.value).toBe("A.P.C.");
     expect(p.price?.value).toBe(489000); // 할인가가 있으면 할인가
-    expect(p.material?.value).toBe("울 60%, 폴리아미드 40%");
     expect(p.colorOptions).toEqual(["네이비", "차콜"]);
     expect(p.sizeOptions).toEqual(["S", "M"]);
     expect(p.imageUrls).toEqual(["https://cafemall.com/web/product/big/jacket.jpg"]);
@@ -104,5 +101,53 @@ describe("platform parser: Cafe24", () => {
       { sizeLabel: "M", measurements: { length: 70, shoulder: 46, chest: 58, sleeve: 63 } },
     ]);
     expect(p.sizeChart?.unmappedColumns).toEqual(["소매통"]);
+  });
+});
+
+describe("site parser: 무신사", () => {
+  const actualSize = {
+    data: {
+      sizes: [
+        { name: "M", items: [{ name: "총장", value: 72 }, { name: "어깨너비", value: 46 }, { name: "가슴단면", value: 58 }, { name: "소매길이", value: 63 }] },
+        { name: "L", items: [{ name: "총장", value: 74 }, { name: "어깨너비", value: 48 }, { name: "가슴단면", value: 60 }, { name: "소매길이", value: 64 }] },
+      ],
+    },
+  };
+
+  it("상품 상태 JSON에서 제품명·브랜드·사진 여러 장을, 별도 JSON에서 실측을 읽는다", async () => {
+    const { run, product: p } = await analyze("https://www.musinsa.com/products/6081265", fixture("musinsa.html"), {
+      "https://goods-detail.musinsa.com/api2/goods/6081265/actual-size": actualSize,
+    });
+    expect(run.used[0].id).toBe("musinsa");
+    expect(p.productName?.value).toBe("Rolled up check shirt BLACK");
+    expect(p.brand?.value).toBe("미세키서울");
+    // 같은 사진의 크기별 주소는 하나로, 다른 상품 추천 사진은 빼고, 대표 사진이 먼저
+    expect(p.imageUrls).toEqual([
+      "https://image.msscdn.net/images/goods_img/20240312/6081265/6081265_17102345678901_500.jpg",
+      "https://image.msscdn.net/images/prd_img/20240312/6081265/detail_6081265_17102345678902_500.jpg",
+      "https://image.msscdn.net/images/prd_img/20240312/6081265/detail_6081265_17102345678903_500.jpg",
+    ]);
+    expect(p.sizeOptions).toEqual(["M", "L"]);
+    expect(p.sizeChart?.rows[0]).toEqual({ sizeLabel: "M", measurements: { length: 72, shoulder: 46, chest: 58, sleeve: 63 } });
+    expect(run.diagnostics.musinsa).toMatchObject({ goodsNo: "6081265", images: 3 });
+  });
+
+  it("상태 JSON이 없어도 제목 꼬리를 떼고 페이지의 이 상품 사진을 모은다", async () => {
+    const html = fixture("musinsa.html").replace(/<script>window\.__MSS__[\s\S]*?<\/script>/, "");
+    const { product: p } = await analyze("https://www.musinsa.com/products/6081265", html, {
+      "https://goods-detail.musinsa.com/api2/goods/6081265/actual-size": { data: { header: ["사이즈", "총장", "가슴단면"], rows: [["M", "72", "58"]] } },
+    });
+    expect(p.productName?.value).toBe("(MISEKISEOUL MEN) Rolled up check shirt BLACK");
+    expect(p.imageUrls).toEqual(["https://image.msscdn.net/thumbnails/images/goods_img/20240312/6081265/6081265_17102345678901_big.jpg"]);
+    expect(p.sizeChart?.rows[0]).toEqual({ sizeLabel: "M", measurements: { length: 72, chest: 58 } });
+  });
+
+  it("실측 JSON을 못 받아도 나머지는 채우고 어디서 실패했는지 남긴다", async () => {
+    const { run, product: p } = await analyze("https://www.musinsa.com/products/6081265", fixture("musinsa.html"));
+    expect(p.productName?.value).toBe("Rolled up check shirt BLACK");
+    expect(p.sizeChart).toBeNull();
+    const tried = (run.diagnostics.musinsa as { actualSize: Array<{ ok: boolean }> }).actualSize;
+    expect(tried).toHaveLength(2);
+    expect(tried.every((t) => !t.ok)).toBe(true);
   });
 });

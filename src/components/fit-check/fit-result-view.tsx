@@ -91,7 +91,6 @@ export function FitResultView({
   aiStatus,
   createdAt,
   productUrl = null,
-  material = null,
   onBack,
   onRetry,
 }: {
@@ -101,7 +100,6 @@ export function FitResultView({
   aiStatus: ResultAiStatus;
   createdAt: string;
   productUrl?: string | null;
-  material?: string | null;
   onBack?: () => void;
   onRetry?: () => void;
 }) {
@@ -367,7 +365,6 @@ export function FitResultView({
               productName: candidate.productName ?? "",
               sizeLabel: size.sizeLabel,
               colorName: null,
-              material,
               seasons: [],
               purchasedOn: null,
               purchasePrice: null,

@@ -74,7 +74,6 @@ export function normalizeProduct(raw: RawProduct, sources: FieldSources, options
     else warnings.push({ code: "price_currency_not_krw", message: `가격이 ${currency}로 적혀 있어 비워 두었습니다.` });
   }
 
-  const material = cleanText(raw.material, 300);
   const colorOptions = cleanOptions(raw.colorOptions, splitColorOption);
   const colorCandidate = pickColor(raw, colorOptions);
 
@@ -97,7 +96,6 @@ export function normalizeProduct(raw: RawProduct, sources: FieldSources, options
     subcategoryId: category ? extracted(category.subcategoryId, categorySource, category.fromName ? "low" : "medium") : null,
     imageUrls,
     price,
-    material: material ? extracted(material, sources.material) : null,
     colorOptions,
     colorCandidate,
     sizeOptions,

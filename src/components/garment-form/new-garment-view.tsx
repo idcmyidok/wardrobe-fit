@@ -22,7 +22,6 @@ interface FormState {
   subcategoryId: string;
   brand: string;
   productName: string;
-  material: string;
   seasons: Season[];
   price: string;
   url: string;
@@ -52,7 +51,6 @@ const EMPTY_FORM: FormState = {
   subcategoryId: "",
   brand: "",
   productName: "",
-  material: "",
   seasons: [],
   price: "",
   url: "",
@@ -73,7 +71,6 @@ const importedForm = (url: string, p: Imported["product"]): FormState => {
     subcategoryId: p.subcategoryId?.value ?? "",
     brand: p.brand?.value ?? "",
     productName: p.productName?.value ?? "",
-    material: p.material?.value ?? "",
     price: p.price ? String(p.price.value) : "",
     color: p.colorCandidate?.value ?? "",
     size,
@@ -95,13 +92,12 @@ const draftToForm = (d: GarmentDraft): FormState => ({
   subcategoryId: d.subcategoryId ?? "",
   brand: d.brand,
   productName: d.productName,
-  material: d.material ?? "",
   size: d.sizeLabel ?? "",
   url: d.productUrl ?? "",
   m: Object.fromEntries(Object.entries(d.measurements).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])),
 });
 
-type TagKey = "cat" | "sub" | "brand" | "name" | "material" | "date" | "price" | "seasons" | "url" | "size" | "color";
+type TagKey = "cat" | "sub" | "brand" | "name" | "date" | "price" | "seasons" | "url" | "size" | "color";
 
 /** 새 옷 추가: 상품 링크 분석(분석 중 / 실패) → 검토 폼, 또는 직접 입력 폼 */
 export function NewGarmentView() {
@@ -214,7 +210,7 @@ export function NewGarmentView() {
   const colorChoices = product?.colorOptions ?? [];
   const pageImages = product && imported ? product.imageUrls.map((_, i) => importImageUrl(imported.importId, i)) : [];
   const extractedCount = product
-    ? [product.brand, product.productName, product.categoryId, product.price, product.material, product.colorCandidate, product.sizeChart, pageImages[0]].filter(Boolean).length +
+    ? [product.brand, product.productName, product.categoryId, product.price, product.colorCandidate, product.sizeChart, pageImages[0]].filter(Boolean).length +
       (sizeChoices.length ? 1 : 0)
     : 0;
   const partial = imported?.status === "partial";
@@ -231,7 +227,6 @@ export function NewGarmentView() {
     sub: product?.subcategoryId,
     brand: product?.brand,
     name: product?.productName,
-    material: product?.material,
     price: product?.price,
     color: product?.colorCandidate,
   };
@@ -277,7 +272,6 @@ export function NewGarmentView() {
       productName: form.productName.trim(),
       sizeLabel: form.size || null,
       colorName: form.color || null,
-      material: form.material || null,
       seasons: form.seasons,
       purchasedOn: form.date || null,
       purchasePrice: price ? Number(price) : null,
@@ -530,11 +524,6 @@ export function NewGarmentView() {
                   <FieldError id="e-productName" message={fieldErrors.productName} />
                 </div>
                 <div className="field">
-                  <label htmlFor="f-material" className="flex items-center justify-between">{label("소재", "material")}</label>
-                  <input id="f-material" className="input" aria-invalid={Boolean(fieldErrors.material)} aria-describedby={fieldErrors.material ? "e-material" : undefined} value={form.material} onChange={(e) => update("material", e.target.value, "material")} />
-                  <FieldError id="e-material" message={fieldErrors.material} />
-                </div>
-                <div className="field">
                   <label htmlFor="f-date" className="flex items-center justify-between">{label("구매 날짜", "date")}</label>
                   <input id="f-date" type="date" className="input font-mono tabular-nums" aria-invalid={Boolean(fieldErrors.purchasedOn)} aria-describedby={fieldErrors.purchasedOn ? "e-purchasedOn" : undefined} value={form.date} onChange={(e) => update("date", e.target.value, "date")} />
                   <FieldError id="e-purchasedOn" message={fieldErrors.purchasedOn} />
@@ -702,7 +691,6 @@ async function pageImageFile(src: string): Promise<File | undefined> {
 const FIELD_IDS: Record<string, string> = {
   productName: "f-name",
   brand: "f-brand",
-  material: "f-material",
   purchasedOn: "f-date",
   purchasePrice: "f-price",
   productUrl: "f-url",
