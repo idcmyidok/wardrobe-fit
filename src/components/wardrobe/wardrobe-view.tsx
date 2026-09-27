@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { buttonClassName } from "@/components/ui/button";
 import { CATEGORIES } from "@/lib/constants/categories";
-import { DEFAULT_FILTERS, applyFilters, isFiltered, nextSort, uniqueValues } from "./filter-state";
+import type { CategoryId } from "@/lib/types/domain";
+import { DEFAULT_FILTERS, DEFAULT_SORT, applyFilters, isFiltered, nextSort, sortGarments, uniqueValues, type ColumnSort } from "./filter-state";
 import { WardrobeFilters } from "./wardrobe-filters";
 import { useWardrobe } from "./wardrobe-store";
 import { WardrobeTable } from "./wardrobe-table";
@@ -18,6 +19,8 @@ const EMPTY_STEPS = [
 export function WardrobeView() {
   const { garments, drawerId, openDrawer } = useWardrobe();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  // 정렬은 대분류 표마다 따로 둔다. 기본은 최근 구매순.
+  const [sorts, setSorts] = useState<Record<CategoryId, ColumnSort>>({ outer: DEFAULT_SORT, top: DEFAULT_SORT, bottom: DEFAULT_SORT });
   const options = useMemo(
     () => ({
       brands: uniqueValues(garments, (g) => g.brand),
@@ -30,7 +33,7 @@ export function WardrobeView() {
   const empty = garments.length === 0;
   const filtered = isFiltered(filters) && !empty;
   const groups = CATEGORIES.filter((c) => filters.categories.includes(c.id))
-    .map((category) => ({ ...category, items: items.filter((item) => item.categoryId === category.id) }))
+    .map((category) => ({ ...category, items: sortGarments(items.filter((item) => item.categoryId === category.id), sorts[category.id]) }))
     .filter((group) => group.items.length > 0);
 
   return (
@@ -106,8 +109,8 @@ export function WardrobeView() {
               <WardrobeTable
                 categoryId={group.id}
                 items={group.items}
-                sort={filters.sort}
-                onSort={(key) => setFilters({ ...filters, sort: nextSort(filters.sort, key) })}
+                sort={sorts[group.id]}
+                onSort={(key) => setSorts((cur) => ({ ...cur, [group.id]: nextSort(cur[group.id], key) }))}
                 selectedId={drawerId}
                 onOpen={openDrawer}
               />
@@ -125,7 +128,7 @@ export function WardrobeView() {
               <button
                 type="button"
                 className="btn btn-secondary mt-2"
-                onClick={() => setFilters({ ...DEFAULT_FILTERS, sort: filters.sort })}
+                onClick={() => setFilters(DEFAULT_FILTERS)}
               >
                 필터 초기화
               </button>

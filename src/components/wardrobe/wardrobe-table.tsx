@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format/date";
 import { formatPrice } from "@/lib/format/price";
 import type { CategoryId, Garment } from "@/lib/types/domain";
-import { currentSort, type SortableColumn, type WardrobeFilters } from "./filter-state";
+import type { ColumnSort, SortableColumn } from "./filter-state";
 import { GarmentThumbnail } from "./garment-thumbnail";
 
 const cell = "border-r border-neutral-300 px-2 py-2 text-center align-middle";
@@ -24,15 +24,14 @@ export function WardrobeTable({
 }: {
   categoryId: CategoryId;
   items: Garment[];
-  sort: WardrobeFilters["sort"];
+  sort: ColumnSort;
   onSort: (key: SortableColumn) => void;
   selectedId: string | null;
   onOpen: (id: string) => void;
 }) {
   const measurements = TABLE_MEASUREMENTS[categoryId];
-  const cur = currentSort(sort);
   const sortHead = (key: SortableColumn, label: string, className: string, narrow = false) => (
-    <SortHeader key={key} column={key} label={label} active={cur.key === key ? cur.dir : null} onSort={onSort} className={className} narrow={narrow} />
+    <SortHeader key={key} column={key} label={label} active={sort.key === key ? sort.dir : null} onSort={onSort} className={className} narrow={narrow} />
   );
 
   return (

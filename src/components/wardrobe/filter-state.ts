@@ -1,6 +1,5 @@
-import { MEASUREMENT_LABELS, type MeasurementKey } from "@/lib/constants/measurements";
+import type { MeasurementKey } from "@/lib/constants/measurements";
 import { SEASONS } from "@/lib/constants/seasons";
-import type { WardrobeSort } from "@/lib/constants/sort";
 import type { CategoryId, Garment, Season } from "@/lib/types/domain";
 
 /** 표 헤더를 눌러 정렬할 수 있는 열. 이미지·세부분류·제품명은 정렬하지 않는다. */
@@ -13,7 +12,7 @@ export interface ColumnSort {
 
 /**
  * 지금은 화면 확인용 로컬 상태다. 6단계에서 URL searchParams + 서버 조회로 옮긴다.
- * sort는 정렬 Select의 값이거나, 표 헤더를 눌러 만든 열 정렬이다.
+ * 정렬은 필터에 두지 않고 대분류 표마다 따로 둔다(WardrobeView의 sorts).
  */
 export interface WardrobeFilters {
   categories: CategoryId[];
@@ -23,10 +22,10 @@ export interface WardrobeFilters {
   size: string;
   color: string;
   q: string;
-  sort: WardrobeSort | ColumnSort;
 }
 
-export const DEFAULT_SORT: WardrobeSort = "purchased_desc";
+/** 표마다의 기본 정렬: 최근에 산 옷이 위로 */
+export const DEFAULT_SORT: ColumnSort = { key: "purchasedOn", dir: "desc" };
 
 export const DEFAULT_FILTERS: WardrobeFilters = {
   categories: ["outer", "top", "bottom"],
@@ -36,24 +35,10 @@ export const DEFAULT_FILTERS: WardrobeFilters = {
   size: "",
   color: "",
   q: "",
-  sort: DEFAULT_SORT,
 };
 
 export function isFiltered(f: WardrobeFilters): boolean {
   return f.categories.length < 3 || Boolean(f.subcategory || f.brand || f.season || f.size || f.color || f.q);
-}
-
-const PRESET: Record<WardrobeSort, { key: SortableColumn | "created"; dir: SortDirection }> = {
-  purchased_desc: { key: "purchasedOn", dir: "desc" },
-  purchased_asc: { key: "purchasedOn", dir: "asc" },
-  created_desc: { key: "created", dir: "desc" },
-  price_desc: { key: "price", dir: "desc" },
-  price_asc: { key: "price", dir: "asc" },
-};
-
-/** 지금 정렬 기준(열 + 방향) */
-export function currentSort(sort: WardrobeFilters["sort"]): { key: SortableColumn | "created"; dir: SortDirection } {
-  return typeof sort === "string" ? PRESET[sort] : sort;
 }
 
 /** 날짜·가격은 큰 값부터, 나머지는 가나다·작은 값부터 시작한다. */
@@ -62,30 +47,14 @@ const firstDirection = (key: SortableColumn): SortDirection =>
 
 /**
  * 같은 열을 누를 때마다 첫 방향 → 반대 방향 → 기본 정렬(최근 구매순) 순서로 바뀐다.
- * 정렬 Select로 고른 기준과 같은 열을 누르면 반대 방향부터 시작한다.
+ * 기본 정렬 상태에서 구매일을 누르면 반대 방향(오래된 순)부터 시작한다.
  */
-export function nextSort(sort: WardrobeFilters["sort"], key: SortableColumn): WardrobeFilters["sort"] {
-  const cur = currentSort(sort);
+export function nextSort(cur: ColumnSort, key: SortableColumn): ColumnSort {
   const first = firstDirection(key);
   if (cur.key !== key) return { key, dir: first };
   const flipped: SortDirection = cur.dir === "asc" ? "desc" : "asc";
-  if (typeof sort === "string" || cur.dir === first) return { key, dir: flipped };
+  if (cur.dir === first) return { key, dir: flipped };
   return DEFAULT_SORT;
-}
-
-const COLUMN_LABEL: Record<SortableColumn, string> = {
-  ...MEASUREMENT_LABELS,
-  brand: "브랜드",
-  size: "사이즈",
-  color: "컬러",
-  season: "시즌",
-  purchasedOn: "구매일",
-  price: "구매가",
-};
-
-/** 헤더 정렬 중일 때 정렬 Select에 보여줄 이름. 예: "브랜드 오름차순" */
-export function columnSortLabel(sort: ColumnSort): string {
-  return `${COLUMN_LABEL[sort.key].replace("단면", "")} ${sort.dir === "asc" ? "오름차순" : "내림차순"}`;
 }
 
 const LETTER_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"];
@@ -116,7 +85,7 @@ function sortValue(g: Garment, key: SortableColumn): string | number | null {
 
 export function applyFilters(items: Garment[], f: WardrobeFilters): Garment[] {
   const q = f.q.trim().toLowerCase();
-  const filtered = items.filter(
+  return items.filter(
     (item) =>
       f.categories.includes(item.categoryId) &&
       (!f.subcategory || item.subcategoryId === f.subcategory) &&
@@ -126,15 +95,14 @@ export function applyFilters(items: Garment[], f: WardrobeFilters): Garment[] {
       (!f.color || item.colorName === f.color) &&
       (!q || `${item.brand} ${item.productName}`.toLowerCase().includes(q)),
   );
+}
 
-  const { key, dir } = currentSort(f.sort);
-  const value = (g: Garment) => (key === "created" ? items.indexOf(g) : sortValue(g, key));
+/** 표 하나를 정렬한 새 배열. 값이 없는 항목은 정렬 방향과 관계없이 뒤로 보낸다. */
+export function sortGarments(items: Garment[], { key, dir }: ColumnSort): Garment[] {
   const sign = dir === "asc" ? 1 : -1;
-
-  // 값이 없는 항목은 정렬 방향과 관계없이 뒤로 보낸다.
-  return filtered.sort((a, b) => {
-    const va = value(a);
-    const vb = value(b);
+  return items.slice().sort((a, b) => {
+    const va = sortValue(a, key);
+    const vb = sortValue(b, key);
     if (va == null && vb == null) return 0;
     if (va == null) return 1;
     if (vb == null) return -1;

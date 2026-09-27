@@ -2,11 +2,9 @@
 
 import { CATEGORIES, SUBCATEGORIES } from "@/lib/constants/categories";
 import { SEASONS } from "@/lib/constants/seasons";
-import { SORT_OPTIONS, type WardrobeSort } from "@/lib/constants/sort";
 import type { CategoryId, Season } from "@/lib/types/domain";
 import {
   DEFAULT_FILTERS,
-  columnSortLabel,
   isFiltered,
   type WardrobeFilters as Filters,
 } from "./filter-state";
@@ -56,25 +54,6 @@ export function WardrobeFilters({
           value={value.q}
           onChange={(e) => set("q", e.target.value)}
         />
-        <div className="ml-auto flex items-center gap-2">
-          <label htmlFor="wardrobe-sort" className="text-sm text-neutral-700">
-            정렬
-          </label>
-          <select
-            id="wardrobe-sort"
-            className="input w-37.5"
-            value={typeof value.sort === "string" ? value.sort : "column"}
-            onChange={(e) => set("sort", e.target.value as WardrobeSort)}
-          >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-            {/* 표 헤더로 정렬한 동안에만 보이는 항목. 다른 정렬을 고르면 헤더 정렬이 풀린다. */}
-            {typeof value.sort !== "string" && <option value="column">{columnSortLabel(value.sort)}</option>}
-          </select>
-        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -96,7 +75,7 @@ export function WardrobeFilters({
         <FilterSelect label="사이즈" width="w-30" value={value.size} onChange={(v) => set("size", v)} options={toOptions(options.sizes)} />
         <FilterSelect label="컬러" width="w-32.5" value={value.color} onChange={(v) => set("color", v)} options={toOptions(options.colors)} />
         {isFiltered(value) && (
-          <button type="button" className="btn btn-ghost text-sm" onClick={() => onChange({ ...DEFAULT_FILTERS, sort: value.sort })}>
+          <button type="button" className="btn btn-ghost text-sm" onClick={() => onChange(DEFAULT_FILTERS)}>
             필터 초기화
           </button>
         )}
