@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ImportFailureCode } from "@/lib/import/messages";
 import type { Database, Json } from "@/lib/supabase/database.types";
+import { aiSizeChart } from "./ai-size-chart";
 import { analyzeProductUrl, type AnalyzeStage } from "./analyze";
 import { ImportError, type NormalizedProduct } from "./types";
 import { normalizeProductUrl } from "./url";
@@ -14,7 +15,7 @@ import { normalizeProductUrl } from "./url";
 export const IMPORT_REUSE_MINUTES = 10;
 export const IMPORT_DAILY_LIMIT = 30;
 /** 분석 방식이 바뀌면 올린다. 이전 방식의 결과는 다시 쓰지 않는다(product_imports.parser_version). */
-export const IMPORT_ENGINE_VERSION = "v2";
+export const IMPORT_ENGINE_VERSION = "v3";
 
 type Client = SupabaseClient<Database>;
 
@@ -98,7 +99,7 @@ export async function runImport(
 
   let outcome: ImportOutcome;
   try {
-    const result = await analyzeProductUrl(normalizedUrl.toString(), { normalize: { knownBrands }, onStage });
+    const result = await analyzeProductUrl(normalizedUrl.toString(), { normalize: { knownBrands }, onStage, extractSizeChart: aiSizeChart });
     const found = Boolean(result.product.productName);
     outcome = {
       ...base,

@@ -1,9 +1,13 @@
+import { load } from "cheerio";
 import { textOrUndefined } from "../normalize/text";
 import type { ParseContext, ProductParser, RawProduct, RawSizeChart } from "../types";
+import { blockText, findSizeTable, imagesIn } from "./helpers";
+import { sizeChartFromText } from "./size-text";
 
 /**
  * 무신사(www.musinsa.com/products/{번호}) 전용 parser.
- * - 제품명·브랜드·사진: 페이지에 들어 있는 상품 상태 JSON(window.__MSS__ 등)과 msscdn 이미지 주소
+ * - 제품명·브랜드·사진: 페이지에 들어 있는 상품 상태 JSON(window.__MSS__ 등)과 msscdn 이미지 주소.
+ *   사진이 적으면 상품 JSON(goods-detail.musinsa.com/api2/goods/{번호})도 읽고, 상세 설명 HTML의 사진도 더한다.
  * - 실측: 상품 페이지와 별도로 오는 공개 JSON(goods-detail.musinsa.com)
  * 무신사는 데이터센터 IP를 막아 개발 환경에서 실제 페이지를 받아 볼 수 없었다. 그래서 여러 모양을 받아들이도록 넓게 읽고,
  * 어떤 경로로 값을 얻었는지 diagnostics에 남겨 배포 환경의 결과로 고친다.
@@ -14,7 +18,7 @@ const isObj = (v: unknown): v is Obj => Boolean(v) && typeof v === "object" && !
 const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v.trim() : typeof v === "number" ? String(v) : undefined);
 
 const IMAGE_HOST = "https://image.msscdn.net";
-const MAX_IMAGES = 12;
+const MAX_IMAGES = 20;
 
 /** 상품 번호: /products/123, /app/goods/123, /goods/123 */
 export function musinsaGoodsNo(url: URL): string | undefined {
@@ -118,6 +122,26 @@ export function scanImageUrls(html: string, goodsNo: string | undefined): string
   return [...own.filter((u) => u.includes("/goods_img/")), ...own.filter((u) => u.includes("/prd_img/"))];
 }
 
+/** JSON 안의 상대 경로 사진(/images/goods_img/...)까지 포함해 이 상품 번호가 든 msscdn 사진 주소 */
+export function scanStateImages(json: unknown, goodsNo: string | undefined): string[] {
+  if (!json || !goodsNo) return [];
+  const text = JSON.stringify(json);
+  const re = /(?:https?:)?(?:\/\/image\.msscdn\.net)?\/(?:thumbnails\/)?images\/(?:goods_img|prd_img)\/[^"'\s)<>\\]+?\.(?:jpe?g|png|webp)/gi;
+  const found = (text.match(re) ?? []).map((u) => imageUrl(u)).filter((u): u is string => Boolean(u));
+  const own = found.filter((u) => u.includes(`/${goodsNo}/`) || u.includes(`/${goodsNo}_`));
+  return [...own.filter((u) => u.includes("/goods_img/")), ...own.filter((u) => u.includes("/prd_img/"))];
+}
+
+/** JSON 안에 HTML로 든 긴 문자열(상세 설명 goodsContents 등). [키, HTML] */
+function htmlStrings(node: unknown, key = "", depth = 0, out: Array<[string, string]> = []): Array<[string, string]> {
+  if (depth > 10 || out.length >= 5) return out;
+  if (typeof node === "string") {
+    if (node.length > 80 && /<(img|table|p|div|br)\b/i.test(node)) out.push([key, node]);
+  } else if (Array.isArray(node)) node.forEach((v) => htmlStrings(v, key, depth + 1, out));
+  else if (isObj(node)) for (const [k, v] of Object.entries(node)) htmlStrings(v, k, depth + 1, out);
+  return out;
+}
+
 /** 상품 상태 JSON에서 필요한 값 */
 function fromState(state: Obj | undefined) {
   if (!state) return {};
@@ -200,10 +224,33 @@ export const musinsaParser: ProductParser = {
         }
       })();
     const state = findObject(stateJson, (o) => "goodsNm" in o || ("goodsNo" in o && "brandInfo" in o));
-    diagnostics.state = state ? Object.keys(state).slice(0, 40) : stateJson ? "json_without_goods" : "none";
-    const s = fromState(state);
+    diagnostics.state = state ? Object.keys(state).slice(0, 150) : stateJson ? "json_without_goods" : "none";
+    let s = fromState(state);
+    let images = dedupeImages([...(s.images ?? []), ...scanStateImages(stateJson, goodsNo), ...scanImageUrls(ctx.html, goodsNo)]);
+    diagnostics.stateImages = images.length;
 
-    const images = dedupeImages([...(s.images ?? []), ...scanImageUrls(ctx.html, goodsNo)]);
+    // 사진이 적거나 상태 JSON이 없으면 상품 JSON을 따로 받는다(실측 JSON과 같은 공개 호스트).
+    let goodsJson: unknown;
+    if (goodsNo && (images.length < 4 || !state)) {
+      try {
+        goodsJson = await ctx.fetchJson(`${API_HOST}/api2/goods/${goodsNo}`);
+        const goods = findObject(goodsJson, (o) => "goodsNm" in o || ("goodsNo" in o && ("goodsImages" in o || "thumbnailImageUrl" in o)));
+        diagnostics.goodsApi = goods ? Object.keys(goods).slice(0, 150) : isObj(goodsJson) ? Object.keys(goodsJson).slice(0, 20) : "not_object";
+        if (goods) {
+          const g = fromState(goods);
+          s = { ...g, ...Object.fromEntries(Object.entries(s).filter(([, v]) => v != null && !(Array.isArray(v) && !v.length))) };
+          images = dedupeImages([...images, ...(g.images ?? []), ...scanStateImages(goodsJson, goodsNo)]);
+        }
+      } catch (e) {
+        diagnostics.goodsApi = { error: e instanceof Error ? e.message.slice(0, 120) : "error" };
+      }
+    }
+
+    // 상세 설명 HTML(상태 JSON·상품 JSON 안의 문자열): 사진과, 글·표로 적힌 실측
+    const contents = [...htmlStrings(state), ...htmlStrings(goodsJson)];
+    diagnostics.contents = contents.map(([k, html]) => `${k}:${html.length}`);
+    const contentDocs = contents.map(([, html]) => load(html));
+    for (const $c of contentDocs) images = dedupeImages([...images, ...imagesIn($c, "body", ctx.url)]);
     diagnostics.images = images.length;
 
     let sizeChart: RawSizeChart | undefined;
@@ -221,6 +268,15 @@ export const musinsaParser: ProductParser = {
       }
     }
     diagnostics.actualSize = tried;
+    if (!sizeChart) {
+      for (const $c of contentDocs) {
+        sizeChart = findSizeTable($c) ?? sizeChartFromText(blockText($c));
+        if (sizeChart) {
+          diagnostics.sizeFrom = "contents";
+          break;
+        }
+      }
+    }
 
     return {
       productName: textOrUndefined(s.productName ?? cleanMusinsaTitle(ctx.$('meta[property="og:title"]').attr("content")), 200),
@@ -229,6 +285,7 @@ export const musinsaParser: ProductParser = {
       categoryHints: s.categoryHints,
       sizeChart,
       sizeOptions: sizeChart?.rows.map((r) => r[0]).filter(Boolean),
+      detailText: contentDocs.map(($c) => blockText($c)).join("\n").slice(0, 15_000) || undefined,
       diagnostics,
     };
   },

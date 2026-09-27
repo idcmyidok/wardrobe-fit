@@ -1,8 +1,9 @@
 import { createParseContext } from "./context";
 import { safeFetch, type FetchOptions } from "./fetcher";
 import { normalizeProduct, type NormalizeOptions } from "./normalize";
+import { sizeSnippet } from "./parsers/size-text";
 import { runParsers } from "./registry";
-import { ImportError, type NormalizedProduct } from "./types";
+import { ImportError, type NormalizedProduct, type RawSizeChart } from "./types";
 import { normalizeProductUrl } from "./url";
 
 /**
@@ -41,7 +42,13 @@ function statusOf(p: NormalizedProduct): AnalyzeResult["status"] {
 
 export async function analyzeProductUrl(
   input: string,
-  options: { fetch?: FetchOptions; normalize?: NormalizeOptions; onStage?: (stage: AnalyzeStage) => void } = {},
+  options: {
+    fetch?: FetchOptions;
+    normalize?: NormalizeOptions;
+    onStage?: (stage: AnalyzeStage) => void;
+    /** 규칙으로 사이즈표를 못 찾았을 때 본문의 사이즈 관련 글을 표로(AI). 없거나 실패하면 건너뛴다. */
+    extractSizeChart?: (snippet: string) => Promise<RawSizeChart | undefined>;
+  } = {},
 ): Promise<AnalyzeResult> {
   const started = Date.now();
   const url = normalizeProductUrl(input);
@@ -60,6 +67,19 @@ export async function analyzeProductUrl(
   const ctx = createParseContext(page.url, page.body, fetchJson);
   const run = await runParsers(ctx);
   options.onStage?.("normalizing");
+  const snippet = !run.product.sizeChart && options.extractSizeChart && run.product.detailText ? sizeSnippet(run.product.detailText) : undefined;
+  if (snippet) {
+    try {
+      const chart = await options.extractSizeChart!(snippet);
+      run.diagnostics.ai = { sizeChart: Boolean(chart), snippet: snippet.length };
+      if (chart) {
+        run.product.sizeChart = chart;
+        run.sources.sizeChart = "ai";
+      }
+    } catch (e) {
+      run.diagnostics.ai = { error: e instanceof Error ? e.message.slice(0, 120) : "error" };
+    }
+  }
   const siteName = ctx.$('meta[property="og:site_name"]').attr("content");
   const product = normalizeProduct(run.product, run.sources, { siteName, ...options.normalize });
   if (Object.keys(run.diagnostics).length) product.diagnostics = run.diagnostics;

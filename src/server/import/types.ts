@@ -72,7 +72,7 @@ export interface ImportWarning {
 
 export type ExtractedSource = "site" | "platform" | "json_ld" | "open_graph" | "meta" | "heuristic" | "ai";
 
-/** 자동으로 채운 값과 그 출처. 검토 화면에서 "자동" 배지와 확인 필요 표시에 쓴다. */
+/** 자동으로 채운 값과 그 출처(분석 기록용) */
 export interface Extracted<T> {
   value: T;
   source: ExtractedSource;

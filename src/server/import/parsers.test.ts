@@ -53,8 +53,10 @@ describe("generic parser: OpenGraph + 휴리스틱", () => {
       measurements: { length: 102, waist: 38, hip: 50.5, thigh: 32, rise: 30, legOpening: 24 },
     });
     expect(p.warnings.map((w) => w.code)).toEqual(
-      expect.arrayContaining(["circumference_converted", "range_value_averaged", "size_chart_unmapped_columns"]),
+      expect.arrayContaining(["circumference_converted", "range_value_averaged"]),
     );
+    // 옷장에서 쓰지 않는 열을 뺐다는 안내는 하지 않는다.
+    expect(p.warnings.map((w) => w.code)).not.toContain("size_chart_unmapped_columns");
   });
 });
 
@@ -149,5 +151,69 @@ describe("site parser: 무신사", () => {
     const tried = (run.diagnostics.musinsa as { actualSize: Array<{ ok: boolean }> }).actualSize;
     expect(tried).toHaveLength(2);
     expect(tried.every((t) => !t.ok)).toBe(true);
+  });
+});
+
+describe("페이지 사진 여러 장", () => {
+  it("Cafe24: 추가 사진(썸네일→큰 사진)과 상세 설명의 지연 로딩 사진을 모으고, 관련 상품 사진은 뺀다", async () => {
+    const html = fixture("cafe24.html").replace(
+      '<div id="prdDetail">',
+      `<div class="xans-product-addimage"><ul>
+         <li><img src="//cafemall.com/web/product/extra/small/202609/a1.jpg" class="ThumbImage"></li>
+         <li><img src="//cafemall.com/web/product/extra/small/202609/a2.jpg" class="ThumbImage"></li>
+       </ul></div>
+       <div class="xans-product-relation"><img src="//cafemall.com/web/product/medium/other.jpg"></div>
+       <div id="prdDetail">
+         <img src="/web/upload/loading.gif" ec-data-src="/web/upload/NNEditor/detail-1.jpg">
+         <img src="/web/upload/icon_new.png" width="30">`,
+    );
+    const { product: p } = await analyze("https://cafemall.com/product/detail.html?product_no=12", html);
+    expect(p.imageUrls).toEqual([
+      "https://cafemall.com/web/product/big/jacket.jpg",
+      "https://cafemall.com/web/product/extra/big/202609/a1.jpg",
+      "https://cafemall.com/web/product/extra/big/202609/a2.jpg",
+      "https://cafemall.com/web/upload/NNEditor/detail-1.jpg",
+    ]);
+  });
+
+  it("앞 parser가 사진 하나만 찾아도 JSON-LD 사진을 이어 붙인다(같은 사진의 다른 크기는 하나로)", async () => {
+    const html = fixture("cafe24.html").replace(
+      "</head>",
+      `<script type="application/ld+json">{"@type":"Product","name":"x","image":["https://cafemall.com/web/product/medium/jacket.jpg","https://cafemall.com/web/product/extra/big/back.jpg"]}</script></head>`,
+    );
+    const { product: p } = await analyze("https://cafemall.com/product/detail.html?product_no=12", html);
+    expect(p.imageUrls).toEqual(["https://cafemall.com/web/product/big/jacket.jpg", "https://cafemall.com/web/product/extra/big/back.jpg"]);
+  });
+
+  it("무신사: 상세 설명 HTML의 사진과 글 실측, 사진이 적으면 상품 JSON의 사진까지", async () => {
+    const html = fixture("musinsa.html").replace(
+      '"note":',
+      `"goodsContents":"<p><img src=\\"https://image.msscdn.net/data/brand/20240312/body1.jpg\\"></p><p>M : 총장 72 / 어깨 46 / 가슴 58 / 소매 63</p>","note":`,
+    );
+    const { run, product: p } = await analyze("https://www.musinsa.com/products/6081265", html, {
+      "https://goods-detail.musinsa.com/api2/goods/6081265": {
+        data: { goodsNo: 6081265, goodsNm: "Rolled up check shirt BLACK", goodsImages: [{ imageUrl: "/images/prd_img/20240312/6081265/detail_6081265_extra9_500.jpg" }] },
+      },
+    });
+    expect(p.imageUrls).toEqual([
+      "https://image.msscdn.net/images/goods_img/20240312/6081265/6081265_17102345678901_500.jpg",
+      "https://image.msscdn.net/images/prd_img/20240312/6081265/detail_6081265_17102345678902_500.jpg",
+      "https://image.msscdn.net/images/prd_img/20240312/6081265/detail_6081265_17102345678903_500.jpg",
+      "https://image.msscdn.net/images/prd_img/20240312/6081265/detail_6081265_extra9_500.jpg",
+      "https://image.msscdn.net/data/brand/20240312/body1.jpg",
+    ]);
+    expect(p.sizeChart?.rows).toEqual([{ sizeLabel: "M", measurements: { length: 72, shoulder: 46, chest: 58, sleeve: 63 } }]);
+    expect(run.diagnostics.musinsa).toMatchObject({ sizeFrom: "contents" });
+  });
+});
+
+describe("글로 적힌 실측(표가 없는 상세 설명)", () => {
+  it("generic: 상세 영역의 글에서 사이즈표를 만든다", async () => {
+    const html = `<html><head><meta property="og:title" content="코튼 셔츠"></head><body>
+      <div class="product-detail"><p>SIZE</p><p>S - 총장 70 / 어깨 45 / 가슴 52 / 소매 60</p><p>M - 총장 72 / 어깨 47 / 가슴 55 / 소매 61.5</p></div>
+    </body></html>`;
+    const { product: p } = await analyze("https://shop.example.com/p/2", html);
+    expect(p.sizeChart?.rows.map((r) => r.sizeLabel)).toEqual(["S", "M"]);
+    expect(p.sizeChart?.rows[1].measurements).toEqual({ length: 72, shoulder: 47, chest: 55, sleeve: 61.5 });
   });
 });

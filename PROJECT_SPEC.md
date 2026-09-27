@@ -353,8 +353,8 @@ middleware.ts                 # 세션 갱신 + 보호 Route
 1. URL 입력 → `분석` 클릭.
 2. 분석 중: 입력창 아래 단계 표시("페이지 불러오는 중 → 상품 정보 읽는 중 → 정리 중"). 최대 20초. `취소` 가능.
 3. 성공: 같은 페이지에서 **검토 Form**으로 전환.
-   - 각 필드 옆에 출처 표시: `자동` (추출값), `수정됨` (사용자가 바꿈), 빈 값은 `입력 필요`.
-   - 신뢰도가 낮은 추출값(generic parser, AI 추출)은 필드에 옅은 강조 + "확인 필요" 문구.
+   - 필드 옆에 `자동`·`수정됨`·`확인 필요` 같은 출처 배지를 달지 않는다(사용자 결정 2026-09-27). 몇 개 항목을 가져왔는지, 옷장에서 쓰지 않는 열(암홀 등)을 뺐다는 안내도 하지 않는다.
+   - **사진 고르기**: 페이지에서 찾은 사진(대표·추가·상세 설명 사진, 최대 20장)을 모두 목록으로 보여주고 사용자가 고른다. 기본은 첫 사진. 받지 못했거나 아이콘처럼 작은 사진은 목록에서 숨긴다.
    - **구매한 사이즈 선택**: 추출된 사이즈 옵션을 버튼 목록으로 보여준다. 사이즈를 고르면 사이즈표에서 해당 사이즈의 실측을 실측 필드에 채운다(사용자가 직접 잰 값으로 덮어쓸 수 있음).
    - **구매한 컬러 선택**: 추출된 컬러 옵션 목록 중 선택 → 컬러명 필드에 채운다. 직접 입력 가능.
    - 대분류를 바꾸면 실측 필드 세트가 바뀐다(상의·아우터 ↔ 하의). 입력했던 값이 사라지는 경우 확인을 받는다.
@@ -1140,8 +1140,10 @@ const aiParser: ProductParser = aiStructuredExtractor;    // 선택적 fallback
 |---|---|
 | Site-specific | 쇼핑몰별 구조(내장 JSON 상태, 공개 상품 API 응답, 옵션·사이즈표 DOM) 사용. 대상 쇼핑몰의 실제 구조는 개발 8단계에서 조사 후 결정한다. 1차 후보: 무신사, 29CM, W컨셉. |
 | Platform | Shopify: 상품 JSON 엔드포인트(`/products/{handle}.json` 류)와 JSON-LD. Cafe24: 공통 DOM/스크립트 변수 패턴. |
-| Generic | ① JSON-LD `Product`(name, brand, image, offers.price, color) ② OpenGraph(`og:title`, `og:image`, `product:price:amount`) ③ meta 태그 ④ Heuristic: `<select>`/옵션 버튼 텍스트에서 컬러·사이즈 후보, "사이즈", "실측" 근처의 `<table>`을 사이즈표 후보로 추출. |
-| AI 구조화 추출 | 정제된 텍스트(스크립트/스타일 제거, 최대 약 15,000자)를 신뢰할 수 없는 데이터로 감싸 전달하고, 정해진 JSON 스키마로만 출력받는다. 결과 필드는 모두 `confidence: 'low'`로 표시해 사용자 확인을 요구한다. |
+| Generic | ① JSON-LD `Product`(name, brand, image, offers.price, color) ② OpenGraph(`og:title`, `og:image`, `product:price:amount`) ③ meta 태그 ④ Heuristic: `<select>`/옵션 버튼 텍스트에서 컬러·사이즈 후보, `<table>` 사이즈표 → 스크립트·`<template>` 안에 숨긴 표("더보기") → 글로 적힌 사이즈(`parsers/size-text.ts`: "M : 총장 70 / 어깨 50", 사이즈 줄 아래 항목 줄, 글자 표, 원사이즈). 상품 사진 영역·상세 설명의 사진(지연 로딩 속성 포함)도 모은다. |
+| AI 구조화 추출 | 지금은 사이즈표만: 규칙으로 사이즈표를 못 찾았을 때 본문에서 사이즈 관련 줄(약 3,000자)만 신뢰할 수 없는 데이터로 감싸 보내고(`import/ai-size-chart.ts`, 제공자는 17.3과 같음), 정해진 JSON 스키마로만 받는다. 숫자는 적힌 그대로 받고 변환은 14장 규칙이 한다. |
+
+- 사진은 모든 parser가 찾은 것을 이어 붙인다(다른 필드는 앞 parser 값 우선). 같은 사진의 크기별 주소는 하나로 합친다.
 
 - 무신사(`parsers/musinsa.ts`): 페이지의 상품 상태 JSON(`window.__MSS__.product.state` 등)에서 제품명·브랜드·사진 여러 장, 페이지의 `image.msscdn.net` 상품 사진 주소, 실측은 `goods-detail.musinsa.com`의 공개 JSON. 제목 꼬리("- 사이즈 & 후기 | 무신사")는 뗀다. 개발 환경은 무신사가 막아서 배포 환경의 `product_imports.result.diagnostics`로 어떤 경로가 통했는지 확인한다.
 
