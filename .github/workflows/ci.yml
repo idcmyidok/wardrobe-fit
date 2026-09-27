@@ -27,7 +27,18 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
-      - run: npm run build
+      - name: 빌드(가짜 비밀 값으로)
+        run: npm run build
+        env:
+          ANTHROPIC_API_KEY: sk-ant-bundle-check-not-a-real-key
+          GEMINI_API_KEY: gemini-bundle-check-not-a-real-key
+          SUPABASE_SERVICE_ROLE_KEY: service-role-bundle-check-not-a-real-key
+      - name: 비밀 값이 브라우저 번들에 없는지 검사
+        run: npm run check:bundle
+        env:
+          ANTHROPIC_API_KEY: sk-ant-bundle-check-not-a-real-key
+          GEMINI_API_KEY: gemini-bundle-check-not-a-real-key
+          SUPABASE_SERVICE_ROLE_KEY: service-role-bundle-check-not-a-real-key
 
   e2e:
     runs-on: ubuntu-latest
