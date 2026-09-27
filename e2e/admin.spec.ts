@@ -47,8 +47,9 @@ test("관리자는 통계를 보고 사용자를 정지·해제·삭제한다", 
   await memberPage.goto("/wardrobe");
   await expect(memberPage).toHaveURL(/\/\?error=suspended$/);
   await expect(memberPage.getByText("이용이 정지된 계정입니다.")).toBeVisible();
+  // 정지된 계정의 로그인은 Supabase가 일반 로그인 실패로 돌려준다(정지 여부를 알리지 않음).
   await login(memberPage, member);
-  await expect(memberPage.getByText("이용이 정지된 계정입니다.")).toBeVisible();
+  await expect(memberPage.getByRole("alert")).toBeVisible();
   await expect(memberPage).not.toHaveURL(/\/wardrobe/);
 
   // 해제하면 다시 로그인할 수 있다.
