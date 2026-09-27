@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { UnitInput } from "@/components/ui/input";
 import { CATEGORY_NAME, SUBCATEGORIES, SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { formatCm, measurementFields } from "@/lib/constants/measurements";
-import { SEASONS, SEASON_NAME } from "@/lib/constants/seasons";
+import { SEASONS, SEASON_NAME, toggleSeason } from "@/lib/constants/seasons";
 import { formatDate } from "@/lib/format/date";
 import { formatPrice } from "@/lib/format/price";
 import type { CategoryId, Garment, Measurements, Season } from "@/lib/types/domain";
@@ -380,7 +380,7 @@ function InfoEditor({
                     onChange={() =>
                       setField(
                         "seasons",
-                        info.seasons.includes(s.id) ? info.seasons.filter((x) => x !== s.id) : [...info.seasons, s.id],
+                        toggleSeason(info.seasons, s.id),
                       )
                     }
                   />
