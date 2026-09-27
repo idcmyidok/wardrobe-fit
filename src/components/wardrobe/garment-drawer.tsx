@@ -90,7 +90,7 @@ function DrawerBody({ garment: g }: { garment: Garment }) {
     updateGarment(g.id, {
       categoryId: info.categoryId,
       subcategoryId: info.subcategoryId || null,
-      brand: info.brand || g.brand,
+      brand: info.brand.trim(),
       productName: info.productName || g.productName,
       sizeLabel: info.sizeLabel || null,
       colorName: info.colorName || null,
@@ -166,7 +166,7 @@ function DrawerBody({ garment: g }: { garment: Garment }) {
                 <div className="grid grid-cols-[112px_1fr] gap-5">
                   <div className="aspect-[4/5] bg-neutral-200" />
                   <div className="flex min-w-0 flex-col gap-1.5">
-                    <span className="text-base font-semibold">{g.brand}</span>
+                    {g.brand && <span className="text-base font-semibold">{g.brand}</span>}
                     <h2 className="text-xl leading-tight">{g.productName}</h2>
                     <div className="mt-1 flex flex-wrap gap-1.5">
                       <span className="tag tag-neutral tabular-nums">사이즈 {g.sizeLabel || "—"}</span>
@@ -275,7 +275,7 @@ function DrawerBody({ garment: g }: { garment: Garment }) {
               이 옷을 삭제할까요?
             </div>
             <div className="text-base text-neutral-800">
-              {g.brand} {g.productName}의 실측과 착용 후기가 함께 삭제됩니다. 5초 안에는 실행 취소할 수 있습니다.
+              {[g.brand, g.productName].filter(Boolean).join(" ")}의 실측과 착용 후기가 함께 삭제됩니다. 5초 안에는 실행 취소할 수 있습니다.
             </div>
             <div className="mt-2 flex justify-end gap-2">
               <button type="button" className="btn btn-secondary" autoFocus onClick={() => setConfirmDelete(false)}>

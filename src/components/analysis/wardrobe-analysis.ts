@@ -61,7 +61,7 @@ export function priceSummary(G: Garment[]) {
     tierBody: tier[2] + tail,
     cats,
     avg: priced.length ? won(Math.round(avg)) : "—",
-    topItem: top ? `${top.brand} ${top.productName} · ${man(top.purchasePrice ?? 0)}원` : "—",
+    topItem: top ? `${[top.brand, top.productName].filter(Boolean).join(" ")} · ${man(top.purchasePrice ?? 0)}원` : "—",
   };
 }
 
@@ -102,7 +102,7 @@ export function monthlySummary(G: Garment[]) {
     topMonthNote: top
       ? dated
           .filter((g) => g.purchasedOn!.startsWith(top.k))
-          .map((g) => `${g.brand} ${g.productName}`)
+          .map((g) => [g.brand, g.productName].filter(Boolean).join(" "))
           .join(", ")
       : "구매일이 있는 옷이 없습니다.",
     span: months.length ? `${months.length}개월 중 ${active}개월 구매` : "",
@@ -158,10 +158,11 @@ export function brandSummary(G: Garment[], tab: CategoryTab) {
   const pool = G.filter((g) => tab === "all" || g.categoryId === tab);
   const map = new Map<string, { count: number; amount: number }>();
   pool.forEach((g) => {
-    const o = map.get(g.brand) ?? { count: 0, amount: 0 };
+    const key = g.brand || "미입력";
+    const o = map.get(key) ?? { count: 0, amount: 0 };
     o.count++;
     o.amount += g.purchasePrice ?? 0;
-    map.set(g.brand, o);
+    map.set(key, o);
   });
   const list = [...map.entries()].sort((a, b) => b[1].count - a[1].count || b[1].amount - a[1].amount);
   const slices = toSlices(
@@ -169,13 +170,16 @@ export function brandSummary(G: Garment[], tab: CategoryTab) {
     pool.length,
   );
   let message = "등록한 옷이 없습니다.";
-  if (list.length) {
-    const [b1, o1] = list[0];
-    const byAmount = list.slice().sort((a, b) => b[1].amount - a[1].amount)[0];
+  // 브랜드를 비워 둔 옷은 도넛에는 "미입력"으로 넣고, 문장에는 쓰지 않는다.
+  const named = list.filter(([k]) => k !== "미입력");
+  if (list.length && !named.length) message = "브랜드를 입력한 옷이 없습니다.";
+  if (named.length) {
+    const [b1, o1] = named[0];
+    const byAmount = named.slice().sort((a, b) => b[1].amount - a[1].amount)[0];
     message =
       o1.count >= 2 && o1.count / (pool.length || 1) >= 0.25
         ? `${b1}의 팬이시군요. ${tabName(tab)}에서 ${o1.count}벌로 가장 많습니다.`
-        : `${list.length}개 브랜드를 고르게 입는 편식 없는 옷장입니다.`;
+        : `${named.length}개 브랜드를 고르게 입는 편식 없는 옷장입니다.`;
     if (byAmount[1].amount && byAmount[0] !== b1) message += ` 가장 많이 쓴 브랜드는 ${byAmount[0]}(${man(byAmount[1].amount)}원)입니다.`;
   }
   return { message, slices, total: list.length, totalLabel: `${tabLabel(tab)} · ${pool.length}벌` };

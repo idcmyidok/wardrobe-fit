@@ -277,7 +277,7 @@ export function FitCheckView() {
                   <th className="text-right text-text">신규 {sizeLabel === "—" ? "" : sizeLabel}</th>
                   {included.map((c) => (
                     <th key={c.id} className="text-right">
-                      {c.brand === "Engineered Garments" ? "EG" : c.brand} {c.sizeLabel}
+                      {c.brand === "Engineered Garments" ? "EG" : c.brand || c.productName} {c.sizeLabel}
                     </th>
                   ))}
                   <th className="text-right">만족 범위</th>
@@ -341,7 +341,7 @@ export function FitCheckView() {
                 .map((c) => (
                   <figure key={c.id} className="flex flex-col gap-2 border-b border-neutral-300 py-4">
                     <span className="text-sm text-neutral-700">
-                      {c.brand} {c.productName} {c.sizeLabel ?? ""}
+                      {[c.brand, c.productName, c.sizeLabel].filter(Boolean).join(" ")}
                     </span>
                     <blockquote className="text-lead">“{c.fitReview}”</blockquote>
                   </figure>
@@ -362,7 +362,7 @@ export function FitCheckView() {
                 <div className="h-12.5 w-10 bg-neutral-200" />
                 <div className="flex min-w-0 flex-col">
                   <span className="text-base font-semibold">
-                    {c.brand} <span className="font-normal">{c.sizeLabel}</span>
+                    {c.brand || "—"} <span className="font-normal">{c.sizeLabel}</span>
                   </span>
                   <span className="text-base">{c.productName}</span>
                   <span className="text-xs text-neutral-700">
@@ -579,13 +579,13 @@ export function FitCheckView() {
                         <td>
                           <input
                             type="checkbox"
-                            aria-label={`${c.brand} ${c.productName} 비교에 포함`}
+                            aria-label={`${[c.brand, c.productName].filter(Boolean).join(" ")} 비교에 포함`}
                             checked={!excluded.includes(c.id)}
                             onChange={() => setExcluded((ex) => (ex.includes(c.id) ? ex.filter((x) => x !== c.id) : [...ex, c.id]))}
                             className="size-4 accent-accent"
                           />
                         </td>
-                        <td className="font-semibold whitespace-nowrap">{c.brand}</td>
+                        <td className="font-semibold whitespace-nowrap">{c.brand || "—"}</td>
                         <td>{c.productName}</td>
                         <td className="font-mono tabular-nums">{c.sizeLabel}</td>
                         <td className="text-right font-mono whitespace-nowrap tabular-nums">

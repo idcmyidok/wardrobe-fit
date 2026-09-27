@@ -164,9 +164,9 @@ export function NewGarmentView() {
   );
 
   const register = () => {
-    // 브랜드·제품명은 필수: 비어 있으면 등록하지 않고 해당 칸으로 보낸다.
-    if (!form.brand.trim() || !form.productName.trim()) {
-      document.getElementById(form.brand.trim() ? "f-name" : "f-brand")?.focus();
+    // 제품명은 필수(브랜드는 비워도 된다): 비어 있으면 등록하지 않고 제품명 칸으로 보낸다.
+    if (!form.productName.trim()) {
+      document.getElementById("f-name")?.focus();
       return;
     }
     const measurements: Measurements = {};
@@ -196,8 +196,8 @@ export function NewGarmentView() {
   };
 
   const hint =
-    !form.brand.trim() || !form.productName.trim()
-      ? "브랜드와 제품명은 꼭 입력해야 합니다."
+    !form.productName.trim()
+      ? "제품명은 꼭 입력해야 합니다."
       : isReview && !form.size
         ? "구매한 사이즈를 선택하세요."
         : "등록 전까지 저장되지 않습니다.";

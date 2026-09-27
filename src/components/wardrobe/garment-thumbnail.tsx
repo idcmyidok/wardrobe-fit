@@ -1,8 +1,8 @@
 import { cn } from "@/lib/cn";
 import type { Garment } from "@/lib/types/domain";
 
-/** 옷 사진 자리. 이미지가 없으면 중립 배경 + 브랜드 이니셜 (PROJECT_SPEC.md 20장). */
-export function GarmentThumbnail({ item, className }: { item: Pick<Garment, "brand" | "imageUrl">; className?: string }) {
+/** 옷 사진 자리. 이미지가 없으면 중립 배경 + 브랜드 이니셜, 브랜드가 없으면 제품명 첫 글자 (PROJECT_SPEC.md 20장). */
+export function GarmentThumbnail({ item, className }: { item: Pick<Garment, "brand" | "productName" | "imageUrl">; className?: string }) {
   if (item.imageUrl) {
     // 4~5단계에서 Supabase Storage signed URL + next/image로 교체한다.
     // eslint-disable-next-line @next/next/no-img-element
@@ -16,7 +16,7 @@ export function GarmentThumbnail({ item, className }: { item: Pick<Garment, "bra
         className,
       )}
     >
-      {item.brand.slice(0, 1)}
+      {(item.brand || item.productName).slice(0, 1)}
     </div>
   );
 }

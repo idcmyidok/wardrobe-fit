@@ -73,7 +73,7 @@ export function WardrobeTable({
                   <GarmentThumbnail item={item} />
                 </td>
                 <td className={cn(cell, "truncate")}>{item.subcategoryId ? SUBCATEGORY_NAME[item.subcategoryId] : "—"}</td>
-                <td className={cn(cell, "leading-tight font-semibold text-balance")}>{item.brand}</td>
+                <td className={cn(cell, "leading-tight font-semibold text-balance")}>{item.brand || "—"}</td>
                 <td className={cn(cell, "leading-snug text-balance")}>
                   {/* 키보드로도 옷 정보를 열 수 있게 제품명을 버튼으로 둔다. */}
                   <button

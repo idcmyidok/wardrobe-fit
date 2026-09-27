@@ -62,7 +62,7 @@ const SEASON_ORDER = SEASONS.map((s) => s.id);
 function sortValue(g: Garment, key: SortableColumn): string | number | null {
   switch (key) {
     case "brand":
-      return g.brand;
+      return g.brand || null;
     case "color":
       return g.colorName;
     case "purchasedOn":
