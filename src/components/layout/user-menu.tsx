@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/server/auth/actions";
+import { ThemeToggle } from "./theme-toggle";
 
 /** 사용자 메뉴. email이 null이면 미리보기 모드라 로그아웃 대신 첫 화면으로 돌아간다. */
 export function UserMenu({ email }: { email: string | null }) {
@@ -42,6 +43,11 @@ export function UserMenu({ email }: { email: string | null }) {
       {open && (
         <div role="menu" className="elev-md absolute top-[calc(100%+6px)] right-0 z-40 flex w-55 flex-col border border-text bg-bg">
           <div className="truncate px-3.5 py-3 text-sm text-neutral-700">{email ?? "로그인하지 않은 미리보기"}</div>
+          {/* 좁은 화면에서는 머리글 대신 여기서 화면 모드를 고른다. */}
+          <div className="flex items-center justify-between border-t border-t-divider px-3.5 py-2 sm:hidden">
+            <span className="text-sm">화면 모드</span>
+            <ThemeToggle />
+          </div>
           {email ? (
             <form action={signOut}>
               <button type="submit" role="menuitem" className={itemClass}>
