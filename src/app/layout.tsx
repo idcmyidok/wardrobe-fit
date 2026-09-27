@@ -31,6 +31,8 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Wardrobe Fit",
   description: "입어본 옷의 실측과 후기로 새 옷의 핏을 미리 가늠합니다.",
+  // Google Search Console 소유 확인(wardrobe-fit-self.vercel.app). 공개 값이다.
+  verification: { google: "XK2bc7uiJdurI4mSAsZ4ODid3FRRSZG0B1VIx1GrV-g" },
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
