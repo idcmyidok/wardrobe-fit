@@ -75,6 +75,13 @@ check(
   "B가 A의 옷을 비교 대상으로 넣을 수 없음",
   Boolean((await as(B, `insert into public.fit_check_comparables (fit_check_id, garment_id, match_level) values ($1, $2, 'category')`, [fc.rows[0]?.id, gid])).error),
 );
+const fcId = fc.rows[0]?.id;
+await as(B, "update public.fit_checks set created_at = now() - interval '2 days', ai_model = null where id = $1", [fcId]);
+await as(B, "delete from public.fit_checks where id = $1", [fcId]);
+check(
+  "본인 판단 기록도 고치거나 지울 수 없음(하루 제한 초기화 방지)",
+  (await db.query("select count(*)::int as n from public.fit_checks where id = $1 and created_at > now() - interval '1 hour'", [fcId])).rows[0]?.n === 1,
+);
 const imp = await as(A, `insert into public.product_imports (purpose, source_url, normalized_url, domain) values ('wardrobe', 'https://a', 'https://a', 'a') returning id`);
 check(
   "B가 A의 URL 분석 기록을 출처로 쓸 수 없음",

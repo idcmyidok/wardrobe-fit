@@ -1351,6 +1351,13 @@ export interface ComparisonReport {
 - 여러 치수 판정을 종합한 주의점(예: "가슴은 맞지만 어깨가 좁아 활동 시 답답할 수 있음"은 후기 근거가 있을 때만).
 - (선택) 후기 신호 추출 보강(16.2), URL Import 구조화 추출 fallback(13.3).
 
+### 17.1a 기본은 AI 없이(비용 0)
+
+- 예상 핏 문장은 서버 규칙(`src/lib/fit/compute.ts` `ruleSummary`)이 항상 만든다. 예: "어깨·가슴은 만족했던 옷들과 비슷하고, 총장은 만족 범위보다 2cm 깁니다."
+- AI 요약은 키가 있을 때만 붙인다. `GEMINI_API_KEY`(무료 등급 Gemini Flash-Lite, 입력을 학습에 쓸 수 있어 실측·계산값만 전송)가 1순위, 없으면 `ANTHROPIC_API_KEY`(Claude Haiku 4.5, 후기 원문 포함). 없거나 실패·한도 초과(429)면 규칙 요약을 그대로 보여준다.
+- 비용 제한: 사용자당 판단 20회/일, AI 호출 10회/일(`FIT_AI_DAILY_LIMIT`), 같은 입력의 AI 요약은 7일 재사용, 시스템 문구 prompt caching.
+- `fit_checks`·`fit_check_comparables`는 서버가 insert만 한다(마이그레이션 6, 사용자 update/delete 불가).
+
 ### 17.2 담당하지 않는 것
 
 - 숫자 계산, 범위 산출, 신뢰도 결정(서버가 결정).

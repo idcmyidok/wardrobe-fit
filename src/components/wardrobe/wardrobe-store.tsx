@@ -37,6 +37,8 @@ interface Toast {
 
 interface WardrobeStore {
   garments: Garment[];
+  /** 로그인해 DB에 저장하는 상태인지(false면 예시 데이터 미리보기) */
+  signedIn: boolean;
   /** sourceImportId: 링크 분석으로 등록할 때 그 분석 기록 id */
   addGarment: (draft: GarmentDraft, image?: ImageChange, sourceImportId?: string | null) => Promise<SaveResult>;
   updateGarment: (id: string, patch: Partial<GarmentDraft>, image?: ImageChange) => Promise<SaveResult>;
@@ -277,6 +279,7 @@ export function WardrobeProvider({
   const value = useMemo<WardrobeStore>(
     () => ({
       garments,
+      signedIn: Boolean(userId),
       addGarment,
       updateGarment,
       removeGarment,
@@ -288,7 +291,7 @@ export function WardrobeProvider({
       pendingDraft,
       setPendingDraft,
     }),
-    [garments, addGarment, updateGarment, removeGarment, openDrawer, closeDrawer, garmentHref, toast, showToast, pendingDraft],
+    [garments, userId, addGarment, updateGarment, removeGarment, openDrawer, closeDrawer, garmentHref, toast, showToast, pendingDraft],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

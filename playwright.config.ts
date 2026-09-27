@@ -25,6 +25,8 @@ export default defineConfig({
     command: `npm run start -- -p ${PORT}`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
+    // AI 구매 판단기는 모의 AI로 돌린다(실제 API 키를 쓰지 않는다).
+    env: { AI_PROVIDER: "mock", ANTHROPIC_API_KEY: "" },
     timeout: 60_000,
   },
 });
