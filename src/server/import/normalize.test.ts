@@ -1,0 +1,68 @@
+import { describe, expect, it } from "vitest";
+import { mapCategory } from "./normalize/category";
+import { splitColorOption } from "./normalize/color";
+import { cleanProductName } from "./normalize";
+import { mapHeader, normalizeSizeChart } from "./normalize/size-chart";
+import { normalizeProductUrl } from "./url";
+
+describe("사이즈표 헤더", () => {
+  it.each([
+    ["어깨너비", "shoulder"],
+    ["가슴 단면", "chest"],
+    ["총기장", "length"],
+    ["소매길이", "sleeve"],
+    ["허리단면", "waist"],
+    ["힙", "hip"],
+    ["허벅지단면", "thigh"],
+    ["밑위", "rise"],
+    ["밑단단면", "legOpening"],
+    ["Pit to Pit", "chest"],
+  ])("%s → %s", (h, key) => expect(mapHeader(h)).toBe(key));
+
+  it.each(["암홀", "인심", "소매통", "소매단면", "목너비", "Armhole", "Inseam", "Sleeve Opening", "비고"])("버린다: %s", (h) =>
+    expect(mapHeader(h)).toBeNull(),
+  );
+
+  it("상의 표의 밑단은 버리고 하의 표의 밑단은 남긴다", () => {
+    const raw = { headers: ["사이즈", "총장", "밑단"], rows: [["M", "70", "50"]] };
+    expect(normalizeSizeChart(raw, "top").chart?.rows[0].measurements).toEqual({ length: 70 });
+    expect(normalizeSizeChart(raw, "bottom").chart?.rows[0].measurements).toEqual({ length: 70, legOpening: 50 });
+  });
+
+  it("0 이하·200 초과 값은 비우고 경고한다", () => {
+    const { chart, warnings } = normalizeSizeChart({ headers: ["사이즈", "총장", "어깨"], rows: [["M", "0", "250"], ["L", "72", "47"]] }, "top");
+    expect(chart?.rows).toEqual([{ sizeLabel: "L", measurements: { length: 72, shoulder: 47 } }]);
+    expect(warnings.map((w) => w.code)).toContain("invalid_measurement_dropped");
+  });
+});
+
+describe("제품명·컬러·분류", () => {
+  it("브랜드 접두어와 쇼핑몰 접미어를 뗀다", () => {
+    expect(cleanProductName("[ARKET] 헤비 코튼 오버셔츠 - 무신사 스토어", "ARKET")).toBe("헤비 코튼 오버셔츠");
+    expect(cleanProductName("A.P.C. 울 자켓 | 공식 온라인 스토어", "A.P.C.")).toBe("울 자켓");
+    expect(cleanProductName("셔츠 - 네이비", null)).toBe("셔츠 - 네이비");
+  });
+
+  it("옵션에서 사이즈·품절 표시를 뗀다", () => {
+    expect(splitColorOption("BLACK / M")).toBe("BLACK");
+    expect(splitColorOption("네이비 - L (품절)")).toBe("네이비");
+  });
+
+  it("breadcrumb의 좁은 분류를 우선하고, 없으면 제품명으로 찾는다", () => {
+    expect(mapCategory(["남성", "아우터", "블레이저"])?.subcategoryId).toBe("outer.blazer");
+    expect(mapCategory([], "데님 트러커 자켓")).toEqual({ categoryId: "outer", subcategoryId: "outer.jacket", fromName: true });
+    expect(mapCategory(["bottom", "Wide Slacks"])?.subcategoryId).toBe("bottom.slacks");
+  });
+});
+
+describe("URL 정리", () => {
+  it("추적 파라미터와 #을 지우고 스킴을 붙인다", () => {
+    expect(normalizeProductUrl("shop.example.com/p/1?utm_source=ig&color=black&fbclid=x#reviews").toString()).toBe(
+      "https://shop.example.com/p/1?color=black",
+    );
+  });
+  it("사설 주소·이상한 스킴은 거부한다", () => {
+    expect(() => normalizeProductUrl("http://192.168.0.1/admin")).toThrow("blocked_host");
+    expect(() => normalizeProductUrl("file:///etc/passwd")).toThrow("invalid_url");
+  });
+});

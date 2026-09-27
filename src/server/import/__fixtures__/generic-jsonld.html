@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>[ARKET] 헤비 코튼 오버셔츠 - 예시 스토어</title>
+<meta property="og:site_name" content="예시 스토어">
+<meta property="og:title" content="OG 제목은 JSON-LD보다 뒤">
+<meta property="og:image" content="https://cdn.example.com/og.jpg">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "[ARKET] 헤비 코튼 오버셔츠 - 예시 스토어",
+  "brand": { "@type": "Brand", "name": "ARKET" },
+  "image": ["/images/main.jpg", { "@type": "ImageObject", "url": "https://cdn.example.com/2.jpg" }],
+  "material": "면 100%",
+  "color": "다크 네이비",
+  "offers": { "@type": "Offer", "price": "119000", "priceCurrency": "KRW" }
+}
+</script>
+<script type="application/ld+json">
+{ "@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
+  { "@type": "ListItem", "position": 1, "name": "상의" },
+  { "@type": "ListItem", "position": 2, "name": "셔츠" }
+] }
+</script>
+</head>
+<body>
+<h1>헤비 코튼 오버셔츠</h1>
+<select name="option_size" aria-label="사이즈 선택">
+  <option value="">사이즈를 선택하세요</option>
+  <option value="S">S</option>
+  <option value="M">M</option>
+  <option value="L">L (품절)</option>
+</select>
+<h2>실측 사이즈 (cm)</h2>
+<table>
+  <tr><th>사이즈</th><th>총장</th><th>어깨너비</th><th>가슴단면</th><th>소매길이</th><th>암홀</th><th>밑단단면</th></tr>
+  <tr><td>S</td><td>73</td><td>44</td><td>55</td><td>61</td><td>24</td><td>54</td></tr>
+  <tr><td>M</td><td>75</td><td>46</td><td>57.5</td><td>62.5</td><td>25</td><td>56</td></tr>
+  <tr><td>L</td><td>77</td><td>48</td><td>60</td><td>64</td><td>26</td><td>58</td></tr>
+</table>
+</body>
+</html>
