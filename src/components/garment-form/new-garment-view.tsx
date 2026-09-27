@@ -97,8 +97,6 @@ const draftToForm = (d: GarmentDraft): FormState => ({
   m: Object.fromEntries(Object.entries(d.measurements).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])),
 });
 
-type TagKey = "cat" | "sub" | "brand" | "name" | "date" | "price" | "seasons" | "url" | "size" | "color";
-
 /** 새 옷 추가: 상품 링크 분석(분석 중 / 실패) → 검토 폼, 또는 직접 입력 폼 */
 export function NewGarmentView() {
   const router = useRouter();
@@ -112,8 +110,9 @@ export function NewGarmentView() {
   const [form, setForm] = useState<FormState>(() => (pendingDraft ? draftToForm(pendingDraft) : { ...EMPTY_FORM, date: today() }));
   const [imported, setImported] = useState<Imported | null>(null);
   const [failure, setFailure] = useState<ImportOutcome | null>(null);
-  const [edited, setEdited] = useState<Partial<Record<TagKey, boolean>>>({});
   const [imageIndex, setImageIndex] = useState(0);
+  /** 받지 못했거나 아이콘처럼 작은 페이지 사진(목록에서 숨긴다) */
+  const [badImages, setBadImages] = useState<number[]>([]);
   const [image, setImage] = useState<ImageChange>(undefined);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -182,9 +181,9 @@ export function NewGarmentView() {
       const result = outcome as Imported;
       setImported(result);
       setForm(importedForm(target, result.product));
-      setEdited({});
       setImage(undefined);
       setImageIndex(0);
+      setBadImages([]);
       setPhase("review");
     } else {
       setFailure(outcome);
@@ -198,7 +197,6 @@ export function NewGarmentView() {
     const partial = keepUrl ? failure?.product : null;
     setForm(partial ? importedForm(url.trim(), partial) : { ...EMPTY_FORM, date: today(), url: keepUrl ? url.trim() : "" });
     setImported(null);
-    setEdited({});
     setImage(undefined);
     setPhase("manual");
   };
@@ -209,46 +207,16 @@ export function NewGarmentView() {
   const sizeChoices = product ? (product.sizeOptions.length ? product.sizeOptions : (product.sizeChart?.rows.map((r) => r.sizeLabel) ?? [])) : [];
   const colorChoices = product?.colorOptions ?? [];
   const pageImages = product && imported ? product.imageUrls.map((_, i) => importImageUrl(imported.importId, i)) : [];
-  const extractedCount = product
-    ? [product.brand, product.productName, product.categoryId, product.price, product.colorCandidate, product.sizeChart, pageImages[0]].filter(Boolean).length +
-      (sizeChoices.length ? 1 : 0)
-    : 0;
+  const shownImages = pageImages.map((src, i) => ({ src, i })).filter(({ i }) => !badImages.includes(i));
+  const dropImage = (i: number) => setBadImages((bad) => (bad.includes(i) ? bad : [...bad, i]));
+  // 고른 사진이 목록에서 빠졌으면 남은 첫 사진을 쓴다.
+  const chosen = shownImages.some(({ i }) => i === imageIndex) ? imageIndex : (shownImages[0]?.i ?? -1);
+  const chosenUrl = pageImages[chosen] as string | undefined;
   const partial = imported?.status === "partial";
+  // 옷장에서 쓰지 않는 열을 뺐다는 안내는 보이지 않는다(예전 분석 결과에 남아 있을 수 있다).
+  const notices = product?.warnings.filter((w) => w.code !== "size_chart_unmapped_columns") ?? [];
 
-  const update = <K extends keyof FormState>(key: K, value: FormState[K], tag?: TagKey) => {
-    setForm((f) => ({ ...f, [key]: value }));
-    if (tag) setEdited((e) => ({ ...e, [tag]: true }));
-  };
-
-  const NEEDS = "tag tag-accent";
-  const AUTO = "tag tag-neutral";
-  const confidenceOf: Partial<Record<TagKey, { confidence: string } | null | undefined>> = {
-    cat: product?.categoryId,
-    sub: product?.subcategoryId,
-    brand: product?.brand,
-    name: product?.productName,
-    price: product?.price,
-    color: product?.colorCandidate,
-  };
-  const tag = (k: TagKey): { label: string; className: string } => {
-    if (edited[k]) return { label: "수정됨", className: "tag border border-text" };
-    if (k === "size") return form.size ? { label: "자동", className: AUTO } : { label: "선택 필요", className: NEEDS };
-    if (k === "color") return form.color ? (confidenceOf.color?.confidence === "low" ? { label: "확인 필요", className: NEEDS } : { label: "자동", className: AUTO }) : { label: "선택 필요", className: NEEDS };
-    if (k === "seasons") return { label: "확인 필요", className: NEEDS };
-    if (k === "date") return { label: "오늘", className: AUTO };
-    if (k === "url") return { label: "자동", className: AUTO };
-    if (!product) return { label: "확인 필요", className: NEEDS };
-    const found = confidenceOf[k];
-    if (!found) return { label: "입력 필요", className: NEEDS };
-    if (found.confidence === "low") return { label: "확인 필요", className: NEEDS };
-    return { label: k === "price" ? "판매가" : "자동", className: AUTO };
-  };
-  const label = (text: string, k: TagKey) => (
-    <>
-      {text}
-      {isReview && <span className={cn(tag(k).className, "px-1.5 py-px text-2xs")}>{tag(k).label}</span>}
-    </>
-  );
+  const update = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
 
   const register = async () => {
     if (saving) return;
@@ -279,7 +247,7 @@ export function NewGarmentView() {
       imageUrl: null,
       measurements,
       fitReview: form.review || null,
-    }, image === undefined && isReview && pageImages[imageIndex] ? await pageImageFile(pageImages[imageIndex]) : image, imported?.importId ?? null);
+    }, image === undefined && isReview && chosenUrl ? await pageImageFile(chosenUrl) : image, imported?.importId ?? null);
     setSaving(false);
     if (!result.ok) {
       const fields = result.fieldErrors ?? {};
@@ -418,66 +386,52 @@ export function NewGarmentView() {
       {showForm && (
         <>
           {isReview && (
-            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-neutral-300 py-4">
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-base font-semibold">
-                  {imported?.domain}에서 {extractedCount}개 항목을 가져왔습니다
-                </span>
-                <span className="text-sm text-neutral-700">
-                  {partial
-                    ? "일부 정보만 가져왔습니다. 비어 있는 항목을 입력해 주세요."
-                    : "구매한 사이즈와 컬러를 고르고, 값을 확인한 뒤 등록하세요. 등록 전에는 저장되지 않습니다."}
-                </span>
-                {product && product.warnings.length > 0 && (
-                  <ul className="mt-1 list-disc pl-5 text-sm text-neutral-700">
-                    {product.warnings.map((w, i) => (
-                      <li key={i}>{w.message}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div className="flex items-center gap-2 text-xs text-neutral-700">
-                <span className="tag tag-neutral">자동</span>
-                <span className="tag border border-text">수정됨</span>
-                <span className="tag tag-accent">확인 필요</span>
-              </div>
+            <div className="flex flex-col gap-0.5 border-b border-neutral-300 py-4">
+              <span className="text-base">
+                {partial ? "읽지 못한 칸은 직접 채워 주세요." : "구매한 사이즈와 컬러를 고른 뒤 등록하세요."}
+              </span>
+              {notices.length > 0 && (
+                <ul className="mt-1 list-disc pl-5 text-sm text-neutral-700">
+                  {notices.map((w, i) => (
+                    <li key={i}>{w.message}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
           <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-6 border-b border-text py-7">
             <div className="flex max-w-60 flex-col gap-2">
               <ImagePicker
-                currentUrl={pageImages[imageIndex] ?? null}
+                currentUrl={chosenUrl ?? null}
                 value={image}
                 onChange={setImage}
                 placeholder="사진 끌어다 놓기"
               />
-              {pageImages.length > 0 && (
+              {shownImages.length > 0 && (
                 <p className="text-label text-neutral-700" aria-live="polite">
-                  {image === undefined && pageImages[imageIndex]
-                    ? pageImages.length > 1
-                      ? `페이지 이미지 ${imageIndex + 1}번을 옷 정보 사진으로 씁니다`
-                      : "페이지 대표 이미지를 옷 정보 사진으로 씁니다"
+                  {image === undefined && chosenUrl
+                    ? `페이지 사진 ${shownImages.findIndex(({ i }) => i === chosen) + 1}번을 옷 사진으로 씁니다`
                     : image
                       ? "직접 올린 사진을 씁니다"
                       : "사진 없이 저장합니다"}
                 </p>
               )}
-              {pageImages.length > 1 && (
+              {shownImages.length > 0 && (
                 <>
                   <div className="mt-1 flex items-baseline justify-between">
-                    <span className="text-xs font-semibold">페이지 이미지 {pageImages.length}장</span>
-                    <span className="text-label text-neutral-700">누르면 옷 정보 사진으로</span>
+                    <span className="text-xs font-semibold">페이지 사진 {shownImages.length}장</span>
+                    <span className="text-label text-neutral-700">눌러서 고르기</span>
                   </div>
                   <div className="grid grid-cols-4 gap-1.5">
-                    {pageImages.map((src, i) => {
-                      const selected = imageIndex === i && image === undefined;
+                    {shownImages.map(({ src, i }, n) => {
+                      const selected = chosen === i && image === undefined;
                       return (
                         <button
                           key={src}
                           type="button"
                           aria-pressed={selected}
-                          aria-label={`${i === 0 ? "대표 이미지" : `이미지 ${i + 1}`}${selected ? " (옷 정보 사진으로 선택됨)" : ""}`}
+                          aria-label={`페이지 사진 ${n + 1}${selected ? " (옷 사진으로 선택됨)" : ""}`}
                           onClick={() => {
                             setImageIndex(i);
                             setImage(undefined);
@@ -488,7 +442,16 @@ export function NewGarmentView() {
                           )}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element -- 서버가 대신 받아 주는 미리보기 */}
-                          <img src={src} alt="" loading="lazy" className="size-full object-cover" />
+                          <img
+                            src={src}
+                            alt=""
+                            loading="lazy"
+                            className="size-full object-cover"
+                            onError={() => dropImage(i)}
+                            onLoad={(e) => {
+                              if (Math.max(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight) < 150) dropImage(i);
+                            }}
+                          />
                           {selected && (
                             <span className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-text text-bg" aria-hidden>
                               <svg viewBox="0 0 16 16" className="size-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -508,14 +471,13 @@ export function NewGarmentView() {
               <h2 className="text-lg">기본 정보</h2>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4">
                 <div className="field">
-                  <label htmlFor="f-cat" className="flex items-center justify-between">{label("대분류", "cat")}</label>
+                  <label htmlFor="f-cat">대분류</label>
                   <select
                     id="f-cat"
                     className="input"
                     value={form.categoryId}
                     onChange={(e) => {
                       setForm((f) => ({ ...f, categoryId: e.target.value as CategoryId, subcategoryId: "", m: {} }));
-                      setEdited((ed) => ({ ...ed, cat: true, sub: true }));
                     }}
                   >
                     <option value="outer">아우터</option>
@@ -524,8 +486,8 @@ export function NewGarmentView() {
                   </select>
                 </div>
                 <div className="field">
-                  <label htmlFor="f-sub" className="flex items-center justify-between">{label("세부분류", "sub")}</label>
-                  <select id="f-sub" className="input" value={form.subcategoryId} onChange={(e) => update("subcategoryId", e.target.value, "sub")}>
+                  <label htmlFor="f-sub">세부분류</label>
+                  <select id="f-sub" className="input" value={form.subcategoryId} onChange={(e) => update("subcategoryId", e.target.value)}>
                     <option value="">선택</option>
                     {SUBCATEGORIES.filter((s) => s.categoryId === form.categoryId).map((s) => (
                       <option key={s.id} value={s.id}>
@@ -535,27 +497,27 @@ export function NewGarmentView() {
                   </select>
                 </div>
                 <div className="field">
-                  <label htmlFor="f-brand" className="flex items-center justify-between">{label("브랜드", "brand")}</label>
-                  <input id="f-brand" className="input" aria-invalid={Boolean(fieldErrors.brand)} aria-describedby={fieldErrors.brand ? "e-brand" : undefined} value={form.brand} onChange={(e) => update("brand", e.target.value, "brand")} />
+                  <label htmlFor="f-brand">브랜드</label>
+                  <input id="f-brand" className="input" aria-invalid={Boolean(fieldErrors.brand)} aria-describedby={fieldErrors.brand ? "e-brand" : undefined} value={form.brand} onChange={(e) => update("brand", e.target.value)} />
                   <FieldError id="e-brand" message={fieldErrors.brand} />
                 </div>
                 <div className="field sm:col-span-2">
-                  <label htmlFor="f-name" className="flex items-center justify-between">{label("제품명", "name")}</label>
-                  <input id="f-name" className="input" aria-invalid={Boolean(fieldErrors.productName)} aria-describedby={fieldErrors.productName ? "e-productName" : undefined} value={form.productName} onChange={(e) => update("productName", e.target.value, "name")} />
+                  <label htmlFor="f-name">제품명</label>
+                  <input id="f-name" className="input" aria-invalid={Boolean(fieldErrors.productName)} aria-describedby={fieldErrors.productName ? "e-productName" : undefined} value={form.productName} onChange={(e) => update("productName", e.target.value)} />
                   <FieldError id="e-productName" message={fieldErrors.productName} />
                 </div>
                 <div className="field">
-                  <label htmlFor="f-date" className="flex items-center justify-between">{label("구매 날짜", "date")}</label>
-                  <input id="f-date" type="date" className="input font-mono tabular-nums" aria-invalid={Boolean(fieldErrors.purchasedOn)} aria-describedby={fieldErrors.purchasedOn ? "e-purchasedOn" : undefined} value={form.date} onChange={(e) => update("date", e.target.value, "date")} />
+                  <label htmlFor="f-date">구매 날짜</label>
+                  <input id="f-date" type="date" className="input font-mono tabular-nums" aria-invalid={Boolean(fieldErrors.purchasedOn)} aria-describedby={fieldErrors.purchasedOn ? "e-purchasedOn" : undefined} value={form.date} onChange={(e) => update("date", e.target.value)} />
                   <FieldError id="e-purchasedOn" message={fieldErrors.purchasedOn} />
                 </div>
                 <div className="field">
-                  <label htmlFor="f-price" className="flex items-center justify-between">{label("구매가", "price")}</label>
-                  <UnitInput id="f-price" unit="원" inputMode="numeric" aria-invalid={Boolean(fieldErrors.purchasePrice)} aria-describedby={fieldErrors.purchasePrice ? "e-purchasePrice" : undefined} value={form.price} onChange={(e) => update("price", e.target.value, "price")} />
+                  <label htmlFor="f-price">구매가</label>
+                  <UnitInput id="f-price" unit="원" inputMode="numeric" aria-invalid={Boolean(fieldErrors.purchasePrice)} aria-describedby={fieldErrors.purchasePrice ? "e-purchasePrice" : undefined} value={form.price} onChange={(e) => update("price", e.target.value)} />
                   <FieldError id="e-purchasePrice" message={fieldErrors.purchasePrice} />
                 </div>
                 <div className="field col-span-full">
-                  <label className="flex items-center justify-between">{label("시즌", "seasons")}</label>
+                  <label>시즌</label>
                   <div className="seg self-start">
                     {SEASONS.map((s) => (
                       <label key={s.id} className="seg-opt px-4 py-1.75">
@@ -563,11 +525,7 @@ export function NewGarmentView() {
                           type="checkbox"
                           checked={form.seasons.includes(s.id)}
                           onChange={() =>
-                            update(
-                              "seasons",
-                              toggleSeason(form.seasons, s.id),
-                              "seasons",
-                            )
+                            update("seasons", toggleSeason(form.seasons, s.id))
                           }
                         />
                         {s.name}
@@ -576,8 +534,8 @@ export function NewGarmentView() {
                   </div>
                 </div>
                 <div className="field col-span-full">
-                  <label htmlFor="f-url" className="flex items-center justify-between">{label("상품 링크", "url")}</label>
-                  <input id="f-url" className="input text-neutral-800" placeholder="선택 입력" aria-invalid={Boolean(fieldErrors.productUrl)} aria-describedby={fieldErrors.productUrl ? "e-productUrl" : undefined} value={form.url} onChange={(e) => update("url", e.target.value, "url")} />
+                  <label htmlFor="f-url">상품 링크</label>
+                  <input id="f-url" className="input text-neutral-800" placeholder="선택 입력" aria-invalid={Boolean(fieldErrors.productUrl)} aria-describedby={fieldErrors.productUrl ? "e-productUrl" : undefined} value={form.url} onChange={(e) => update("url", e.target.value)} />
                   <FieldError id="e-productUrl" message={fieldErrors.productUrl} />
                 </div>
               </div>
@@ -591,7 +549,7 @@ export function NewGarmentView() {
             </div>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-6">
               <div className="field">
-                <label htmlFor="f-size" className="flex items-center gap-2">{label("사이즈", "size")}</label>
+                <label htmlFor="f-size">사이즈</label>
                 {sizeChoices.length > 0 ? (
                   <div className="seg flex-wrap self-start" role="radiogroup" aria-label="사이즈">
                     {sizeChoices.map((s) => (
@@ -607,12 +565,12 @@ export function NewGarmentView() {
                     ))}
                   </div>
                 ) : (
-                  <input id="f-size" className="input max-w-50" placeholder="예: M, 48, 32" aria-invalid={Boolean(fieldErrors.sizeLabel)} aria-describedby={fieldErrors.sizeLabel ? "e-sizeLabel" : undefined} value={form.size} onChange={(e) => update("size", e.target.value, "size")} />
+                  <input id="f-size" className="input max-w-50" placeholder="예: M, 48, 32" aria-invalid={Boolean(fieldErrors.sizeLabel)} aria-describedby={fieldErrors.sizeLabel ? "e-sizeLabel" : undefined} value={form.size} onChange={(e) => update("size", e.target.value)} />
                 )}
                 <FieldError id="e-sizeLabel" message={fieldErrors.sizeLabel} />
               </div>
               <div className="field">
-                <label htmlFor="f-color" className="flex items-center gap-2">{label("컬러", "color")}</label>
+                <label htmlFor="f-color">컬러</label>
                 <div className="flex flex-wrap items-center gap-2">
                   {colorChoices.length > 0 && (
                     <div className="seg flex-wrap" role="radiogroup" aria-label="컬러 옵션">
@@ -624,7 +582,7 @@ export function NewGarmentView() {
                       ))}
                     </div>
                   )}
-                  <input id="f-color" className="input max-w-45" placeholder="컬러명 직접 입력" aria-invalid={Boolean(fieldErrors.colorName)} aria-describedby={fieldErrors.colorName ? "e-colorName" : undefined} value={form.color} onChange={(e) => update("color", e.target.value, "color")} />
+                  <input id="f-color" className="input max-w-45" placeholder="컬러명 직접 입력" aria-invalid={Boolean(fieldErrors.colorName)} aria-describedby={fieldErrors.colorName ? "e-colorName" : undefined} value={form.color} onChange={(e) => update("color", e.target.value)} />
                   <FieldError id="e-colorName" message={fieldErrors.colorName} />
                 </div>
               </div>

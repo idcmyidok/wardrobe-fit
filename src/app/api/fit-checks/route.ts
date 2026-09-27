@@ -1,5 +1,5 @@
 import { fitRequestSchema } from "@/lib/fit/schema";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
 import { runFitCheck, type FitStreamEvent } from "@/server/fit/service";
 
 /**
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   if (origin && new URL(origin).host !== request.headers.get("host")) return json({ type: "error", code: "unknown" }, 403);
 
   const supabase = await createSupabaseServerClient();
-  const user = supabase ? (await supabase.auth.getUser()).data.user : null;
+  const user = supabase ? await getActiveUser(supabase) : null;
   if (!supabase || !user) return Response.json({ type: "error", code: "signed_out" }, { status: 401 });
 
   const text = await request.text();

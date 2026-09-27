@@ -3,7 +3,7 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { z } from "zod";
 import { GARMENT_IMAGE_BUCKET } from "@/lib/images/upload-garment-image";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
 import type { Garment } from "@/lib/types/domain";
 import { GARMENT_COLUMNS, inputToRow } from "./mapper";
 import { withImageUrls } from "./queries";
@@ -43,8 +43,8 @@ function fieldErrors(error: z.ZodError): Record<string, string> {
 async function session() {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return null;
-  const { data } = await supabase.auth.getUser();
-  return data.user ? { supabase, userId: data.user.id } : null;
+  const user = await getActiveUser(supabase);
+  return user ? { supabase, userId: user.id } : null;
 }
 
 function dbError(error: PostgrestError): GarmentActionResult<never> {

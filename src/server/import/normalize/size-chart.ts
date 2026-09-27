@@ -118,8 +118,5 @@ export function normalizeSizeChart(
   if (halved) warnings.push({ code: "circumference_converted", message: "둘레로 보이는 값을 단면(÷2)으로 바꿨습니다. 확인해 주세요." });
   if (averaged) warnings.push({ code: "range_value_averaged", message: "범위로 적힌 값은 중간값을 넣었습니다." });
   if (dropped) warnings.push({ code: "invalid_measurement_dropped", message: "읽을 수 없는 실측 값은 비웠습니다." });
-  if (unmapped.length) {
-    warnings.push({ code: "size_chart_unmapped_columns", message: `옷장에서 쓰지 않는 항목은 뺐습니다: ${unmapped.map((h) => cleanText(h)).join(", ")}` });
-  }
   return { chart: { measurementGroup: group, rows, unmappedColumns: unmapped.map((h) => cleanText(h)) }, warnings };
 }

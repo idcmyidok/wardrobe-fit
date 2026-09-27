@@ -6,7 +6,7 @@ import { signOut } from "@/server/auth/actions";
 import { ThemeToggle } from "./theme-toggle";
 
 /** 사용자 메뉴. email이 null이면 미리보기 모드라 로그아웃 대신 첫 화면으로 돌아간다. */
-export function UserMenu({ email }: { email: string | null }) {
+export function UserMenu({ email, admin = false }: { email: string | null; admin?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -48,6 +48,11 @@ export function UserMenu({ email }: { email: string | null }) {
             <span className="text-sm">화면 모드</span>
             <ThemeToggle />
           </div>
+          {admin && (
+            <Link href="/admin" role="menuitem" className={`${itemClass} no-underline`} onClick={() => setOpen(false)}>
+              관리자 페이지
+            </Link>
+          )}
           {email ? (
             <form action={signOut}>
               <button type="submit" role="menuitem" className={itemClass}>

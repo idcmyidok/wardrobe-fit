@@ -14,7 +14,8 @@ export default async function LandingPage({
   const params = await searchParams;
   const mode = parseAuthMode(params.mode);
   const next = typeof params.next === "string" ? safeNextPath(params.next) : undefined;
-  const notice = params.error === "link" ? AUTH_MESSAGES.expiredLink : undefined;
+  const notice =
+    params.error === "link" ? AUTH_MESSAGES.expiredLink : params.error === "suspended" ? AUTH_MESSAGES.suspended : undefined;
   const savedEmail = (await cookies()).get(LAST_EMAIL_COOKIE)?.value;
 
   return (
