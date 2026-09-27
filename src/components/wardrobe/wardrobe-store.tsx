@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ImagePrepareError, prepareGarmentImage } from "@/lib/images/prepare-image";
 import { GARMENT_IMAGE_BUCKET, uploadGarmentImages } from "@/lib/images/upload-garment-image";
+import { goToSignIn, stashDraft } from "@/lib/session-expiry";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Garment } from "@/lib/types/domain";
 import {
@@ -90,6 +91,26 @@ const toInput = (g: GarmentDraft) => ({
 const fromAction = (r: GarmentActionResult): SaveResult =>
   r.ok ? { ok: true, garment: r.data } : { ok: false, error: r.error, fieldErrors: r.fieldErrors };
 
+export const NETWORK_ERROR = "연결이 불안정합니다. 입력한 내용은 유지됩니다.";
+
+/**
+ * Server Action 호출. 연결이 끊겨 요청 자체가 실패하면 입력을 지우지 않도록 오류 결과로 바꾸고,
+ * 로그인이 풀렸으면 로그인 화면으로 보낸다(draft가 있으면 보관).
+ */
+async function call<T>(action: () => Promise<GarmentActionResult<T>>, draft?: GarmentDraft): Promise<GarmentActionResult<T>> {
+  let result: GarmentActionResult<T>;
+  try {
+    result = await action();
+  } catch {
+    return { ok: false, error: NETWORK_ERROR };
+  }
+  if (!result.ok && result.code === "signed_out") {
+    if (draft) stashDraft(draft);
+    goToSignIn();
+  }
+  return result;
+}
+
 export function WardrobeProvider({
   children,
   initialGarments,
@@ -160,14 +181,14 @@ export function WardrobeProvider({
         const url = image ? URL.createObjectURL(image) : null;
         return { ok: true, garment: { ...garment, imageUrl: url, thumbUrl: url } };
       }
-      if (image === null) return fromAction(await setGarmentImage(garment.id, null));
+      if (image === null) return fromAction(await call(() => setGarmentImage(garment.id, null)));
 
       const supabase = createSupabaseBrowserClient();
       if (!supabase) return { ok: false, error: "사진을 올릴 수 없습니다." };
       try {
         const prepared = await prepareGarmentImage(image);
         const paths = await uploadGarmentImages(supabase, userId, garment.id, prepared);
-        const result = await setGarmentImage(garment.id, paths);
+        const result = await call(() => setGarmentImage(garment.id, paths));
         if (!result.ok) await supabase.storage.from(GARMENT_IMAGE_BUCKET).remove([paths.imagePath, paths.thumbPath]);
         return fromAction(result);
       } catch (e) {
@@ -181,7 +202,7 @@ export function WardrobeProvider({
     async (draft: GarmentDraft, image?: ImageChange, sourceImportId?: string | null): Promise<SaveResult> => {
       let created: Garment;
       if (userId) {
-        const result = await createGarment({ ...toInput(draft), sourceImportId });
+        const result = await call(() => createGarment({ ...toInput(draft), sourceImportId }), draft);
         if (!result.ok) return fromAction(result);
         created = result.data;
       } else {
@@ -204,7 +225,7 @@ export function WardrobeProvider({
 
       let saved: Garment = next;
       if (userId) {
-        const result = await updateGarmentAction(id, toInput(next));
+        const result = await call(() => updateGarmentAction(id, toInput(next)));
         if (!result.ok) return fromAction(result);
         saved = result.data;
       }
@@ -223,7 +244,7 @@ export function WardrobeProvider({
       if (index === -1) return false;
       const removed = garments[index];
       if (userId) {
-        const result = await deleteGarment(id);
+        const result = await call(() => deleteGarment(id));
         if (!result.ok) {
           showToast(result.error);
           return false;
@@ -235,7 +256,7 @@ export function WardrobeProvider({
         setToast(null);
         let restored = removed;
         if (userId) {
-          const result = await restoreGarment(id);
+          const result = await call(() => restoreGarment(id));
           if (!result.ok) {
             showToast(result.error);
             return;

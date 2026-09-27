@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { OfflineBanner } from "@/components/feedback/offline-banner";
+import { WardrobeSkeleton } from "@/components/feedback/wardrobe-skeleton";
 import { AppHeader } from "@/components/layout/app-header";
 import { GarmentDrawer } from "@/components/wardrobe/garment-drawer";
 import { WardrobeProvider, WardrobeToast } from "@/components/wardrobe/wardrobe-store";
@@ -18,11 +20,33 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const configured = isAuthConfigured();
   const user = configured ? await getCurrentUser() : null;
   if (configured && !user) redirect("/");
-  const garments = user ? await listMyGarments() : MOCK_GARMENTS;
+  const email = user?.email ?? null;
 
   return (
-    <WardrobeProvider initialGarments={garments} userId={user?.id ?? null}>
-      <AppHeader email={user?.email ?? null} />
+    <>
+      <OfflineBanner />
+      {/* 옷 목록을 읽는 동안 머리글과 표 자리(Skeleton)를 먼저 보여 준다. */}
+      <Suspense
+        fallback={
+          <>
+            <AppHeader email={email} />
+            <WardrobeSkeleton />
+          </>
+        }
+      >
+        <WardrobeData userId={user?.id ?? null} email={email}>
+          {children}
+        </WardrobeData>
+      </Suspense>
+    </>
+  );
+}
+
+async function WardrobeData({ userId, email, children }: { userId: string | null; email: string | null; children: React.ReactNode }) {
+  const garments = userId ? await listMyGarments() : MOCK_GARMENTS;
+  return (
+    <WardrobeProvider initialGarments={garments} userId={userId}>
+      <AppHeader email={email} />
       {children}
       {/* 주소의 ?item=을 읽는다 */}
       <Suspense>
