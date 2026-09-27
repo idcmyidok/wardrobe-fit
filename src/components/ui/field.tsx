@@ -17,7 +17,7 @@ export function Field({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between">
-        <label htmlFor={htmlFor} className="text-sm font-medium text-text">
+        <label htmlFor={htmlFor} className="text-sm font-medium text-text-muted">
           {label}
         </label>
         {action}

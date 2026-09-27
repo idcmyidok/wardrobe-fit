@@ -1,5 +1,10 @@
+import type { MeasurementKey } from "@/lib/constants/measurements";
+
 export type CategoryId = "outer" | "top" | "bottom";
 export type Season = "spring" | "summer" | "fall" | "winter";
+
+/** cm, 단면 기준. 없으면 null */
+export type Measurements = Partial<Record<MeasurementKey, number | null>>;
 
 /** 내 옷장 목록에 필요한 필드만 우선 정의한다. 전체 타입은 PROJECT_SPEC.md 9장 참고. */
 export interface GarmentListItem {
@@ -14,4 +19,5 @@ export interface GarmentListItem {
   purchasedOn: string | null; // YYYY-MM-DD
   purchasePrice: number | null; // KRW 정수
   imageUrl: string | null;
+  measurements: Measurements;
 }

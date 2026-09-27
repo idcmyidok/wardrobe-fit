@@ -24,7 +24,7 @@ export function WardrobeFilters({
   const detailCount = [value.subcategory, value.brand, value.season, value.size, value.color].filter(Boolean).length;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5 border-b border-border py-4">
       <div className="flex flex-wrap items-center gap-2">
         <CategoryToggle
           value={value.categories}
@@ -34,7 +34,7 @@ export function WardrobeFilters({
             onChange({ ...value, categories, subcategory: keep ? value.subcategory : "" });
           }}
         />
-        <div className="w-full sm:w-64">
+        <div className="w-full sm:w-72">
           <Input
             type="search"
             aria-label="검색"
@@ -49,10 +49,16 @@ export function WardrobeFilters({
           </label>
           <Select
             id="wardrobe-sort"
-            containerClassName="w-36"
-            value={value.sort}
-            onChange={(e) => set("sort", e.target.value as WardrobeSort)}
+            containerClassName="w-40"
+            value={value.column ? "column" : value.sort}
+            onChange={(e) => onChange({ ...value, sort: e.target.value as WardrobeSort, column: null })}
           >
+            {/* 표 헤더로 정렬한 동안에만 보이는 항목. 다른 정렬을 고르면 헤더 정렬이 풀린다. */}
+            {value.column && (
+              <option value="column" disabled>
+                표 헤더 기준
+              </option>
+            )}
             {SORT_OPTIONS.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
@@ -79,7 +85,7 @@ export function WardrobeFilters({
         <FilterSelect label="사이즈" value={value.size} onChange={(v) => set("size", v)} options={toOptions(options.sizes)} />
         <FilterSelect label="컬러" value={value.color} onChange={(v) => set("color", v)} options={toOptions(options.colors)} />
         {(detailCount > 0 || value.q || value.categories.length < 3) && (
-          <Button variant="ghost" size="sm" onClick={() => onChange({ ...DEFAULT_FILTERS, sort: value.sort })}>
+          <Button variant="ghost" size="sm" onClick={() => onChange({ ...DEFAULT_FILTERS, sort: value.sort, column: value.column })}>
             필터 초기화
           </Button>
         )}

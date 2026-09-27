@@ -27,8 +27,8 @@
 
   --radius-*: initial;
   --radius-none: 0;
-  --radius-sm: 2px;
-  --radius-md: 4px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
   --radius-lg: 6px;
   --radius-full: 9999px;
 
@@ -47,6 +47,15 @@
   --text-xl--line-height: 32px;
   --text-2xl: 32px;
   --text-2xl--line-height: 40px;
+  /* 시안의 세리프 디스플레이 크기 */
+  --text-brand: 26px;
+  --text-brand--line-height: 1;
+  --text-count: 64px;
+  --text-count--line-height: 0.9;
+  --text-hero: clamp(56px, 7vw, 88px);
+  --text-hero--line-height: 0.95;
+  --text-label: 11px;
+  --text-label--line-height: 16px;
 
   --shadow-*: initial;
   --shadow-popover: var(--shadow-popover);
@@ -54,6 +63,8 @@
 
   --font-sans: var(--font-pretendard), "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
     "Noto Sans KR", sans-serif;
+  --font-display: var(--font-instrument-serif), "Pretendard", serif;
+  --font-mono: var(--font-plex-mono), var(--font-pretendard), ui-monospace, monospace;
 
   --ease-standard: var(--ease-standard);
   --default-transition-duration: var(--duration-fast);
@@ -72,6 +83,7 @@
     font-size: 14px;
     line-height: 20px;
     letter-spacing: -0.01em;
+    word-break: keep-all;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -84,7 +96,11 @@
 
   :focus-visible {
     outline: 2px solid var(--focus-ring);
-    outline-offset: 1px;
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--accent-subtle);
   }
 
   input[type="search"]::-webkit-search-cancel-button {

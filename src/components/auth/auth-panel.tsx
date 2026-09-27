@@ -16,8 +16,8 @@ export function AuthPanel({ mode }: { mode: AuthMode }) {
 
   return (
     <div className="flex w-full max-w-sm flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-lg text-text">{copy.title}</h2>
+      <div className="flex flex-col gap-1.5 border-b border-text pb-3">
+        <h2 className="text-xl text-text">{copy.title}</h2>
         <p className="text-sm text-text-muted">{copy.description}</p>
       </div>
 
@@ -25,18 +25,18 @@ export function AuthPanel({ mode }: { mode: AuthMode }) {
       {mode === "signup" && <SignUpForm key="signup" />}
       {mode === "reset" && <ResetRequestForm key="reset" />}
 
-      <p className="border-t border-border pt-5 text-sm text-text-muted">
+      <p className="border-t border-border pt-5 text-base text-text-muted">
         {mode === "signin" ? (
           <>
             계정이 없으신가요?{" "}
-            <Link href="/?mode=signup" className="font-medium text-accent hover:underline">
+            <Link href="/?mode=signup" className="font-medium text-text underline decoration-border-strong underline-offset-4 hover:decoration-text">
               회원가입
             </Link>
           </>
         ) : (
           <>
             {mode === "signup" ? "이미 계정이 있으신가요? " : "비밀번호가 기억나셨나요? "}
-            <Link href="/" className="font-medium text-accent hover:underline">
+            <Link href="/" className="font-medium text-text underline decoration-border-strong underline-offset-4 hover:decoration-text">
               로그인
             </Link>
           </>

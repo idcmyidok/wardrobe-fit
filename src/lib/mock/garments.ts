@@ -14,6 +14,7 @@ export const MOCK_GARMENTS: GarmentListItem[] = [
     purchasedOn: "2025-10-12",
     purchasePrice: 489000,
     imageUrl: null,
+    measurements: { shoulder: 46, chest: 58, length: 70, sleeve: 63, armhole: 24.5, hemWidth: 56 },
   },
   {
     id: "g2",
@@ -27,6 +28,7 @@ export const MOCK_GARMENTS: GarmentListItem[] = [
     purchasedOn: "2025-04-03",
     purchasePrice: 49900,
     imageUrl: null,
+    measurements: { shoulder: 47.5, chest: 59, length: 76, sleeve: 62, armhole: 25, hemWidth: 57 },
   },
   {
     id: "g3",
@@ -40,6 +42,7 @@ export const MOCK_GARMENTS: GarmentListItem[] = [
     purchasedOn: "2024-11-20",
     purchasePrice: 139000,
     imageUrl: null,
+    measurements: { waist: 41, length: 104, rise: 29, thigh: 32, legOpening: 21, inseam: 78 },
   },
   {
     id: "g4",
@@ -53,6 +56,7 @@ export const MOCK_GARMENTS: GarmentListItem[] = [
     purchasedOn: "2025-11-02",
     purchasePrice: 129000,
     imageUrl: null,
+    measurements: { shoulder: 45, chest: 54, length: 68, sleeve: 61, armhole: null, hemWidth: 48 },
   },
   {
     id: "g5",
@@ -66,6 +70,7 @@ export const MOCK_GARMENTS: GarmentListItem[] = [
     purchasedOn: "2025-03-18",
     purchasePrice: 39900,
     imageUrl: null,
+    measurements: { waist: 40, length: 103, rise: 31, thigh: 34, legOpening: 23, inseam: 73 },
   },
   {
     id: "g6",
@@ -79,6 +84,7 @@ export const MOCK_GARMENTS: GarmentListItem[] = [
     purchasedOn: "2025-06-21",
     purchasePrice: 168000,
     imageUrl: null,
+    measurements: { shoulder: 52, chest: 58, length: 72, sleeve: 25, armhole: 23, hemWidth: 56 },
   },
   {
     id: "g7",
@@ -92,6 +98,7 @@ export const MOCK_GARMENTS: GarmentListItem[] = [
     purchasedOn: "2024-12-08",
     purchasePrice: 1450000,
     imageUrl: null,
+    measurements: { shoulder: 47, chest: 61, length: 104, sleeve: 64, armhole: 27, hemWidth: 63 },
   },
   {
     id: "g8",
@@ -105,5 +112,6 @@ export const MOCK_GARMENTS: GarmentListItem[] = [
     purchasedOn: null,
     purchasePrice: null,
     imageUrl: null,
+    measurements: { waist: 42, length: 106, rise: 31, thigh: 33, legOpening: 23, inseam: 81 },
   },
 ];

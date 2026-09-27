@@ -11,8 +11,8 @@ export function CategoryToggle({
   onChange: (next: CategoryId[]) => void;
 }) {
   return (
-    <div role="group" aria-label="대분류" className="inline-flex h-9 rounded-md border border-border-strong bg-surface">
-      {CATEGORIES.map((category, index) => {
+    <div role="group" aria-label="대분류" className="inline-flex gap-0.5 rounded-md border border-border bg-surface p-0.5">
+      {CATEGORIES.map((category) => {
         const selected = value.includes(category.id);
         return (
           <button
@@ -24,11 +24,8 @@ export function CategoryToggle({
               onChange(selected ? value.filter((id) => id !== category.id) : [...value, category.id]);
             }}
             className={cn(
-              "px-3.5 text-base transition-colors",
-              index > 0 && "border-l border-border-strong",
-              index === 0 && "rounded-l-md",
-              index === CATEGORIES.length - 1 && "rounded-r-md",
-              selected ? "bg-accent-subtle font-medium text-accent" : "text-text-muted hover:bg-surface-muted",
+              "h-9 cursor-pointer rounded-sm px-4 text-base transition-colors",
+              selected ? "bg-text font-medium text-bg" : "text-text-muted hover:bg-surface-muted hover:text-text",
             )}
           >
             {category.name}
