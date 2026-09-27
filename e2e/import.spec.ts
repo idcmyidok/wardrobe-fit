@@ -81,6 +81,12 @@ test("링크 분석 → 검토(사이즈 고르면 실측 채움) → 등록, �
   await page.getByRole("radiogroup", { name: "사이즈" }).locator("label", { hasText: /^M$/ }).click();
   await expect(page.locator("#f-m-chest")).toHaveValue("55");
   await expect(page.locator("#f-m-sleeve")).toHaveValue("61.5");
+  // 찾은 사이즈 대신 직접 입력: 가져온 다른 값과 채운 실측은 그대로 둔다.
+  await page.getByRole("radiogroup", { name: "사이즈" }).locator("label", { hasText: "직접 입력" }).click();
+  await expect(page.locator("#f-size")).toBeFocused();
+  await page.fill("#f-size", "95");
+  await expect(page.locator("#f-m-chest")).toHaveValue("55");
+  await expect(page.locator("#f-brand")).toHaveValue("테스트랩");
   await page.getByRole("radiogroup", { name: "컬러 옵션" }).locator("label", { hasText: "블루" }).click();
   await page.fill("#f-m-chest", "55.5");
   await page.getByRole("button", { name: "등록", exact: true }).click();
@@ -90,7 +96,7 @@ test("링크 분석 → 검토(사이즈 고르면 실측 채움) → 등록, �
     .poll(async () => (await admin.from("garments").select("image_path").eq("user_id", user.id).single()).data?.image_path)
     .toBeTruthy();
   const { data: g } = await admin.from("garments").select("*").eq("user_id", user.id).single();
-  expect(g).toMatchObject({ product_name: "옥스포드 셔츠", size_label: "M", color_name: "블루", m_chest: 55.5, m_sleeve: 61.5, product_url: sourceUrl, source_import_id: imp.id });
+  expect(g).toMatchObject({ product_name: "옥스포드 셔츠", size_label: "95", color_name: "블루", m_chest: 55.5, m_sleeve: 61.5, product_url: sourceUrl, source_import_id: imp.id });
 });
 
 test("분석 실패 → 원인 문구 → 직접 입력으로 계속(링크 유지)", async ({ page, makeUser }) => {
