@@ -51,7 +51,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
           version: latest
       # Supabase 시작(도커 이미지 받기, 1~2분)이 가장 오래 걸려서 먼저 뒤에서 돌리고,
