@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
 import localFont from "next/font/local";
+import { headers } from "next/headers";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "@/styles/globals.css";
 
@@ -32,7 +33,9 @@ export const metadata: Metadata = {
   description: "입어본 옷의 실측과 후기로 새 옷의 핏을 미리 가늠합니다.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // proxy가 만든 CSP nonce. 테마 스크립트도 이 nonce가 있어야 실행된다.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     // data-theme은 아래 스크립트가 hydration 전에 채운다.
     <html
@@ -41,7 +44,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       className={`${pretendard.variable} ${instrumentSerif.variable} ${plexMono.variable}`}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>{children}</body>
     </html>
