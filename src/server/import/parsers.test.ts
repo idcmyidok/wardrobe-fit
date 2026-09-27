@@ -74,7 +74,7 @@ describe("platform parser: Shopify", () => {
     expect(p.price?.value).toBe(129000);
     expect(p.imageUrls[0]).toBe("https://cdn.shopify.com/s/files/1/chino-1.jpg");
     expect(p.subcategoryId?.value).toBe("bottom.chino");
-    expect(p.colorOptions).toEqual(["Beige", "Navy"]);
+    expect(p.colorOptions).toEqual(["베이지", "네이비"]);
     expect(p.sizeOptions).toEqual(["30", "32"]);
     expect(p.sizeChart?.rows[0]).toEqual({
       sizeLabel: "30",

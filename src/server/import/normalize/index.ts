@@ -1,4 +1,5 @@
 import type { Extracted, ExtractedSource, ImportWarning, NormalizedProduct, RawField, RawProduct } from "../types";
+import { normalizeColorName } from "@/lib/constants/colors";
 import { mapCategory } from "./category";
 import { cleanOptions, pickColor, splitColorOption } from "./color";
 import { normalizeSizeChart } from "./size-chart";
@@ -96,8 +97,10 @@ export function normalizeProduct(raw: RawProduct, sources: FieldSources, options
     else warnings.push({ code: "price_currency_not_krw", message: `가격이 ${currency}로 적혀 있어 비워 두었습니다.` });
   }
 
-  const colorOptions = cleanOptions(raw.colorOptions, splitColorOption);
-  const colorCandidate = pickColor(raw, colorOptions);
+  // 가져온 컬러도 한글 표기로 보여 준다("BLACK / M" → "블랙").
+  const colorOptions = [...new Set(cleanOptions(raw.colorOptions, splitColorOption).map((c) => normalizeColorName(c) ?? c))];
+  const picked = pickColor(raw, colorOptions);
+  const colorCandidate = picked && { ...picked, value: normalizeColorName(picked.value) ?? picked.value };
 
   let sizeChart: NormalizedProduct["sizeChart"] = null;
   if (raw.sizeChart) {

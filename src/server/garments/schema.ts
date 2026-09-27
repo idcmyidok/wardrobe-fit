@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SUBCATEGORIES } from "@/lib/constants/categories";
+import { normalizeColorName } from "@/lib/constants/colors";
 import { BOTTOM_MEASUREMENTS, TOP_MEASUREMENTS, type MeasurementKey } from "@/lib/constants/measurements";
 import { FOUR_SEASONS } from "@/lib/constants/seasons";
 import type { Measurements, Season } from "@/lib/types/domain";
@@ -42,7 +43,8 @@ export const garmentInputSchema = z
       .min(1, "제품명을 입력해 주세요.")
       .max(200, "제품명은 200자 이하로 입력해 주세요."),
     sizeLabel: optionalText(30, "사이즈"),
-    colorName: optionalText(50, "컬러"),
+    /** 컬러는 어떻게 적든 한글 표기로 저장한다("black" → "블랙"). */
+    colorName: optionalText(50, "컬러").transform(normalizeColorName),
     seasons: z.array(z.enum(["spring", "summer", "fall", "winter", "all"])).max(5).default([]),
     purchasedOn: z
       .string()
