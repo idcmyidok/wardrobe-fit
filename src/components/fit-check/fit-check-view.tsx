@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { UnitInput } from "@/components/ui/input";
 import { CATEGORY_NAME, SUBCATEGORIES, SUBCATEGORY_NAME } from "@/lib/constants/categories";
-import { formatCm, measurementFields, type MeasurementKey } from "@/lib/constants/measurements";
+import { formatCm, formatNum, measurementFields, type MeasurementKey } from "@/lib/constants/measurements";
 import { cn } from "@/lib/cn";
 import {
   FIT_BY_SIZE,
@@ -69,10 +69,10 @@ function buildRow(
   let diff = "—";
   let warn = false;
   if (cand != null && lo != null && hi != null) {
-    if (cand >= lo && cand <= hi) diff = "0.0";
+    if (cand >= lo && cand <= hi) diff = "0";
     else {
       const dv = cand > hi ? cand - hi : cand - lo;
-      diff = `${dv > 0 ? "+" : "−"}${Math.abs(dv).toFixed(1)}`;
+      diff = `${dv > 0 ? "+" : "−"}${formatNum(Math.abs(dv))}`;
       warn = true;
     }
   }
