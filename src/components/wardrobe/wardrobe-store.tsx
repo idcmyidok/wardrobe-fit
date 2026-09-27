@@ -6,6 +6,7 @@ import { ImagePrepareError, prepareGarmentImage } from "@/lib/images/prepare-ima
 import { GARMENT_IMAGE_BUCKET, uploadGarmentImages } from "@/lib/images/upload-garment-image";
 import { goToSignIn, stashDraft } from "@/lib/session-expiry";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { SupabasePublicEnv } from "@/lib/supabase/config";
 import type { Garment } from "@/lib/types/domain";
 import {
   createGarment,
@@ -115,11 +116,14 @@ export function WardrobeProvider({
   children,
   initialGarments,
   userId,
+  supabaseEnv = null,
 }: {
   children: React.ReactNode;
   initialGarments: Garment[];
   /** 로그인한 사용자 id. null이면 미리보기 모드 */
   userId: string | null;
+  /** 서버가 실행 중에 읽은 Supabase 공개 설정(URL, anon key) */
+  supabaseEnv?: SupabasePublicEnv | null;
 }) {
   const [garments, setGarments] = useState<Garment[]>(initialGarments);
   const router = useRouter();
@@ -183,7 +187,7 @@ export function WardrobeProvider({
       }
       if (image === null) return fromAction(await call(() => setGarmentImage(garment.id, null)));
 
-      const supabase = createSupabaseBrowserClient();
+      const supabase = createSupabaseBrowserClient(supabaseEnv);
       if (!supabase) return { ok: false, error: "사진을 올릴 수 없습니다." };
       try {
         const prepared = await prepareGarmentImage(image);
@@ -195,7 +199,7 @@ export function WardrobeProvider({
         return { ok: false, error: e instanceof ImagePrepareError ? IMAGE_ERRORS[e.code] : "사진을 올리지 못했습니다." };
       }
     },
-    [userId],
+    [userId, supabaseEnv],
   );
 
   const addGarment = useCallback(

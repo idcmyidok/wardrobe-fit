@@ -3,11 +3,22 @@ import type { CookieOptions } from "@supabase/ssr";
 /**
  * Supabase 연결 값. 두 값이 모두 있어야 인증이 켜진다.
  * 값이 없으면(키를 넣기 전 미리보기 배포) 인증 없이 목업 화면만 둘러볼 수 있다.
- * NEXT_PUBLIC_* 값은 빌드 때 번들에 들어가므로 반드시 속성 이름을 그대로 적는다.
+ *
+ * 서버에서는 실행할 때의 환경 변수를 읽는다. `process.env.NEXT_PUBLIC_X`처럼 적으면 빌드 때 값으로 박혀서,
+ * 빌드 단계에 변수가 안 보이면(예: 배포 환경의 Secret 변수) 실행 중에 값이 있어도 미리보기 모드가 된다.
+ * 브라우저에서는 빌드 때 박힌 값을 쓰고, 없으면 서버가 넘겨준 값(`SupabasePublicEnv`)을 쓴다.
  */
-export function getSupabaseEnv(): { url: string; key: string } | null {
-  const url = normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+export type SupabasePublicEnv = { url: string; key: string };
+
+const runtimeEnv = (name: string) => (typeof window === "undefined" ? process.env[name] : undefined);
+
+export function getSupabaseEnv(): SupabasePublicEnv | null {
+  const url = normalizeSupabaseUrl(runtimeEnv("NEXT_PUBLIC_SUPABASE_URL") ?? process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const key =
+    runtimeEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY") ??
+    runtimeEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   return url && key ? { url, key } : null;
 }
 

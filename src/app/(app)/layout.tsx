@@ -6,7 +6,7 @@ import { AppHeader } from "@/components/layout/app-header";
 import { GarmentDrawer } from "@/components/wardrobe/garment-drawer";
 import { WardrobeProvider, WardrobeToast } from "@/components/wardrobe/wardrobe-store";
 import { MOCK_GARMENTS } from "@/lib/mock/garments";
-import { isAuthConfigured } from "@/lib/supabase/config";
+import { getSupabaseEnv, isAuthConfigured } from "@/lib/supabase/config";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { listMyGarments } from "@/server/garments/queries";
 
@@ -45,7 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 async function WardrobeData({ userId, email, children }: { userId: string | null; email: string | null; children: React.ReactNode }) {
   const garments = userId ? await listMyGarments() : MOCK_GARMENTS;
   return (
-    <WardrobeProvider initialGarments={garments} userId={userId}>
+    <WardrobeProvider initialGarments={garments} userId={userId} supabaseEnv={userId ? getSupabaseEnv() : null}>
       <AppHeader email={email} />
       {children}
       {/* 주소의 ?item=을 읽는다 */}
