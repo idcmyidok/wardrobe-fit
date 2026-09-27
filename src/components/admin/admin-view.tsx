@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { IMPORT_FAILURE, type ImportFailureCode } from "@/lib/import/messages";
-import type { AdminOverview } from "@/server/admin/queries";
+import type { AdminOverview, AdminOverviewError } from "@/server/admin/queries";
 import { UserActions } from "./user-actions";
 
 const section = "flex flex-col gap-4 border-b border-text py-8";
@@ -27,7 +27,7 @@ function failureLabel(code: string) {
 }
 
 /** overview가 null이면 서버에 service role 키가 없어 전체 데이터를 읽을 수 없는 상태다. */
-export function AdminView({ overview, myId }: { overview: AdminOverview | null; myId: string }) {
+export function AdminView({ overview, myId }: { overview: AdminOverview | AdminOverviewError | null; myId: string }) {
   return (
     <main className="mx-auto max-w-320 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
       <div className="flex flex-col gap-1 border-b border-text pb-4">
@@ -40,6 +40,12 @@ export function AdminView({ overview, myId }: { overview: AdminOverview | null; 
           서버에 <code>SUPABASE_SERVICE_ROLE_KEY</code>가 설정되지 않아 전체 통계를 읽을 수 없습니다. 배포 환경 변수에 추가한 뒤 다시
           배포해 주세요.
         </p>
+      ) : "error" in overview ? (
+        <div role="alert" className="flex flex-col gap-2 py-8 text-base text-pretty">
+          <p className="font-semibold text-negative">관리자 데이터를 불러오지 못했습니다.</p>
+          {overview.hint && <p>{overview.hint}</p>}
+          <p className="font-mono text-sm break-all text-neutral-700">{overview.error}</p>
+        </div>
       ) : (
         <>
           <Stats overview={overview} />
