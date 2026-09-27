@@ -1,0 +1,66 @@
+import { createParseContext } from "./context";
+import { safeFetch, type FetchOptions } from "./fetcher";
+import { normalizeProduct, type NormalizeOptions } from "./normalize";
+import { runParsers } from "./registry";
+import { ImportError, type NormalizedProduct } from "./types";
+import { normalizeProductUrl } from "./url";
+
+/**
+ * 상품 URL 하나를 분석한다(PROJECT_SPEC.md 12.1의 [1]~[5]).
+ * 저장(product_imports)과 화면 연결은 9단계의 /api/imports가 맡는다.
+ */
+
+export interface AnalyzeResult {
+  sourceUrl: string;
+  /** 추적 파라미터를 지운 주소 */
+  normalizedUrl: string;
+  /** redirect를 따라간 최종 주소 */
+  finalUrl: string;
+  domain: string;
+  parserId: string;
+  parserVersion: string;
+  status: "succeeded" | "partial";
+  product: NormalizedProduct;
+  durationMs: number;
+}
+
+/** 브랜드·제품명·사이즈표가 모두 있으면 성공, 하나라도 없으면 부분 성공 */
+function statusOf(p: NormalizedProduct): AnalyzeResult["status"] {
+  return p.productName && p.brand && p.sizeChart ? "succeeded" : "partial";
+}
+
+export async function analyzeProductUrl(
+  input: string,
+  options: { fetch?: FetchOptions; normalize?: NormalizeOptions } = {},
+): Promise<AnalyzeResult> {
+  const started = Date.now();
+  const url = normalizeProductUrl(input);
+  const page = await safeFetch(url, { ...options.fetch, accept: "html" });
+
+  // 같은 사이트의 공개 JSON만 부를 수 있다(Shopify 상품 JSON 등). SSRF 방어는 safeFetch가 다시 한다.
+  const fetchJson = async (target: string) => {
+    const t = new URL(target, page.url);
+    if (t.hostname !== page.url.hostname) throw new ImportError("blocked_host", t.hostname);
+    const res = await safeFetch(t, { ...options.fetch, accept: "json" });
+    return JSON.parse(res.body) as unknown;
+  };
+
+  const ctx = createParseContext(page.url, page.body, fetchJson);
+  const run = await runParsers(ctx);
+  const siteName = ctx.$('meta[property="og:site_name"]').attr("content");
+  const product = normalizeProduct(run.product, run.sources, { siteName, ...options.normalize });
+  if (run.failed.length) product.warnings.push({ code: "parser_failed", message: `일부 분석 단계가 실패했습니다: ${run.failed.join(", ")}` });
+
+  const main = run.used[0] ?? { id: "generic", version: "v1" };
+  return {
+    sourceUrl: input.trim(),
+    normalizedUrl: url.toString(),
+    finalUrl: page.url.toString(),
+    domain: page.url.hostname,
+    parserId: main.id,
+    parserVersion: main.version,
+    status: statusOf(product),
+    product,
+    durationMs: Date.now() - started,
+  };
+}
