@@ -12,7 +12,8 @@ const NAV = [
   { href: "/analysis", label: "옷장 분석" },
 ];
 
-export function AppHeader() {
+/** email이 null이면 인증 서버가 없는 미리보기 모드다. */
+export function AppHeader({ email }: { email: string | null }) {
   const pathname = usePathname();
   return (
     <header className="sticky top-0 z-30 border-b border-text bg-bg">
@@ -43,7 +44,7 @@ export function AppHeader() {
         </nav>
         <div className="ml-auto flex items-center gap-3 md:ml-0">
           <ThemeToggle />
-          <UserMenu />
+          <UserMenu email={email} />
         </div>
       </div>
     </header>
