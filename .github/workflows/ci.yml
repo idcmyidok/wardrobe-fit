@@ -27,6 +27,12 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - name: Next.js 빌드 캐시
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-check-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'next.config.*') }}
+          restore-keys: next-check-${{ hashFiles('package-lock.json') }}-
       - name: 빌드(가짜 비밀 값으로)
         run: npm run build
         env:
@@ -45,16 +51,30 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      # Supabase 시작(도커 이미지 받기, 1~2분)이 가장 오래 걸려서 먼저 뒤에서 돌리고,
+      # 그동안 npm ci와 Playwright 설치를 한다. 아래 "기다리기" 단계에서 결과를 확인한다.
+      - name: 로컬 Supabase 시작(백그라운드, 마이그레이션 적용)
+        run: |
+          (supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta \
+            > "$RUNNER_TEMP/supabase-start.log" 2>&1; echo $? > "$RUNNER_TEMP/supabase-start.exit") &
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-      - name: 로컬 Supabase 시작(마이그레이션 적용)
-        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta
+      - run: npx playwright install --with-deps chromium
+      - name: 로컬 Supabase 준비 기다리기
+        run: |
+          for _ in $(seq 1 300); do
+            [ -f "$RUNNER_TEMP/supabase-start.exit" ] && break
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/supabase-start.log"
+          [ -f "$RUNNER_TEMP/supabase-start.exit" ] || { echo "supabase start가 5분 안에 끝나지 않음"; exit 1; }
+          exit "$(cat "$RUNNER_TEMP/supabase-start.exit")"
       - name: 로컬 Supabase 접속 정보를 환경 변수로
         run: |
           eval "$(supabase status -o env)"
@@ -64,7 +84,12 @@ jobs:
             echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
             echo "E2E_MAILPIT_URL=$MAILPIT_URL"
           } >> "$GITHUB_ENV"
-      - run: npx playwright install --with-deps chromium
+      - name: Next.js 빌드 캐시
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-e2e-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'next.config.*') }}
+          restore-keys: next-e2e-${{ hashFiles('package-lock.json') }}-
       - run: npm run build
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
 import { safeFetchImage } from "@/server/import/fetcher";
+import { MAX_IMAGES } from "@/server/import/normalize";
 import type { NormalizedProduct } from "@/server/import/types";
 
 /**
@@ -10,7 +11,7 @@ import type { NormalizedProduct } from "@/server/import/types";
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const index = Number(new URL(request.url).searchParams.get("i") ?? "0");
-  if (!z.uuid().safeParse(id).success || !Number.isInteger(index) || index < 0 || index > 11) {
+  if (!z.uuid().safeParse(id).success || !Number.isInteger(index) || index < 0 || index >= MAX_IMAGES) {
     return new Response(null, { status: 404 });
   }
 
