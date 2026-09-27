@@ -13,7 +13,8 @@ export default async function LandingPage({
   const params = await searchParams;
   const mode = parseAuthMode(params.mode);
   const next = typeof params.next === "string" ? safeNextPath(params.next) : undefined;
-  const notice = params.error === "link" ? AUTH_MESSAGES.expiredLink : undefined;
+  const notice =
+    params.error === "link" ? AUTH_MESSAGES.expiredLink : params.error === "suspended" ? AUTH_MESSAGES.suspended : undefined;
 
   return (
     <main className="grid min-h-dvh grid-cols-[repeat(auto-fit,minmax(min(100%,440px),1fr))]">

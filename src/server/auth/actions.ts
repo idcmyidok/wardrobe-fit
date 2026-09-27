@@ -39,6 +39,8 @@ function messageFor(error: AuthError) {
       return AUTH_MESSAGES.rateLimited;
     case "weak_password":
       return AUTH_MESSAGES.weakPassword;
+    case "user_banned":
+      return AUTH_MESSAGES.suspended;
     case "same_password":
       return AUTH_MESSAGES.samePassword;
     default:

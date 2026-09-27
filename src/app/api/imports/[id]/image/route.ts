@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
 import { safeFetchImage } from "@/server/import/fetcher";
 import { MAX_IMAGES } from "@/server/import/normalize";
 import type { NormalizedProduct } from "@/server/import/types";
@@ -16,7 +16,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 
   const supabase = await createSupabaseServerClient();
-  const user = supabase ? (await supabase.auth.getUser()).data.user : null;
+  const user = supabase ? await getActiveUser(supabase) : null;
   if (!supabase || !user) return new Response(null, { status: 401 });
 
   const { data } = await supabase.from("product_imports").select("result").eq("id", id).eq("user_id", user.id).maybeSingle();

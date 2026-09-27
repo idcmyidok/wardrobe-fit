@@ -100,6 +100,21 @@ check("B가 A의 사진을 삭제 못 함", none(await as(B, "delete from storag
 check("B는 A의 사진 경로를 바꿀 수 없음", none(await as(B, "update storage.objects set name = $2 where name = $1", [path, `${B}/x.webp`])));
 check("사진 bucket은 비공개", (await db.query("select public from storage.buckets where id = 'garment-images'")).rows[0]?.public === false);
 
+// 관리자: 스스로 관리자가 될 수 없고, 통계 함수는 service role만 부른다.
+check("사용자가 스스로 관리자 등록 불가", Boolean((await as(A, `insert into public.admins (user_id) values ('${A}')`)).error));
+await db.query("insert into public.admins (user_id) values ($1)", [A]);
+check("관리자는 자기 관리자 행을 읽음", (await as(A, "select user_id from public.admins")).rows.length === 1);
+check("다른 사용자는 관리자 목록을 볼 수 없음", none(await as(B, "select user_id from public.admins")));
+check("관리자도 관리자 행을 지울 수 없음", Boolean((await as(A, "delete from public.admins")).error));
+check("관리자도 세션으로는 다른 사용자의 기록을 볼 수 없음(RLS 유지)", none(await as(A, "select id from public.fit_checks where id = $1", [fcId])));
+for (const fn of ["public.admin_stats()", "public.admin_import_failures()", `public.admin_user_counts(array['${A}']::uuid[])`]) {
+  check(`로그인 사용자는 ${fn.split("(")[0]} 호출 불가`, Boolean((await as(A, `select * from ${fn}`)).error));
+}
+await db.exec("set role service_role");
+const stats = await db.query("select public.admin_stats() as s").catch((error) => ({ error, rows: [] }));
+await db.exec("reset role");
+check("service role은 통계를 읽음", stats.rows[0]?.s?.users_total === 2, stats.error?.message);
+
 check("trigger 함수는 API로 호출 불가", Boolean((await as(A, "select public.handle_new_user()")).error));
 check("A가 자기 옷 삭제", (await as(A, "delete from public.garments where id = $1", [gid])).affectedRows === 1);
 
