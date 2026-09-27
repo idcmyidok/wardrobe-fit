@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { cn } from "@/lib/cn";
 import {
@@ -218,6 +218,11 @@ export function AnalysisView() {
 function MonthChart({ bars }: { bars: ReturnType<typeof monthlySummary>["bars"] }) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; left: number } | null>(null);
+
+  // 막대가 많아 가로 스크롤이 생기면 처음에는 최근 달(오른쪽 끝)을 보여준다.
+  useEffect(() => {
+    if (ref.current) ref.current.scrollLeft = ref.current.scrollWidth;
+  }, [bars.length]);
 
   return (
     <div
