@@ -53,6 +53,11 @@ export function UserMenu({ email, admin = false }: { email: string | null; admin
               관리자 페이지
             </Link>
           )}
+          {email && (
+            <Link href="/settings" role="menuitem" className={`${itemClass} no-underline`} onClick={() => setOpen(false)}>
+              계정 설정
+            </Link>
+          )}
           {email ? (
             <form action={signOut}>
               <button type="submit" role="menuitem" className={itemClass}>

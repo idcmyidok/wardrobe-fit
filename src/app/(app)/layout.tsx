@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { OfflineBanner } from "@/components/feedback/offline-banner";
 import { WardrobeSkeleton } from "@/components/feedback/wardrobe-skeleton";
 import { AppHeader } from "@/components/layout/app-header";
+import { SiteFooter } from "@/components/legal/site-footer";
 import { GarmentDrawer } from "@/components/wardrobe/garment-drawer";
 import { WardrobeProvider, WardrobeToast } from "@/components/wardrobe/wardrobe-store";
 import { MOCK_GARMENTS } from "@/lib/mock/garments";
@@ -42,6 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {children}
         </WardrobeData>
       </Suspense>
+      <SiteFooter className="mx-auto max-w-280 px-[clamp(16px,3vw,32px)] pb-6" />
     </>
   );
 }

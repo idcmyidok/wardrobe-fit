@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { GARMENT_IMAGE_BUCKET } from "@/lib/images/upload-garment-image";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { deleteAccountAndData } from "@/server/account/delete";
+import { logAdminAction } from "./audit";
 import { getAdminUser } from "./guard";
 
 /**
@@ -30,7 +31,7 @@ async function prepare(targetId: unknown) {
   if (!db) return { error: fail("서버에 SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다.") };
   const { data: targetAdmin } = await db.from("admins").select("user_id").eq("user_id", parsed.data).maybeSingle();
   if (targetAdmin) return { error: fail("다른 관리자 계정에는 할 수 없습니다.") };
-  return { db, targetId: parsed.data };
+  return { db, adminId: admin.id, targetId: parsed.data };
 }
 
 export async function setUserBanned(targetId: string, banned: boolean): Promise<AdminActionResult> {
@@ -43,6 +44,7 @@ export async function setUserBanned(targetId: string, banned: boolean): Promise<
     console.error("[admin] ban", error.message);
     return fail(banned ? "정지하지 못했습니다." : "정지를 풀지 못했습니다.");
   }
+  await logAdminAction(ready.db, ready.adminId, banned ? "ban_user" : "unban_user", ready.targetId);
   revalidatePath("/admin");
   return { ok: true };
 }
@@ -51,29 +53,10 @@ export async function setUserBanned(targetId: string, banned: boolean): Promise<
 export async function deleteUserAccount(targetId: string): Promise<AdminActionResult> {
   const ready = await prepare(targetId);
   if ("error" in ready) return ready.error!;
-  const { db, targetId: id } = ready;
-
-  const storage = db.storage.from(GARMENT_IMAGE_BUCKET);
-  const { data: dirs, error: listError } = await storage.list(id, { limit: 1000 });
-  if (listError) {
-    console.error("[admin] list photos", listError.message);
-    return fail("사진을 지우지 못해 삭제를 멈췄습니다.");
-  }
-  for (const dir of dirs ?? []) {
-    const { data: files } = await storage.list(`${id}/${dir.name}`, { limit: 1000 });
-    if (!files?.length) continue;
-    const { error } = await storage.remove(files.map((f) => `${id}/${dir.name}/${f.name}`));
-    if (error) {
-      console.error("[admin] remove photos", error.message);
-      return fail("사진을 지우지 못해 삭제를 멈췄습니다.");
-    }
-  }
-
-  const { error } = await db.auth.admin.deleteUser(id);
-  if (error) {
-    console.error("[admin] delete user", error.message);
-    return fail("계정을 지우지 못했습니다.");
-  }
+  const { db, adminId, targetId: id } = ready;
+  const error = await deleteAccountAndData(db, id);
+  if (error) return fail(error);
+  await logAdminAction(db, adminId, "delete_user", id);
   revalidatePath("/admin");
   return { ok: true };
 }

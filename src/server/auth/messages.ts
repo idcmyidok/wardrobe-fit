@@ -7,5 +7,6 @@ export const AUTH_MESSAGES = {
   samePassword: "지금 비밀번호와 다른 비밀번호를 입력해 주세요.",
   unknown: "처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
   suspended: "이용이 정지된 계정입니다.",
+  deleted: "회원 탈퇴를 마쳤습니다. 계정과 모든 기록을 삭제했습니다.",
   expiredLink: "링크가 만료되었거나 이미 사용되었습니다. 다시 요청해 주세요.",
 } as const;

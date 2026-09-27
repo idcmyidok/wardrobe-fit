@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useWardrobe, type GarmentDraft, type ImageChange } from "@/components/wardrobe/wardrobe-store";
+import { DateLabel } from "./date-label";
 import { ImagePicker } from "./image-picker";
 import { PageImageGrid } from "./page-image-grid";
 import { UnitInput } from "@/components/ui/input";
@@ -14,6 +15,8 @@ import { cn } from "@/lib/cn";
 import { importImageFile, importImageUrl, streamImport, type AnalyzeStage, type ImportOutcome } from "@/lib/import/client";
 import { importFailure } from "@/lib/import/messages";
 import { takeStashedDraft } from "@/lib/session-expiry";
+import { notifyUsageChanged } from "@/lib/usage";
+import { UsageNote } from "@/components/usage/usage-note";
 import type { CategoryId, Measurements, Season } from "@/lib/types/domain";
 
 type Phase = "url" | "analyzing" | "failed" | "review" | "manual";
@@ -39,12 +42,6 @@ const ANALYZE_STEPS: { stage: AnalyzeStage; label: string }[] = [
   { stage: "normalizing", label: "사이즈표·컬러 정리 중" },
 ];
 
-/** 오늘 날짜(사용자 기기 기준, YYYY-MM-DD) */
-function today() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 type Imported = ImportOutcome & { importId: string; product: NonNullable<ImportOutcome["product"]> };
 
 const EMPTY_FORM: FormState = {
@@ -67,7 +64,6 @@ const importedForm = (url: string, p: Imported["product"]): FormState => {
   const size = p.sizeOptions.length === 1 ? p.sizeOptions[0] : "";
   return {
     ...EMPTY_FORM,
-    date: today(),
     categoryId: p.categoryId?.value ?? "outer",
     subcategoryId: p.subcategoryId?.value ?? "",
     brand: p.brand?.value ?? "",
@@ -108,7 +104,7 @@ export function NewGarmentView() {
   const [url, setUrl] = useState("");
   const [step, setStep] = useState(0);
   const [showDetail, setShowDetail] = useState(false);
-  const [form, setForm] = useState<FormState>(() => (pendingDraft ? draftToForm(pendingDraft) : { ...EMPTY_FORM, date: today() }));
+  const [form, setForm] = useState<FormState>(() => (pendingDraft ? draftToForm(pendingDraft) : EMPTY_FORM));
   const [imported, setImported] = useState<Imported | null>(null);
   const [failure, setFailure] = useState<ImportOutcome | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
@@ -178,6 +174,7 @@ export function NewGarmentView() {
     }
     if (controller.signal.aborted) return;
     request.current = null;
+    notifyUsageChanged();
     if (outcome.status !== "failed" && outcome.product && outcome.importId) {
       const result = outcome as Imported;
       setImported(result);
@@ -196,7 +193,7 @@ export function NewGarmentView() {
   const startManual = (keepUrl = false) => {
     cancelRequest();
     const partial = keepUrl ? failure?.product : null;
-    setForm(partial ? importedForm(url.trim(), partial) : { ...EMPTY_FORM, date: today(), url: keepUrl ? url.trim() : "" });
+    setForm(partial ? importedForm(url.trim(), partial) : { ...EMPTY_FORM, url: keepUrl ? url.trim() : "" });
     setImported(null);
     setImage(undefined);
     setPhase("manual");
@@ -319,6 +316,7 @@ export function NewGarmentView() {
           <div className="text-sm text-neutral-700">
             상품 페이지 주소를 붙여 넣으면 제품명·가격·사진·사이즈표를 읽어 옵니다. 읽지 못한 항목은 직접 채우면 됩니다.
           </div>
+          <UsageNote kind="import" />
 
           {phase === "analyzing" && (
             <div className="mt-4 border-t border-text" aria-live="polite">
@@ -469,7 +467,7 @@ export function NewGarmentView() {
                   <FieldError id="e-productName" message={fieldErrors.productName} />
                 </div>
                 <div className="field">
-                  <label htmlFor="f-date">구매 날짜</label>
+                  <DateLabel htmlFor="f-date" label="구매 날짜" filled={Boolean(form.date)} onClear={() => update("date", "")} />
                   <input id="f-date" type="date" className="input font-mono tabular-nums" aria-invalid={Boolean(fieldErrors.purchasedOn)} aria-describedby={fieldErrors.purchasedOn ? "e-purchasedOn" : undefined} value={form.date} onChange={(e) => update("date", e.target.value)} />
                   <FieldError id="e-purchasedOn" message={fieldErrors.purchasedOn} />
                 </div>

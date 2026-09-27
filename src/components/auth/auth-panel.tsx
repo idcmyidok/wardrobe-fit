@@ -98,9 +98,58 @@ function SignUpForm() {
       <Field label="비밀번호 확인" htmlFor="signup-password-confirm" error={state.fieldErrors?.passwordConfirm}>
         <Input id="signup-password-confirm" name="passwordConfirm" type="password" autoComplete="new-password" required />
       </Field>
+      <SignUpNotice error={state.fieldErrors?.agree} />
       <SubmitButton label="가입하고 인증 메일 받기" pendingLabel="메일 보내는 중…" />
       <SwitchLine text="이미 계정이 있으신가요?" href="/" label="로그인" />
     </form>
+  );
+}
+
+/** 가입 전 개인정보 수집·이용 안내(개인정보 보호법 제15조·제22조)와 만 14세 이상 확인. */
+function SignUpNotice({ error }: { error?: string }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="border border-neutral-300 p-3.5 text-sm leading-relaxed text-neutral-700">
+        <p className="mb-1.5 font-medium text-text">개인정보 수집·이용 안내</p>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+          <dt>수집 항목</dt>
+          <dd>이메일, 비밀번호(암호화 저장)</dd>
+          <dt>이용 목적</dt>
+          <dd>회원 식별, 로그인, 이메일 인증과 비밀번호 재설정</dd>
+          <dt>보유 기간</dt>
+          <dd>회원 탈퇴 시까지(탈퇴하면 바로 삭제)</dd>
+        </dl>
+        <p className="mt-1.5">
+          가입 후 입력하는 옷 정보와 사진은 옷장 기록에만 씁니다. 해외 클라우드 저장 등 자세한 내용은{" "}
+          <Link href="/privacy" target="_blank" className="underline underline-offset-2">
+            개인정보처리방침
+          </Link>
+          을 확인해 주세요.
+        </p>
+      </div>
+      <label className="flex cursor-pointer items-start gap-2 text-base">
+        <input
+          type="checkbox"
+          name="agree"
+          required
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? "signup-agree-error" : undefined}
+          className="mt-1 size-4 shrink-0 accent-accent"
+        />
+        <span>
+          만 14세 이상이며,{" "}
+          <Link href="/terms" target="_blank" className="underline underline-offset-2">
+            이용약관
+          </Link>
+          과 위 개인정보 수집·이용에 동의합니다.
+        </span>
+      </label>
+      {error && (
+        <p id="signup-agree-error" role="alert" className="text-sm text-negative">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 

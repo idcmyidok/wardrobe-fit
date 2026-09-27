@@ -19,7 +19,7 @@ import { GARMENT_COLUMNS, rowToGarment } from "@/server/garments/mapper";
 export const FIT_DAILY_LIMIT = 20;
 export const AI_DAILY_LIMIT_DEFAULT = 10;
 export const AI_CACHE_DAYS = 7;
-const CACHE_SUFFIX = ":cache";
+export const CACHE_SUFFIX = ":cache";
 
 type Client = SupabaseClient<Database>;
 
@@ -30,9 +30,9 @@ export type FitStreamEvent =
   | { type: "done"; id: string; saved: boolean; aiStatus: AiStatus; interpretation: FitInterpretation | null }
   | { type: "error"; code: FitErrorCode };
 
-const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+export const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
 
-function aiDailyLimit() {
+export function aiDailyLimit() {
   const n = Number(process.env.FIT_AI_DAILY_LIMIT);
   return Number.isInteger(n) && n >= 0 ? n : AI_DAILY_LIMIT_DEFAULT;
 }
