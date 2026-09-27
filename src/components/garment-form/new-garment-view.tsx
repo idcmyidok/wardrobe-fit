@@ -10,14 +10,8 @@ import { SUBCATEGORIES } from "@/lib/constants/categories";
 import { measurementFields } from "@/lib/constants/measurements";
 import { SEASONS, toggleSeason } from "@/lib/constants/seasons";
 import { cn } from "@/lib/cn";
-import {
-  ANALYZE_STEPS,
-  EXTRACTED,
-  EXTRACTED_COLORS,
-  EXTRACTED_SIZE_CHART,
-  FAILED_DETAIL,
-  isSupportedUrl,
-} from "@/lib/mock/product-import";
+import { importImageUrl, streamImport, type AnalyzeStage, type ImportOutcome } from "@/lib/import/client";
+import { importFailure } from "@/lib/import/messages";
 import type { CategoryId, Measurements, Season } from "@/lib/types/domain";
 
 type Phase = "url" | "analyzing" | "failed" | "review" | "manual";
@@ -38,8 +32,19 @@ interface FormState {
   m: Record<string, string>;
 }
 
-const TODAY = "2026-09-27";
-const DEFAULT_URL = "https://www.musinsa.com/products/3920118";
+const ANALYZE_STEPS: { stage: AnalyzeStage; label: string }[] = [
+  { stage: "fetching", label: "페이지 불러오는 중" },
+  { stage: "parsing", label: "상품 정보 읽는 중" },
+  { stage: "normalizing", label: "사이즈표·컬러 정리 중" },
+];
+
+/** 오늘 날짜(사용자 기기 기준, YYYY-MM-DD) */
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+type Imported = ImportOutcome & { importId: string; product: NonNullable<ImportOutcome["product"]> };
 
 const EMPTY_FORM: FormState = {
   categoryId: "outer",
@@ -50,25 +55,37 @@ const EMPTY_FORM: FormState = {
   seasons: [],
   price: "",
   url: "",
-  date: TODAY,
+  date: "",
   size: "",
   color: "",
   review: "",
   m: {},
 };
 
-const extractedForm = (url: string): FormState => ({
-  ...EMPTY_FORM,
-  categoryId: EXTRACTED.categoryId,
-  subcategoryId: EXTRACTED.subcategoryId,
-  brand: EXTRACTED.brand,
-  productName: EXTRACTED.productName,
-  material: EXTRACTED.material,
-  seasons: EXTRACTED.seasons,
-  price: EXTRACTED.price,
-  date: EXTRACTED.date,
-  url,
-});
+/** 분석 결과 → 검토 폼. 사이즈·컬러는 옵션이 하나뿐일 때만 미리 고른다. */
+const importedForm = (url: string, p: Imported["product"]): FormState => {
+  const size = p.sizeOptions.length === 1 ? p.sizeOptions[0] : "";
+  return {
+    ...EMPTY_FORM,
+    date: today(),
+    categoryId: p.categoryId?.value ?? "outer",
+    subcategoryId: p.subcategoryId?.value ?? "",
+    brand: p.brand?.value ?? "",
+    productName: p.productName?.value ?? "",
+    material: p.material?.value ?? "",
+    price: p.price ? String(p.price.value) : "",
+    color: p.colorCandidate?.value ?? "",
+    size,
+    m: chartMeasurements(p, size),
+    url,
+  };
+};
+
+/** 사이즈표에서 고른 사이즈의 실측 */
+function chartMeasurements(p: Imported["product"] | undefined, size: string): Record<string, string> {
+  const row = p?.sizeChart?.rows.find((r) => r.sizeLabel === size);
+  return row ? Object.fromEntries(Object.entries(row.measurements).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])) : {};
+}
 
 /** AI 구매 판단 결과에서 넘어온 값(구매했어요)을 검토 폼 값으로 바꾼다. */
 const draftToForm = (d: GarmentDraft): FormState => ({
@@ -92,73 +109,121 @@ export function NewGarmentView() {
   const { addGarment, garmentHref, showToast, pendingDraft, setPendingDraft } = useWardrobe();
 
   const [phase, setPhase] = useState<Phase>(() => (pendingDraft ? "review" : params.get("mode") === "manual" ? "manual" : "url"));
-  const [url, setUrl] = useState(DEFAULT_URL);
+  const [url, setUrl] = useState("");
   const [step, setStep] = useState(0);
   const [showDetail, setShowDetail] = useState(false);
-  const [form, setForm] = useState<FormState>(() => (pendingDraft ? draftToForm(pendingDraft) : EMPTY_FORM));
+  const [form, setForm] = useState<FormState>(() => (pendingDraft ? draftToForm(pendingDraft) : { ...EMPTY_FORM, date: today() }));
+  const [imported, setImported] = useState<Imported | null>(null);
+  const [failure, setFailure] = useState<ImportOutcome | null>(null);
   const [edited, setEdited] = useState<Partial<Record<TagKey, boolean>>>({});
   const [imageIndex, setImageIndex] = useState(0);
   const [image, setImage] = useState<ImageChange>(undefined);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const request = useRef<AbortController | null>(null);
 
   // 판단기에서 넘어온 값은 한 번만 쓴다.
   useEffect(() => {
     if (pendingDraft) setPendingDraft(null);
   }, [pendingDraft, setPendingDraft]);
 
-  const clearTimers = () => {
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
+  /** 진행 중인 분석을 멈춘다(취소, 화면 이동). */
+  const cancelRequest = () => {
+    request.current?.abort();
+    request.current = null;
   };
-  useEffect(() => clearTimers, []);
+  useEffect(() => cancelRequest, []);
 
-  const analyze = () => {
-    clearTimers();
-    const target = url || DEFAULT_URL;
-    setUrl(target);
+  const analyze = async () => {
+    const target = url.trim();
+    if (!target) {
+      document.getElementById("new-url")?.focus();
+      return;
+    }
+    cancelRequest();
+    const controller = new AbortController();
+    request.current = controller;
     setPhase("analyzing");
     setStep(0);
     setShowDetail(false);
-    [1, 2, 3].forEach((s) => timers.current.push(setTimeout(() => setStep(s), s * 900)));
-    timers.current.push(
-      setTimeout(() => {
-        if (isSupportedUrl(target)) {
-          setForm(extractedForm(target));
-          setEdited({});
-          setPhase("review");
-        } else {
-          setPhase("failed");
-        }
-      }, 3 * 900 + 500),
-    );
+    setFailure(null);
+    let outcome: ImportOutcome;
+    try {
+      outcome = await streamImport(target, {
+        signal: controller.signal,
+        onStage: (stage) => setStep(ANALYZE_STEPS.findIndex((s) => s.stage === stage)),
+      });
+    } catch {
+      if (controller.signal.aborted) return;
+      outcome = { importId: null, status: "failed", reused: false, domain: null, sourceUrl: target, parserId: null, durationMs: 0, product: null, errorCode: "network_error", errorDetail: null };
+    }
+    if (controller.signal.aborted) return;
+    request.current = null;
+    if (outcome.status !== "failed" && outcome.product && outcome.importId) {
+      const result = outcome as Imported;
+      setImported(result);
+      setForm(importedForm(target, result.product));
+      setEdited({});
+      setImage(undefined);
+      setImageIndex(0);
+      setPhase("review");
+    } else {
+      setFailure(outcome);
+      setPhase("failed");
+    }
   };
 
+  /** 직접 입력으로. 실패했어도 분석에서 얻은 값(부분 결과)과 링크는 채워 넘긴다. */
   const startManual = (keepUrl = false) => {
-    clearTimers();
-    setForm({ ...EMPTY_FORM, url: keepUrl ? url : "" });
+    cancelRequest();
+    const partial = keepUrl ? failure?.product : null;
+    setForm(partial ? importedForm(url.trim(), partial) : { ...EMPTY_FORM, date: today(), url: keepUrl ? url.trim() : "" });
+    setImported(null);
     setEdited({});
+    setImage(undefined);
     setPhase("manual");
   };
 
   const isReview = phase === "review";
   const showForm = phase === "review" || phase === "manual";
-  const hasChart = isReview && form.categoryId === "top";
+  const product = isReview ? imported?.product : undefined;
+  const sizeChoices = product ? (product.sizeOptions.length ? product.sizeOptions : (product.sizeChart?.rows.map((r) => r.sizeLabel) ?? [])) : [];
+  const colorChoices = product?.colorOptions ?? [];
+  const pageImages = product && imported ? product.imageUrls.map((_, i) => importImageUrl(imported.importId, i)) : [];
+  const extractedCount = product
+    ? [product.brand, product.productName, product.categoryId, product.price, product.material, product.colorCandidate, product.sizeChart, pageImages[0]].filter(Boolean).length +
+      (sizeChoices.length ? 1 : 0)
+    : 0;
+  const partial = imported?.status === "partial";
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K], tag?: TagKey) => {
     setForm((f) => ({ ...f, [key]: value }));
     if (tag) setEdited((e) => ({ ...e, [tag]: true }));
   };
 
+  const NEEDS = "tag tag-accent";
+  const AUTO = "tag tag-neutral";
+  const confidenceOf: Partial<Record<TagKey, { confidence: string } | null | undefined>> = {
+    cat: product?.categoryId,
+    sub: product?.subcategoryId,
+    brand: product?.brand,
+    name: product?.productName,
+    material: product?.material,
+    price: product?.price,
+    color: product?.colorCandidate,
+  };
   const tag = (k: TagKey): { label: string; className: string } => {
     if (edited[k]) return { label: "수정됨", className: "tag border border-text" };
-    if (k === "size" && !form.size) return { label: "선택 필요", className: "tag tag-accent" };
-    if (k === "color" && !form.color) return { label: "선택 필요", className: "tag tag-accent" };
-    if (k === "seasons") return { label: "확인 필요", className: "tag tag-accent" };
-    if (k === "date") return { label: "오늘", className: "tag tag-neutral" };
-    if (k === "price") return { label: "판매가", className: "tag tag-neutral" };
-    return { label: "자동", className: "tag tag-neutral" };
+    if (k === "size") return form.size ? { label: "자동", className: AUTO } : { label: "선택 필요", className: NEEDS };
+    if (k === "color") return form.color ? (confidenceOf.color?.confidence === "low" ? { label: "확인 필요", className: NEEDS } : { label: "자동", className: AUTO }) : { label: "선택 필요", className: NEEDS };
+    if (k === "seasons") return { label: "확인 필요", className: NEEDS };
+    if (k === "date") return { label: "오늘", className: AUTO };
+    if (k === "url") return { label: "자동", className: AUTO };
+    if (!product) return { label: "확인 필요", className: NEEDS };
+    const found = confidenceOf[k];
+    if (!found) return { label: "입력 필요", className: NEEDS };
+    if (found.confidence === "low") return { label: "확인 필요", className: NEEDS };
+    return { label: k === "price" ? "판매가" : "자동", className: AUTO };
   };
   const label = (text: string, k: TagKey) => (
     <>
@@ -196,7 +261,7 @@ export function NewGarmentView() {
       imageUrl: null,
       measurements,
       fitReview: form.review || null,
-    }, image);
+    }, image === undefined && isReview && pageImages[imageIndex] ? await pageImageFile(pageImages[imageIndex]) : image, imported?.importId ?? null);
     setSaving(false);
     if (!result.ok) {
       setError(result.error);
@@ -214,7 +279,11 @@ export function NewGarmentView() {
         ? "구매한 사이즈를 선택하세요."
         : "등록 전까지 저장되지 않습니다.";
 
-  const failDomain = url.match(/\/\/([^/]+)/)?.[1] ?? "";
+  const failDomain = failure?.domain ?? url.match(/\/\/([^/]+)/)?.[1] ?? "";
+  const failText = importFailure(failure?.errorCode);
+  const failDetail = failure
+    ? [failure.errorCode, failure.errorDetail?.replace(`${failure.errorCode}: `, ""), `${(failure.durationMs / 1000).toFixed(1)}초`, failure.parserId && `parser: ${failure.parserId}`].filter(Boolean).join(" · ")
+    : "";
 
   return (
     <main className="mx-auto max-w-280 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
@@ -225,7 +294,7 @@ export function NewGarmentView() {
         <h1 className="text-title">새 옷 추가</h1>
         <div className="seg" role="radiogroup" aria-label="추가 방법">
           <label className="seg-opt px-4 py-2 text-base">
-            <input type="radio" name="addmode" checked={phase !== "manual"} onChange={() => { clearTimers(); setPhase("url"); }} />
+            <input type="radio" name="addmode" checked={phase !== "manual"} onChange={() => { cancelRequest(); setPhase("url"); }} />
             상품 링크로 추가
           </label>
           <label className="seg-opt px-4 py-2 text-base">
@@ -257,7 +326,7 @@ export function NewGarmentView() {
             </div>
           </div>
           <div className="text-sm text-neutral-700">
-            무신사, 29CM 등 지원 쇼핑몰은 사이즈표까지 읽습니다. 그 외 사이트도 기본 정보 분석을 시도합니다.
+            상품 페이지 주소를 붙여 넣으면 제품명·가격·사진·사이즈표를 읽어 옵니다. 읽지 못한 항목은 직접 채우면 됩니다.
           </div>
 
           {phase === "analyzing" && (
@@ -272,21 +341,21 @@ export function NewGarmentView() {
                 const state = i < step ? "완료" : i === step ? "진행 중" : "대기";
                 return (
                   <div
-                    key={s}
+                    key={s.stage}
                     className={cn(
                       "grid grid-cols-[32px_1fr_auto] items-baseline gap-3 border-b border-neutral-300 py-3.5",
                       state === "대기" ? "text-neutral-600" : "text-text",
                     )}
                   >
                     <span className="font-mono text-sm text-neutral-600 tabular-nums">0{i + 1}</span>
-                    <span className="text-body">{s}</span>
+                    <span className="text-body">{s.label}</span>
                     <span className="text-xs">{state}</span>
                   </div>
                 );
               })}
               <div className="flex items-center justify-between pt-3">
                 <span className="text-sm text-neutral-700">최대 20초 걸립니다. 페이지를 떠나도 입력한 URL은 남습니다.</span>
-                <button type="button" className="btn btn-secondary" onClick={() => { clearTimers(); setPhase("url"); }}>
+                <button type="button" className="btn btn-secondary" onClick={() => { cancelRequest(); setPhase("url"); }}>
                   취소
                 </button>
               </div>
@@ -299,10 +368,9 @@ export function NewGarmentView() {
                 <span className="tag tag-accent">분석 실패</span>
                 <span className="text-sm text-neutral-700">{failDomain}</span>
               </div>
-              <div className="text-lg font-semibold">상품 정보를 읽지 못했습니다</div>
+              <div className="text-lg font-semibold">{failText.title}</div>
               <p className="text-base text-pretty text-neutral-800">
-                아직 지원하지 않는 쇼핑몰이거나 로그인이 필요한 페이지일 수 있습니다. 직접 입력하면 URL은 상품 링크 칸에
-                그대로 남습니다.
+                {failText.body} {failure?.product ? "읽은 항목은 직접 입력 화면에 채워 둡니다." : ""}
               </p>
               <div className="mt-1 flex flex-wrap gap-2">
                 <button type="button" className="btn btn-primary" onClick={() => startManual(true)}>
@@ -316,7 +384,7 @@ export function NewGarmentView() {
                 </button>
               </div>
               {showDetail && (
-                <div className="border-t border-divider pt-2.5 font-mono text-xs text-neutral-700 tabular-nums">{FAILED_DETAIL}</div>
+                <div className="border-t border-divider pt-2.5 font-mono text-xs text-neutral-700 tabular-nums">{failDetail}</div>
               )}
             </div>
           )}
@@ -329,11 +397,20 @@ export function NewGarmentView() {
             <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-neutral-300 py-4">
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="text-base font-semibold">
-                  {EXTRACTED.source}에서 {EXTRACTED.fieldCount}개 항목을 가져왔습니다
+                  {imported?.domain}에서 {extractedCount}개 항목을 가져왔습니다
                 </span>
                 <span className="text-sm text-neutral-700">
-                  구매한 사이즈와 컬러를 고르고, 값을 확인한 뒤 등록하세요. 등록 전에는 저장되지 않습니다.
+                  {partial
+                    ? "일부 정보만 가져왔습니다. 비어 있는 항목을 입력해 주세요."
+                    : "구매한 사이즈와 컬러를 고르고, 값을 확인한 뒤 등록하세요. 등록 전에는 저장되지 않습니다."}
                 </span>
+                {product && product.warnings.length > 0 && (
+                  <ul className="mt-1 list-disc pl-5 text-sm text-neutral-700">
+                    {product.warnings.map((w, i) => (
+                      <li key={i}>{w.message}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <div className="flex items-center gap-2 text-xs text-neutral-700">
                 <span className="tag tag-neutral">자동</span>
@@ -346,31 +423,35 @@ export function NewGarmentView() {
           <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-6 border-b border-text py-7">
             <div className="flex max-w-60 flex-col gap-2">
               <ImagePicker
-                currentUrl={null}
+                currentUrl={pageImages[imageIndex] ?? null}
                 value={image}
                 onChange={setImage}
-                placeholder={isReview ? (imageIndex === 0 ? "상품 페이지 대표 이미지" : `페이지 이미지 ${imageIndex + 1} 선택됨`) : "사진 끌어다 놓기"}
+                placeholder="사진 끌어다 놓기"
               />
-              {isReview && (
+              {pageImages.length > 1 && (
                 <>
                   <div className="mt-1 flex items-baseline justify-between">
-                    <span className="text-xs font-semibold">페이지 이미지 {EXTRACTED.imageCount}장</span>
+                    <span className="text-xs font-semibold">페이지 이미지 {pageImages.length}장</span>
                     <span className="text-label text-neutral-700">누르면 옷 정보 사진으로</span>
                   </div>
                   <div className="grid grid-cols-4 gap-1.5">
-                    {Array.from({ length: EXTRACTED.imageCount }, (_, i) => (
+                    {pageImages.map((src, i) => (
                       <button
-                        key={i}
+                        key={src}
                         type="button"
-                        aria-pressed={imageIndex === i}
+                        aria-pressed={imageIndex === i && image === undefined}
                         aria-label={i === 0 ? "대표 이미지" : `이미지 ${i + 1}`}
-                        onClick={() => setImageIndex(i)}
+                        onClick={() => {
+                          setImageIndex(i);
+                          setImage(undefined);
+                        }}
                         className={cn(
-                          "flex aspect-[4/5] cursor-pointer items-end rounded-sm bg-neutral-200 px-1 py-0.5 font-mono text-2xs text-neutral-700",
-                          imageIndex === i ? "ring-2 ring-text" : "ring-1 ring-neutral-300 ring-inset",
+                          "aspect-[4/5] cursor-pointer overflow-hidden rounded-sm bg-neutral-200",
+                          imageIndex === i && image === undefined ? "ring-2 ring-text" : "ring-1 ring-neutral-300 ring-inset",
                         )}
                       >
-                        {i === 0 ? "대표" : ""}
+                        {/* eslint-disable-next-line @next/next/no-img-element -- 서버가 대신 받아 주는 미리보기 */}
+                        <img src={src} alt="" loading="lazy" className="size-full object-cover" />
                       </button>
                     ))}
                   </div>
@@ -465,15 +546,15 @@ export function NewGarmentView() {
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-6">
               <div className="field">
                 <label htmlFor="f-size" className="flex items-center gap-2">{label("사이즈", "size")}</label>
-                {hasChart ? (
-                  <div className="seg self-start" role="radiogroup" aria-label="사이즈">
-                    {Object.keys(EXTRACTED_SIZE_CHART).map((s) => (
+                {sizeChoices.length > 0 ? (
+                  <div className="seg flex-wrap self-start" role="radiogroup" aria-label="사이즈">
+                    {sizeChoices.map((s) => (
                       <label key={s} className="seg-opt px-4.5 py-2 font-mono text-base tabular-nums">
                         <input
                           type="radio"
                           name="fsize"
                           checked={form.size === s}
-                          onChange={() => setForm((f) => ({ ...f, size: s, m: { ...EXTRACTED_SIZE_CHART[s] } }))}
+                          onChange={() => setForm((f) => ({ ...f, size: s, m: { ...f.m, ...chartMeasurements(product, s) } }))}
                         />
                         {s}
                       </label>
@@ -486,9 +567,9 @@ export function NewGarmentView() {
               <div className="field">
                 <label htmlFor="f-color" className="flex items-center gap-2">{label("컬러", "color")}</label>
                 <div className="flex flex-wrap items-center gap-2">
-                  {hasChart && (
-                    <div className="seg" role="radiogroup" aria-label="컬러 옵션">
-                      {EXTRACTED_COLORS.map((c) => (
+                  {colorChoices.length > 0 && (
+                    <div className="seg flex-wrap" role="radiogroup" aria-label="컬러 옵션">
+                      {colorChoices.map((c) => (
                         <label key={c} className="seg-opt px-3.5 py-2 text-base">
                           <input type="radio" name="fcolor" checked={form.color === c} onChange={() => update("color", c)} />
                           {c}
@@ -557,4 +638,16 @@ export function NewGarmentView() {
       )}
     </main>
   );
+}
+
+/** 고른 페이지 이미지를 받아 등록할 사진 파일로. 실패하면 사진 없이 등록한다(PROJECT_SPEC.md 12.4). */
+async function pageImageFile(src: string): Promise<File | undefined> {
+  try {
+    const res = await fetch(src);
+    if (!res.ok) return undefined;
+    const blob = await res.blob();
+    return new File([blob], "product-image", { type: blob.type || "image/jpeg" });
+  } catch {
+    return undefined;
+  }
 }

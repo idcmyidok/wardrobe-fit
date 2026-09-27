@@ -36,7 +36,8 @@ interface Toast {
 
 interface WardrobeStore {
   garments: Garment[];
-  addGarment: (draft: GarmentDraft, image?: ImageChange) => Promise<SaveResult>;
+  /** sourceImportId: 링크 분석으로 등록할 때 그 분석 기록 id */
+  addGarment: (draft: GarmentDraft, image?: ImageChange, sourceImportId?: string | null) => Promise<SaveResult>;
   updateGarment: (id: string, patch: Partial<GarmentDraft>, image?: ImageChange) => Promise<SaveResult>;
   /** 성공하면 true. 실패하면 알림을 띄우고 false */
   removeGarment: (id: string) => Promise<boolean>;
@@ -177,10 +178,10 @@ export function WardrobeProvider({
   );
 
   const addGarment = useCallback(
-    async (draft: GarmentDraft, image?: ImageChange): Promise<SaveResult> => {
+    async (draft: GarmentDraft, image?: ImageChange, sourceImportId?: string | null): Promise<SaveResult> => {
       let created: Garment;
       if (userId) {
-        const result = await createGarment(toInput(draft));
+        const result = await createGarment({ ...toInput(draft), sourceImportId });
         if (!result.ok) return fromAction(result);
         created = result.data;
       } else {

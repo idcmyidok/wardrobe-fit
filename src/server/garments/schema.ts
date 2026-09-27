@@ -68,6 +68,8 @@ export const garmentInputSchema = z
     }, "상품 링크는 http:// 또는 https://로 시작하는 주소여야 합니다."),
     measurements: z.partialRecord(z.enum(ALL_KEYS as [MeasurementKey, ...MeasurementKey[]]), measurement).default({}),
     fitReview: optionalText(2000, "착용 후기"),
+    /** 링크 분석으로 등록할 때 그 분석 기록(product_imports) id. 등록할 때만 쓴다. */
+    sourceImportId: z.uuid().nullish().transform((v) => v ?? null),
   })
   .superRefine((v, ctx) => {
     if (v.subcategoryId && !SUBCATEGORIES.some((s) => s.id === v.subcategoryId && s.categoryId === v.categoryId)) {
