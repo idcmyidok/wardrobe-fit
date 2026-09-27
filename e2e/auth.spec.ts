@@ -65,3 +65,23 @@ test("비밀번호가 틀리면 안내가 나온다", async ({ page, makeUser })
   await login(page, { ...user, password: "wrong-password-1" });
   await expect(page.getByRole("alert").filter({ hasText: "올바르지 않습니다" })).toBeVisible();
 });
+
+test("상태 유지로 로그인하면 브라우저를 다시 열어도 바로 옷장, 로그아웃 뒤에는 이메일이 채워져 있다", async ({ browser, page, makeUser }) => {
+  const user = await makeUser("remember");
+  await login(page, user);
+  await expect(page).toHaveURL(/\/wardrobe$/);
+
+  // 브라우저를 닫았다 연 것처럼 만료일이 있는 쿠키만 새 창으로 옮긴다.
+  const kept = (await page.context().cookies()).filter((cookie) => cookie.expires > 0);
+  const reopened = await browser.newContext({ baseURL: new URL(page.url()).origin });
+  await reopened.addCookies(kept);
+  const again = await reopened.newPage();
+  await again.goto("/");
+  await expect(again).toHaveURL(/\/wardrobe$/);
+
+  await again.getByRole("button", { name: /e2e-remember/ }).click();
+  await again.getByRole("menuitem", { name: "로그아웃" }).click();
+  await expect(again).toHaveURL(/\/$/);
+  await expect(again.locator("#signin-email")).toHaveValue(user.email);
+  await reopened.close();
+});
