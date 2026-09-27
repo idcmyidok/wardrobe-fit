@@ -1,6 +1,7 @@
 import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isBanned } from "@/lib/supabase/server";
+import { logAdminAction } from "./audit";
 
 /** requireAdmin()을 통과한 뒤에만 부른다. service role로 전체 데이터를 읽는다. */
 
@@ -57,9 +58,9 @@ export interface AdminOverviewError {
 }
 
 /** 서버에 service role 키가 없으면 null. */
-export async function getAdminOverview(page: number): Promise<AdminOverview | AdminOverviewError | null> {
+export async function getAdminOverview(adminId: string, page: number): Promise<AdminOverview | AdminOverviewError | null> {
   try {
-    return await readOverview(page);
+    return await readOverview(adminId, page);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("[admin] overview", message);
@@ -73,9 +74,11 @@ function keyHint(message: string) {
     : null;
 }
 
-async function readOverview(page: number): Promise<AdminOverview | null> {
+async function readOverview(adminId: string, page: number): Promise<AdminOverview | null> {
   const db = createSupabaseAdminClient();
   if (!db) return null;
+  // 사용자 목록(이메일 등)을 여는 것도 개인정보 열람이므로 기록한다.
+  await logAdminAction(db, adminId, "view_admin");
   const [stats, failures, list, admins] = await Promise.all([
     db.rpc("admin_stats"),
     db.rpc("admin_import_failures"),
