@@ -21,7 +21,7 @@ import {
   type WardrobeState,
 } from "./filter-state";
 import { WardrobeFilters } from "./wardrobe-filters";
-import { useWardrobe } from "./wardrobe-store";
+import { useOpenGarmentId, useWardrobe } from "./wardrobe-store";
 import { WardrobeTable } from "./wardrobe-table";
 
 const EMPTY_STEPS = [
@@ -31,14 +31,20 @@ const EMPTY_STEPS = [
 ];
 
 export function WardrobeView() {
-  const { garments, drawerId, openDrawer } = useWardrobe();
+  const { garments, openDrawer } = useWardrobe();
+  const drawerId = useOpenGarmentId();
   const params = useSearchParams();
   // 필터·검색·정렬·페이지는 모두 URL에 둔다. 정렬과 페이지는 대분류 표마다 따로(기본은 최근 구매순, 1쪽).
   const state = useMemo(() => parseWardrobeParams(new URLSearchParams(params.toString())), [params]);
   const { filters, sorts, pages } = state;
   // 서버에 다시 묻지 않고 주소만 바꾼다. 검색어 입력처럼 잦은 변경은 기록을 쌓지 않는다(replace).
   const navigate = useCallback((next: WardrobeState, mode: "push" | "replace" = "push") => {
-    const url = `${window.location.pathname}${toWardrobeSearch(next)}`;
+    const search = new URLSearchParams(toWardrobeSearch(next));
+    // 열려 있는 옷 정보(?item=)는 그대로 둔다.
+    const item = new URLSearchParams(window.location.search).get("item");
+    if (item) search.set("item", item);
+    const query = search.toString();
+    const url = `${window.location.pathname}${query ? `?${query}` : ""}`;
     if (mode === "push") window.history.pushState(null, "", url);
     else window.history.replaceState(null, "", url);
   }, []);

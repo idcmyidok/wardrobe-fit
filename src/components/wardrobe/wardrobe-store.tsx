@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ImagePrepareError, prepareGarmentImage } from "@/lib/images/prepare-image";
 import { GARMENT_IMAGE_BUCKET, uploadGarmentImages } from "@/lib/images/upload-garment-image";
@@ -37,12 +38,17 @@ interface WardrobeStore {
   garments: Garment[];
   addGarment: (draft: GarmentDraft, image?: ImageChange) => Promise<SaveResult>;
   updateGarment: (id: string, patch: Partial<GarmentDraft>, image?: ImageChange) => Promise<SaveResult>;
-  removeGarment: (id: string) => Promise<void>;
+  /** 성공하면 true. 실패하면 알림을 띄우고 false */
+  removeGarment: (id: string) => Promise<boolean>;
 
-  /** 옷 정보 Drawer. 어느 화면에서든 열 수 있다. */
-  drawerId: string | null;
+  /**
+   * 옷 정보 열기. 넓은 화면은 지금 주소에 ?item={id}를 붙여 Drawer로 열고(뒤로가기로 닫힘),
+   * 좁은 화면(모바일)은 상세 페이지 /wardrobe/{id}로 이동한다. 열린 옷은 useOpenGarmentId()로 읽는다.
+   */
   openDrawer: (id: string) => void;
   closeDrawer: () => void;
+  /** 다른 화면에서 옷 정보를 열며 이동할 주소(등록 직후 등) */
+  garmentHref: (id: string) => string;
 
   toast: Toast | null;
   showToast: (message: string, undo?: () => void) => void;
@@ -94,7 +100,41 @@ export function WardrobeProvider({
   userId: string | null;
 }) {
   const [garments, setGarments] = useState<Garment[]>(initialGarments);
-  const [drawerId, setDrawerId] = useState<string | null>(null);
+  const router = useRouter();
+  // 이 화면에서 Drawer를 열며 쌓은 기록. 닫을 때 그 기록을 되돌려(history.back) 뒤로가기와 같게 만든다.
+  const pushedItem = useRef<string | null>(null);
+
+  const openDrawer = useCallback(
+    (id: string) => {
+      if (isNarrowScreen()) {
+        router.push(`/wardrobe/${id}`);
+        return;
+      }
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("item") === id) return;
+      const replace = url.searchParams.has("item");
+      url.searchParams.set("item", id);
+      if (replace) window.history.replaceState(null, "", url);
+      else window.history.pushState(null, "", url);
+      if (!replace) pushedItem.current = id;
+    },
+    [router],
+  );
+
+  const closeDrawer = useCallback(() => {
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get("item");
+    if (!id) return;
+    if (pushedItem.current === id) {
+      pushedItem.current = null;
+      window.history.back();
+      return;
+    }
+    url.searchParams.delete("item");
+    window.history.replaceState(null, "", url);
+  }, []);
+
+  const garmentHref = useCallback((id: string) => (isNarrowScreen() ? `/wardrobe/${id}` : `/wardrobe?item=${id}`), []);
   const [toast, setToast] = useState<Toast | null>(null);
   const [pendingDraft, setPendingDraft] = useState<GarmentDraft | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -179,17 +219,17 @@ export function WardrobeProvider({
   const removeGarment = useCallback(
     async (id: string) => {
       const index = garments.findIndex((g) => g.id === id);
-      if (index === -1) return;
+      if (index === -1) return false;
       const removed = garments[index];
       if (userId) {
         const result = await deleteGarment(id);
         if (!result.ok) {
           showToast(result.error);
-          return;
+          return false;
         }
       }
       setGarments((list) => list.filter((g) => g.id !== id));
-      setDrawerId((current) => (current === id ? null : current));
+      if (new URLSearchParams(window.location.search).get("item") === id) closeDrawer();
       showToast("삭제했습니다", async () => {
         setToast(null);
         let restored = removed;
@@ -207,8 +247,9 @@ export function WardrobeProvider({
           return next;
         });
       });
+      return true;
     },
-    [garments, userId, showToast],
+    [garments, userId, showToast, closeDrawer],
   );
 
   const value = useMemo<WardrobeStore>(
@@ -217,18 +258,26 @@ export function WardrobeProvider({
       addGarment,
       updateGarment,
       removeGarment,
-      drawerId,
-      openDrawer: setDrawerId,
-      closeDrawer: () => setDrawerId(null),
+      openDrawer,
+      closeDrawer,
+      garmentHref,
       toast,
       showToast,
       pendingDraft,
       setPendingDraft,
     }),
-    [garments, addGarment, updateGarment, removeGarment, drawerId, toast, showToast, pendingDraft],
+    [garments, addGarment, updateGarment, removeGarment, openDrawer, closeDrawer, garmentHref, toast, showToast, pendingDraft],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+/** 모바일 기준 폭(PROJECT_SPEC.md 12단계: 768px 미만) */
+const isNarrowScreen = () => window.matchMedia("(max-width: 767px)").matches;
+
+/** Drawer로 열린 옷 id(?item=). useSearchParams를 쓰므로 Suspense 안에서만 쓴다. */
+export function useOpenGarmentId(): string | null {
+  return useSearchParams().get("item");
 }
 
 export function useWardrobe(): WardrobeStore {

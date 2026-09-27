@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { AppHeader } from "@/components/layout/app-header";
 import { GarmentDrawer } from "@/components/wardrobe/garment-drawer";
 import { WardrobeProvider, WardrobeToast } from "@/components/wardrobe/wardrobe-store";
@@ -23,7 +24,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <WardrobeProvider initialGarments={garments} userId={user?.id ?? null}>
       <AppHeader email={user?.email ?? null} />
       {children}
-      <GarmentDrawer />
+      {/* 주소의 ?item=을 읽는다 */}
+      <Suspense>
+        <GarmentDrawer />
+      </Suspense>
       <WardrobeToast />
     </WardrobeProvider>
   );

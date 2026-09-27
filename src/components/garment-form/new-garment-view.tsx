@@ -89,7 +89,7 @@ type TagKey = "cat" | "sub" | "brand" | "name" | "material" | "date" | "price" |
 export function NewGarmentView() {
   const router = useRouter();
   const params = useSearchParams();
-  const { addGarment, openDrawer, showToast, pendingDraft, setPendingDraft } = useWardrobe();
+  const { addGarment, garmentHref, showToast, pendingDraft, setPendingDraft } = useWardrobe();
 
   const [phase, setPhase] = useState<Phase>(() => (pendingDraft ? "review" : params.get("mode") === "manual" ? "manual" : "url"));
   const [url, setUrl] = useState(DEFAULT_URL);
@@ -202,9 +202,8 @@ export function NewGarmentView() {
       setError(result.error);
       return;
     }
-    openDrawer(result.garment.id);
     showToast(result.warning ?? "옷장에 등록했습니다");
-    router.push("/wardrobe");
+    router.push(garmentHref(result.garment.id));
   };
 
   const hint = error

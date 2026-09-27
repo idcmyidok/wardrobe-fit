@@ -38,82 +38,116 @@ export function WardrobeTable({
   );
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-312 table-fixed border-collapse border-t border-l border-neutral-300 bg-surface text-sm">
-        <thead>
-          <tr>
-            <th scope="col" className={cn(head, "w-20 py-2")}>
-              이미지
-            </th>
-            <th scope="col" className={cn(head, "w-25")}>
-              세부분류
-            </th>
-            {sortHead("brand", "브랜드", "w-28")}
-            <th scope="col" className={cn(head, "w-44")}>
-              제품명
-            </th>
-            {sortHead("size", "사이즈", "w-9.5", true)}
-            {sortHead("color", "컬러", "w-24")}
-            {sortHead("season", "시즌", "w-26")}
-            {measurements.map((m) => sortHead(m.key, m.label, "bg-neutral-100", true))}
-            {sortHead("purchasedOn", "구매일", "w-32")}
-            {sortHead("price", "구매가", "w-32")}
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => {
-            const chip = colorChip(item.colorName);
-            return (
-              <tr
-                key={item.id}
-                onClick={() => onOpen(item.id)}
-                className={cn(
-                  "cursor-pointer border-b border-neutral-300 transition-colors hover:bg-neutral-100",
-                  selectedId === item.id && "bg-accent-100 hover:bg-accent-100",
-                )}
-              >
-                <td className="h-24 border-r border-neutral-300 p-0">
-                  <GarmentThumbnail item={item} />
-                </td>
-                <td className={cn(cell, "truncate")}>{item.subcategoryId ? SUBCATEGORY_NAME[item.subcategoryId] : "—"}</td>
-                <td className={cn(cell, "leading-tight font-semibold")} title={item.brand || undefined}>
-                  <span className="line-clamp-2 break-words">{item.brand || "—"}</span>
-                </td>
-                <td className={cn(cell, "leading-snug")} title={item.productName}>
-                  {/* 키보드로도 옷 정보를 열 수 있게 제품명을 버튼으로 둔다. */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpen(item.id);
-                    }}
-                    className="cursor-pointer"
-                  >
-                    <span className="line-clamp-2 break-words">{item.productName}</span>
-                  </button>
-                </td>
-                <td className={cn(cell, mono, "px-0 text-xs")}>{item.sizeLabel ?? "—"}</td>
-                <td className={cn(cell, "text-sm")}>
-                  <span className="inline-block rounded-sm px-1.5 py-0.5" style={chip}>
-                    {item.colorName ?? "—"}
-                  </span>
-                </td>
-                <td className={cn(cell, "text-neutral-700")}>
-                  {item.seasons.length ? item.seasons.map((s) => SEASON_NAME[s]).join(" · ") : "—"}
-                </td>
-                {measurements.map((m) => (
-                  <td key={m.key} className={cn(cell, mono, "bg-neutral-100/60 px-0 text-xs tracking-[-0.02em]")}>
-                    {formatCm(item.measurements[m.key])}
+    <>
+      <MobileList items={items} selectedId={selectedId} onOpen={onOpen} />
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-312 table-fixed border-collapse border-t border-l border-neutral-300 bg-surface text-sm">
+          <thead>
+            <tr>
+              <th scope="col" className={cn(head, "w-20 py-2")}>
+                이미지
+              </th>
+              <th scope="col" className={cn(head, "w-25")}>
+                세부분류
+              </th>
+              {sortHead("brand", "브랜드", "w-28")}
+              <th scope="col" className={cn(head, "w-44")}>
+                제품명
+              </th>
+              {sortHead("size", "사이즈", "w-9.5", true)}
+              {sortHead("color", "컬러", "w-24")}
+              {sortHead("season", "시즌", "w-26")}
+              {measurements.map((m) => sortHead(m.key, m.label, "bg-neutral-100", true))}
+              {sortHead("purchasedOn", "구매일", "w-32")}
+              {sortHead("price", "구매가", "w-32")}
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => {
+              const chip = colorChip(item.colorName);
+              return (
+                <tr
+                  key={item.id}
+                  onClick={() => onOpen(item.id)}
+                  className={cn(
+                    "cursor-pointer border-b border-neutral-300 transition-colors hover:bg-neutral-100",
+                    selectedId === item.id && "bg-accent-100 hover:bg-accent-100",
+                  )}
+                >
+                  <td className="h-24 border-r border-neutral-300 p-0">
+                    <GarmentThumbnail item={item} />
                   </td>
-                ))}
-                <td className={cn(cell, mono, "text-neutral-700")}>{formatDate(item.purchasedOn)}</td>
-                <td className={cn(cell, mono)}>{formatPrice(item.purchasePrice)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                  <td className={cn(cell, "truncate")}>{item.subcategoryId ? SUBCATEGORY_NAME[item.subcategoryId] : "—"}</td>
+                  <td className={cn(cell, "leading-tight font-semibold")} title={item.brand || undefined}>
+                    <span className="line-clamp-2 break-words">{item.brand || "—"}</span>
+                  </td>
+                  <td className={cn(cell, "leading-snug")} title={item.productName}>
+                    {/* 키보드로도 옷 정보를 열 수 있게 제품명을 버튼으로 둔다. */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpen(item.id);
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <span className="line-clamp-2 break-words">{item.productName}</span>
+                    </button>
+                  </td>
+                  <td className={cn(cell, mono, "px-0 text-xs")}>{item.sizeLabel ?? "—"}</td>
+                  <td className={cn(cell, "text-sm")}>
+                    <span className="inline-block rounded-sm px-1.5 py-0.5" style={chip}>
+                      {item.colorName ?? "—"}
+                    </span>
+                  </td>
+                  <td className={cn(cell, "text-neutral-700")}>
+                    {item.seasons.length ? item.seasons.map((s) => SEASON_NAME[s]).join(" · ") : "—"}
+                  </td>
+                  {measurements.map((m) => (
+                    <td key={m.key} className={cn(cell, mono, "bg-neutral-100/60 px-0 text-xs tracking-[-0.02em]")}>
+                      {formatCm(item.measurements[m.key])}
+                    </td>
+                  ))}
+                  <td className={cn(cell, mono, "text-neutral-700")}>{formatDate(item.purchasedOn)}</td>
+                  <td className={cn(cell, mono)}>{formatPrice(item.purchasePrice)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+/** 모바일(768px 미만): 표 대신 두 줄 목록. 누르면 옷 정보 페이지로 간다(PROJECT_SPEC.md 5.2). */
+function MobileList({ items, selectedId, onOpen }: { items: Garment[]; selectedId: string | null; onOpen: (id: string) => void }) {
+  return (
+    <ul className="border-t border-text md:hidden">
+      {items.map((item) => (
+        <li key={item.id} className="border-b border-neutral-300">
+          <button
+            type="button"
+            onClick={() => onOpen(item.id)}
+            className={cn(
+              "grid min-h-16 w-full cursor-pointer grid-cols-[48px_minmax(0,1fr)] items-center gap-3 py-2 text-left",
+              selectedId === item.id && "bg-accent-100",
+            )}
+          >
+            <GarmentThumbnail item={item} className="h-15" />
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="truncate text-base">
+                {item.brand && <span className="font-semibold">{item.brand} </span>}
+                {item.productName}
+              </span>
+              <span className={cn(mono, "truncate text-xs text-neutral-700")}>
+                {[item.sizeLabel, item.colorName, item.purchasedOn && formatDate(item.purchasedOn)].filter(Boolean).join(" · ") || "—"}
+              </span>
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
