@@ -1,0 +1,11 @@
+{
+  "title": "Relaxed Chino",
+  "vendor": "Sample Brand",
+  "type": "Chino Pants",
+  "tags": ["bottom", "cotton"],
+  "price": 12900000,
+  "images": ["//cdn.shopify.com/s/files/1/chino-1.jpg", "//cdn.shopify.com/s/files/1/chino-2.jpg"],
+  "options": [{ "name": "Color", "values": ["Beige", "Navy"] }, { "name": "Size", "values": ["30", "32"] }],
+  "variants": [{ "options": ["Beige", "30"], "price": 12900000 }],
+  "description": "<p>Material: Cotton 100%</p><table><tr><th>Size</th><th>Waist (inch)</th><th>Hip</th><th>Thigh</th><th>Front Rise</th><th>Leg Opening</th><th>Length</th><th>Inseam</th></tr><tr><td>30</td><td>15</td><td>20.5</td><td>13</td><td>11.5</td><td>8.5</td><td>41</td><td>30</td></tr><tr><td>32</td><td>16</td><td>21.5</td><td>13.5</td><td>12</td><td>9</td><td>42</td><td>31</td></tr></table>"
+}

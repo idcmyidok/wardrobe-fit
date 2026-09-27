@@ -1,8 +1,8 @@
 import type { CategoryId } from "@/lib/types/domain";
 
-/** PROJECT_SPEC.md 9장 + 시안의 하의 엉덩이단면. cm, 단면 기준 */
-export const TOP_MEASUREMENTS = ["length", "shoulder", "chest", "sleeve", "armhole", "hemWidth"] as const;
-export const BOTTOM_MEASUREMENTS = ["length", "waist", "hip", "thigh", "rise", "legOpening", "inseam"] as const;
+/** 옷장 표에 보이는 실측만 쓴다(PROJECT_SPEC.md 9장). cm, 단면 기준 */
+export const TOP_MEASUREMENTS = ["length", "shoulder", "chest", "sleeve"] as const;
+export const BOTTOM_MEASUREMENTS = ["length", "waist", "hip", "thigh", "rise", "legOpening"] as const;
 export type MeasurementKey = (typeof TOP_MEASUREMENTS)[number] | (typeof BOTTOM_MEASUREMENTS)[number];
 
 export const MEASUREMENT_LABELS: Record<MeasurementKey, string> = {
@@ -10,14 +10,11 @@ export const MEASUREMENT_LABELS: Record<MeasurementKey, string> = {
   shoulder: "어깨",
   chest: "가슴",
   sleeve: "소매",
-  armhole: "암홀",
-  hemWidth: "밑단너비",
   waist: "허리단면",
   hip: "엉덩이단면",
   thigh: "허벅지단면",
   rise: "밑위",
   legOpening: "밑단단면",
-  inseam: "인심",
 };
 
 /** 대분류별 입력·상세용 실측 목록(라벨 포함) */
@@ -46,7 +43,12 @@ export const TABLE_MEASUREMENTS: Record<CategoryId, { key: MeasurementKey; label
   ],
 };
 
-/** 12.0 → "12.0", 값이 없으면 "—" */
+/** 72.5 → "72.5", 72 → "72" (소수점 한 자리, .0은 뺀다) */
+export function formatNum(value: number): string {
+  return value.toFixed(1).replace(/\.0$/, "");
+}
+
+/** 12.0 → "12", 12.5 → "12.5", 값이 없으면 "—" */
 export function formatCm(value: number | null | undefined): string {
-  return value == null ? "—" : value.toFixed(1);
+  return value == null ? "—" : formatNum(value);
 }

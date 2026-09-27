@@ -79,7 +79,7 @@ export function ThemeToggle() {
           title={o.label}
           onClick={() => pick(o.id)}
           className={cn(
-            "grid size-7.5 cursor-pointer place-items-center rounded-sm transition-colors",
+            "grid size-7.5 cursor-pointer place-items-center rounded-sm transition-colors pointer-coarse:size-10",
             choice === o.id ? "bg-text text-bg" : "text-neutral-700 hover:bg-neutral-200",
           )}
         >

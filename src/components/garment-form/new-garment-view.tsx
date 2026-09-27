@@ -3,20 +3,16 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useWardrobe, type GarmentDraft } from "@/components/wardrobe/wardrobe-store";
+import { useWardrobe, type GarmentDraft, type ImageChange } from "@/components/wardrobe/wardrobe-store";
+import { ImagePicker } from "./image-picker";
 import { UnitInput } from "@/components/ui/input";
 import { SUBCATEGORIES } from "@/lib/constants/categories";
-import { measurementFields } from "@/lib/constants/measurements";
-import { SEASONS } from "@/lib/constants/seasons";
+import { BOTTOM_MEASUREMENTS, TOP_MEASUREMENTS, measurementFields } from "@/lib/constants/measurements";
+import { SEASONS, toggleSeason } from "@/lib/constants/seasons";
 import { cn } from "@/lib/cn";
-import {
-  ANALYZE_STEPS,
-  EXTRACTED,
-  EXTRACTED_COLORS,
-  EXTRACTED_SIZE_CHART,
-  FAILED_DETAIL,
-  isSupportedUrl,
-} from "@/lib/mock/product-import";
+import { importImageUrl, streamImport, type AnalyzeStage, type ImportOutcome } from "@/lib/import/client";
+import { importFailure } from "@/lib/import/messages";
+import { takeStashedDraft } from "@/lib/session-expiry";
 import type { CategoryId, Measurements, Season } from "@/lib/types/domain";
 
 type Phase = "url" | "analyzing" | "failed" | "review" | "manual";
@@ -26,7 +22,6 @@ interface FormState {
   subcategoryId: string;
   brand: string;
   productName: string;
-  material: string;
   seasons: Season[];
   price: string;
   url: string;
@@ -37,37 +32,58 @@ interface FormState {
   m: Record<string, string>;
 }
 
-const TODAY = "2026-09-27";
-const DEFAULT_URL = "https://www.musinsa.com/products/3920118";
+const ANALYZE_STEPS: { stage: AnalyzeStage; label: string }[] = [
+  { stage: "fetching", label: "페이지 불러오는 중" },
+  { stage: "parsing", label: "상품 정보 읽는 중" },
+  { stage: "normalizing", label: "사이즈표·컬러 정리 중" },
+];
+
+/** 오늘 날짜(사용자 기기 기준, YYYY-MM-DD) */
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+type Imported = ImportOutcome & { importId: string; product: NonNullable<ImportOutcome["product"]> };
 
 const EMPTY_FORM: FormState = {
   categoryId: "outer",
   subcategoryId: "",
   brand: "",
   productName: "",
-  material: "",
   seasons: [],
   price: "",
   url: "",
-  date: TODAY,
+  date: "",
   size: "",
   color: "",
   review: "",
   m: {},
 };
 
-const extractedForm = (url: string): FormState => ({
-  ...EMPTY_FORM,
-  categoryId: EXTRACTED.categoryId,
-  subcategoryId: EXTRACTED.subcategoryId,
-  brand: EXTRACTED.brand,
-  productName: EXTRACTED.productName,
-  material: EXTRACTED.material,
-  seasons: EXTRACTED.seasons,
-  price: EXTRACTED.price,
-  date: EXTRACTED.date,
-  url,
-});
+/** 분석 결과 → 검토 폼. 사이즈·컬러는 옵션이 하나뿐일 때만 미리 고른다. */
+const importedForm = (url: string, p: Imported["product"]): FormState => {
+  const size = p.sizeOptions.length === 1 ? p.sizeOptions[0] : "";
+  return {
+    ...EMPTY_FORM,
+    date: today(),
+    categoryId: p.categoryId?.value ?? "outer",
+    subcategoryId: p.subcategoryId?.value ?? "",
+    brand: p.brand?.value ?? "",
+    productName: p.productName?.value ?? "",
+    price: p.price ? String(p.price.value) : "",
+    color: p.colorCandidate?.value ?? "",
+    size,
+    m: chartMeasurements(p, size),
+    url,
+  };
+};
+
+/** 사이즈표에서 고른 사이즈의 실측 */
+function chartMeasurements(p: Imported["product"] | undefined, size: string): Record<string, string> {
+  const row = p?.sizeChart?.rows.find((r) => r.sizeLabel === size);
+  return row ? Object.fromEntries(Object.entries(row.measurements).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])) : {};
+}
 
 /** AI 구매 판단 결과에서 넘어온 값(구매했어요)을 검토 폼 값으로 바꾼다. */
 const draftToForm = (d: GarmentDraft): FormState => ({
@@ -76,85 +92,156 @@ const draftToForm = (d: GarmentDraft): FormState => ({
   subcategoryId: d.subcategoryId ?? "",
   brand: d.brand,
   productName: d.productName,
-  material: d.material ?? "",
   size: d.sizeLabel ?? "",
   url: d.productUrl ?? "",
   m: Object.fromEntries(Object.entries(d.measurements).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])),
 });
 
-type TagKey = "cat" | "sub" | "brand" | "name" | "material" | "date" | "price" | "seasons" | "url" | "size" | "color";
+type TagKey = "cat" | "sub" | "brand" | "name" | "date" | "price" | "seasons" | "url" | "size" | "color";
 
 /** 새 옷 추가: 상품 링크 분석(분석 중 / 실패) → 검토 폼, 또는 직접 입력 폼 */
 export function NewGarmentView() {
   const router = useRouter();
   const params = useSearchParams();
-  const { addGarment, openDrawer, showToast, pendingDraft, setPendingDraft } = useWardrobe();
+  const { addGarment, garmentHref, showToast, pendingDraft, setPendingDraft } = useWardrobe();
 
   const [phase, setPhase] = useState<Phase>(() => (pendingDraft ? "review" : params.get("mode") === "manual" ? "manual" : "url"));
-  const [url, setUrl] = useState(DEFAULT_URL);
+  const [url, setUrl] = useState("");
   const [step, setStep] = useState(0);
   const [showDetail, setShowDetail] = useState(false);
-  const [form, setForm] = useState<FormState>(() => (pendingDraft ? draftToForm(pendingDraft) : EMPTY_FORM));
+  const [form, setForm] = useState<FormState>(() => (pendingDraft ? draftToForm(pendingDraft) : { ...EMPTY_FORM, date: today() }));
+  const [imported, setImported] = useState<Imported | null>(null);
+  const [failure, setFailure] = useState<ImportOutcome | null>(null);
   const [edited, setEdited] = useState<Partial<Record<TagKey, boolean>>>({});
   const [imageIndex, setImageIndex] = useState(0);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [image, setImage] = useState<ImageChange>(undefined);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [startedAt, setStartedAt] = useState(0);
+  const [now, setNow] = useState(0);
+  const request = useRef<AbortController | null>(null);
 
   // 판단기에서 넘어온 값은 한 번만 쓴다.
   useEffect(() => {
     if (pendingDraft) setPendingDraft(null);
   }, [pendingDraft, setPendingDraft]);
 
-  const clearTimers = () => {
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
-  };
-  useEffect(() => clearTimers, []);
+  // 로그인이 풀려 다시 로그인하고 돌아온 경우, 작성하던 값을 되살린다.
+  useEffect(() => {
+    const stashed = takeStashedDraft();
+    if (!stashed) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sessionStorage는 hydration 뒤에만 읽을 수 있다
+    setForm(draftToForm(stashed));
+    setPhase("manual");
+  }, []);
 
-  const analyze = () => {
-    clearTimers();
-    const target = url || DEFAULT_URL;
-    setUrl(target);
+  // 분석 경과 시간(초)
+  useEffect(() => {
+    if (phase !== "analyzing") return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [phase]);
+  const elapsed = Math.max(0, Math.floor((now - startedAt) / 1000));
+
+  /** 진행 중인 분석을 멈춘다(취소, 화면 이동). */
+  const cancelRequest = () => {
+    request.current?.abort();
+    request.current = null;
+  };
+  useEffect(() => cancelRequest, []);
+
+  const analyze = async () => {
+    const target = url.trim();
+    if (!target) {
+      document.getElementById("new-url")?.focus();
+      return;
+    }
+    cancelRequest();
+    const controller = new AbortController();
+    request.current = controller;
     setPhase("analyzing");
+    setStartedAt(Date.now());
+    setNow(Date.now());
     setStep(0);
     setShowDetail(false);
-    [1, 2, 3].forEach((s) => timers.current.push(setTimeout(() => setStep(s), s * 900)));
-    timers.current.push(
-      setTimeout(() => {
-        if (isSupportedUrl(target)) {
-          setForm(extractedForm(target));
-          setEdited({});
-          setPhase("review");
-        } else {
-          setPhase("failed");
-        }
-      }, 3 * 900 + 500),
-    );
+    setFailure(null);
+    let outcome: ImportOutcome;
+    try {
+      outcome = await streamImport(target, {
+        signal: controller.signal,
+        onStage: (stage) => setStep(ANALYZE_STEPS.findIndex((s) => s.stage === stage)),
+      });
+    } catch {
+      if (controller.signal.aborted) return;
+      outcome = { importId: null, status: "failed", reused: false, domain: null, sourceUrl: target, parserId: null, durationMs: 0, product: null, errorCode: "network_error", errorDetail: null };
+    }
+    if (controller.signal.aborted) return;
+    request.current = null;
+    if (outcome.status !== "failed" && outcome.product && outcome.importId) {
+      const result = outcome as Imported;
+      setImported(result);
+      setForm(importedForm(target, result.product));
+      setEdited({});
+      setImage(undefined);
+      setImageIndex(0);
+      setPhase("review");
+    } else {
+      setFailure(outcome);
+      setPhase("failed");
+    }
   };
 
+  /** 직접 입력으로. 실패했어도 분석에서 얻은 값(부분 결과)과 링크는 채워 넘긴다. */
   const startManual = (keepUrl = false) => {
-    clearTimers();
-    setForm({ ...EMPTY_FORM, url: keepUrl ? url : "" });
+    cancelRequest();
+    const partial = keepUrl ? failure?.product : null;
+    setForm(partial ? importedForm(url.trim(), partial) : { ...EMPTY_FORM, date: today(), url: keepUrl ? url.trim() : "" });
+    setImported(null);
     setEdited({});
+    setImage(undefined);
     setPhase("manual");
   };
 
   const isReview = phase === "review";
   const showForm = phase === "review" || phase === "manual";
-  const hasChart = isReview && form.categoryId === "top";
+  const product = isReview ? imported?.product : undefined;
+  const sizeChoices = product ? (product.sizeOptions.length ? product.sizeOptions : (product.sizeChart?.rows.map((r) => r.sizeLabel) ?? [])) : [];
+  const colorChoices = product?.colorOptions ?? [];
+  const pageImages = product && imported ? product.imageUrls.map((_, i) => importImageUrl(imported.importId, i)) : [];
+  const extractedCount = product
+    ? [product.brand, product.productName, product.categoryId, product.price, product.colorCandidate, product.sizeChart, pageImages[0]].filter(Boolean).length +
+      (sizeChoices.length ? 1 : 0)
+    : 0;
+  const partial = imported?.status === "partial";
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K], tag?: TagKey) => {
     setForm((f) => ({ ...f, [key]: value }));
     if (tag) setEdited((e) => ({ ...e, [tag]: true }));
   };
 
+  const NEEDS = "tag tag-accent";
+  const AUTO = "tag tag-neutral";
+  const confidenceOf: Partial<Record<TagKey, { confidence: string } | null | undefined>> = {
+    cat: product?.categoryId,
+    sub: product?.subcategoryId,
+    brand: product?.brand,
+    name: product?.productName,
+    price: product?.price,
+    color: product?.colorCandidate,
+  };
   const tag = (k: TagKey): { label: string; className: string } => {
     if (edited[k]) return { label: "수정됨", className: "tag border border-text" };
-    if (k === "size" && !form.size) return { label: "선택 필요", className: "tag tag-accent" };
-    if (k === "color" && !form.color) return { label: "선택 필요", className: "tag tag-accent" };
-    if (k === "seasons") return { label: "확인 필요", className: "tag tag-accent" };
-    if (k === "date") return { label: "오늘", className: "tag tag-neutral" };
-    if (k === "price") return { label: "판매가", className: "tag tag-neutral" };
-    return { label: "자동", className: "tag tag-neutral" };
+    if (k === "size") return form.size ? { label: "자동", className: AUTO } : { label: "선택 필요", className: NEEDS };
+    if (k === "color") return form.color ? (confidenceOf.color?.confidence === "low" ? { label: "확인 필요", className: NEEDS } : { label: "자동", className: AUTO }) : { label: "선택 필요", className: NEEDS };
+    if (k === "seasons") return { label: "확인 필요", className: NEEDS };
+    if (k === "date") return { label: "오늘", className: AUTO };
+    if (k === "url") return { label: "자동", className: AUTO };
+    if (!product) return { label: "확인 필요", className: NEEDS };
+    const found = confidenceOf[k];
+    if (!found) return { label: "입력 필요", className: NEEDS };
+    if (found.confidence === "low") return { label: "확인 필요", className: NEEDS };
+    return { label: k === "price" ? "판매가" : "자동", className: AUTO };
   };
   const label = (text: string, k: TagKey) => (
     <>
@@ -163,7 +250,8 @@ export function NewGarmentView() {
     </>
   );
 
-  const register = () => {
+  const register = async () => {
+    if (saving) return;
     // 제품명은 필수(브랜드는 비워도 된다): 비어 있으면 등록하지 않고 제품명 칸으로 보낸다.
     if (!form.productName.trim()) {
       document.getElementById("f-name")?.focus();
@@ -174,14 +262,16 @@ export function NewGarmentView() {
       if (v !== "" && !isNaN(Number(v))) measurements[k as keyof Measurements] = Number(v);
     });
     const price = form.price.replace(/\D/g, "");
-    const garment = addGarment({
+    setSaving(true);
+    setError(null);
+    setFieldErrors({});
+    const result = await addGarment({
       categoryId: form.categoryId,
       subcategoryId: form.subcategoryId || null,
       brand: form.brand.trim(),
       productName: form.productName.trim(),
       sizeLabel: form.size || null,
       colorName: form.color || null,
-      material: form.material || null,
       seasons: form.seasons,
       purchasedOn: form.date || null,
       purchasePrice: price ? Number(price) : null,
@@ -189,20 +279,33 @@ export function NewGarmentView() {
       imageUrl: null,
       measurements,
       fitReview: form.review || null,
-    });
-    openDrawer(garment.id);
-    showToast("옷장에 등록했습니다");
-    router.push("/wardrobe");
+    }, image === undefined && isReview && pageImages[imageIndex] ? await pageImageFile(pageImages[imageIndex]) : image, imported?.importId ?? null);
+    setSaving(false);
+    if (!result.ok) {
+      const fields = result.fieldErrors ?? {};
+      setError(Object.keys(fields).some((k) => FIELD_IDS[k]) ? "표시한 칸을 확인해 주세요." : result.error);
+      setFieldErrors(fields);
+      const first = Object.keys(result.fieldErrors ?? {})[0];
+      if (first) document.getElementById(FIELD_IDS[first] ?? "")?.focus();
+      return;
+    }
+    showToast(result.warning ?? "옷장에 등록했습니다");
+    router.push(garmentHref(result.garment.id));
   };
 
-  const hint =
-    !form.productName.trim()
+  const hint = error
+    ? error
+    : !form.productName.trim()
       ? "제품명은 꼭 입력해야 합니다."
       : isReview && !form.size
         ? "구매한 사이즈를 선택하세요."
         : "등록 전까지 저장되지 않습니다.";
 
-  const failDomain = url.match(/\/\/([^/]+)/)?.[1] ?? "";
+  const failDomain = failure?.domain ?? url.match(/\/\/([^/]+)/)?.[1] ?? "";
+  const failText = importFailure(failure?.errorCode);
+  const failDetail = failure
+    ? [failure.errorCode, failure.errorDetail?.replace(`${failure.errorCode}: `, ""), `${(failure.durationMs / 1000).toFixed(1)}초`, failure.parserId && `parser: ${failure.parserId}`].filter(Boolean).join(" · ")
+    : "";
 
   return (
     <main className="mx-auto max-w-280 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
@@ -213,7 +316,7 @@ export function NewGarmentView() {
         <h1 className="text-title">새 옷 추가</h1>
         <div className="seg" role="radiogroup" aria-label="추가 방법">
           <label className="seg-opt px-4 py-2 text-base">
-            <input type="radio" name="addmode" checked={phase !== "manual"} onChange={() => { clearTimers(); setPhase("url"); }} />
+            <input type="radio" name="addmode" checked={phase !== "manual"} onChange={() => { cancelRequest(); setPhase("url"); }} />
             상품 링크로 추가
           </label>
           <label className="seg-opt px-4 py-2 text-base">
@@ -245,7 +348,7 @@ export function NewGarmentView() {
             </div>
           </div>
           <div className="text-sm text-neutral-700">
-            무신사, 29CM 등 지원 쇼핑몰은 사이즈표까지 읽습니다. 그 외 사이트도 기본 정보 분석을 시도합니다.
+            상품 페이지 주소를 붙여 넣으면 제품명·가격·사진·사이즈표를 읽어 옵니다. 읽지 못한 항목은 직접 채우면 됩니다.
           </div>
 
           {phase === "analyzing" && (
@@ -260,21 +363,23 @@ export function NewGarmentView() {
                 const state = i < step ? "완료" : i === step ? "진행 중" : "대기";
                 return (
                   <div
-                    key={s}
+                    key={s.stage}
                     className={cn(
                       "grid grid-cols-[32px_1fr_auto] items-baseline gap-3 border-b border-neutral-300 py-3.5",
                       state === "대기" ? "text-neutral-600" : "text-text",
                     )}
                   >
                     <span className="font-mono text-sm text-neutral-600 tabular-nums">0{i + 1}</span>
-                    <span className="text-body">{s}</span>
+                    <span className="text-body">{s.label}</span>
                     <span className="text-xs">{state}</span>
                   </div>
                 );
               })}
               <div className="flex items-center justify-between pt-3">
-                <span className="text-sm text-neutral-700">최대 20초 걸립니다. 페이지를 떠나도 입력한 URL은 남습니다.</span>
-                <button type="button" className="btn btn-secondary" onClick={() => { clearTimers(); setPhase("url"); }}>
+                <span className="text-sm text-neutral-700">
+                  <span className="font-mono tabular-nums">{elapsed}초</span> 경과 · 최대 20초 걸립니다.
+                </span>
+                <button type="button" className="btn btn-secondary" onClick={() => { cancelRequest(); setPhase("url"); }}>
                   취소
                 </button>
               </div>
@@ -287,10 +392,9 @@ export function NewGarmentView() {
                 <span className="tag tag-accent">분석 실패</span>
                 <span className="text-sm text-neutral-700">{failDomain}</span>
               </div>
-              <div className="text-lg font-semibold">상품 정보를 읽지 못했습니다</div>
+              <div className="text-lg font-semibold">{failText.title}</div>
               <p className="text-base text-pretty text-neutral-800">
-                아직 지원하지 않는 쇼핑몰이거나 로그인이 필요한 페이지일 수 있습니다. 직접 입력하면 URL은 상품 링크 칸에
-                그대로 남습니다.
+                {failText.body} {failure?.product ? "읽은 항목은 직접 입력 화면에 채워 둡니다." : ""}
               </p>
               <div className="mt-1 flex flex-wrap gap-2">
                 <button type="button" className="btn btn-primary" onClick={() => startManual(true)}>
@@ -304,7 +408,7 @@ export function NewGarmentView() {
                 </button>
               </div>
               {showDetail && (
-                <div className="border-t border-divider pt-2.5 font-mono text-xs text-neutral-700 tabular-nums">{FAILED_DETAIL}</div>
+                <div className="border-t border-divider pt-2.5 font-mono text-xs text-neutral-700 tabular-nums">{failDetail}</div>
               )}
             </div>
           )}
@@ -317,11 +421,20 @@ export function NewGarmentView() {
             <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-neutral-300 py-4">
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="text-base font-semibold">
-                  {EXTRACTED.source}에서 {EXTRACTED.fieldCount}개 항목을 가져왔습니다
+                  {imported?.domain}에서 {extractedCount}개 항목을 가져왔습니다
                 </span>
                 <span className="text-sm text-neutral-700">
-                  구매한 사이즈와 컬러를 고르고, 값을 확인한 뒤 등록하세요. 등록 전에는 저장되지 않습니다.
+                  {partial
+                    ? "일부 정보만 가져왔습니다. 비어 있는 항목을 입력해 주세요."
+                    : "구매한 사이즈와 컬러를 고르고, 값을 확인한 뒤 등록하세요. 등록 전에는 저장되지 않습니다."}
                 </span>
+                {product && product.warnings.length > 0 && (
+                  <ul className="mt-1 list-disc pl-5 text-sm text-neutral-700">
+                    {product.warnings.map((w, i) => (
+                      <li key={i}>{w.message}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <div className="flex items-center gap-2 text-xs text-neutral-700">
                 <span className="tag tag-neutral">자동</span>
@@ -333,42 +446,62 @@ export function NewGarmentView() {
 
           <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-6 border-b border-text py-7">
             <div className="flex max-w-60 flex-col gap-2">
-              <div className="flex aspect-[4/5] items-end rounded-md bg-neutral-200 p-2.5 text-xs text-neutral-700">
-                {isReview ? (imageIndex === 0 ? "상품 페이지 대표 이미지" : `페이지 이미지 ${imageIndex + 1} 선택됨`) : "사진 끌어다 놓기"}
-              </div>
-              {isReview && (
+              <ImagePicker
+                currentUrl={pageImages[imageIndex] ?? null}
+                value={image}
+                onChange={setImage}
+                placeholder="사진 끌어다 놓기"
+              />
+              {pageImages.length > 0 && (
+                <p className="text-label text-neutral-700" aria-live="polite">
+                  {image === undefined && pageImages[imageIndex]
+                    ? pageImages.length > 1
+                      ? `페이지 이미지 ${imageIndex + 1}번을 옷 정보 사진으로 씁니다`
+                      : "페이지 대표 이미지를 옷 정보 사진으로 씁니다"
+                    : image
+                      ? "직접 올린 사진을 씁니다"
+                      : "사진 없이 저장합니다"}
+                </p>
+              )}
+              {pageImages.length > 1 && (
                 <>
                   <div className="mt-1 flex items-baseline justify-between">
-                    <span className="text-xs font-semibold">페이지 이미지 {EXTRACTED.imageCount}장</span>
+                    <span className="text-xs font-semibold">페이지 이미지 {pageImages.length}장</span>
                     <span className="text-label text-neutral-700">누르면 옷 정보 사진으로</span>
                   </div>
                   <div className="grid grid-cols-4 gap-1.5">
-                    {Array.from({ length: EXTRACTED.imageCount }, (_, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        aria-pressed={imageIndex === i}
-                        aria-label={i === 0 ? "대표 이미지" : `이미지 ${i + 1}`}
-                        onClick={() => setImageIndex(i)}
-                        className={cn(
-                          "flex aspect-[4/5] cursor-pointer items-end rounded-sm bg-neutral-200 px-1 py-0.5 font-mono text-2xs text-neutral-700",
-                          imageIndex === i ? "ring-2 ring-text" : "ring-1 ring-neutral-300 ring-inset",
-                        )}
-                      >
-                        {i === 0 ? "대표" : ""}
-                      </button>
-                    ))}
+                    {pageImages.map((src, i) => {
+                      const selected = imageIndex === i && image === undefined;
+                      return (
+                        <button
+                          key={src}
+                          type="button"
+                          aria-pressed={selected}
+                          aria-label={`${i === 0 ? "대표 이미지" : `이미지 ${i + 1}`}${selected ? " (옷 정보 사진으로 선택됨)" : ""}`}
+                          onClick={() => {
+                            setImageIndex(i);
+                            setImage(undefined);
+                          }}
+                          className={cn(
+                            "relative aspect-[4/5] cursor-pointer overflow-hidden rounded-sm bg-neutral-200 transition-opacity",
+                            selected ? "ring-2 ring-text ring-offset-2 ring-offset-bg" : "opacity-60 ring-1 ring-neutral-300 ring-inset hover:opacity-100",
+                          )}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element -- 서버가 대신 받아 주는 미리보기 */}
+                          <img src={src} alt="" loading="lazy" className="size-full object-cover" />
+                          {selected && (
+                            <span className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-text text-bg" aria-hidden>
+                              <svg viewBox="0 0 16 16" className="size-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3.5 8.5l3 3 6-7" />
+                              </svg>
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </>
               )}
-              <div className="flex gap-1">
-                <button type="button" className="btn btn-ghost text-sm">
-                  변경
-                </button>
-                <button type="button" className="btn btn-ghost text-sm text-neutral-700">
-                  제거
-                </button>
-              </div>
             </div>
 
             <div className="flex min-w-0 flex-col gap-4 sm:col-span-3">
@@ -403,23 +536,23 @@ export function NewGarmentView() {
                 </div>
                 <div className="field">
                   <label htmlFor="f-brand" className="flex items-center justify-between">{label("브랜드", "brand")}</label>
-                  <input id="f-brand" className="input" value={form.brand} onChange={(e) => update("brand", e.target.value, "brand")} />
+                  <input id="f-brand" className="input" aria-invalid={Boolean(fieldErrors.brand)} aria-describedby={fieldErrors.brand ? "e-brand" : undefined} value={form.brand} onChange={(e) => update("brand", e.target.value, "brand")} />
+                  <FieldError id="e-brand" message={fieldErrors.brand} />
                 </div>
                 <div className="field sm:col-span-2">
                   <label htmlFor="f-name" className="flex items-center justify-between">{label("제품명", "name")}</label>
-                  <input id="f-name" className="input" value={form.productName} onChange={(e) => update("productName", e.target.value, "name")} />
-                </div>
-                <div className="field">
-                  <label htmlFor="f-material" className="flex items-center justify-between">{label("소재", "material")}</label>
-                  <input id="f-material" className="input" value={form.material} onChange={(e) => update("material", e.target.value, "material")} />
+                  <input id="f-name" className="input" aria-invalid={Boolean(fieldErrors.productName)} aria-describedby={fieldErrors.productName ? "e-productName" : undefined} value={form.productName} onChange={(e) => update("productName", e.target.value, "name")} />
+                  <FieldError id="e-productName" message={fieldErrors.productName} />
                 </div>
                 <div className="field">
                   <label htmlFor="f-date" className="flex items-center justify-between">{label("구매 날짜", "date")}</label>
-                  <input id="f-date" type="date" className="input font-mono tabular-nums" value={form.date} onChange={(e) => update("date", e.target.value, "date")} />
+                  <input id="f-date" type="date" className="input font-mono tabular-nums" aria-invalid={Boolean(fieldErrors.purchasedOn)} aria-describedby={fieldErrors.purchasedOn ? "e-purchasedOn" : undefined} value={form.date} onChange={(e) => update("date", e.target.value, "date")} />
+                  <FieldError id="e-purchasedOn" message={fieldErrors.purchasedOn} />
                 </div>
                 <div className="field">
                   <label htmlFor="f-price" className="flex items-center justify-between">{label("구매가", "price")}</label>
-                  <UnitInput id="f-price" unit="원" inputMode="numeric" value={form.price} onChange={(e) => update("price", e.target.value, "price")} />
+                  <UnitInput id="f-price" unit="원" inputMode="numeric" aria-invalid={Boolean(fieldErrors.purchasePrice)} aria-describedby={fieldErrors.purchasePrice ? "e-purchasePrice" : undefined} value={form.price} onChange={(e) => update("price", e.target.value, "price")} />
+                  <FieldError id="e-purchasePrice" message={fieldErrors.purchasePrice} />
                 </div>
                 <div className="field col-span-full">
                   <label className="flex items-center justify-between">{label("시즌", "seasons")}</label>
@@ -432,7 +565,7 @@ export function NewGarmentView() {
                           onChange={() =>
                             update(
                               "seasons",
-                              form.seasons.includes(s.id) ? form.seasons.filter((x) => x !== s.id) : [...form.seasons, s.id],
+                              toggleSeason(form.seasons, s.id),
                               "seasons",
                             )
                           }
@@ -444,7 +577,8 @@ export function NewGarmentView() {
                 </div>
                 <div className="field col-span-full">
                   <label htmlFor="f-url" className="flex items-center justify-between">{label("상품 링크", "url")}</label>
-                  <input id="f-url" className="input text-neutral-800" placeholder="선택 입력" value={form.url} onChange={(e) => update("url", e.target.value, "url")} />
+                  <input id="f-url" className="input text-neutral-800" placeholder="선택 입력" aria-invalid={Boolean(fieldErrors.productUrl)} aria-describedby={fieldErrors.productUrl ? "e-productUrl" : undefined} value={form.url} onChange={(e) => update("url", e.target.value, "url")} />
+                  <FieldError id="e-productUrl" message={fieldErrors.productUrl} />
                 </div>
               </div>
             </div>
@@ -458,30 +592,31 @@ export function NewGarmentView() {
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-6">
               <div className="field">
                 <label htmlFor="f-size" className="flex items-center gap-2">{label("사이즈", "size")}</label>
-                {hasChart ? (
-                  <div className="seg self-start" role="radiogroup" aria-label="사이즈">
-                    {Object.keys(EXTRACTED_SIZE_CHART).map((s) => (
+                {sizeChoices.length > 0 ? (
+                  <div className="seg flex-wrap self-start" role="radiogroup" aria-label="사이즈">
+                    {sizeChoices.map((s) => (
                       <label key={s} className="seg-opt px-4.5 py-2 font-mono text-base tabular-nums">
                         <input
                           type="radio"
                           name="fsize"
                           checked={form.size === s}
-                          onChange={() => setForm((f) => ({ ...f, size: s, m: { ...EXTRACTED_SIZE_CHART[s] } }))}
+                          onChange={() => setForm((f) => ({ ...f, size: s, m: { ...f.m, ...chartMeasurements(product, s) } }))}
                         />
                         {s}
                       </label>
                     ))}
                   </div>
                 ) : (
-                  <input id="f-size" className="input max-w-50" placeholder="예: M, 48, 32" value={form.size} onChange={(e) => update("size", e.target.value, "size")} />
+                  <input id="f-size" className="input max-w-50" placeholder="예: M, 48, 32" aria-invalid={Boolean(fieldErrors.sizeLabel)} aria-describedby={fieldErrors.sizeLabel ? "e-sizeLabel" : undefined} value={form.size} onChange={(e) => update("size", e.target.value, "size")} />
                 )}
+                <FieldError id="e-sizeLabel" message={fieldErrors.sizeLabel} />
               </div>
               <div className="field">
                 <label htmlFor="f-color" className="flex items-center gap-2">{label("컬러", "color")}</label>
                 <div className="flex flex-wrap items-center gap-2">
-                  {hasChart && (
-                    <div className="seg" role="radiogroup" aria-label="컬러 옵션">
-                      {EXTRACTED_COLORS.map((c) => (
+                  {colorChoices.length > 0 && (
+                    <div className="seg flex-wrap" role="radiogroup" aria-label="컬러 옵션">
+                      {colorChoices.map((c) => (
                         <label key={c} className="seg-opt px-3.5 py-2 text-base">
                           <input type="radio" name="fcolor" checked={form.color === c} onChange={() => update("color", c)} />
                           {c}
@@ -489,7 +624,8 @@ export function NewGarmentView() {
                       ))}
                     </div>
                   )}
-                  <input id="f-color" className="input max-w-45" placeholder="컬러명 직접 입력" value={form.color} onChange={(e) => update("color", e.target.value, "color")} />
+                  <input id="f-color" className="input max-w-45" placeholder="컬러명 직접 입력" aria-invalid={Boolean(fieldErrors.colorName)} aria-describedby={fieldErrors.colorName ? "e-colorName" : undefined} value={form.color} onChange={(e) => update("color", e.target.value, "color")} />
+                  <FieldError id="e-colorName" message={fieldErrors.colorName} />
                 </div>
               </div>
             </div>
@@ -500,6 +636,11 @@ export function NewGarmentView() {
               <h2 className="text-lg">실측</h2>
               <span className="text-sm text-neutral-700">cm · 단면 기준 · 직접 잰 값이 있으면 덮어쓰세요</span>
             </div>
+            {isReview && product && !product.sizeChart && (
+              <p className="text-sm text-neutral-800">
+                이 페이지에서 실측 정보를 찾지 못했습니다. 직접 잰 값이나 상품 페이지의 실측을 입력해 주세요.
+              </p>
+            )}
             <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
               {measurementFields(form.categoryId).map((m) => (
                 <div key={m.key} className="field">
@@ -510,8 +651,11 @@ export function NewGarmentView() {
                     inputMode="decimal"
                     className="text-body"
                     value={form.m[m.key] ?? ""}
+                    aria-invalid={Boolean(fieldErrors[`measurements.${m.key}`])}
+                    aria-describedby={fieldErrors[`measurements.${m.key}`] ? `e-m-${m.key}` : undefined}
                     onChange={(e) => setForm((f) => ({ ...f, m: { ...f.m, [m.key]: e.target.value } }))}
                   />
+                  <FieldError id={`e-m-${m.key}`} message={fieldErrors[`measurements.${m.key}`]} />
                 </div>
               ))}
             </div>
@@ -534,18 +678,54 @@ export function NewGarmentView() {
           </section>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-text pt-4">
-            <span className="text-sm text-neutral-700">{hint}</span>
+            <span role={error ? "alert" : undefined} className={cn("text-sm", error ? "text-accent-700" : "text-neutral-700")}>
+              {hint}
+            </span>
             <div className="flex gap-2">
               <Link href="/wardrobe" className="btn btn-secondary min-h-10">
                 취소
               </Link>
-              <button type="button" className="btn btn-primary min-h-10 min-w-30" onClick={register}>
-                등록
+              <button type="button" className="btn btn-primary min-h-10 min-w-30" disabled={saving} onClick={register}>
+                {saving ? "등록 중…" : "등록"}
               </button>
             </div>
           </div>
         </>
       )}
     </main>
+  );
+}
+
+/** 고른 페이지 이미지를 받아 등록할 사진 파일로. 실패하면 사진 없이 등록한다(PROJECT_SPEC.md 12.4). */
+async function pageImageFile(src: string): Promise<File | undefined> {
+  try {
+    const res = await fetch(src);
+    if (!res.ok) return undefined;
+    const blob = await res.blob();
+    return new File([blob], "product-image", { type: blob.type || "image/jpeg" });
+  } catch {
+    return undefined;
+  }
+}
+
+/** 서버 검증 오류 키 → 입력 칸 id(첫 오류 칸으로 포커스) */
+const FIELD_IDS: Record<string, string> = {
+  productName: "f-name",
+  brand: "f-brand",
+  purchasedOn: "f-date",
+  purchasePrice: "f-price",
+  productUrl: "f-url",
+  sizeLabel: "f-size",
+  colorName: "f-color",
+  subcategoryId: "f-sub",
+  ...Object.fromEntries([...new Set([...TOP_MEASUREMENTS, ...BOTTOM_MEASUREMENTS])].map((k) => [`measurements.${k}`, `f-m-${k}`])),
+};
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <span id={id} className="text-xs text-accent-700">
+      {message}
+    </span>
   );
 }

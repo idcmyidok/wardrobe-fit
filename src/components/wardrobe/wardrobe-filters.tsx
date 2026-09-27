@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { CATEGORIES, SUBCATEGORIES } from "@/lib/constants/categories";
 import { SEASONS } from "@/lib/constants/seasons";
 import type { CategoryId, Season } from "@/lib/types/domain";
@@ -46,14 +47,7 @@ export function WardrobeFilters({
             </label>
           ))}
         </div>
-        <input
-          className="input w-[min(100%,280px)]"
-          type="search"
-          aria-label="검색"
-          placeholder="브랜드, 제품명 검색"
-          value={value.q}
-          onChange={(e) => set("q", e.target.value)}
-        />
+        <SearchBox value={value.q} onCommit={(q) => set("q", q)} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -112,5 +106,41 @@ function FilterSelect({
         </option>
       ))}
     </select>
+  );
+}
+
+const SEARCH_DEBOUNCE_MS = 300;
+
+/** 브랜드·제품명 검색. 입력을 멈추고 300ms 뒤에 적용한다. 초기화처럼 밖에서 값이 바뀌면 따라간다. */
+function SearchBox({ value, onCommit }: { value: string; onCommit: (value: string) => void }) {
+  const [text, setText] = useState(value);
+  const [committed, setCommitted] = useState(value);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  // 입력을 멈춘 사이 다른 필터를 바꿨을 수 있으므로, 적용할 때는 가장 최근 onCommit(최근 필터 값)을 쓴다.
+  const latestCommit = useRef(onCommit);
+  useEffect(() => {
+    latestCommit.current = onCommit;
+  });
+
+  if (value !== committed) {
+    setCommitted(value);
+    setText(value);
+  }
+
+  return (
+    <input
+      className="input w-[min(100%,280px)]"
+      type="search"
+      aria-label="검색"
+      placeholder="브랜드, 제품명 검색"
+      value={text}
+      onChange={(e) => {
+        const next = e.target.value;
+        setText(next);
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => latestCommit.current(next), SEARCH_DEBOUNCE_MS);
+      }}
+    />
   );
 }

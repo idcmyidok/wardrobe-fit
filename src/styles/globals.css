@@ -108,6 +108,8 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    /* 스크롤바가 생기고 사라질 때 헤더 버튼이 좌우로 밀리지 않게 자리를 늘 확보한다 */
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -379,6 +381,18 @@
   .elev-md {
     box-shadow: var(--shadow-md);
   }
+
+  /* 로딩 자리(PROJECT_SPEC.md 20장). 움직임 줄이기 설정이면 깜빡이지 않는다. */
+  .skeleton {
+    background: var(--n-200);
+    animation: skeleton-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.5;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -387,5 +401,8 @@
   *::after {
     transition-duration: 1ms !important;
     animation-duration: 1ms !important;
+  }
+  .skeleton {
+    animation: none;
   }
 }

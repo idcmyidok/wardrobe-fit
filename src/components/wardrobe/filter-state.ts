@@ -1,5 +1,6 @@
-import type { MeasurementKey } from "@/lib/constants/measurements";
-import { SEASONS } from "@/lib/constants/seasons";
+import { CATEGORIES } from "@/lib/constants/categories";
+import { BOTTOM_MEASUREMENTS, TOP_MEASUREMENTS, type MeasurementKey } from "@/lib/constants/measurements";
+import { SEASONS, wearsInSeason } from "@/lib/constants/seasons";
 import type { CategoryId, Garment, Season } from "@/lib/types/domain";
 
 /** 표 헤더를 눌러 정렬할 수 있는 열. 이미지·세부분류·제품명은 정렬하지 않는다. */
@@ -11,8 +12,8 @@ export interface ColumnSort {
 }
 
 /**
- * 지금은 화면 확인용 로컬 상태다. 6단계에서 URL searchParams + 서버 조회로 옮긴다.
- * 정렬은 필터에 두지 않고 대분류 표마다 따로 둔다(WardrobeView의 sorts).
+ * 옷장 필터. URL searchParams에 저장해 새로고침·뒤로가기·링크 공유에도 그대로 남는다(PROJECT_SPEC.md 5.2).
+ * 정렬과 페이지는 필터에 두지 않고 대분류 표마다 따로 둔다(WardrobeState).
  */
 export interface WardrobeFilters {
   categories: CategoryId[];
@@ -88,7 +89,7 @@ export function applyFilters(items: Garment[], f: WardrobeFilters): Garment[] {
       f.categories.includes(item.categoryId) &&
       (!f.subcategory || item.subcategoryId === f.subcategory) &&
       (!f.brand || item.brand === f.brand) &&
-      (!f.season || item.seasons.includes(f.season)) &&
+      (!f.season || wearsInSeason(item.seasons, f.season)) &&
       (!f.color || item.colorName === f.color) &&
       (!q || `${item.brand} ${item.productName}`.toLowerCase().includes(q)),
   );
@@ -113,3 +114,81 @@ export function uniqueValues(items: Garment[], pick: (item: Garment) => string |
     a.localeCompare(b, "ko", { numeric: true }),
   );
 }
+
+/** 표 하나에 한 번에 보여주는 행 수(PROJECT_SPEC.md 5.2) */
+export const PAGE_SIZE = 50;
+
+export type PerCategory<T> = Record<CategoryId, T>;
+
+/** URL에 담는 옷장 화면 상태 전체 */
+export interface WardrobeState {
+  filters: WardrobeFilters;
+  sorts: PerCategory<ColumnSort>;
+  /** 1부터 시작 */
+  pages: PerCategory<number>;
+}
+
+const CATEGORY_IDS = CATEGORIES.map((c) => c.id);
+const SORT_KEYS: Record<CategoryId, readonly SortableColumn[]> = {
+  outer: ["brand", "size", "color", "season", "purchasedOn", "price", ...TOP_MEASUREMENTS],
+  top: ["brand", "size", "color", "season", "purchasedOn", "price", ...TOP_MEASUREMENTS],
+  bottom: ["brand", "size", "color", "season", "purchasedOn", "price", ...BOTTOM_MEASUREMENTS],
+};
+const SEASON_IDS = SEASONS.map((s) => s.id);
+const MAX_TEXT = 100;
+
+const perCategory = <T,>(value: T): PerCategory<T> => ({ outer: value, top: value, bottom: value });
+
+/** 잘못된 값은 조용히 기본값으로 돌린다(손으로 고친 URL, 오래된 링크). */
+export function parseWardrobeParams(params: URLSearchParams): WardrobeState {
+  const text = (key: string) => (params.get(key) ?? "").slice(0, MAX_TEXT);
+  const cats = (params.get("cat") ?? "").split(",").filter((c): c is CategoryId => CATEGORY_IDS.includes(c as CategoryId));
+  const season = text("season");
+  const filters: WardrobeFilters = {
+    categories: cats.length ? CATEGORY_IDS.filter((c) => cats.includes(c)) : DEFAULT_FILTERS.categories,
+    subcategory: text("sub"),
+    brand: text("brand"),
+    season: SEASON_IDS.includes(season as Season) ? (season as Season) : "",
+    color: text("color"),
+    q: text("q"),
+  };
+  const sorts = perCategory(DEFAULT_SORT);
+  const pages = perCategory(1);
+  for (const id of CATEGORY_IDS) {
+    const [key, dir] = (params.get(`sort_${id}`) ?? "").split(".");
+    if (SORT_KEYS[id].includes(key as SortableColumn) && (dir === "asc" || dir === "desc")) {
+      sorts[id] = { key: key as SortableColumn, dir };
+    }
+    const page = Number(params.get(`page_${id}`));
+    if (Number.isInteger(page) && page > 1) pages[id] = page;
+  }
+  return { filters, sorts, pages };
+}
+
+/** 기본값은 빼고 적는다. 필터가 없고 기본 정렬이면 빈 문자열. */
+export function toWardrobeSearch({ filters: f, sorts, pages }: WardrobeState): string {
+  const params = new URLSearchParams();
+  if (f.categories.length < CATEGORY_IDS.length) params.set("cat", f.categories.join(","));
+  if (f.q.trim()) params.set("q", f.q.trim());
+  if (f.subcategory) params.set("sub", f.subcategory);
+  if (f.brand) params.set("brand", f.brand);
+  if (f.season) params.set("season", f.season);
+  if (f.color) params.set("color", f.color);
+  for (const id of CATEGORY_IDS) {
+    const s = sorts[id];
+    if (s.key !== DEFAULT_SORT.key || s.dir !== DEFAULT_SORT.dir) params.set(`sort_${id}`, `${s.key}.${s.dir}`);
+    if (pages[id] > 1) params.set(`page_${id}`, String(pages[id]));
+  }
+  const search = params.toString();
+  return search ? `?${search}` : "";
+}
+
+/** 필터를 바꾸면 모든 표를 첫 페이지로 돌린다. */
+export const withFilters = (state: WardrobeState, filters: WardrobeFilters): WardrobeState => ({
+  ...state,
+  filters,
+  pages: perCategory(1),
+});
+
+/** 페이지 번호를 1~마지막 페이지 사이로 맞춘다. */
+export const clampPage = (page: number, total: number) => Math.min(Math.max(1, page), Math.max(1, Math.ceil(total / PAGE_SIZE)));

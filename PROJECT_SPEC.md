@@ -75,9 +75,11 @@ Wardrobe Fit은 사용자가 실제로 입어본 옷의 **실측 치수**와 **�
 - 실제 구매한 사이즈와 컬러 옵션을 사용자가 선택하거나 입력한다.
 
 **옷 데이터**
-- 기본정보: 제품 사진, 대분류, 세부분류, 브랜드, 제품명, 표기 사이즈, 컬러명, 소재, 시즌, 구매 날짜, 구매가, 상품 링크.
-- 상의 / 아우터 실측: 어깨, 가슴, 총장, 소매, 암홀, 밑단너비.
-- 하의 실측: 허리단면, 총장, 밑위, 허벅지단면, 밑단단면, 인심.
+- 기본정보: 제품 사진, 대분류, 세부분류, 브랜드, 제품명, 표기 사이즈, 컬러명, 시즌, 구매 날짜, 구매가, 상품 링크.
+- 시즌: 봄, 여름, 가을, 겨울, 사계절. 사계절은 단독으로 선택하고(네 계절을 모두 고르면 사계절로 바뀐다), 계절 필터·통계에서는 모든 계절에 포함된다.
+- 상의 / 아우터 실측: 총장, 어깨, 가슴, 소매.
+- 하의 실측: 총장, 허리단면, 엉덩이단면, 허벅지단면, 밑위, 밑단단면.
+- 실측 항목은 옷장 Table에 보이는 열과 같다. 상세·입력·AI 구매 판단 어디에서도 이 밖의 치수(암홀, 상의 밑단너비, 인심 등)를 쓰지 않는다.
 - 착용 후기: 자유 텍스트 필드 하나. 점수나 세부 평가 항목으로 나누지 않는다.
 
 **컬러**
@@ -370,13 +372,12 @@ middleware.ts                 # 세션 갱신 + 보호 Route
 │ [이미지]      │  대분류 [아우터 ▾]  세부분류 [자켓 ▾]
 │ 변경 / 제거   │  브랜드 [      ]    제품명 [                 ]
 └──────────────┘  표기 사이즈 [ ]    컬러명 [      ]
-                  소재 [                              ]
-                  시즌 [봄][여름][가을][겨울]
+                  시즌 [봄][여름][가을][겨울][사계절]
                   구매 날짜 [    ]   구매가 [       ]원
                   상품 링크 [                         ]
 
 실측 (cm, 단면 기준)
-  어깨 [  ]  가슴 [  ]  총장 [  ]  소매 [  ]  암홀 [  ]  밑단너비 [  ]
+  총장 [  ]  어깨 [  ]  가슴 [  ]  소매 [  ]
 
 착용 후기
   [                                                    ]
@@ -650,7 +651,7 @@ src/
 
 ## 8. Database Schema 초안
 
-> 아래 SQL은 설계 초안이며 아직 실행하지 않는다. 실제 migration은 개발 4단계(Database 및 RLS)에서 작성한다.
+> 실제 migration은 `supabase/migrations/`에 있다. 아래는 설계 설명이며, 둘이 다르면 migration이 기준이다.
 
 ### 8.1 ERD 개요
 
@@ -666,7 +667,7 @@ auth.users 1 ─── * fit_checks ─── * fit_check_comparables ─── 
 
 ```sql
 create type measurement_group as enum ('top', 'bottom');   -- 상의·아우터 = top
-create type season as enum ('spring', 'summer', 'fall', 'winter');
+create type season as enum ('spring', 'summer', 'fall', 'winter', 'all');  -- all = 사계절, 다른 값과 함께 저장하지 않는다
 create type color_source as enum ('selected_option', 'page_option', 'product_name', 'detail_field', 'manual');
 create type import_status as enum ('pending', 'succeeded', 'partial', 'failed');
 create type fit_check_status as enum ('computing', 'interpreting', 'completed', 'failed');
@@ -721,31 +722,30 @@ create table garments (
   -- 기본정보
   category_id     text not null references categories(id),
   subcategory_id  text references subcategories(id),
-  brand           text not null check (char_length(brand) between 1 and 100),
+  brand           text check (char_length(brand) <= 100),                -- 선택 입력(표에는 "—")
   product_name    text not null check (char_length(product_name) between 1 and 200),
   size_label      text check (char_length(size_label) <= 30),     -- 표기 사이즈 (M, 48, 30 ...)
   color_name      text check (char_length(color_name) <= 50),     -- 텍스트 저장
   color_source    color_source,
-  material        text check (char_length(material) <= 300),
+  material        text check (char_length(material) <= 300),   -- 사용 안 함(2026-09-27 소재 항목 삭제, 기존 값만 남음)
   seasons         season[] not null default '{}',
   purchased_on    date,
   purchase_price  integer check (purchase_price >= 0),            -- 원 단위 정수
   currency        char(3) not null default 'KRW',
   product_url     text check (char_length(product_url) <= 2048),
   image_path      text,                                           -- Storage 경로
+  thumb_path      text,                                           -- 약 300px 썸네일 경로
 
   -- 실측 (cm, 단면 기준, 소수 1자리)
   m_shoulder      numeric(5,1) check (m_shoulder  > 0 and m_shoulder  < 200),  -- 어깨
   m_chest         numeric(5,1) check (m_chest     > 0 and m_chest     < 200),  -- 가슴
   m_length        numeric(5,1) check (m_length    > 0 and m_length    < 200),  -- 총장 (상/하 공통)
   m_sleeve        numeric(5,1) check (m_sleeve    > 0 and m_sleeve    < 200),  -- 소매
-  m_armhole       numeric(5,1) check (m_armhole   > 0 and m_armhole   < 200),  -- 암홀
-  m_hem_width     numeric(5,1) check (m_hem_width > 0 and m_hem_width < 200),  -- 밑단너비 (상의)
   m_waist         numeric(5,1) check (m_waist     > 0 and m_waist     < 200),  -- 허리단면
+  m_hip           numeric(5,1) check (m_hip       > 0 and m_hip       < 200),  -- 엉덩이단면
   m_rise          numeric(5,1) check (m_rise      > 0 and m_rise      < 200),  -- 밑위
   m_thigh         numeric(5,1) check (m_thigh     > 0 and m_thigh     < 200),  -- 허벅지단면
   m_leg_opening   numeric(5,1) check (m_leg_opening > 0 and m_leg_opening < 200), -- 밑단단면 (하의)
-  m_inseam        numeric(5,1) check (m_inseam    > 0 and m_inseam    < 200),  -- 인심
 
   -- 착용 후기 (자유 텍스트 하나)
   fit_review      text check (char_length(fit_review) <= 2000),
@@ -855,22 +855,23 @@ DB 타입은 `supabase gen types typescript`로 생성하고, 도메인 타입�
 
 ```ts
 // lib/constants/measurements.ts
-export const TOP_MEASUREMENTS = ['shoulder', 'chest', 'length', 'sleeve', 'armhole', 'hemWidth'] as const;
-export const BOTTOM_MEASUREMENTS = ['waist', 'length', 'rise', 'thigh', 'legOpening', 'inseam'] as const;
+// 옷장 Table에 보이는 실측만 둔다.
+export const TOP_MEASUREMENTS = ['length', 'shoulder', 'chest', 'sleeve'] as const;
+export const BOTTOM_MEASUREMENTS = ['length', 'waist', 'hip', 'thigh', 'rise', 'legOpening'] as const;
 export type MeasurementKey =
   | (typeof TOP_MEASUREMENTS)[number]
   | (typeof BOTTOM_MEASUREMENTS)[number];
 
 export const MEASUREMENT_LABELS: Record<MeasurementKey, string> = {
-  shoulder: '어깨', chest: '가슴', length: '총장', sleeve: '소매', armhole: '암홀',
-  hemWidth: '밑단너비', waist: '허리단면', rise: '밑위', thigh: '허벅지단면',
-  legOpening: '밑단단면', inseam: '인심',
+  shoulder: '어깨', chest: '가슴', length: '총장', sleeve: '소매',
+  waist: '허리단면', hip: '엉덩이단면', rise: '밑위', thigh: '허벅지단면',
+  legOpening: '밑단단면',
 };
 
 // lib/types/domain.ts
 export type CategoryId = 'outer' | 'top' | 'bottom';
 export type MeasurementGroup = 'top' | 'bottom';
-export type Season = 'spring' | 'summer' | 'fall' | 'winter';
+export type Season = 'spring' | 'summer' | 'fall' | 'winter' | 'all'; // all = 사계절
 export type ColorSource = 'selected_option' | 'page_option' | 'product_name' | 'detail_field' | 'manual';
 
 /** cm, 단면 기준. 없으면 null */
@@ -885,7 +886,6 @@ export interface Garment {
   sizeLabel: string | null;
   colorName: string | null;
   colorSource: ColorSource | null;
-  material: string | null;
   seasons: Season[];
   purchasedOn: string | null;      // YYYY-MM-DD
   purchasePrice: number | null;    // KRW 정수
@@ -1095,7 +1095,6 @@ export interface RawProduct {
   imageUrls?: string[];
   categoryHints?: string[];      // 페이지의 breadcrumb, 카테고리 텍스트
   price?: { amount: number; currency?: string };
-  material?: string;
   colorOptions?: string[];
   colorFromDetail?: string;
   sizeOptions?: string[];
@@ -1141,8 +1140,10 @@ const aiParser: ProductParser = aiStructuredExtractor;    // 선택적 fallback
 |---|---|
 | Site-specific | 쇼핑몰별 구조(내장 JSON 상태, 공개 상품 API 응답, 옵션·사이즈표 DOM) 사용. 대상 쇼핑몰의 실제 구조는 개발 8단계에서 조사 후 결정한다. 1차 후보: 무신사, 29CM, W컨셉. |
 | Platform | Shopify: 상품 JSON 엔드포인트(`/products/{handle}.json` 류)와 JSON-LD. Cafe24: 공통 DOM/스크립트 변수 패턴. |
-| Generic | ① JSON-LD `Product`(name, brand, image, offers.price, color, material) ② OpenGraph(`og:title`, `og:image`, `product:price:amount`) ③ meta 태그 ④ Heuristic: `<select>`/옵션 버튼 텍스트에서 컬러·사이즈 후보, "사이즈", "실측" 근처의 `<table>`을 사이즈표 후보로 추출. |
+| Generic | ① JSON-LD `Product`(name, brand, image, offers.price, color) ② OpenGraph(`og:title`, `og:image`, `product:price:amount`) ③ meta 태그 ④ Heuristic: `<select>`/옵션 버튼 텍스트에서 컬러·사이즈 후보, "사이즈", "실측" 근처의 `<table>`을 사이즈표 후보로 추출. |
 | AI 구조화 추출 | 정제된 텍스트(스크립트/스타일 제거, 최대 약 15,000자)를 신뢰할 수 없는 데이터로 감싸 전달하고, 정해진 JSON 스키마로만 출력받는다. 결과 필드는 모두 `confidence: 'low'`로 표시해 사용자 확인을 요구한다. |
+
+- 무신사(`parsers/musinsa.ts`): 페이지의 상품 상태 JSON(`window.__MSS__.product.state` 등)에서 제품명·브랜드·사진 여러 장, 페이지의 `image.msscdn.net` 상품 사진 주소, 실측은 `goods-detail.musinsa.com`의 공개 JSON. 제목 꼬리("- 사이즈 & 후기 | 무신사")는 뗀다. 개발 환경은 무신사가 막아서 배포 환경의 `product_imports.result.diagnostics`로 어떤 경로가 통했는지 확인한다.
 
 ### 13.4 분리와 유지보수
 
@@ -1172,7 +1173,6 @@ export interface NormalizedProduct {
   subcategoryId: Extracted<string> | null;
   imageUrls: string[];
   price: Extracted<number> | null;             // KRW 정수
-  material: Extracted<string> | null;
   colorOptions: string[];                       // 정규화된 컬러명 목록
   colorCandidate: Extracted<string> | null;     // 우선순위 규칙 적용 결과
   sizeOptions: string[];
@@ -1198,7 +1198,7 @@ export interface NormalizedSizeChart {
 | 가격 | 숫자만 추출, 통화 확인. 할인가와 정가가 모두 있으면 판매가(할인가)를 기본값으로. |
 | 컬러 | 14.3(요구사항 1.3)의 우선순위 적용. 옵션 문자열에서 사이즈 부분 분리(`BLACK / M` → `BLACK`). 대문자 표준화, 한/영 동의어 사전(`검정 → BLACK`, `차콜 → CHARCOAL`, `아이보리 → IVORY`)은 **표시용 제안**으로만 사용하고 원문을 기본값으로 둔다. |
 | 사이즈 옵션 | 공백/품절 표기 제거(`M (품절)` → `M`), 중복 제거, 순서 유지. |
-| 사이즈표 헤더 | 동의어 사전으로 `MeasurementKey` 매핑: `어깨너비|어깨 → shoulder`, `가슴단면|가슴 → chest`, `총장|총기장|기장 → length`, `소매길이|소매 → sleeve`, `암홀 → armhole`, `밑단|밑단단면 → hemWidth(상의) / legOpening(하의)`, `허리단면|허리 → waist`, `밑위 → rise`, `허벅지단면|허벅지 → thigh`, `인심|안쪽기장 → inseam`. |
+| 사이즈표 헤더 | 동의어 사전으로 `MeasurementKey` 매핑: `어깨너비|어깨 → shoulder`, `가슴단면|가슴 → chest`, `총장|총기장|기장 → length`, `소매길이|소매 → sleeve`, `밑단|밑단단면 → legOpening(하의)`, `허리단면|허리 → waist`, `엉덩이단면|엉덩이|힙 → hip`, `밑위 → rise`, `허벅지단면|허벅지 → thigh`. 이 밖의 헤더(암홀, 상의 밑단, 인심 등)는 버린다. |
 | 단위 | 인치 표기(`inch`, `in`, `"`) 감지 시 ×2.54 변환 후 소수 1자리 반올림, warning 추가. |
 | 단면/둘레 | 헤더에 `둘레`가 있거나 가슴·허리 값이 상식 범위의 약 2배이면 ÷2 하여 단면으로 변환하고 warning을 남겨 사용자 확인을 요구. |
 | 범위 값 | `58~60` 같은 범위는 중간값을 기본값으로, warning 추가. |
@@ -1272,7 +1272,7 @@ function pickColor(p: RawProduct, selectedOption?: string): Extracted<string> | 
 ### 16.1 비교 가능 치수
 
 - 신규 상품과 기존 옷 모두 값이 있는 치수만 비교한다.
-- 그룹별 핵심 치수(가중치 높음): 상의·아우터 = 어깨, 가슴, 총장, 소매 / 하의 = 허리, 허벅지, 총장(또는 인심), 밑위.
+- 그룹별 핵심 치수(가중치 높음): 상의·아우터 = 어깨, 가슴, 총장, 소매 / 하의 = 허리, 허벅지, 총장, 밑위.
 - 기존 옷 중 비교 가능 치수가 1개 이하인 옷은 참고에서 제외(목록에는 "실측 부족"으로 표시).
 
 ### 16.2 후기 신호 추출
@@ -1294,7 +1294,7 @@ function pickColor(p: RawProduct, selectedOption?: string): Extracted<string> | 
 | 만족 범위 | 치수 d에 대해 "good" 신호가 있거나 해당 치수에 부정 신호가 없는 옷(단, 후기가 있는 옷만)의 `old[d]` 집합 → min, max, median, n. n < 2면 "범위 산출 불가". |
 | 신호 앵커 | 치수 d에 long/short/tight/loose 신호가 있는 옷의 값. 신규 값이 앵커 값 ±허용오차 이내이면 "그 옷과 비슷 → 같은 느낌 가능성" 판정. |
 | 방향 판정 | 신규 값이 만족 범위 안 → `within`; 범위보다 크면 `above` (길이 치수는 "길게", 폭 치수는 "여유 있게"), 작으면 `below`. 범위 경계와의 거리(cm)를 함께 기록. |
-| 허용오차 | 치수별 기본값: 어깨·가슴·허리·허벅지·밑단 ±1.0cm, 총장·소매·인심 ±1.5cm, 밑위·암홀 ±1.0cm (설정 상수, 추후 조정). |
+| 허용오차 | 치수별 기본값: 어깨·가슴·허리·허벅지·밑단 ±1.0cm, 엉덩이 ±1.0cm, 총장·소매 ±1.5cm, 밑위 ±1.0cm (설정 상수, 추후 조정). |
 | 최근접 옷 | 핵심 치수 차이의 가중 거리(정규화된 L1) 기준 가장 가까운 기존 옷 top 3. |
 | 동일 브랜드 참고 | 같은 브랜드·같은 표기 사이즈의 기존 옷이 있으면 별도 표시(브랜드 사이징 일관성 참고). |
 | 다중 사이즈 비교 | 후보 사이즈마다 위 계산을 반복하고, `within` 치수 개수와 경계 거리 합으로 사이즈별 요약 비교를 만든다. |
@@ -1348,6 +1348,13 @@ export interface ComparisonReport {
 - 예상 전체 핏 요약(2~3문장).
 - 여러 치수 판정을 종합한 주의점(예: "가슴은 맞지만 어깨가 좁아 활동 시 답답할 수 있음"은 후기 근거가 있을 때만).
 - (선택) 후기 신호 추출 보강(16.2), URL Import 구조화 추출 fallback(13.3).
+
+### 17.1a 기본은 AI 없이(비용 0)
+
+- 예상 핏 문장은 서버 규칙(`src/lib/fit/compute.ts` `ruleSummary`)이 항상 만든다. 예: "어깨·가슴은 만족했던 옷들과 비슷하고, 총장은 만족 범위보다 2cm 깁니다."
+- AI 요약은 키가 있을 때만 붙인다. `GEMINI_API_KEY`(무료 등급 Gemini Flash-Lite, 입력을 학습에 쓸 수 있어 실측·계산값만 전송)가 1순위, 없으면 `ANTHROPIC_API_KEY`(Claude Haiku 4.5, 후기 원문 포함). 없거나 실패·한도 초과(429)면 규칙 요약을 그대로 보여준다.
+- 비용 제한: 사용자당 판단 20회/일, AI 호출 10회/일(`FIT_AI_DAILY_LIMIT`), 같은 입력의 AI 요약은 7일 재사용, 시스템 문구 prompt caching.
+- `fit_checks`·`fit_check_comparables`는 서버가 insert만 한다(마이그레이션 6, 사용자 update/delete 불가).
 
 ### 17.2 담당하지 않는 것
 
@@ -1461,7 +1468,7 @@ getFitCheck(id: string): Promise<FitCheckView | null>;
 | 위협 | 대응 |
 |---|---|
 | 타 사용자 데이터 접근(IDOR) | 모든 테이블 RLS, Storage 정책, 서버에서 service_role 미사용, A/B 계정 교차 접근 테스트. |
-| AI API Key 노출 | 서버 전용 환경 변수(`NEXT_PUBLIC_` 접두어 금지), `server-only` 모듈에서만 참조, 번들 검사. |
+| AI API Key 노출 | 서버 전용 환경 변수(`NEXT_PUBLIC_` 접두어 금지), `server-only` 모듈에서만 참조, 번들 검사(CI가 가짜 키로 빌드한 뒤 `npm run check:bundle`로 `.next/static`에 값이 없는지 확인). |
 | SSRF (URL import) | 12.3의 IP 대역 차단, redirect 재검사, 포트 제한, 크기·시간 제한. 이미지 프록시도 동일 적용. |
 | Prompt injection (상품 페이지·후기) | 외부 텍스트를 구분 태그로 감싸 데이터로 명시, structured output 강제 + Zod 검증, AI에 도구 실행 권한 없음, AI 출력의 인용·ID·수치를 서버가 검증, AI 출력은 텍스트로만 렌더링(HTML 불허). |
 | 과도한 입력 | URL 길이 2048, HTML 3MB, AI 입력 텍스트 약 15,000자, 후기 2000자, 이미지 5MB 제한. |
@@ -1553,7 +1560,7 @@ getFitCheck(id: string): Promise<FitCheckView | null>;
 | 난점 | 내용 | 대응 방향 |
 |---|---|---|
 | 쇼핑몰 구조 다양성·변경 | 사이트마다 사이즈표 형식이 다르고(이미지로 된 사이즈표 포함) 수시로 바뀐다. | Parser 분리 + fixture 테스트 + generic/AI fallback + 수동 입력. 이미지 사이즈표 OCR은 하지 않는다(사용자 입력). |
-| 봇 차단·JS 렌더링 | 일부 쇼핑몰은 서버 요청을 차단하거나 JS 없이는 데이터가 없다. | 우선 내장 JSON/공개 API 경로 조사. Playwright는 서버리스용 Chromium 또는 원격 브라우저 서비스로 필요 시 도입, 차단 시 수동 입력 안내. |
+| 봇 차단·JS 렌더링 | 일부 쇼핑몰은 서버 요청을 차단하거나 JS 없이는 데이터가 없다. 2026-09-27 확인: 무신사·29CM는 Cloudflare가 데이터센터 IP(개발 환경)를 차단한다. | 우선 내장 JSON/공개 API 경로 조사. Playwright는 서버리스용 Chromium 또는 원격 브라우저 서비스로 필요 시 도입, 차단 시 수동 입력 안내. Vercel에서 확인해 막히면 링크 분석 실패 → 수동 입력으로 안내한다. 앱 공유 링크(musinsa.onelink.me 등)는 redirect를 따라가 상품 페이지로 간다. |
 | 실측 기준 불일치 | 단면/둘레, 어깨 측정 방식(래글런 등), 총장 기준점(목점/어깨점)이 쇼핑몰마다 다르다. | normalize 단계에서 둘레→단면 변환과 warning, 사용자 확인. 비교 시 같은 브랜드/쇼핑몰 출처를 참고 정보로 표시. 완전 해결은 불가하다는 점을 결과의 데이터 한계에 명시. |
 | 자연어 후기 해석 | "품이 넉넉한데 기장은 괜찮다" 같은 복합 문장, 부정문, 비교 표현. | 절 단위 rule 추출 + AI 보강 + 근거 구절 검증. 신호는 보조 근거로만 사용하고 원문을 항상 함께 보여준다. |
 | 적은 데이터 | 초기 사용자는 같은 세부분류 옷이 1~2벌뿐이다. | 비교 범위 확대 규칙, 신뢰도 등급, 명확한 데이터 한계 표시. |
@@ -1576,7 +1583,7 @@ getFitCheck(id: string): Promise<FitCheckView | null>;
 - 신발·액세서리 등 대분류 확장 (`categories` 테이블에 추가하는 방식)
 - 사용자 직접 측정 가이드(측정 방법 도움말/그림)
 - 착장 코디 기록, 착용 빈도 기록
-- 브라우저 확장 프로그램으로 쇼핑몰 페이지에서 바로 판단기 실행
+- 브라우저 확장 프로그램으로 쇼핑몰 페이지에서 바로 판단기 실행 (쇼핑몰 주문 목록 "불러오기"는 2026-09-27 사용자 결정으로 하지 않는다)
 - 이미지 사이즈표 OCR
 - Dark mode
 - 다국어(영문), 다통화

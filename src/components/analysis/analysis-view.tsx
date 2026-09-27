@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { cn } from "@/lib/cn";
 import {
@@ -60,7 +60,7 @@ export function AnalysisView() {
           </span>
           <div className="flex flex-wrap items-baseline gap-1.5">
             <span className="font-display text-total tracking-[-0.03em]">{price.totalShort}</span>
-            <span className="text-lg">원</span>
+            <span className="text-lg">￦</span>
           </div>
           <span className="font-mono text-sm text-neutral-700">{price.totalFull}</span>
           <div className="mt-2 flex flex-col gap-1 rounded-md bg-accent-100 px-4 py-3.5">
@@ -218,6 +218,11 @@ export function AnalysisView() {
 function MonthChart({ bars }: { bars: ReturnType<typeof monthlySummary>["bars"] }) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; left: number } | null>(null);
+
+  // 막대가 많아 가로 스크롤이 생기면 처음에는 최근 달(오른쪽 끝)을 보여준다.
+  useEffect(() => {
+    if (ref.current) ref.current.scrollLeft = ref.current.scrollWidth;
+  }, [bars.length]);
 
   return (
     <div
