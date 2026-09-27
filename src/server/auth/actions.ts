@@ -3,7 +3,7 @@
 import type { AuthError } from "@supabase/supabase-js";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { REMEMBER_COOKIE, REMEMBER_MAX_AGE, safeNextPath } from "@/lib/supabase/config";
+import { LAST_EMAIL_COOKIE, LAST_EMAIL_MAX_AGE, REMEMBER_COOKIE, REMEMBER_MAX_AGE, safeNextPath } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AUTH_MESSAGES } from "./messages";
 import { fieldErrors, resetRequestSchema, signInSchema, signUpSchema, updatePasswordSchema } from "./schemas";
@@ -65,13 +65,12 @@ export async function signIn(_prev: AuthFormState, formData: FormData): Promise<
     return { error: message, email: parsed.data.email };
   }
 
-  (await cookies()).set(REMEMBER_COOKIE, remember ? "1" : "0", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    ...(remember ? { maxAge: REMEMBER_MAX_AGE } : {}),
-  });
+  const store = await cookies();
+  const cookieBase = { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" } as const;
+  store.set(REMEMBER_COOKIE, remember ? "1" : "0", { ...cookieBase, ...(remember ? { maxAge: REMEMBER_MAX_AGE } : {}) });
+  // 상태 유지를 고른 기기에서만 이메일을 기억한다. 로그아웃해도 지우지 않아 다음 로그인 때 미리 채워진다.
+  if (remember) store.set(LAST_EMAIL_COOKIE, parsed.data.email, { ...cookieBase, maxAge: LAST_EMAIL_MAX_AGE });
+  else store.delete(LAST_EMAIL_COOKIE);
   redirect(safeNextPath(text(formData, "next")));
 }
 

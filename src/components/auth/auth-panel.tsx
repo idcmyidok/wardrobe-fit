@@ -23,12 +23,15 @@ export function AuthPanel({
   mode,
   next,
   notice,
+  savedEmail,
   configured,
 }: {
   mode: AuthMode;
   /** 로그인 후 돌아갈 경로(보호 경로에서 튕겨 온 경우) */
   next?: string;
   notice?: string;
+  /** 이 기기에서 마지막으로 로그인한 이메일(상태 유지를 고른 경우) */
+  savedEmail?: string;
   /** Supabase 키가 없으면 미리보기 안내를 보여준다. */
   configured: boolean;
 }) {
@@ -39,7 +42,7 @@ export function AuthPanel({
       {!configured && <PreviewNotice />}
       {notice && <FormMessage message={notice} />}
 
-      {mode === "signin" && <SignInForm next={next} />}
+      {mode === "signin" && <SignInForm next={next} savedEmail={savedEmail} />}
       {mode === "signup" && <SignUpForm />}
       {mode === "reset" && <ResetForm />}
       {mode === "sent" && (
@@ -54,14 +57,14 @@ export function AuthPanel({
   );
 }
 
-function SignInForm({ next }: { next?: string }) {
+function SignInForm({ next, savedEmail }: { next?: string; savedEmail?: string }) {
   const [state, action] = useActionState<AuthFormState, FormData>(signIn, {});
   return (
     <form action={action} className="flex flex-col gap-5" noValidate>
       {next && <input type="hidden" name="next" value={next} />}
       <FormMessage message={state.error} />
       <Field label="이메일" htmlFor="signin-email" error={state.fieldErrors?.email}>
-        <Input id="signin-email" name="email" type="email" autoComplete="email" placeholder="name@example.com" defaultValue={state.email} required />
+        <Input id="signin-email" name="email" type="email" autoComplete="email" placeholder="name@example.com" defaultValue={state.email ?? savedEmail} required />
       </Field>
       <Field label="비밀번호" htmlFor="signin-password" error={state.fieldErrors?.password}>
         <Input id="signin-password" name="password" type="password" autoComplete="current-password" required />
