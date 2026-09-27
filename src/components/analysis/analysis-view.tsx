@@ -400,7 +400,7 @@ function DonutSection({
             <span className="text-right font-mono text-sm">{s.count}</span>
             <span className="text-right font-mono text-sm text-neutral-700">{s.pct}</span>
             {withAmount && (
-              <span className="text-right font-mono text-sm">{s.amount ? `${man(s.amount)} ￦` : "—"}</span>
+              <span className="text-right font-mono text-sm">{s.amount ? `${man(s.amount)}원` : "—"}</span>
             )}
           </div>
         ))}
