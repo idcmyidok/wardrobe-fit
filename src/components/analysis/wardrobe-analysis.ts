@@ -10,7 +10,7 @@ export type CategoryTab = "all" | CategoryId;
 /** 10000 → "1만", 1450000 → "145만" */
 export const man = (v: number) =>
   v >= 10000 ? `${(v / 10000).toFixed(v >= 1000000 ? 0 : 1).replace(/\.0$/, "")}만` : v.toLocaleString("ko-KR");
-export const won = (v: number) => `￦${v.toLocaleString("ko-KR")}`;
+export const won = (v: number) => `${v.toLocaleString("ko-KR")} ￦`;
 
 /** 받침이 있으면 a, 없으면 b를 붙인다. 예: 블랙을 / 네이비를 */
 const josa = (w: string, a: string, b: string) => {
@@ -38,7 +38,7 @@ export function priceSummary(G: Garment[]) {
       amount: won(amount),
       width: total ? `${((amount / total) * 100).toFixed(1)}%` : "0%",
       pct: total ? `${Math.round((amount / total) * 100)}%` : "—",
-      meta: `${count}벌${gs.length ? ` · 평균 ￦${man(Math.round(amount / gs.length))}` : ""}`,
+      meta: `${count}벌${gs.length ? ` · 평균 ${man(Math.round(amount / gs.length))} ￦` : ""}`,
     };
   });
   const avg = priced.length ? total / priced.length : 0;
@@ -61,7 +61,7 @@ export function priceSummary(G: Garment[]) {
     tierBody: tier[2] + tail,
     cats,
     avg: priced.length ? won(Math.round(avg)) : "—",
-    topItem: top ? `${[top.brand, top.productName].filter(Boolean).join(" ")} · ￦${man(top.purchasePrice ?? 0)}` : "—",
+    topItem: top ? `${[top.brand, top.productName].filter(Boolean).join(" ")} · ${man(top.purchasePrice ?? 0)} ￦` : "—",
   };
 }
 
