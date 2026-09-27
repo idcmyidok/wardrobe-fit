@@ -43,7 +43,12 @@ export const TABLE_MEASUREMENTS: Record<CategoryId, { key: MeasurementKey; label
   ],
 };
 
-/** 12.0 → "12.0", 값이 없으면 "—" */
+/** 72.5 → "72.5", 72 → "72" (소수점 한 자리, .0은 뺀다) */
+export function formatNum(value: number): string {
+  return value.toFixed(1).replace(/\.0$/, "");
+}
+
+/** 12.0 → "12", 12.5 → "12.5", 값이 없으면 "—" */
 export function formatCm(value: number | null | undefined): string {
-  return value == null ? "—" : value.toFixed(1);
+  return value == null ? "—" : formatNum(value);
 }

@@ -187,7 +187,7 @@ function DrawerBody({ garment: g }: { garment: Garment }) {
                 </section>
                 <section>
                   <SectionTitle aside={<span className="text-xs text-neutral-700">cm · 단면</span>}>실측</SectionTitle>
-                  <div className="grid grid-cols-3">
+                  <div className={g.categoryId === "bottom" ? "grid grid-cols-3" : "grid grid-cols-2"}>
                     {measurementFields(g.categoryId).map((m) => (
                       <div key={m.key} className="flex flex-col gap-0.5 border-b border-neutral-300 py-2.5">
                         <span className="text-xs text-neutral-700">{m.label}</span>
@@ -394,7 +394,7 @@ function InfoEditor({
       </section>
       <section className="flex flex-col gap-3.5">
         <SectionTitle aside={<span className="text-xs text-neutral-700">cm · 단면</span>}>실측 수정</SectionTitle>
-        <div className="grid grid-cols-3 gap-3">
+        <div className={info.categoryId === "bottom" ? "grid grid-cols-3 gap-3" : "grid grid-cols-2 gap-3"}>
           {measurementFields(info.categoryId).map((m) => (
             <div key={m.key} className="field">
               <label htmlFor={`ie-m-${m.key}`}>{m.label}</label>

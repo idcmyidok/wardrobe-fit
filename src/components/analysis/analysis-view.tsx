@@ -59,8 +59,8 @@ export function AnalysisView() {
             옷장 총 가격
           </span>
           <div className="flex flex-wrap items-baseline gap-1.5">
+            <span className="text-lg">￦</span>
             <span className="font-display text-total tracking-[-0.03em]">{price.totalShort}</span>
-            <span className="text-lg">원</span>
           </div>
           <span className="font-mono text-sm text-neutral-700">{price.totalFull}</span>
           <div className="mt-2 flex flex-col gap-1 rounded-md bg-accent-100 px-4 py-3.5">
@@ -400,7 +400,7 @@ function DonutSection({
             <span className="text-right font-mono text-sm">{s.count}</span>
             <span className="text-right font-mono text-sm text-neutral-700">{s.pct}</span>
             {withAmount && (
-              <span className="text-right font-mono text-sm">{s.amount ? `${man(s.amount)}원` : "—"}</span>
+              <span className="text-right font-mono text-sm">{s.amount ? `￦${man(s.amount)}` : "—"}</span>
             )}
           </div>
         ))}
