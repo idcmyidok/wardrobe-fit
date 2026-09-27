@@ -141,7 +141,9 @@ export function FitResultView({
           .map((c) => ({ key: c.garmentId, tag: "후기", garmentId: c.garmentId, quote: c.review!, accent: false, note: null as string | null })),
       ];
 
-  const sizeNote = interpretation?.sizeRecommendationNote ?? computed.sizeNote;
+  // 규칙 계산의 사이즈 안내는 항상 보이고, AI 안내는 다를 때만 덧붙인다.
+  const aiSizeNote = interpretation?.sizeRecommendationNote;
+  const sizeNotes = [computed.sizeNote, aiSizeNote && aiSizeNote !== computed.sizeNote ? aiSizeNote : null].filter((n): n is string => Boolean(n));
   const exists = (id: string) => garments.some((g) => g.id === id);
 
   return (
@@ -212,7 +214,11 @@ export function FitResultView({
               ))}
             </ul>
           )}
-          {sizeNote && <p className="text-sm text-neutral-800">{sizeNote}</p>}
+          {sizeNotes.map((n) => (
+            <p key={n} className="text-sm text-neutral-800">
+              {n}
+            </p>
+          ))}
         </div>
         <div className="flex flex-col gap-3 border-divider py-7 md:border-l md:pl-6">
           <h2 className="font-mono text-sm font-medium tracking-[0.08em] text-neutral-700">판단 신뢰도</h2>
