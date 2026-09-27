@@ -6,7 +6,7 @@ import { selectComparables } from "@/lib/fit/select-comparables";
 import type { AiStatus, FitComputed, FitInterpretation } from "@/lib/fit/types";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { buildFitInput, inputHash, interpretFit } from "@/server/ai/fit-interpreter";
-import { getAiProvider } from "@/server/ai/provider";
+import { AiError, getAiProvider } from "@/server/ai/provider";
 import { GARMENT_COLUMNS, rowToGarment } from "@/server/garments/mapper";
 
 /**
@@ -70,7 +70,7 @@ export async function runFitCheck(supabase: Client, userId: string, req: FitRequ
   let interpretation: FitInterpretation | null = null;
   let aiModel: string | null = null;
   if (provider && judgeable) {
-    const input = buildFitInput(req.candidate, computed);
+    const input = buildFitInput(req.candidate, computed, provider.privacy);
     const hash = inputHash(provider.model, input);
     computed.aiInputHash = hash;
     const { data: cached } = await supabase
@@ -103,7 +103,8 @@ export async function runFitCheck(supabase: Client, userId: string, req: FitRequ
           interpretation = await interpretFit(provider, req.candidate, computed, input);
           aiStatus = interpretation ? "ok" : "failed";
         } catch (e) {
-          aiStatus = "failed";
+          // 무료 등급 한도 초과(429)는 "오늘 한도"로 안내하고 규칙 요약을 쓴다.
+          aiStatus = e instanceof AiError && e.message === "quota" ? "limited" : "failed";
           // 입력·출력 전문은 남기지 않는다(PROJECT_SPEC.md 19장 로그).
           console.error("[fit-checks] ai", e instanceof Error ? e.name : "error");
         }

@@ -4,7 +4,8 @@ import { selectComparables } from "@/lib/fit/select-comparables";
 import type { Garment } from "@/lib/types/domain";
 import { buildFitInput, inputHash, interpretFit, validateInterpretation } from "./fit-interpreter";
 import { mockProvider } from "./mock";
-import { getAiProvider } from "./provider";
+import { geminiProvider } from "./gemini";
+import { AiError, getAiProvider } from "./provider";
 
 let seq = 0;
 const g = (over: Partial<Garment>): Garment => ({
@@ -54,6 +55,12 @@ describe("AI 입력", () => {
     expect(input).toContain(`<user_review garment_id="${ids[2]}">`);
     expect(input.match(/<\/user_review>/g)?.length).toBe(3);
     expect(input).toContain("‹/user_review›");
+  });
+  it("minimal(무료 등급)은 실측과 계산값만: 브랜드·제품명·후기·옷 id를 보내지 않는다", () => {
+    const min = buildFitInput(candidate, computed, "minimal");
+    for (const secret of ["Our Legacy", "워크 자켓", "APC", "Nanamica", "EG", "총장이 조금 길다", "이전 지시", ...ids]) expect(min).not.toContain(secret);
+    expect(min).toContain("옷3");
+    expect(min).toContain('"candidate":72');
   });
   it("같은 입력이면 같은 캐시 키", () => {
     expect(inputHash("m", input)).toBe(inputHash("m", buildFitInput(candidate, computed)));
@@ -105,10 +112,18 @@ describe("AI 제공자 선택", () => {
   afterEach(() => vi.unstubAllEnvs());
   it("키가 없으면 AI를 쓰지 않는다(규칙 요약만)", () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
+    vi.stubEnv("GEMINI_API_KEY", "");
     vi.stubEnv("AI_PROVIDER", "");
     expect(getAiProvider()).toBeNull();
   });
+  it("GEMINI_API_KEY가 있으면 Gemini(minimal)를 먼저 쓴다", () => {
+    vi.stubEnv("AI_PROVIDER", "");
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk-test");
+    vi.stubEnv("GEMINI_API_KEY", "g-test");
+    expect(getAiProvider()).toMatchObject({ model: "gemini-flash-lite-latest", privacy: "minimal" });
+  });
   it("키가 있으면 기본 모델은 Haiku 4.5, FIT_AI_ENABLED=0이면 끈다", () => {
+    vi.stubEnv("GEMINI_API_KEY", "");
     vi.stubEnv("ANTHROPIC_API_KEY", "sk-test");
     expect(getAiProvider()?.model).toBe("claude-haiku-4-5");
     vi.stubEnv("FIT_AI_ENABLED", "0");
@@ -120,5 +135,32 @@ describe("AI 제공자 선택", () => {
     expect(getAiProvider()?.model).toBe("mock-fit");
     vi.stubEnv("VERCEL", "1");
     expect(getAiProvider()).toBeNull();
+  });
+});
+
+describe("Gemini 제공자", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const req = { system: "s", input: "i", toolName: "fit_summary", toolDescription: "d", jsonSchema: { type: "object" }, maxOutputTokens: 100, timeoutMs: 1000 };
+  const reply = (status: number, text = "") =>
+    new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }), { status, headers: { "content-type": "application/json" } });
+
+  it("JSON 답을 읽고, 키는 헤더로만 보낸다", async () => {
+    const fetch = vi.fn().mockResolvedValue(reply(200, '```json\n{"perSize":[]}\n```'));
+    vi.stubGlobal("fetch", fetch);
+    expect(await geminiProvider("g-key", "m").generateStructured(req)).toEqual({ perSize: [] });
+    const [url, init] = fetch.mock.calls[0];
+    expect(url).not.toContain("g-key");
+    expect(init.headers["x-goog-api-key"]).toBe("g-key");
+    expect(JSON.parse(init.body).generationConfig.responseJsonSchema).toEqual({ type: "object" });
+  });
+  it("스키마를 받지 않으면(400) 지시문에 스키마를 넣어 다시", async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(reply(400)).mockResolvedValueOnce(reply(200, "{}"));
+    vi.stubGlobal("fetch", fetch);
+    expect(await geminiProvider("k", "m").generateStructured(req)).toEqual({});
+    expect(JSON.parse(fetch.mock.calls[1][1].body).generationConfig.responseJsonSchema).toBeUndefined();
+  });
+  it("무료 한도 초과(429)는 quota 오류", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(429)));
+    await expect(geminiProvider("k", "m").generateStructured(req)).rejects.toEqual(new AiError("quota"));
   });
 });

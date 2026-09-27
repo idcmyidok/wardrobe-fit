@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { DEFAULT_GEMINI_MODEL, geminiProvider } from "./gemini";
 import { mockProvider } from "./mock";
 
 /**
@@ -23,6 +24,11 @@ export interface StructuredRequest {
 export interface AiProvider {
   /** fit_checks.ai_model에 남기는 이름 */
   model: string;
+  /**
+   * full: 후기 원문·옷 이름까지 보낸다(유료 API, 입력을 학습에 쓰지 않음).
+   * minimal: 실측과 서버 계산값만 보낸다(무료 등급이 입력을 학습에 쓸 수 있는 경우).
+   */
+  privacy: "full" | "minimal";
   /** 도구 입력(JSON)을 그대로 돌려준다. 검증은 부르는 쪽이 한다. */
   generateStructured(req: StructuredRequest): Promise<unknown>;
 }
@@ -35,6 +41,7 @@ function anthropicProvider(apiKey: string, model: string): AiProvider {
   const client = new Anthropic({ apiKey, maxRetries: 1 });
   return {
     model,
+    privacy: "full",
     async generateStructured(req) {
       const response = await client.messages.create(
         {
@@ -57,9 +64,15 @@ function anthropicProvider(apiKey: string, model: string): AiProvider {
   };
 }
 
+/**
+ * 고르는 순서: 모의 AI(E2E) → GEMINI_API_KEY(무료 등급 Gemini Flash) → ANTHROPIC_API_KEY(Claude Haiku 4.5) → 없음(규칙 요약만).
+ * 호출이 실패하거나 무료 한도(429)에 걸리면 부르는 쪽이 규칙 요약으로 돌아간다.
+ */
 export function getAiProvider(): AiProvider | null {
   if (process.env.FIT_AI_ENABLED === "0") return null;
   if (process.env.AI_PROVIDER === "mock" && !process.env.VERCEL) return mockProvider();
+  const gemini = process.env.GEMINI_API_KEY?.trim();
+  if (gemini) return geminiProvider(gemini, process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL);
   const key = process.env.ANTHROPIC_API_KEY?.trim();
   if (!key) return null;
   return anthropicProvider(key, process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL);

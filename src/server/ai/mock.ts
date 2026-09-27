@@ -9,6 +9,7 @@ import type { AiProvider } from "./provider";
 export function mockProvider(): AiProvider {
   return {
     model: "mock-fit",
+    privacy: "full",
     async generateStructured({ input }) {
       if (input.includes("AI실패")) throw new Error("mock failure");
       const analysis = JSON.parse(/<analysis>([\s\S]*?)<\/analysis>/.exec(input)?.[1] ?? "{}") as {

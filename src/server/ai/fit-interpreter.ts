@@ -29,7 +29,7 @@ const SYSTEM = `당신은 사용자가 이미 가진 옷의 실측과 착용 후
 - 옷을 가리킬 때는 입력에 있는 garment_id만 쓰세요.
 - 신뢰도가 low이면 overallFit에 불확실하다는 점을 꼭 넣으세요.
 - 한국어 존댓말(~습니다), 짧고 쉬운 문장. overallFit은 2~3문장.
-- 결과는 반드시 ${"`fit_summary`"} 도구로만 답하세요.`;
+- 결과는 반드시 fit_summary 형식으로만 답하세요.`;
 
 const TOOL_DESCRIPTION = "서버가 계산한 치수 판정을 사용자가 이해하기 쉬운 문장으로 정리해 돌려준다.";
 
@@ -101,16 +101,29 @@ const rawSchema = z.object({
 
 const escapeTag = (s: string) => s.replace(/</g, "‹").replace(/>/g, "›");
 
-/** AI에 보낼 입력. 같은 입력이면 같은 문자열이 나와 캐시 키로도 쓴다. */
-export function buildFitInput(candidate: FitCandidate, computed: FitComputed): string {
+/**
+ * AI에 보낼 입력. 같은 입력이면 같은 문자열이 나와 캐시 키로도 쓴다.
+ * privacy "minimal"(무료 등급처럼 입력을 학습에 쓸 수 있는 제공자)이면 실측과 계산값만 보낸다:
+ * 브랜드·제품명·후기 원문·옷 id를 빼고 비교한 옷은 "옷1"처럼 번호로만 부른다.
+ */
+export function buildFitInput(candidate: FitCandidate, computed: FitComputed, privacy: AiProvider["privacy"] = "full"): string {
+  const minimal = privacy === "minimal";
   const comps = computed.comparables.slice(0, MAX_COMPARABLES_FOR_AI);
+  const alias = new Map(computed.comparables.map((c, i) => [c.garmentId, `옷${i + 1}`]));
+  const ref = (id: string) => (minimal ? (alias.get(id) ?? "옷") : id);
+  const scrub = (text: string) => {
+    if (!minimal) return text;
+    let out = text;
+    for (const c of computed.comparables) for (const name of [c.brand, c.productName]) if (name) out = out.split(name).join(alias.get(c.garmentId)!);
+    return out;
+  };
   const analysis = {
     category: CATEGORY_NAME[computed.categoryId],
     subcategory: computed.subcategoryId ? (SUBCATEGORY_NAME[computed.subcategoryId] ?? null) : null,
     sizes: computed.sizes.map((s) => ({
       sizeLabel: s.sizeLabel,
       confidence: s.confidence,
-      serverSummary: s.summary,
+      serverSummary: scrub(s.summary),
       dimensions: s.dimensions.map((d) => ({
         dimension: d.key,
         label: MEASUREMENT_LABELS[d.key],
@@ -119,13 +132,21 @@ export function buildFitInput(candidate: FitCandidate, computed: FitComputed): s
         rangeBasis: d.basis,
         verdict: d.verdict,
         distanceFromRange: d.distanceFromRange,
-        anchors: d.anchors.map((a) => ({ garment_id: a.garmentId, value: a.value, reviewDirection: a.direction })),
+        anchors: d.anchors.map((a) => ({ garment_id: ref(a.garmentId), value: a.value, reviewDirection: a.direction })),
       })),
       limitations: s.limitations,
     })),
     sizeNote: computed.sizeNote,
-    comparables: comps.map((c) => ({ garment_id: c.garmentId, sizeLabel: c.sizeLabel, matchLevel: c.matchLevel, measurements: c.measurements })),
+    comparables: comps.map((c) => ({ garment_id: ref(c.garmentId), sizeLabel: c.sizeLabel, matchLevel: c.matchLevel, measurements: c.measurements })),
   };
+  if (minimal) {
+    return [
+      "서버 계산 결과(판정과 숫자는 그대로 쓰세요):",
+      `<analysis>${JSON.stringify(analysis)}</analysis>`,
+      "후기 원문과 옷 이름은 보내지 않았습니다. reviewEvidence와 citedGarmentIds는 빈 배열로 두세요.",
+      "위 판정을 사이즈별로 설명해 fit_summary 형식으로 답하세요.",
+    ].join("\n");
+  }
   const product = `<product_data>\n브랜드: ${escapeTag(candidate.brand ?? "")}\n제품명: ${escapeTag(candidate.productName ?? "")}\n</product_data>`;
   const names = comps
     .map((c) => `<product_data garment_id="${c.garmentId}">${escapeTag([c.brand, c.productName].filter(Boolean).join(" "))}</product_data>`)
@@ -232,7 +253,7 @@ export function validateInterpretation(raw: unknown, computed: FitComputed): Fit
   };
 }
 
-export async function interpretFit(provider: AiProvider, candidate: FitCandidate, computed: FitComputed, input = buildFitInput(candidate, computed)) {
+export async function interpretFit(provider: AiProvider, candidate: FitCandidate, computed: FitComputed, input = buildFitInput(candidate, computed, provider.privacy)) {
   const dims: readonly MeasurementKey[] = computed.categoryId === "bottom" ? BOTTOM_MEASUREMENTS : TOP_MEASUREMENTS;
   const raw = await provider.generateStructured({
     system: SYSTEM,

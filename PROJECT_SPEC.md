@@ -1354,7 +1354,7 @@ export interface ComparisonReport {
 ### 17.1a 기본은 AI 없이(비용 0)
 
 - 예상 핏 문장은 서버 규칙(`src/lib/fit/compute.ts` `ruleSummary`)이 항상 만든다. 예: "어깨·가슴은 만족했던 옷들과 비슷하고, 총장은 만족 범위보다 2cm 깁니다."
-- `ANTHROPIC_API_KEY`가 있을 때만 AI 요약(기본 모델 Claude Haiku 4.5)을 덧붙인다. 없거나 실패·한도 초과면 규칙 요약을 그대로 보여준다.
+- AI 요약은 키가 있을 때만 붙인다. `GEMINI_API_KEY`(무료 등급 Gemini Flash-Lite, 입력을 학습에 쓸 수 있어 실측·계산값만 전송)가 1순위, 없으면 `ANTHROPIC_API_KEY`(Claude Haiku 4.5, 후기 원문 포함). 없거나 실패·한도 초과(429)면 규칙 요약을 그대로 보여준다.
 - 비용 제한: 사용자당 판단 20회/일, AI 호출 10회/일(`FIT_AI_DAILY_LIMIT`), 같은 입력의 AI 요약은 7일 재사용, 시스템 문구 prompt caching.
 - `fit_checks`·`fit_check_comparables`는 서버가 insert만 한다(마이그레이션 6, 사용자 update/delete 불가).
 
