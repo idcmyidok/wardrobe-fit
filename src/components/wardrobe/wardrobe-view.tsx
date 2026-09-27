@@ -1,11 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useMemo } from "react";
 import { buttonClassName } from "@/components/ui/button";
 import { CATEGORIES } from "@/lib/constants/categories";
-import type { CategoryId } from "@/lib/types/domain";
-import { DEFAULT_FILTERS, DEFAULT_SORT, applyFilters, isFiltered, nextSort, sortGarments, uniqueValues, type ColumnSort } from "./filter-state";
+import {
+  DEFAULT_FILTERS,
+  PAGE_SIZE,
+  applyFilters,
+  clampPage,
+  isFiltered,
+  nextSort,
+  parseWardrobeParams,
+  sortGarments,
+  toWardrobeSearch,
+  uniqueValues,
+  withFilters,
+  type WardrobeFilters as Filters,
+  type WardrobeState,
+} from "./filter-state";
 import { WardrobeFilters } from "./wardrobe-filters";
 import { useWardrobe } from "./wardrobe-store";
 import { WardrobeTable } from "./wardrobe-table";
@@ -18,9 +32,17 @@ const EMPTY_STEPS = [
 
 export function WardrobeView() {
   const { garments, drawerId, openDrawer } = useWardrobe();
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  // 정렬은 대분류 표마다 따로 둔다. 기본은 최근 구매순.
-  const [sorts, setSorts] = useState<Record<CategoryId, ColumnSort>>({ outer: DEFAULT_SORT, top: DEFAULT_SORT, bottom: DEFAULT_SORT });
+  const params = useSearchParams();
+  // 필터·검색·정렬·페이지는 모두 URL에 둔다. 정렬과 페이지는 대분류 표마다 따로(기본은 최근 구매순, 1쪽).
+  const state = useMemo(() => parseWardrobeParams(new URLSearchParams(params.toString())), [params]);
+  const { filters, sorts, pages } = state;
+  // 서버에 다시 묻지 않고 주소만 바꾼다. 검색어 입력처럼 잦은 변경은 기록을 쌓지 않는다(replace).
+  const navigate = useCallback((next: WardrobeState, mode: "push" | "replace" = "push") => {
+    const url = `${window.location.pathname}${toWardrobeSearch(next)}`;
+    if (mode === "push") window.history.pushState(null, "", url);
+    else window.history.replaceState(null, "", url);
+  }, []);
+  const setFilters = (next: Filters) => navigate(withFilters(state, next), next.q !== filters.q ? "replace" : "push");
   const options = useMemo(
     () => ({
       brands: uniqueValues(garments, (g) => g.brand),
@@ -32,8 +54,12 @@ export function WardrobeView() {
   const empty = garments.length === 0;
   const filtered = isFiltered(filters) && !empty;
   const groups = CATEGORIES.filter((c) => filters.categories.includes(c.id))
-    .map((category) => ({ ...category, items: sortGarments(items.filter((item) => item.categoryId === category.id), sorts[category.id]) }))
-    .filter((group) => group.items.length > 0);
+    .map((category) => {
+      const all = sortGarments(items.filter((item) => item.categoryId === category.id), sorts[category.id]);
+      const page = clampPage(pages[category.id], all.length);
+      return { ...category, total: all.length, page, items: all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) };
+    })
+    .filter((group) => group.total > 0);
 
   return (
     <main className="mx-auto max-w-400 px-[clamp(16px,3vw,32px)] pt-7 pb-12">
@@ -103,16 +129,30 @@ export function WardrobeView() {
                 <h2 id={`group-${group.id}`} className="text-lg">
                   {group.name}
                 </h2>
-                <span className="font-mono text-base text-neutral-700 tabular-nums">{group.items.length}벌</span>
+                <span className="font-mono text-base text-neutral-700 tabular-nums">{group.total}벌</span>
               </div>
               <WardrobeTable
                 categoryId={group.id}
                 items={group.items}
                 sort={sorts[group.id]}
-                onSort={(key) => setSorts((cur) => ({ ...cur, [group.id]: nextSort(cur[group.id], key) }))}
+                onSort={(key) =>
+                  navigate({
+                    ...state,
+                    sorts: { ...sorts, [group.id]: nextSort(sorts[group.id], key) },
+                    pages: { ...pages, [group.id]: 1 },
+                  })
+                }
                 selectedId={drawerId}
                 onOpen={openDrawer}
               />
+              {group.total > PAGE_SIZE && (
+                <Pagination
+                  label={group.name}
+                  page={group.page}
+                  total={group.total}
+                  onPage={(page) => navigate({ ...state, pages: { ...pages, [group.id]: page } })}
+                />
+              )}
             </section>
           ))}
 
@@ -122,7 +162,7 @@ export function WardrobeView() {
                 {filters.q ? `‘${filters.q}’에 맞는 옷이 없습니다` : "조건에 맞는 옷이 없습니다"}
               </div>
               <div className="text-base text-neutral-700">
-                검색어를 바꾸거나 필터를 초기화해 보세요. 브랜드는 영문과 한글 표기를 모두 찾습니다.
+                검색어를 바꾸거나 필터를 초기화해 보세요.
               </div>
               <button
                 type="button"
@@ -135,11 +175,34 @@ export function WardrobeView() {
           )}
 
           <div className="mt-6 flex justify-between border-t border-text py-3 font-mono text-sm text-neutral-700 tabular-nums">
-            <span>{items.length ? `1–${items.length} / ${items.length}벌` : "0벌"}</span>
+            <span>{filtered ? `${items.length} / ${garments.length}벌` : `${garments.length}벌`}</span>
             <span>행을 누르면 상세가 열립니다</span>
           </div>
         </>
       )}
     </main>
+  );
+}
+
+/** 표 아래 페이지 이동. 한 표가 50벌을 넘을 때만 보인다. */
+function Pagination({ label, page, total, onPage }: { label: string; page: number; total: number; onPage: (page: number) => void }) {
+  const last = Math.ceil(total / PAGE_SIZE);
+  const from = (page - 1) * PAGE_SIZE + 1;
+  const to = Math.min(page * PAGE_SIZE, total);
+  return (
+    <nav aria-label={`${label} 페이지`} className="flex items-center justify-end gap-3 pt-2 font-mono text-sm text-neutral-700 tabular-nums">
+      <span>
+        {from}–{to} / {total}
+      </span>
+      <button type="button" className="btn btn-ghost text-sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+        이전
+      </button>
+      <span aria-current="page">
+        {page} / {last}
+      </span>
+      <button type="button" className="btn btn-ghost text-sm" disabled={page >= last} onClick={() => onPage(page + 1)}>
+        다음
+      </button>
+    </nav>
   );
 }
