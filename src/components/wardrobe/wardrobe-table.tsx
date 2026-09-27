@@ -13,7 +13,10 @@ const cell = "border-r border-neutral-300 px-2 py-2 text-center align-middle";
 const head = "border-r border-b border-r-neutral-300 border-b-text bg-surface font-mono text-[10.5px] font-medium tracking-[0.06em] text-neutral-700";
 const mono = "font-mono tabular-nums whitespace-nowrap";
 
-/** 대분류 하나의 표. 실측 열은 대분류에 맞춰 바뀐다(상의·아우터 / 하의). 행을 누르면 옷 정보가 열린다. */
+/**
+ * 대분류 하나의 표. 실측 열은 대분류에 맞춰 바뀐다(상의·아우터 4열 / 하의 6열). 행을 누르면 옷 정보가 열린다.
+ * 세 표의 공통 열은 모두 고정 폭이라 표끼리 같은 자리에 선다. 실측 열만 폭을 정하지 않아 남는 폭을 나눠 가진다.
+ */
 export function WardrobeTable({
   categoryId,
   items,
@@ -36,7 +39,7 @@ export function WardrobeTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-295 table-fixed border-collapse border-t border-l border-neutral-300 bg-surface text-sm">
+      <table className="w-full min-w-312 table-fixed border-collapse border-t border-l border-neutral-300 bg-surface text-sm">
         <thead>
           <tr>
             <th scope="col" className={cn(head, "w-20 py-2")}>
@@ -45,14 +48,14 @@ export function WardrobeTable({
             <th scope="col" className={cn(head, "w-25")}>
               세부분류
             </th>
-            {sortHead("brand", "브랜드", "w-35")}
-            <th scope="col" className={head}>
+            {sortHead("brand", "브랜드", "w-28")}
+            <th scope="col" className={cn(head, "w-44")}>
               제품명
             </th>
             {sortHead("size", "사이즈", "w-9.5", true)}
             {sortHead("color", "컬러", "w-24")}
             {sortHead("season", "시즌", "w-26")}
-            {measurements.map((m) => sortHead(m.key, m.label, "w-11.25 bg-neutral-100", true))}
+            {measurements.map((m) => sortHead(m.key, m.label, "bg-neutral-100", true))}
             {sortHead("purchasedOn", "구매일", "w-32")}
             {sortHead("price", "구매가", "w-32")}
           </tr>
@@ -73,8 +76,10 @@ export function WardrobeTable({
                   <GarmentThumbnail item={item} />
                 </td>
                 <td className={cn(cell, "truncate")}>{item.subcategoryId ? SUBCATEGORY_NAME[item.subcategoryId] : "—"}</td>
-                <td className={cn(cell, "leading-tight font-semibold text-balance")}>{item.brand || "—"}</td>
-                <td className={cn(cell, "leading-snug text-balance")}>
+                <td className={cn(cell, "leading-tight font-semibold")} title={item.brand || undefined}>
+                  <span className="line-clamp-2 break-words">{item.brand || "—"}</span>
+                </td>
+                <td className={cn(cell, "leading-snug")} title={item.productName}>
                   {/* 키보드로도 옷 정보를 열 수 있게 제품명을 버튼으로 둔다. */}
                   <button
                     type="button"
@@ -82,9 +87,9 @@ export function WardrobeTable({
                       e.stopPropagation();
                       onOpen(item.id);
                     }}
-                    className="cursor-pointer text-balance"
+                    className="cursor-pointer"
                   >
-                    {item.productName}
+                    <span className="line-clamp-2 break-words">{item.productName}</span>
                   </button>
                 </td>
                 <td className={cn(cell, mono, "px-0 text-xs")}>{item.sizeLabel ?? "—"}</td>
