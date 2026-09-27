@@ -452,6 +452,17 @@ export function NewGarmentView() {
                 onChange={setImage}
                 placeholder="사진 끌어다 놓기"
               />
+              {pageImages.length > 0 && (
+                <p className="text-label text-neutral-700" aria-live="polite">
+                  {image === undefined && pageImages[imageIndex]
+                    ? pageImages.length > 1
+                      ? `페이지 이미지 ${imageIndex + 1}번을 옷 정보 사진으로 씁니다`
+                      : "페이지 대표 이미지를 옷 정보 사진으로 씁니다"
+                    : image
+                      ? "직접 올린 사진을 씁니다"
+                      : "사진 없이 저장합니다"}
+                </p>
+              )}
               {pageImages.length > 1 && (
                 <>
                   <div className="mt-1 flex items-baseline justify-between">
@@ -459,25 +470,35 @@ export function NewGarmentView() {
                     <span className="text-label text-neutral-700">누르면 옷 정보 사진으로</span>
                   </div>
                   <div className="grid grid-cols-4 gap-1.5">
-                    {pageImages.map((src, i) => (
-                      <button
-                        key={src}
-                        type="button"
-                        aria-pressed={imageIndex === i && image === undefined}
-                        aria-label={i === 0 ? "대표 이미지" : `이미지 ${i + 1}`}
-                        onClick={() => {
-                          setImageIndex(i);
-                          setImage(undefined);
-                        }}
-                        className={cn(
-                          "aspect-[4/5] cursor-pointer overflow-hidden rounded-sm bg-neutral-200",
-                          imageIndex === i && image === undefined ? "ring-2 ring-text" : "ring-1 ring-neutral-300 ring-inset",
-                        )}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element -- 서버가 대신 받아 주는 미리보기 */}
-                        <img src={src} alt="" loading="lazy" className="size-full object-cover" />
-                      </button>
-                    ))}
+                    {pageImages.map((src, i) => {
+                      const selected = imageIndex === i && image === undefined;
+                      return (
+                        <button
+                          key={src}
+                          type="button"
+                          aria-pressed={selected}
+                          aria-label={`${i === 0 ? "대표 이미지" : `이미지 ${i + 1}`}${selected ? " (옷 정보 사진으로 선택됨)" : ""}`}
+                          onClick={() => {
+                            setImageIndex(i);
+                            setImage(undefined);
+                          }}
+                          className={cn(
+                            "relative aspect-[4/5] cursor-pointer overflow-hidden rounded-sm bg-neutral-200 transition-opacity",
+                            selected ? "ring-2 ring-text ring-offset-2 ring-offset-bg" : "opacity-60 ring-1 ring-neutral-300 ring-inset hover:opacity-100",
+                          )}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element -- 서버가 대신 받아 주는 미리보기 */}
+                          <img src={src} alt="" loading="lazy" className="size-full object-cover" />
+                          {selected && (
+                            <span className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-text text-bg" aria-hidden>
+                              <svg viewBox="0 0 16 16" className="size-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3.5 8.5l3 3 6-7" />
+                              </svg>
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </>
               )}
