@@ -41,6 +41,8 @@ export async function runImport(
   input: string,
   purpose: "wardrobe" | "fit_check",
   onStage?: (stage: AnalyzeStage) => void,
+  /** photosOnly: 등록된 옷의 사진만 다시 고를 때. 실측 AI 추출을 건너뛴다(하루 분석 한도에는 센다). */
+  { photosOnly = false }: { photosOnly?: boolean } = {},
 ): Promise<ImportOutcome> {
   const started = Date.now();
   const base = { importId: null, reused: false, domain: null, sourceUrl: input.trim().slice(0, 2048), parserId: null, product: null };
@@ -99,7 +101,7 @@ export async function runImport(
 
   let outcome: ImportOutcome;
   try {
-    const result = await analyzeProductUrl(normalizedUrl.toString(), { normalize: { knownBrands }, onStage, extractSizeChart: aiSizeChart });
+    const result = await analyzeProductUrl(normalizedUrl.toString(), { normalize: { knownBrands }, onStage, extractSizeChart: photosOnly ? undefined : aiSizeChart });
     const found = Boolean(result.product.productName);
     outcome = {
       ...base,

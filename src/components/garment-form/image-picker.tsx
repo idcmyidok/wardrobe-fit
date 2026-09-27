@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ImageChange } from "@/components/wardrobe/wardrobe-store";
 import { cn } from "@/lib/cn";
 
@@ -29,7 +29,12 @@ export function ImagePicker({
   // 미리보기 URL은 고를 때 만든다. 부모가 값을 바꾸면(제거, 초기화) 더는 쓰지 않는다.
   const [preview, setPreview] = useState<{ file: File; url: string } | null>(null);
 
-  const shown = value instanceof File ? (preview?.file === value ? preview.url : null) : value === null ? null : currentUrl;
+  // 다른 곳에서 고른 파일(쇼핑몰 사진 불러오기)도 미리 보여준다.
+  const externalUrl = useMemo(() => (value instanceof File && preview?.file !== value ? URL.createObjectURL(value) : null), [value, preview]);
+  useEffect(() => () => {
+    if (externalUrl) URL.revokeObjectURL(externalUrl);
+  }, [externalUrl]);
+  const shown = value instanceof File ? (preview?.file === value ? preview.url : externalUrl) : value === null ? null : currentUrl;
   const pick = (files: FileList | null) => {
     const file = files?.[0];
     if (!file) return;
