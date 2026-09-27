@@ -193,8 +193,11 @@ export function GarmentDetail({
               <>
                 <div className="grid grid-cols-[112px_1fr] gap-5">
                   {g.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={g.imageUrl} alt="" className="aspect-[4/5] w-full bg-neutral-200 object-cover" />
+                    <div className="aspect-[4/5] w-full bg-neutral-200">
+                      {/* 불러오지 못하면(서명 주소 만료 등) 깨진 그림 대신 빈 자리만 남긴다. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element -- 비공개 bucket의 signed URL */}
+                      <img src={g.imageUrl} alt="" onError={(e) => (e.currentTarget.style.opacity = "0")} className="size-full object-cover" />
+                    </div>
                   ) : (
                     <div className="aspect-[4/5] bg-neutral-200" />
                   )}

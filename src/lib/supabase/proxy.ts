@@ -32,7 +32,11 @@ export async function updateSession(request: NextRequest) {
   const signedIn = Boolean(data?.claims);
   const { pathname, search } = request.nextUrl;
 
-  if (!signedIn && isProtectedPath(pathname)) {
+  // Server Action 요청은 돌려보내지 않는다. action이 로그인을 다시 확인해 signed_out을 돌려주면
+  // 화면이 작성 중인 Form을 보관한 뒤 로그인 화면으로 보낸다(PROJECT_SPEC.md 20장 세션 만료).
+  const isServerAction = request.method === "POST" && request.headers.has("next-action");
+
+  if (!signedIn && isProtectedPath(pathname) && !isServerAction) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";

@@ -5,7 +5,6 @@ import { z } from "zod";
 import { GARMENT_IMAGE_BUCKET } from "@/lib/images/upload-garment-image";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Garment } from "@/lib/types/domain";
-import { fieldErrors } from "@/server/auth/schemas";
 import { GARMENT_COLUMNS, inputToRow } from "./mapper";
 import { withImageUrls } from "./queries";
 import { garmentIdSchema, garmentInputSchema } from "./schema";
@@ -17,7 +16,7 @@ import { garmentIdSchema, garmentInputSchema } from "./schema";
 
 export type GarmentActionResult<T = Garment> =
   | { ok: true; data: T }
-  | { ok: false; error: string; fieldErrors?: Record<string, string> };
+  | { ok: false; error: string; code?: "signed_out"; fieldErrors?: Record<string, string> };
 
 const MESSAGES = {
   signedOut: "로그인이 필요합니다. 다시 로그인해 주세요.",
@@ -26,6 +25,20 @@ const MESSAGES = {
   failed: "저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
   badImage: "사진 경로가 올바르지 않습니다.",
 };
+
+/** 로그인이 풀린 경우. 화면은 code를 보고 로그인 화면으로 보낸다(PROJECT_SPEC.md 20장 세션 만료). */
+const signedOut = (): GarmentActionResult<never> => ({ ok: false, error: MESSAGES.signedOut, code: "signed_out" });
+
+/** 필드별 첫 오류. 실측은 칸마다 보여 주도록 measurements.chest처럼 나눈다. */
+function fieldErrors(error: z.ZodError): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const issue of error.issues) {
+    const [head, sub] = issue.path.map(String);
+    const key = head === "measurements" && sub ? `${head}.${sub}` : (head ?? "form");
+    result[key] ??= issue.message;
+  }
+  return result;
+}
 
 async function session() {
   const supabase = await createSupabaseServerClient();
@@ -37,7 +50,7 @@ async function session() {
 function dbError(error: PostgrestError): GarmentActionResult<never> {
   // 23514(check) / 22P02(형식) / 23503(참조): 서버 검증을 통과했더라도 DB 제약에 걸린 경우
   if (["23514", "22P02", "23503"].includes(error.code)) return { ok: false, error: MESSAGES.invalid };
-  if (error.code === "42501") return { ok: false, error: MESSAGES.signedOut };
+  if (error.code === "42501") return signedOut();
   console.error("[garments]", error.code, error.message);
   return { ok: false, error: MESSAGES.failed };
 }
@@ -70,7 +83,7 @@ async function readGarment(s: Session, id: string): Promise<GarmentActionResult>
 
 export async function createGarment(input: unknown): Promise<GarmentActionResult> {
   const s = await session();
-  if (!s) return { ok: false, error: MESSAGES.signedOut };
+  if (!s) return signedOut();
   const parsed = parseInput(input);
   if (!parsed.ok) return parsed.result;
 
@@ -92,7 +105,7 @@ export async function createGarment(input: unknown): Promise<GarmentActionResult
 /** 수정할 수 있는 모든 필드를 한 번에 바꾼다(빈 값은 null로 저장). */
 export async function updateGarment(id: unknown, input: unknown): Promise<GarmentActionResult> {
   const s = await session();
-  if (!s) return { ok: false, error: MESSAGES.signedOut };
+  if (!s) return signedOut();
   const gid = garmentIdSchema.safeParse(id);
   if (!gid.success) return { ok: false, error: MESSAGES.notFound };
   const parsed = parseInput(input);
@@ -117,14 +130,14 @@ export async function deleteGarment(id: unknown): Promise<GarmentActionResult<{ 
 
 export async function restoreGarment(id: unknown): Promise<GarmentActionResult> {
   const s = await session();
-  if (!s) return { ok: false, error: MESSAGES.signedOut };
+  if (!s) return signedOut();
   const result = await setDeleted(id, false, s);
   return result.ok ? readGarment(s, result.data.id) : result;
 }
 
 async function setDeleted(id: unknown, deleted: boolean, current?: Session): Promise<GarmentActionResult<{ id: string }>> {
   const s = current ?? (await session());
-  if (!s) return { ok: false, error: MESSAGES.signedOut };
+  if (!s) return signedOut();
   const gid = garmentIdSchema.safeParse(id);
   if (!gid.success) return { ok: false, error: MESSAGES.notFound };
 
@@ -149,7 +162,7 @@ const imagePathsSchema = z
  */
 export async function setGarmentImage(id: unknown, paths: unknown): Promise<GarmentActionResult> {
   const s = await session();
-  if (!s) return { ok: false, error: MESSAGES.signedOut };
+  if (!s) return signedOut();
   const gid = garmentIdSchema.safeParse(id);
   if (!gid.success) return { ok: false, error: MESSAGES.notFound };
   const parsed = imagePathsSchema.safeParse(paths);

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useMemo } from "react";
 import { buttonClassName } from "@/components/ui/button";
-import { CATEGORIES } from "@/lib/constants/categories";
+import { CATEGORIES, SUBCATEGORIES } from "@/lib/constants/categories";
+import { SEASONS } from "@/lib/constants/seasons";
 import {
   DEFAULT_FILTERS,
   PAGE_SIZE,
@@ -168,7 +169,7 @@ export function WardrobeView() {
                 {filters.q ? `‘${filters.q}’에 맞는 옷이 없습니다` : "조건에 맞는 옷이 없습니다"}
               </div>
               <div className="text-base text-neutral-700">
-                검색어를 바꾸거나 필터를 초기화해 보세요.
+                {filterSummary(filters) ? `적용한 조건: ${filterSummary(filters)}. ` : ""}검색어를 바꾸거나 필터를 초기화해 보세요.
               </div>
               <button
                 type="button"
@@ -211,4 +212,16 @@ function Pagination({ label, page, total, onPage }: { label: string; page: numbe
       </button>
     </nav>
   );
+}
+
+/** 결과가 없을 때 보여 줄 적용 조건 요약(PROJECT_SPEC.md 20장) */
+function filterSummary(f: Filters): string {
+  const parts: string[] = [];
+  if (f.categories.length < CATEGORIES.length) parts.push(CATEGORIES.filter((c) => f.categories.includes(c.id)).map((c) => c.name).join("·") || "대분류 없음");
+  if (f.subcategory) parts.push(SUBCATEGORIES.find((s) => s.id === f.subcategory)?.name ?? f.subcategory);
+  if (f.brand) parts.push(`브랜드 ${f.brand}`);
+  if (f.season) parts.push(SEASONS.find((s) => s.id === f.season)?.name ?? f.season);
+  if (f.color) parts.push(`컬러 ${f.color}`);
+  if (f.q) parts.push(`검색어 ‘${f.q}’`);
+  return parts.join(", ");
 }

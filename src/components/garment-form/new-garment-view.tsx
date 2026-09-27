@@ -7,11 +7,12 @@ import { useWardrobe, type GarmentDraft, type ImageChange } from "@/components/w
 import { ImagePicker } from "./image-picker";
 import { UnitInput } from "@/components/ui/input";
 import { SUBCATEGORIES } from "@/lib/constants/categories";
-import { measurementFields } from "@/lib/constants/measurements";
+import { BOTTOM_MEASUREMENTS, TOP_MEASUREMENTS, measurementFields } from "@/lib/constants/measurements";
 import { SEASONS, toggleSeason } from "@/lib/constants/seasons";
 import { cn } from "@/lib/cn";
 import { importImageUrl, streamImport, type AnalyzeStage, type ImportOutcome } from "@/lib/import/client";
 import { importFailure } from "@/lib/import/messages";
+import { takeStashedDraft } from "@/lib/session-expiry";
 import type { CategoryId, Measurements, Season } from "@/lib/types/domain";
 
 type Phase = "url" | "analyzing" | "failed" | "review" | "manual";
@@ -120,12 +121,32 @@ export function NewGarmentView() {
   const [image, setImage] = useState<ImageChange>(undefined);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [startedAt, setStartedAt] = useState(0);
+  const [now, setNow] = useState(0);
   const request = useRef<AbortController | null>(null);
 
   // 판단기에서 넘어온 값은 한 번만 쓴다.
   useEffect(() => {
     if (pendingDraft) setPendingDraft(null);
   }, [pendingDraft, setPendingDraft]);
+
+  // 로그인이 풀려 다시 로그인하고 돌아온 경우, 작성하던 값을 되살린다.
+  useEffect(() => {
+    const stashed = takeStashedDraft();
+    if (!stashed) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sessionStorage는 hydration 뒤에만 읽을 수 있다
+    setForm(draftToForm(stashed));
+    setPhase("manual");
+  }, []);
+
+  // 분석 경과 시간(초)
+  useEffect(() => {
+    if (phase !== "analyzing") return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [phase]);
+  const elapsed = Math.max(0, Math.floor((now - startedAt) / 1000));
 
   /** 진행 중인 분석을 멈춘다(취소, 화면 이동). */
   const cancelRequest = () => {
@@ -144,6 +165,8 @@ export function NewGarmentView() {
     const controller = new AbortController();
     request.current = controller;
     setPhase("analyzing");
+    setStartedAt(Date.now());
+    setNow(Date.now());
     setStep(0);
     setShowDetail(false);
     setFailure(null);
@@ -246,6 +269,7 @@ export function NewGarmentView() {
     const price = form.price.replace(/\D/g, "");
     setSaving(true);
     setError(null);
+    setFieldErrors({});
     const result = await addGarment({
       categoryId: form.categoryId,
       subcategoryId: form.subcategoryId || null,
@@ -264,7 +288,11 @@ export function NewGarmentView() {
     }, image === undefined && isReview && pageImages[imageIndex] ? await pageImageFile(pageImages[imageIndex]) : image, imported?.importId ?? null);
     setSaving(false);
     if (!result.ok) {
-      setError(result.error);
+      const fields = result.fieldErrors ?? {};
+      setError(Object.keys(fields).some((k) => FIELD_IDS[k]) ? "표시한 칸을 확인해 주세요." : result.error);
+      setFieldErrors(fields);
+      const first = Object.keys(result.fieldErrors ?? {})[0];
+      if (first) document.getElementById(FIELD_IDS[first] ?? "")?.focus();
       return;
     }
     showToast(result.warning ?? "옷장에 등록했습니다");
@@ -354,7 +382,9 @@ export function NewGarmentView() {
                 );
               })}
               <div className="flex items-center justify-between pt-3">
-                <span className="text-sm text-neutral-700">최대 20초 걸립니다. 페이지를 떠나도 입력한 URL은 남습니다.</span>
+                <span className="text-sm text-neutral-700">
+                  <span className="font-mono tabular-nums">{elapsed}초</span> 경과 · 최대 20초 걸립니다.
+                </span>
                 <button type="button" className="btn btn-secondary" onClick={() => { cancelRequest(); setPhase("url"); }}>
                   취소
                 </button>
@@ -491,23 +521,28 @@ export function NewGarmentView() {
                 </div>
                 <div className="field">
                   <label htmlFor="f-brand" className="flex items-center justify-between">{label("브랜드", "brand")}</label>
-                  <input id="f-brand" className="input" value={form.brand} onChange={(e) => update("brand", e.target.value, "brand")} />
+                  <input id="f-brand" className="input" aria-invalid={Boolean(fieldErrors.brand)} aria-describedby={fieldErrors.brand ? "e-brand" : undefined} value={form.brand} onChange={(e) => update("brand", e.target.value, "brand")} />
+                  <FieldError id="e-brand" message={fieldErrors.brand} />
                 </div>
                 <div className="field sm:col-span-2">
                   <label htmlFor="f-name" className="flex items-center justify-between">{label("제품명", "name")}</label>
-                  <input id="f-name" className="input" value={form.productName} onChange={(e) => update("productName", e.target.value, "name")} />
+                  <input id="f-name" className="input" aria-invalid={Boolean(fieldErrors.productName)} aria-describedby={fieldErrors.productName ? "e-productName" : undefined} value={form.productName} onChange={(e) => update("productName", e.target.value, "name")} />
+                  <FieldError id="e-productName" message={fieldErrors.productName} />
                 </div>
                 <div className="field">
                   <label htmlFor="f-material" className="flex items-center justify-between">{label("소재", "material")}</label>
-                  <input id="f-material" className="input" value={form.material} onChange={(e) => update("material", e.target.value, "material")} />
+                  <input id="f-material" className="input" aria-invalid={Boolean(fieldErrors.material)} aria-describedby={fieldErrors.material ? "e-material" : undefined} value={form.material} onChange={(e) => update("material", e.target.value, "material")} />
+                  <FieldError id="e-material" message={fieldErrors.material} />
                 </div>
                 <div className="field">
                   <label htmlFor="f-date" className="flex items-center justify-between">{label("구매 날짜", "date")}</label>
-                  <input id="f-date" type="date" className="input font-mono tabular-nums" value={form.date} onChange={(e) => update("date", e.target.value, "date")} />
+                  <input id="f-date" type="date" className="input font-mono tabular-nums" aria-invalid={Boolean(fieldErrors.purchasedOn)} aria-describedby={fieldErrors.purchasedOn ? "e-purchasedOn" : undefined} value={form.date} onChange={(e) => update("date", e.target.value, "date")} />
+                  <FieldError id="e-purchasedOn" message={fieldErrors.purchasedOn} />
                 </div>
                 <div className="field">
                   <label htmlFor="f-price" className="flex items-center justify-between">{label("구매가", "price")}</label>
-                  <UnitInput id="f-price" unit="원" inputMode="numeric" value={form.price} onChange={(e) => update("price", e.target.value, "price")} />
+                  <UnitInput id="f-price" unit="원" inputMode="numeric" aria-invalid={Boolean(fieldErrors.purchasePrice)} aria-describedby={fieldErrors.purchasePrice ? "e-purchasePrice" : undefined} value={form.price} onChange={(e) => update("price", e.target.value, "price")} />
+                  <FieldError id="e-purchasePrice" message={fieldErrors.purchasePrice} />
                 </div>
                 <div className="field col-span-full">
                   <label className="flex items-center justify-between">{label("시즌", "seasons")}</label>
@@ -532,7 +567,8 @@ export function NewGarmentView() {
                 </div>
                 <div className="field col-span-full">
                   <label htmlFor="f-url" className="flex items-center justify-between">{label("상품 링크", "url")}</label>
-                  <input id="f-url" className="input text-neutral-800" placeholder="선택 입력" value={form.url} onChange={(e) => update("url", e.target.value, "url")} />
+                  <input id="f-url" className="input text-neutral-800" placeholder="선택 입력" aria-invalid={Boolean(fieldErrors.productUrl)} aria-describedby={fieldErrors.productUrl ? "e-productUrl" : undefined} value={form.url} onChange={(e) => update("url", e.target.value, "url")} />
+                  <FieldError id="e-productUrl" message={fieldErrors.productUrl} />
                 </div>
               </div>
             </div>
@@ -561,8 +597,9 @@ export function NewGarmentView() {
                     ))}
                   </div>
                 ) : (
-                  <input id="f-size" className="input max-w-50" placeholder="예: M, 48, 32" value={form.size} onChange={(e) => update("size", e.target.value, "size")} />
+                  <input id="f-size" className="input max-w-50" placeholder="예: M, 48, 32" aria-invalid={Boolean(fieldErrors.sizeLabel)} aria-describedby={fieldErrors.sizeLabel ? "e-sizeLabel" : undefined} value={form.size} onChange={(e) => update("size", e.target.value, "size")} />
                 )}
+                <FieldError id="e-sizeLabel" message={fieldErrors.sizeLabel} />
               </div>
               <div className="field">
                 <label htmlFor="f-color" className="flex items-center gap-2">{label("컬러", "color")}</label>
@@ -577,7 +614,8 @@ export function NewGarmentView() {
                       ))}
                     </div>
                   )}
-                  <input id="f-color" className="input max-w-45" placeholder="컬러명 직접 입력" value={form.color} onChange={(e) => update("color", e.target.value, "color")} />
+                  <input id="f-color" className="input max-w-45" placeholder="컬러명 직접 입력" aria-invalid={Boolean(fieldErrors.colorName)} aria-describedby={fieldErrors.colorName ? "e-colorName" : undefined} value={form.color} onChange={(e) => update("color", e.target.value, "color")} />
+                  <FieldError id="e-colorName" message={fieldErrors.colorName} />
                 </div>
               </div>
             </div>
@@ -588,6 +626,11 @@ export function NewGarmentView() {
               <h2 className="text-lg">실측</h2>
               <span className="text-sm text-neutral-700">cm · 단면 기준 · 직접 잰 값이 있으면 덮어쓰세요</span>
             </div>
+            {isReview && product && !product.sizeChart && (
+              <p className="text-sm text-neutral-800">
+                이 페이지에서 실측 정보를 찾지 못했습니다. 직접 잰 값이나 상품 페이지의 실측을 입력해 주세요.
+              </p>
+            )}
             <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
               {measurementFields(form.categoryId).map((m) => (
                 <div key={m.key} className="field">
@@ -598,8 +641,11 @@ export function NewGarmentView() {
                     inputMode="decimal"
                     className="text-body"
                     value={form.m[m.key] ?? ""}
+                    aria-invalid={Boolean(fieldErrors[`measurements.${m.key}`])}
+                    aria-describedby={fieldErrors[`measurements.${m.key}`] ? `e-m-${m.key}` : undefined}
                     onChange={(e) => setForm((f) => ({ ...f, m: { ...f.m, [m.key]: e.target.value } }))}
                   />
+                  <FieldError id={`e-m-${m.key}`} message={fieldErrors[`measurements.${m.key}`]} />
                 </div>
               ))}
             </div>
@@ -650,4 +696,27 @@ async function pageImageFile(src: string): Promise<File | undefined> {
   } catch {
     return undefined;
   }
+}
+
+/** 서버 검증 오류 키 → 입력 칸 id(첫 오류 칸으로 포커스) */
+const FIELD_IDS: Record<string, string> = {
+  productName: "f-name",
+  brand: "f-brand",
+  material: "f-material",
+  purchasedOn: "f-date",
+  purchasePrice: "f-price",
+  productUrl: "f-url",
+  sizeLabel: "f-size",
+  colorName: "f-color",
+  subcategoryId: "f-sub",
+  ...Object.fromEntries([...new Set([...TOP_MEASUREMENTS, ...BOTTOM_MEASUREMENTS])].map((k) => [`measurements.${k}`, `f-m-${k}`])),
+};
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <span id={id} className="text-xs text-accent-700">
+      {message}
+    </span>
+  );
 }
