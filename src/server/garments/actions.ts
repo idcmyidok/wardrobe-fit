@@ -24,6 +24,7 @@ const MESSAGES = {
   invalid: "입력값을 확인해 주세요.",
   failed: "저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
   badImage: "사진 경로가 올바르지 않습니다.",
+  quota: "옷은 한 계정에 2,000벌까지 저장할 수 있습니다.",
 };
 
 /** 로그인이 풀린 경우. 화면은 code를 보고 로그인 화면으로 보낸다(PROJECT_SPEC.md 20장 세션 만료). */
@@ -51,6 +52,8 @@ function dbError(error: PostgrestError): GarmentActionResult<never> {
   // 23514(check) / 22P02(형식) / 23503(참조): 서버 검증을 통과했더라도 DB 제약에 걸린 경우
   if (["23514", "22P02", "23503"].includes(error.code)) return { ok: false, error: MESSAGES.invalid };
   if (error.code === "42501") return signedOut();
+  // 사용자당 옷 개수 상한(마이그레이션 8)
+  if (error.code === "P0001" && error.message === "garment_quota_exceeded") return { ok: false, error: MESSAGES.quota };
   console.error("[garments]", error.code, error.message);
   return { ok: false, error: MESSAGES.failed };
 }

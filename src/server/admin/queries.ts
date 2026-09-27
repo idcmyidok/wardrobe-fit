@@ -49,8 +49,31 @@ export interface AdminOverview {
   lastPage: number;
 }
 
+/** 읽기에 실패하면 화면 전체를 오류로 바꾸지 않고 원인을 관리자에게 보여 준다. */
+export interface AdminOverviewError {
+  error: string;
+  /** 잘못된 키를 넣은 경우(anon 키 등)처럼 운영자가 고칠 수 있는 원인 */
+  hint: string | null;
+}
+
 /** 서버에 service role 키가 없으면 null. */
-export async function getAdminOverview(page: number): Promise<AdminOverview | null> {
+export async function getAdminOverview(page: number): Promise<AdminOverview | AdminOverviewError | null> {
+  try {
+    return await readOverview(page);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("[admin] overview", message);
+    return { error: message, hint: keyHint(message) };
+  }
+}
+
+function keyHint(message: string) {
+  return /permission denied|User not allowed|Invalid API key|JWT|not_admin|401|403/i.test(message)
+    ? "서버의 SUPABASE_SERVICE_ROLE_KEY가 service_role(secret) 키가 아닌 것 같습니다. anon(publishable) 키를 넣었는지 확인해 주세요."
+    : null;
+}
+
+async function readOverview(page: number): Promise<AdminOverview | null> {
   const db = createSupabaseAdminClient();
   if (!db) return null;
   const [stats, failures, list, admins] = await Promise.all([
