@@ -43,7 +43,9 @@ export function AppHeader({ email }: { email: string | null }) {
           })}
         </nav>
         <div className="ml-auto flex items-center gap-3 md:ml-0">
-          <ThemeToggle />
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
           <UserMenu email={email} />
         </div>
       </div>

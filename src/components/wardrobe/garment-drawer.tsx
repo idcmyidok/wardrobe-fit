@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ImagePicker } from "@/components/garment-form/image-picker";
 import { UnitInput } from "@/components/ui/input";
+import { cn } from "@/lib/cn";
 import { CATEGORY_NAME, SUBCATEGORIES, SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { formatCm, measurementFields } from "@/lib/constants/measurements";
 import { SEASONS, SEASON_NAME, toggleSeason } from "@/lib/constants/seasons";
@@ -161,7 +162,7 @@ export function GarmentDetail({
   return (
     <>
       <Frame variant={variant} onClose={onClose}>
-          <div className="sticky top-0 z-1 flex items-start justify-between border-b border-text bg-bg px-6 py-3">
+          <div className={cn("flex items-start justify-between border-b border-text bg-bg px-6 py-3", variant === "drawer" && "sticky top-0 z-1")}>
             <div className="flex items-baseline gap-2.5">
               <span id="drawer-title" className="text-body font-semibold">
                 옷 정보
