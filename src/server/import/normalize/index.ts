@@ -129,6 +129,7 @@ export function normalizeProduct(raw: RawProduct, sources: FieldSources, options
     colorCandidate,
     sizeOptions,
     sizeChart,
+    categoryPath: (raw.categoryHints ?? []).map((h) => cleanText(h, 100)).filter(Boolean),
     warnings,
   };
 }

@@ -181,3 +181,32 @@ export function parseOrdersToGarments(text: string): ParsedOrders {
   }
   return result;
 }
+
+/** 옷장 분류가 없는 무신사 카테고리(대분류·중분류 이름) */
+const NOT_GARMENT_CATEGORY_RE =
+  /가방|백팩|지갑|뷰티|화장품|스킨|메이크업|향수|프래그런스|헤어|바디|액세서리|악세사리|쥬얼리|주얼리|시계|안경|선글라스|벨트|장갑|머플러|스카프|넥타이|양말|속옷|언더웨어|이너웨어|홈웨어|잠옷|디지털|테크|라이프|리빙|생활|인테리어|키친|반려|문구|도서|티켓|컬처|굿즈|완구|장난감|캠핑|골프\s*용품|원피스|스커트/;
+
+/**
+ * 상품 페이지의 카테고리 경로로 옷장 분류를 정한다.
+ * 경로가 없으면 null(상품명 규칙으로 정한다), 옷장에 없는 카테고리면 "not_garment".
+ */
+export function garmentFromCategoryPath(path: string[] | undefined): { categoryId: CategoryId; subcategoryId: string } | "not_garment" | null {
+  if (!path?.length) return null;
+  if (path.some((p) => NOT_GARMENT_CATEGORY_RE.test(p))) return "not_garment";
+  const mapped = mapCategory(path);
+  return mapped ? { categoryId: mapped.categoryId, subcategoryId: mapped.subcategoryId } : "not_garment";
+}
+
+/** 사이즈표에서 주문한 사이즈의 줄을 찾는다. "2 (L)"은 2와 L 둘 다, FREE·F·OS·ONE SIZE는 같은 것으로 본다. */
+export function matchSizeRow<T extends { sizeLabel: string }>(rows: T[], size: string | null): T | null {
+  if (!rows.length) return null;
+  const key = (s: string) => {
+    const k = s.toUpperCase().replace(/\s+/g, "");
+    return /^(FREE|F|OS|ONESIZE|FREESIZE|프리)$/.test(k) ? "FREE" : k.replace(/^(SMALL)$/, "S").replace(/^(MEDIUM)$/, "M").replace(/^(LARGE)$/, "L").replace(/^X-?LARGE$/, "XL");
+  };
+  if (!size) return rows.length === 1 ? rows[0] : null;
+  const wanted = new Set([key(size), ...size.split(/[()]/).map((s) => s.trim()).filter(Boolean).map(key)]);
+  const hit = rows.find((r) => wanted.has(key(r.sizeLabel))) ?? rows.find((r) => r.sizeLabel.split(/[()/\s]+/).some((t) => t && wanted.has(key(t))));
+  if (hit) return hit;
+  return wanted.has("FREE") && rows.length === 1 ? rows[0] : null;
+}
