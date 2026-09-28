@@ -74,12 +74,21 @@ test("서버 검증: 잘못된 실측은 저장하지 않고 칸 아래에 알�
   expect(count).toBe(0);
 });
 
-test("모바일: 표 대신 목록, 누르면 상세 페이지", async ({ browser, makeUser, seedGarments }) => {
+test("모바일: 기본은 간략 목록, 자세하게로 표 보기, 누르면 상세 페이지", async ({ browser, makeUser, seedGarments }) => {
   const user = await makeUser("mobile");
   const [id] = await seedGarments(user, [{ category_id: "outer", brand: "Our Legacy", product_name: "워크 자켓" }]);
   const context = await browser.newContext({ viewport: { width: 375, height: 800 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
   await login(page, user);
+  // 모바일 기본은 간략하게(목록). 자세하게를 누르면 PC처럼 표가 보이고, 표는 가로로 스크롤된다.
+  const viewGroup = page.getByRole("group", { name: "보기 방식" });
+  await expect(viewGroup.getByRole("button", { name: "간략하게" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("table:visible")).toHaveCount(0);
+  await viewGroup.getByRole("button", { name: "자세하게" }).click();
+  await expect(page.locator("table:visible").getByText("워크 자켓")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+  await viewGroup.getByRole("button", { name: "간략하게" }).click();
+  await expect(page.locator("table:visible")).toHaveCount(0);
   await page.getByRole("button", { name: /워크 자켓/ }).click();
   await expect(page).toHaveURL(new RegExp(`/wardrobe/${id}$`));
   await expect(page.getByRole("heading", { name: "워크 자켓" }).or(page.getByText("워크 자켓").first())).toBeVisible();

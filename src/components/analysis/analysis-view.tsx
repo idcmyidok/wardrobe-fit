@@ -249,7 +249,8 @@ function MonthDetail({ detail }: { detail: ReturnType<typeof monthlySummary>["to
 
 /**
  * 월별 막대. 구매한 달만 그린다. 마우스를 올리면 강조되고, 누르면 그 달을 옆에 보여 준다.
- * 가로로 길어지면 끌어서 이동한다(휠·터치 스크롤도 된다). 끌어서 옮긴 경우에는 클릭으로 치지 않는다.
+ * 가로로 길어지면 마우스로 끌어서 이동한다(휠 스크롤도 된다). 끌어서 옮긴 경우에는 클릭으로 치지 않는다.
+ * 터치는 브라우저 기본 스크롤에 맡긴다. 직접 옮기면 iOS Safari에서 관성 없이 뻑뻑하다.
  */
 function MonthChart({
   bars,
@@ -272,11 +273,11 @@ function MonthChart({
   return (
     <div
       ref={ref}
-      className="overflow-x-auto pb-1.5 select-none"
-      style={{ touchAction: "pan-y" }}
+      className="overflow-x-auto overscroll-x-contain pb-1.5 select-none"
       onPointerDown={(e) => {
-        if (ref.current) drag.current = { x: e.clientX, left: ref.current.scrollLeft };
         moved.current = false;
+        if (e.pointerType !== "mouse") return;
+        if (ref.current) drag.current = { x: e.clientX, left: ref.current.scrollLeft };
       }}
       onPointerMove={(e) => {
         if (!ref.current || !drag.current) return;

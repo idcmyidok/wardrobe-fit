@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { buttonClassName } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { CATEGORIES, COUNT_UNIT, SUBCATEGORIES } from "@/lib/constants/categories";
@@ -25,7 +25,7 @@ import {
 } from "./filter-state";
 import { WardrobeFilters } from "./wardrobe-filters";
 import { useOpenGarmentId, useWardrobe } from "./wardrobe-store";
-import { WardrobeTable } from "./wardrobe-table";
+import { WardrobeTable, type WardrobeViewMode } from "./wardrobe-table";
 
 const EMPTY_STEPS = [
   { title: "링크 붙여넣기", description: "상품 페이지에서 브랜드, 사이즈표, 컬러를 읽습니다." },
@@ -49,6 +49,10 @@ export function WardrobeView() {
       else next.add(id);
       return next;
     });
+  // 간략하게/자세하게. 고르기 전에는 모바일은 간략(목록), PC는 자세히(표). 고른 값은 이 기기에 기억한다.
+  const chosenView = useSyncExternalStore(subscribeView, readSavedView, () => null);
+  const desktop = useSyncExternalStore(subscribeDesktop, isDesktop, () => true);
+  const view = chosenView ?? (desktop ? "detail" : "simple");
   // 서버에 다시 묻지 않고 주소만 바꾼다. 검색어 입력처럼 잦은 변경은 기록을 쌓지 않는다(replace).
   const navigate = useCallback((next: WardrobeState, mode: "push" | "replace" = "push") => {
     const search = new URLSearchParams(toWardrobeSearch(next));
@@ -140,6 +144,24 @@ export function WardrobeView() {
       ) : (
         <>
           <WardrobeFilters value={filters} onChange={setFilters} options={options} />
+          <div role="group" aria-label="보기 방식" className="flex justify-end pt-4">
+            <div className="inline-flex border border-text">
+              {VIEW_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  aria-pressed={view === option.id}
+                  onClick={() => saveView(option.id)}
+                  className={cn(
+                    "min-h-9 cursor-pointer px-3 text-sm",
+                    view === option.id ? "bg-text text-bg" : "text-neutral-700 hover:bg-neutral-100 hover:text-text",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {groups.map((group) => {
             const open = !collapsed.has(group.id);
@@ -188,6 +210,7 @@ export function WardrobeView() {
                     }
                     selectedId={drawerId}
                     onOpen={openDrawer}
+                    view={chosenView ?? undefined}
                   />
                   {group.total > PAGE_SIZE && (
                     <Pagination
@@ -228,6 +251,49 @@ export function WardrobeView() {
       )}
     </main>
   );
+}
+
+const VIEW_OPTIONS: { id: WardrobeViewMode; label: string }[] = [
+  { id: "simple", label: "간략하게" },
+  { id: "detail", label: "자세하게" },
+];
+const VIEW_STORAGE_KEY = "wardrobe-view";
+const DESKTOP_QUERY = "(min-width: 768px)";
+
+// 저장소를 못 쓰는 환경(사생활 보호 모드 등)에서도 이 화면 안에서는 고른 값이 적용되게 메모리에도 둔다.
+let memoryView: WardrobeViewMode | null = null;
+const viewListeners = new Set<() => void>();
+
+function readSavedView(): WardrobeViewMode | null {
+  try {
+    const saved = localStorage.getItem(VIEW_STORAGE_KEY);
+    if (saved === "simple" || saved === "detail") return saved;
+  } catch {
+    // 아래 메모리 값을 쓴다.
+  }
+  return memoryView;
+}
+
+function saveView(next: WardrobeViewMode) {
+  memoryView = next;
+  try {
+    localStorage.setItem(VIEW_STORAGE_KEY, next);
+  } catch {
+    // 메모리 값만 남긴다.
+  }
+  viewListeners.forEach((listener) => listener());
+}
+
+function subscribeView(onChange: () => void) {
+  viewListeners.add(onChange);
+  return () => viewListeners.delete(onChange);
+}
+
+const isDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
+function subscribeDesktop(onChange: () => void) {
+  const query = window.matchMedia(DESKTOP_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
 }
 
 /** 표 아래 페이지 이동. 한 표가 50벌을 넘을 때만 보인다. */
