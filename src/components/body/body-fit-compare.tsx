@@ -1,7 +1,7 @@
 import { WEARABLE_LEVELS, fitLevelName, type FitKind, type FitLevel } from "@/lib/constants/body";
 import { formatNum } from "@/lib/constants/measurements";
 import { cn } from "@/lib/cn";
-import { WAIST_TOO_BIG, WAIST_TOO_SMALL, signed, type BodyFitDimension, type BodyFitReason } from "@/lib/fit/body-fit";
+import { WAIST, WAIST_STATE_NAME, signed, type BodyFitDimension, type BodyFitReason } from "@/lib/fit/body-fit";
 import { FIT_COLOR } from "./fit-meter";
 
 /**
@@ -31,12 +31,13 @@ const bodyName = (d: BodyFitDimension) => (d.key === "shoulder" ? "어깨너비"
 
 function DimensionCard({ d, kind, verdict }: { d: BodyFitDimension; kind: FitKind; verdict: string }) {
   const girth = Math.round(d.garmentValue * 20) / 10;
-  const levelName = d.bands ? fitLevelName(d.level, kind) : d.level === "regular" ? "적당" : fitLevelName(d.level, kind);
+  // 허리는 핏 단계가 아니라 크기(작음·적정·큼)로 보여 준다.
+  const levelName = d.waist ? WAIST_STATE_NAME[d.waist] : fitLevelName(d.level, kind);
   return (
     <div className="flex flex-col gap-3 border border-neutral-300 p-3">
       <div className="flex items-baseline justify-between gap-2">
         <span className="font-semibold">{d.label}</span>
-        <span className="text-sm font-semibold" style={{ color: FIT_COLOR[d.bands ? d.level : d.level === "regular" ? "regular" : d.level] }}>
+        <span className="text-sm font-semibold" style={{ color: FIT_COLOR[d.level] }}>
           {levelName}
         </span>
       </div>
@@ -77,7 +78,10 @@ function RangeBar({ d, kind }: { d: BodyFitDimension; kind: FitKind }) {
   const toGarment = (e: number) => (d.half ? Math.round(((e + d.bodyValue) / 2) * 2) / 2 : Math.round((e + d.bodyValue) * 10) / 10);
   const segs: Segment[] = d.bands
     ? WEARABLE_LEVELS.map((l) => ({ level: l, from: d.bands![l][0], to: d.bands![l][1], label: fitLevelName(l, kind) }))
-    : [{ level: "regular", from: WAIST_TOO_SMALL, to: WAIST_TOO_BIG, label: "적당" }];
+    : [
+        { level: "slim", from: WAIST.tooSmall, to: (d.waistBand ?? WAIST.fit)[0], label: WAIST_STATE_NAME.small },
+        { level: "regular", from: (d.waistBand ?? WAIST.fit)[0], to: (d.waistBand ?? WAIST.fit)[1], label: WAIST_STATE_NAME.fit },
+      ];
   const lo0 = Math.min(...segs.map((s) => s.from));
   const hi0 = Math.max(...segs.map((s) => s.to));
   const pad = Math.max((hi0 - lo0) * 0.12, 2);
@@ -106,7 +110,7 @@ function RangeBar({ d, kind }: { d: BodyFitDimension; kind: FitKind }) {
             style={{
               left: pct(s.from),
               width: width(s.from, s.to),
-              background: s.level === d.level || !d.bands ? FIT_COLOR[s.level] : `color-mix(in srgb, ${FIT_COLOR[s.level]} 35%, transparent)`,
+              background: s.level === d.level ? FIT_COLOR[s.level] : `color-mix(in srgb, ${FIT_COLOR[s.level]} 35%, transparent)`,
             }}
             title={s.label}
           >

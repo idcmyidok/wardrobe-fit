@@ -10,7 +10,8 @@ const body: BodyProfile = {
 };
 const base = { categoryId: "top" as const, subcategoryId: "top.short_tee", productName: "티셔츠" };
 const rows = [
-  { sizeLabel: "S", measurements: { chest: 48.5, shoulder: 42, length: 68 } },
+  // 새 어깨 기준(−1cm 미만은 너무 작음)에서 S가 평범한 슬림핏이 되도록 어깨 44cm
+  { sizeLabel: "S", measurements: { chest: 48.5, shoulder: 44, length: 68 } },
   { sizeLabel: "M", measurements: { chest: 51.5, shoulder: 44.5, length: 71 } },
   { sizeLabel: "L", measurements: { chest: 55, shoulder: 48, length: 73 } },
   { sizeLabel: "XL", measurements: { chest: 60, shoulder: 54, length: 75 } },

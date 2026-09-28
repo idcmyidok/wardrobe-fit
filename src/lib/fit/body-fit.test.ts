@@ -12,6 +12,11 @@ const tee = (chest: number, shoulder = 46, extra = {}) => ({
   subcategoryId: "top.short_tee",
   measurements: { chest, shoulder, length: 71, ...extra },
 });
+const pants = (m: { waist?: number; hip?: number; thigh?: number; legOpening?: number }) => ({
+  categoryId: "bottom" as const,
+  subcategoryId: "bottom.denim",
+  measurements: m,
+});
 const ok = (r: ReturnType<typeof computeBodyFit>) => {
   if (r.status !== "ok") throw new Error(`status ${r.status}`);
   return r;
@@ -30,15 +35,15 @@ describe("예상 핏(내 치수)", () => {
     expect(small.issues[0].severe).toBe(true);
     expect(ok(computeBodyFit(tee(70, 60), body)).level).toBe("too_big");
   });
-  it("가장 높은 점수의 핏이 예상 핏", () => {
+  it("예상 핏의 점수가 가장 높다", () => {
     const r = ok(computeBodyFit(tee(51.5), body));
     expect(r.scores.regular).toBeGreaterThan(r.scores.slim);
     expect(r.scores.regular).toBeGreaterThan(r.scores.over);
   });
   it("같은 옷이라도 아우터는 여유를 더 본다", () => {
-    const outer = ok(computeBodyFit({ categoryId: "outer", subcategoryId: "outer.coach", measurements: { chest: 51, shoulder: 44 } }, body));
+    const outer = ok(computeBodyFit({ categoryId: "outer", subcategoryId: "outer.coach", measurements: { chest: 53, shoulder: 46 } }, body));
     expect(outer.level).toBe("slim");
-    expect(ok(computeBodyFit(tee(51, 46), body)).level).toBe("regular");
+    expect(ok(computeBodyFit(tee(53, 46), body)).level).toBe("regular");
   });
   it("가슴 실측이나 가슴둘레가 없으면 계산하지 않는다", () => {
     expect(computeBodyFit({ categoryId: "top", subcategoryId: null, measurements: { shoulder: 46 } }, body)).toEqual({
@@ -61,51 +66,143 @@ describe("예상 핏(내 치수)", () => {
     expect(loose.confidence).toBe("low");
   });
   it("총장·소매는 핏 판정에 넣지 않는다", () => {
-    const r = ok(computeBodyFit({ categoryId: "top", subcategoryId: "top.long_tee", measurements: { chest: 52.5, shoulder: 46, length: 80, sleeve: 50 } }, body));
+    const r = ok(computeBodyFit({ categoryId: "top", subcategoryId: "top.long_tee", measurements: { chest: 52.5, shoulder: 47, length: 80, sleeve: 50 } }, body));
     expect(r.level).toBe("regular");
     expect(r.issues).toEqual([]);
   });
-  it("하의: 품과 실루엣, 배기, 허리", () => {
-    const wide = ok(computeBodyFit({ categoryId: "bottom", subcategoryId: "bottom.denim", measurements: { waist: 41, hip: 55, thigh: 36, legOpening: 22, length: 104 } }, body));
+  it("하의: 품과 실루엣, 배기", () => {
+    const wide = ok(computeBodyFit(pants({ waist: 41, hip: 55, thigh: 36, legOpening: 22 }), body));
     expect(wide.kind).toBe("bottom");
-    expect(["semi_over", "over"]).toContain(wide.level);
+    expect(wide.level).toBe("over");
     expect(wide.silhouette).toBe("tapered");
     expect(wide.baggy).toBe(true);
-    const tight = ok(computeBodyFit({ categoryId: "bottom", subcategoryId: "bottom.slacks", measurements: { waist: 38, hip: 49, thigh: 31 } }, body));
-    expect(tight.level).toBe("too_small");
-    expect(tight.issues.some((i) => i.key === "waist")).toBe(true);
     expect(silhouetteOf({ thigh: 30, legOpening: 31 })).toBe("flare");
   });
-  it("니트·스판은 소재 안내", () => {
-    expect(ok(computeBodyFit({ ...tee(53), productName: "코튼 스판 티셔츠" }, body)).stretch).toBe(true);
+  it("니트·스판은 소재 안내만 하고 판정은 바꾸지 않는다", () => {
+    const stretchy = ok(computeBodyFit({ ...tee(53), productName: "코튼 스판 티셔츠" }, body));
+    expect(stretchy.stretch).toBe(true);
+    expect(stretchy.level).toBe(ok(computeBodyFit(tee(53), body)).level);
     expect(ok(computeBodyFit(tee(53), body)).stretch).toBe(false);
+  });
+  it("제품명에 핏 이름이 있어도 실측 계산이 우선한다", () => {
+    expect(ok(computeBodyFit({ ...tee(51.5), productName: "오버핏 반팔 티셔츠" }, body)).level).toBe("regular");
+  });
+  it("경계에서 1cm 차이로 두 단계를 건너뛰지 않는다", () => {
+    const levels = [51.5, 52, 52.5, 53, 53.5].map((c) => ok(computeBodyFit(tee(c, 47), body)).level);
+    const order = ["slim", "regular", "semi_over", "over"];
+    for (let i = 1; i < levels.length; i++) expect(Math.abs(order.indexOf(levels[i]) - order.indexOf(levels[i - 1]))).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("상의: 가슴이 기본 축, 어깨는 실루엣", () => {
+  it("가슴 레귤러 + 어깨 너무 큼 → 한 단계만 올려 세미오버(드롭형 가능성)", () => {
+    const r = ok(computeBodyFit(tee(51.5, 56), body));
+    expect(r.dimensions.find((d) => d.key === "shoulder")!.level).toBe("too_big");
+    expect(r.level).toBe("semi_over");
+    expect(r.basis.rule).toBe("axis_shift");
+    expect(bodyFitReasons(r).at(-1)!.text).toContain("드롭형");
+  });
+  it("가슴 레귤러 + 어깨 너무 작음 → 전체를 너무 작음으로 만들지 않는다", () => {
+    const r = ok(computeBodyFit(tee(51.5, 43), body));
+    expect(r.dimensions.find((d) => d.key === "shoulder")!.level).toBe("too_small");
+    expect(r.level).toBe("slim");
+  });
+  it("가슴 너무 작음은 어깨가 넉넉해도 전체 너무 작음", () => {
+    expect(ok(computeBodyFit(tee(47, 49), body)).level).toBe("too_small");
+  });
+  it("가슴이 슬림 하한보다 1cm 안으로 작으면 매우 타이트한 슬림", () => {
+    const r = ok(computeBodyFit(tee(47.5, 47), body));
+    expect(r.dimensions.find((d) => d.key === "chest")!.level).toBe("too_small");
+    expect(r.level).toBe("slim");
+    expect(r.basis.chestEdge).toBe(true);
+  });
+  it("가슴 너무 큼 + 어깨 레귤러 → 박스형 오버핏", () => {
+    const r = ok(computeBodyFit(tee(62, 47), body));
+    expect(r.level).toBe("over");
+    expect(r.basis.rule).toBe("chest_big");
+  });
+  it("가슴·어깨 모두 너무 큼 → 너무 큼", () => {
+    expect(ok(computeBodyFit(tee(62, 57), body)).basis.rule).toBe("both_big");
+  });
+  it("종류마다 가중치가 다르다(패딩은 가슴 75%)", () => {
+    const r = ok(computeBodyFit({ categoryId: "outer", subcategoryId: "outer.short_padding", measurements: { chest: 60, shoulder: 47 } }, body));
+    expect(r.basis.weights).toEqual({ chest: 75, shoulder: 25 });
+  });
+});
+
+describe("하의: 허벅지가 기본 축, 허리는 크기만", () => {
+  it("엉덩이만 너무 큼이면 전체 너무 큼으로 만들지 않는다", () => {
+    const r = ok(computeBodyFit(pants({ hip: 60, thigh: 33 }), body));
+    expect(r.dimensions.find((d) => d.key === "hip")!.level).toBe("too_big");
+    expect(r.level).toBe("over");
+  });
+  it("엉덩이·허벅지 모두 너무 큼이면 너무 큼", () => {
+    expect(ok(computeBodyFit(pants({ hip: 60, thigh: 40 }), body)).level).toBe("too_big");
+  });
+  it("허벅지가 내 몸보다 좁으면 전체 너무 작음", () => {
+    const r = ok(computeBodyFit(pants({ hip: 52, thigh: 27 }), body));
+    expect(r.level).toBe("too_small");
+    expect(r.basis.rule).toBe("no_room");
+  });
+  it("허벅지가 슬림보다 작지만 몸보다는 넓으면 한 단계 작게만 본다", () => {
+    const r = ok(computeBodyFit(pants({ hip: 52, thigh: 28.5 }), body));
+    expect(r.dimensions.find((d) => d.key === "thigh")!.level).toBe("too_small");
+    expect(r.level).toBe("slim");
+  });
+  it("허리 −6cm 미만이면 전체 너무 작음", () => {
+    const r = ok(computeBodyFit(pants({ waist: 36, hip: 52, thigh: 32 }), body));
+    expect(r.level).toBe("too_small");
+    expect(r.basis.rule).toBe("waist_small");
+  });
+  it("허리 −6~−2cm는 작음, −2~+2cm는 적정, +2cm 초과는 너무 큼(전체 판정은 그대로)", () => {
+    const waist = (w: number) => ok(computeBodyFit(pants({ waist: w, hip: 52, thigh: 32 }), body));
+    expect(waist(38).dimensions.find((d) => d.key === "waist")!.waist).toBe("small");
+    expect(waist(38).level).toBe("regular");
+    expect(waist(41).dimensions.find((d) => d.key === "waist")!.waist).toBe("fit");
+    const big = waist(41.5);
+    expect(big.dimensions.find((d) => d.key === "waist")!.waist).toBe("too_big");
+    expect(big.level).toBe("regular");
+    expect(big.issues.find((i) => i.key === "waist")!.severe).toBe(true);
+  });
+  it("반바지는 긴 바지와 기준이 다르다", () => {
+    // 허벅지 여유 +5cm: 반바지는 슬림(3~5), 긴 바지는 레귤러(4~8)
+    const shorts = ok(computeBodyFit({ categoryId: "bottom", subcategoryId: "bottom.shorts", measurements: { hip: 50, thigh: 30.5 } }, body));
+    expect(shorts.dimensions.find((d) => d.key === "thigh")!.level).toBe("slim");
+    expect(ok(computeBodyFit(pants({ hip: 50, thigh: 30.5 }), body)).dimensions.find((d) => d.key === "thigh")!.level).toBe("regular");
   });
 });
 
 describe("추천 치수·보정·역산", () => {
   it("권장 실측 범위(단면)", () => {
-    expect(garmentRange("short_tee", "regular", "chest", body)).toEqual([50.5, 53.5]);
+    expect(garmentRange("short_tee", "regular", "chest", body)).toEqual([50, 53]);
+  });
+  it("허리는 핏 단계와 관계없이 적정 범위 하나", () => {
+    expect(garmentRange("pants", "slim", "waist", body)).toEqual([39, 41]);
+    expect(garmentRange("pants", "over", "waist", body)).toEqual([39, 41]);
+    const edited: BodyProfile = { ...body, overrides: { pants: { regular: { waist: [40, 43] } } } };
+    expect(garmentRange("pants", "slim", "waist", edited)).toEqual([40, 43]);
   });
   it("사용자가 고친 범위가 추천과 판정에 모두 쓰인다", () => {
     const edited: BodyProfile = { ...body, overrides: { short_tee: { regular: { chest: [55, 57] } } } };
     expect(garmentRange("short_tee", "regular", "chest", edited)).toEqual([55, 57]);
-    expect(ok(computeBodyFit(tee(56), edited)).level).toBe("regular");
+    expect(ok(computeBodyFit(tee(56), edited)).dimensions.find((d) => d.key === "chest")!.level).toBe("regular");
   });
   it("내 핏 표기로 기준을 옮긴다(최대 ±4cm)", () => {
     const labeled = [
-      { ...tee(55), userFit: "regular" as const },
-      { ...tee(55.5), userFit: "regular" as const },
+      { ...tee(55, 47), userFit: "regular" as const },
+      { ...tee(55.5, 47), userFit: "regular" as const },
     ];
     const cal = computeCalibration(body, labeled);
     expect(cal.short_tee?.chest).toBe(4);
-    expect(ok(computeBodyFit(tee(55), body)).level).toBe("semi_over");
-    expect(ok(computeBodyFit(tee(55), body, cal)).level).toBe("regular");
+    expect(ok(computeBodyFit(tee(54.5, 48), body)).level).toBe("semi_over");
+    expect(ok(computeBodyFit(tee(54.5, 48), body, cal)).level).toBe("regular");
   });
   it("잘 맞는 옷으로 내 치수 추정", () => {
     const est = estimateBodyFromGarments([tee(51.5, 44.5), { categoryId: "bottom", subcategoryId: "bottom.denim", measurements: { waist: 41, hip: 51, thigh: 32, length: 103 } }]);
-    expect(est.chest).toBe(93);
-    expect(est.shoulder).toBe(43.5);
-    expect(est.hip).toBe(95.5);
+    expect(est.chest).toBe(94);
+    expect(est.shoulder).toBe(42.5);
+    expect(est.hip).toBe(94);
+    expect(est.waist).toBe(82);
   });
   it("세부분류 묶음", () => {
     expect(fitGroupOf("outer", "outer.coach")).toBe("light_outer");
@@ -123,11 +220,11 @@ describe("예상 핏 판단 근거", () => {
     const chest = reasons.find((x) => x.key === "chest")!.text;
     expect(chest).toContain("옷 단면 54cm(둘레 108cm)");
     expect(chest).toContain("내 가슴둘레 96cm보다 12cm 여유");
-    expect(chest).toMatch(/(레귤러핏|세미오버핏) 범위\(여유 \+\d+~\+\d+cm, 단면 [\d.]+~[\d.]+cm\)에 들어요/);
+    expect(chest).toContain("레귤러핏 범위(여유 +6~+12cm, 단면 51~54cm)에 들어요");
     expect(reasons.find((x) => x.key === "shoulder")!.text).toContain("내 어깨너비 45cm보다 1cm 넓어요");
     const overall = reasons.at(-1)!;
     expect(overall.key).toBe("overall");
-    expect(overall.text).toMatch(/점으로 (가장 높아요|같아)/);
+    expect(overall.text).toBe("가슴 60%·어깨 40% 비중으로 합치면 레귤러핏이에요.");
   });
   it("너무 작으면 그 치수 때문이라고 쓴다", () => {
     const body = { ...EMPTY_BODY, values: { hip: 100, thigh: 60, waist: 80 } };
@@ -135,7 +232,8 @@ describe("예상 핏 판단 근거", () => {
     if (r.status !== "ok") throw new Error(r.status);
     const reasons = bodyFitReasons(r);
     expect(r.level).toBe("too_small");
-    expect(reasons.at(-1)!.text).toMatch(/엉덩이가 가장 작은 슬림 범위보다도 작아 전체를 너무 작음으로 봤어요/);
-    expect(reasons.find((x) => x.key === "waist")!.text).toContain("허리는 핏 판정에 넣지 않고");
+    expect(reasons.at(-1)!.text).toMatch(/엉덩이가 내 몸보다도 좁아 전체를 너무 작음으로 봤어요/);
+    expect(reasons.find((x) => x.key === "waist")!.text).toContain("허리는 핏 단계와 관계없이 크기만 봐요");
+    expect(reasons.find((x) => x.key === "waist")!.text).toContain("이 옷은 작음이에요");
   });
 });
