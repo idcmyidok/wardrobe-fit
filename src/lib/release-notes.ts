@@ -25,6 +25,19 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "1.2.0",
+    date: "2026-09-28",
+    features: [
+      {
+        title: "무신사 주문내역으로 여러 벌 추가",
+        description:
+          "무신사 주문내역을 붙여 넣으면 구매 확정된 옷·신발·모자만 골라 상품 사진과 실측을 찾아 줍니다. 2팩·셋업은 한 벌씩 나누고, 한 벌씩 확인한 뒤 고른 옷만 옷장에 넣어요.",
+      },
+    ],
+    changes: ["상품 링크 분석을 하루 100번까지 할 수 있어요."],
+    fixes: [],
+  },
+  {
     version: "1.1.0",
     date: "2026-09-28",
     features: [
