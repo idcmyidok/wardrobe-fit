@@ -1,4 +1,5 @@
 import type { MeasurementKey } from "@/lib/constants/measurements";
+import type { FitLevel } from "@/lib/constants/body";
 import type { ShoeFit } from "@/lib/constants/shoe-fit";
 
 export type CategoryId = "outer" | "top" | "bottom" | "hat" | "shoes";
@@ -31,6 +32,8 @@ export interface Garment {
   fitReview: string | null;
   /** 신발만: 신어 본 느낌(길이감·발볼·발등). 다른 대분류는 null */
   shoeFit: ShoeFit | null;
+  /** 아우터·상의·하의만: 내가 표기한 핏. 없으면 화면이 내 치수로 예상 핏을 계산한다. */
+  userFit?: FitLevel | null;
 }
 
 /** 목록 화면용 별칭(기존 코드 호환) */

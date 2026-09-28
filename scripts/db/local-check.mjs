@@ -132,6 +132,16 @@ check("A는 계속 사진 업로드", !(await as(A, "insert into storage.objects
 check("상한 함수는 비로그인이 호출 불가", Boolean((await as(null, "select public.garment_image_quota_ok()")).error));
 check("옷 상한 trigger 함수는 API로 호출 불가", Boolean((await as(A, "select public.enforce_garment_quota()")).error));
 
+// 내 치수(migration 14): 본인만 읽고 쓰고, 동의 버전 없이는 저장 불가
+check("A가 내 치수 저장", !(await as(A, "insert into public.body_profiles (height_cm, chest_cm, consent_version) values (175, 94, '2026-09-28')")).error);
+check("동의 버전 없이 내 치수 저장 불가", Boolean((await as(B, "insert into public.body_profiles (height_cm) values (170)")).error));
+check("B는 A의 치수를 볼 수 없음", none(await as(B, "select user_id from public.body_profiles")));
+check("B가 A의 치수를 고칠 수 없음", none(await as(B, "update public.body_profiles set chest_cm = 90 where user_id = $1", [A])));
+check("비로그인은 치수를 볼 수 없음", (await as(null, "select user_id from public.body_profiles")).rows.length === 0);
+check("범위 밖 치수는 저장 불가", Boolean((await as(A, "update public.body_profiles set height_cm = 20")).error));
+check("모자에는 내 핏 표기 불가", Boolean((await as(A, "insert into public.garments (category_id, product_name, user_fit) values ('hat', 'cap', 'regular')")).error));
+check("A가 내 치수 삭제", (await as(A, "delete from public.body_profiles")).affectedRows === 1);
+
 check("trigger 함수는 API로 호출 불가", Boolean((await as(A, "select public.handle_new_user()")).error));
 check("A가 자기 옷 삭제", (await as(A, "delete from public.garments where id = $1", [gid])).affectedRows === 1);
 

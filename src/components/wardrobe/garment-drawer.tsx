@@ -16,6 +16,9 @@ import { DateLabel } from "@/components/garment-form/date-label";
 import { formatPrice } from "@/lib/format/price";
 import type { CategoryId, Garment, Measurements, Season } from "@/lib/types/domain";
 import { useOpenGarmentId, useWardrobe, type ImageChange } from "./wardrobe-store";
+import { BodyFitPanel } from "@/components/body/body-fit-panel";
+import { UserFitPicker } from "@/components/body/user-fit-picker";
+import type { FitLevel } from "@/lib/constants/body";
 
 /** Drawer 안 소제목. 시안의 모노 라벨 + 잉크 밑줄 */
 function SectionTitle({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
@@ -159,6 +162,14 @@ export function GarmentDetail({
     showToast("착용 후기를 저장했습니다");
   };
 
+  const saveUserFit = async (userFit: FitLevel | null) => {
+    if (saving) return;
+    setSaving(true);
+    const result = await updateGarment(g.id, { userFit });
+    setSaving(false);
+    showToast(result.ok ? (userFit ? "내 핏을 표기했습니다" : "내 핏 표기를 지웠습니다") : result.error);
+  };
+
   const productHref = safeHttpUrl(g.productUrl);
   const details: [string, ReactNode][] = [
     ["시즌", g.seasons.map((s) => SEASON_NAME[s]).join(" · ") || "—"],
@@ -266,6 +277,26 @@ export function GarmentDetail({
                           <span className="font-mono text-lg font-semibold tabular-nums">{formatCm(g.measurements[m.key])}</span>
                         </div>
                       ))}
+                    </div>
+                  </section>
+                )}
+                {(g.categoryId === "outer" || g.categoryId === "top" || g.categoryId === "bottom") && (
+                  <section>
+                    <SectionTitle aside={<span className="text-xs text-neutral-700">내 치수 기준</span>}>핏</SectionTitle>
+                    <div className="flex flex-col gap-4 pt-1">
+                      <BodyFitPanel garment={g} userFit={g.userFit ?? null} />
+                      <div className="flex flex-col gap-2">
+                        <span id={`uf-${g.id}`} className="text-xs text-neutral-700">
+                          내 핏 표기 · 입어 보고 고르면 예상 핏 대신 보이고, 다시 누르면 지워져 예상 핏으로 돌아갑니다
+                        </span>
+                        <UserFitPicker
+                          labelledBy={`uf-${g.id}`}
+                          kind={g.categoryId === "bottom" ? "bottom" : "top"}
+                          value={g.userFit ?? null}
+                          disabled={saving}
+                          onChange={saveUserFit}
+                        />
+                      </div>
                     </div>
                   </section>
                 )}

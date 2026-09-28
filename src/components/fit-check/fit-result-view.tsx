@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { BodyFitPanel } from "@/components/body/body-fit-panel";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { CATEGORY_NAME, COUNT_UNIT, SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { MEASUREMENT_LABELS, formatCm, formatNum } from "@/lib/constants/measurements";
@@ -156,6 +157,7 @@ export function FitResultView({
   productUrl = null,
   onBack,
   onRetry,
+  embedded = false,
 }: {
   candidate: FitCandidate;
   computed: FitComputed;
@@ -165,6 +167,8 @@ export function FitResultView({
   productUrl?: string | null;
   onBack?: () => void;
   onRetry?: () => void;
+  /** VS 비교 아래에 붙일 때: 바깥 main·뒤로 가기·다른 옷 판단 버튼 없이 */
+  embedded?: boolean;
 }) {
   const { garments, openDrawer, setPendingDraft } = useWardrobe();
   const router = useRouter();
@@ -213,10 +217,15 @@ export function FitResultView({
   const aiSizeNote = interpretation?.sizeRecommendationNote;
   const sizeNotes = [computed.sizeNote, aiSizeNote && aiSizeNote !== computed.sizeNote ? aiSizeNote : null].filter((n): n is string => Boolean(n));
   const exists = (id: string) => garments.some((g) => g.id === id);
+  const bodyGarment = useMemo(
+    () => ({ categoryId: candidate.categoryId, subcategoryId: candidate.subcategoryId, productName: candidate.productName, measurements: size.measurements }),
+    [candidate.categoryId, candidate.subcategoryId, candidate.productName, size.measurements],
+  );
 
+  const Wrapper = embedded ? "div" : "main";
   return (
-    <main className="mx-auto max-w-320 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
-      {onBack ? (
+    <Wrapper className={embedded ? undefined : "mx-auto max-w-320 px-[clamp(16px,3vw,32px)] pt-6 pb-16"}>
+      {embedded ? null : onBack ? (
         <button type="button" className="btn btn-ghost mb-2 text-sm" onClick={onBack}>
           ← 입력으로
         </button>
@@ -328,6 +337,18 @@ export function FitResultView({
           </dl>
         </div>
       </section>
+
+      {(computed.categoryId === "outer" || computed.categoryId === "top" || computed.categoryId === "bottom") && (
+        <section className="flex flex-col gap-3 border-b border-text py-7" aria-labelledby="body-fit-title">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="body-fit-title" className="text-lg">
+              내 몸 기준 예상 핏 · {size.sizeLabel}
+            </h2>
+            <span className="text-sm text-neutral-700">내 치수와 이 사이즈 실측의 여유분으로 계산 · 기록에는 남기지 않습니다</span>
+          </div>
+          <BodyFitPanel garment={bodyGarment} />
+        </section>
+      )}
 
       {warning && (
         <div className="mt-6 flex flex-wrap items-start gap-3 border border-accent px-4 py-3.5">
@@ -468,7 +489,7 @@ export function FitResultView({
         >
           이 {noun}{noun === "모자" ? "를" : "을"} 구매했어요 — 옷장에 추가
         </button>
-        {onBack ? (
+        {embedded ? null : onBack ? (
           <button type="button" className="btn btn-secondary min-h-11" onClick={onBack}>
             다른 옷 판단하기
           </button>
@@ -479,6 +500,6 @@ export function FitResultView({
         )}
         <span className="text-sm text-neutral-700">구매가, 구매일, 링크는 AI에 보내지 않습니다.</span>
       </div>
-    </main>
+    </Wrapper>
   );
 }
