@@ -20,7 +20,7 @@ export interface BodyField {
 export const BODY_FIELDS: BodyField[] = [
   { key: "height", label: "키", unit: "cm", group: "basic", hint: "기록용입니다. 지금은 계산에 쓰지 않습니다.", min: 100, max: 230 },
   { key: "weight", label: "몸무게", unit: "kg", group: "basic", hint: "기록용입니다. 지금은 계산에 쓰지 않습니다.", min: 25, max: 250 },
-  { key: "shoulder", label: "어깨너비", unit: "cm", group: "upper", hint: "등 뒤에서 한쪽 어깨 끝 뼈부터 반대쪽 끝까지, 몸을 따라 잽니다.", min: 25, max: 70 },
+  { key: "shoulder", label: "어깨너비", unit: "cm", group: "upper", hint: "등 뒤에서 한쪽 어깨 끝 뼈부터 반대쪽 어깨 끝 뼈까지 직선으로 측정합니다. 줄자가 등의 곡선을 따라 휘지 않도록 해주세요. 가능하면 다른 사람이 측정하는 것을 권장합니다.", min: 25, max: 70 },
   { key: "chest", label: "가슴둘레", unit: "cm", group: "upper", hint: "겨드랑이 바로 아래 가장 두꺼운 곳을 수평으로 한 바퀴 잽니다.", min: 50, max: 180 },
   { key: "waist", label: "허리둘레", unit: "cm", group: "lower", hint: "바지를 입는 높이에서 한 바퀴 잽니다.", min: 40, max: 180 },
   { key: "hip", label: "엉덩이둘레", unit: "cm", group: "lower", hint: "엉덩이가 가장 튀어나온 곳을 수평으로 한 바퀴 잽니다.", min: 50, max: 180 },
