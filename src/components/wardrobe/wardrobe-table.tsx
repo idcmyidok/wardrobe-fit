@@ -56,7 +56,9 @@ export function WardrobeTable({
               </th>
               {sortHead("size", "사이즈", "w-15", true)}
               {sortHead("color", "컬러", "w-24")}
-              {sortHead("season", "시즌", "w-26")}
+              <th scope="col" className={cn(head, "w-26")}>
+                시즌
+              </th>
               {measurements.map((m) => sortHead(m.key, m.label, "bg-neutral-100", true))}
               {sortHead("purchasedOn", "구매일", "w-32")}
               {sortHead("price", "구매가", "w-32")}
