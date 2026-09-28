@@ -50,8 +50,29 @@ describe("제품명·컬러·분류", () => {
 
   it("breadcrumb의 좁은 분류를 우선하고, 없으면 제품명으로 찾는다", () => {
     expect(mapCategory(["남성", "아우터", "블레이저"])?.subcategoryId).toBe("outer.blazer");
-    expect(mapCategory([], "데님 트러커 자켓")).toEqual({ categoryId: "outer", subcategoryId: "outer.jacket", fromName: true });
+    expect(mapCategory([], "데님 트러커 자켓")).toEqual({ categoryId: "outer", subcategoryId: "outer.trucker", fromName: true });
     expect(mapCategory(["bottom", "Wide Slacks"])?.subcategoryId).toBe("bottom.slacks");
+  });
+
+  it("무신사 세부분류로 나눈다", () => {
+    const sub = (name: string) => mapCategory([], name)?.subcategoryId;
+    expect(sub("오버핏 반팔 티셔츠")).toBe("top.short_tee");
+    expect(sub("그래픽 티셔츠")).toBe("top.short_tee");
+    expect(sub("옥스포드 셔츠")).toBe("top.shirt");
+    expect(sub("후드 집업")).toBe("outer.hood_zip");
+    expect(sub("스웨트 후디")).toBe("top.hoodie");
+    expect(sub("경량 패딩 베스트")).toBe("outer.light_padding");
+    expect(sub("구스 다운 롱패딩")).toBe("outer.long_padding");
+    expect(sub("캐시미어 더블 코트")).toBe("outer.double_coat");
+    expect(sub("코튼 트렌치 코트")).toBe("outer.transition_coat");
+    expect(sub("MA-1 봄버")).toBe("outer.blouson");
+    expect(sub("나일론 코치 자켓")).toBe("outer.coach");
+    expect(sub("레더 자켓")).toBe("outer.leather");
+    expect(sub("레더 팬츠")).toBe("bottom.etc");
+    expect(sub("트레이닝 팬츠")).toBe("bottom.sweatpants");
+    expect(sub("카고 팬츠")).toBe("bottom.chino");
+    expect(sub("데님 오버올")).toBe("bottom.jumpsuit");
+    expect(sub("워크 자켓")).toBe("outer.etc");
   });
 });
 

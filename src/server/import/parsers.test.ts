@@ -97,7 +97,7 @@ describe("platform parser: Cafe24", () => {
     expect(p.colorOptions).toEqual(["네이비", "차콜"]);
     expect(p.sizeOptions).toEqual(["S", "M"]);
     expect(p.imageUrls).toEqual(["https://cafemall.com/web/product/big/jacket.jpg"]);
-    expect(p.subcategoryId?.value).toBe("outer.jacket");
+    expect(p.subcategoryId?.value).toBe("outer.etc");
     expect(p.sizeChart?.rows).toEqual([
       { sizeLabel: "S", measurements: { length: 68, shoulder: 44, chest: 56, sleeve: 61 } },
       { sizeLabel: "M", measurements: { length: 70, shoulder: 46, chest: 58, sleeve: 63 } },
