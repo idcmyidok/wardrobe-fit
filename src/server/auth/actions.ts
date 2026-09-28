@@ -79,7 +79,9 @@ export async function signUp(_prev: AuthFormState, formData: FormData): Promise<
     email: text(formData, "email"),
     password: text(formData, "password"),
     passwordConfirm: text(formData, "passwordConfirm"),
-    agree: text(formData, "agree"),
+    age: text(formData, "age"),
+    terms: text(formData, "terms"),
+    privacy: text(formData, "privacy"),
   });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error), email: text(formData, "email") };
 

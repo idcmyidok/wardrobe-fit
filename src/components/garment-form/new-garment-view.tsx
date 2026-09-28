@@ -110,6 +110,8 @@ export function NewGarmentView() {
   const [imageIndex, setImageIndex] = useState(0);
   /** 받지 못했거나 아이콘처럼 작은 페이지 사진(목록에서 숨긴다) */
   const [badImages, setBadImages] = useState<number[]>([]);
+  /** 찾은 사이즈 대신 사이즈를 직접 적는다(사이즈표를 잘못 읽었을 때). 나머지 가져온 값은 그대로 둔다. */
+  const [customSize, setCustomSize] = useState(false);
   const [image, setImage] = useState<ImageChange>(undefined);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -182,6 +184,7 @@ export function NewGarmentView() {
       setImage(undefined);
       setImageIndex(0);
       setBadImages([]);
+      setCustomSize(false);
       setPhase("review");
     } else {
       setFailure(outcome);
@@ -505,7 +508,7 @@ export function NewGarmentView() {
           <section className="flex flex-col gap-4 border-b border-text py-7">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-lg">구매한 옵션</h2>
-              <span className="text-sm text-neutral-700">사이즈를 고르면 사이즈표의 실측이 아래에 채워집니다</span>
+              <span className="text-sm text-neutral-700">사이즈를 고르면 사이즈표의 실측이 아래에 채워집니다. 맞는 사이즈가 없으면 직접 입력하세요</span>
             </div>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-6">
               <div className="field">
@@ -517,14 +520,31 @@ export function NewGarmentView() {
                         <input
                           type="radio"
                           name="fsize"
-                          checked={form.size === s}
-                          onChange={() => setForm((f) => ({ ...f, size: s, m: { ...f.m, ...chartMeasurements(product, s) } }))}
+                          checked={!customSize && form.size === s}
+                          onChange={() => {
+                            setCustomSize(false);
+                            setForm((f) => ({ ...f, size: s, m: { ...f.m, ...chartMeasurements(product, s) } }));
+                          }}
                         />
                         {s}
                       </label>
                     ))}
+                    <label className="seg-opt px-4 py-2 text-base text-accent-700 ring-1 ring-accent-300 ring-inset has-[input:checked]:bg-accent-700 has-[input:checked]:text-bg has-[input:checked]:ring-0">
+                      <input
+                        type="radio"
+                        name="fsize"
+                        checked={customSize}
+                        onChange={() => {
+                          setCustomSize(true);
+                          setForm((f) => ({ ...f, size: "" }));
+                          requestAnimationFrame(() => document.getElementById("f-size")?.focus());
+                        }}
+                      />
+                      직접 입력
+                    </label>
                   </div>
-                ) : (
+                ) : null}
+                {(sizeChoices.length === 0 || customSize) && (
                   <input id="f-size" className="input max-w-50" placeholder="예: M, 48, 32" aria-invalid={Boolean(fieldErrors.sizeLabel)} aria-describedby={fieldErrors.sizeLabel ? "e-sizeLabel" : undefined} value={form.size} onChange={(e) => update("size", e.target.value)} />
                 )}
                 <FieldError id="e-sizeLabel" message={fieldErrors.sizeLabel} />

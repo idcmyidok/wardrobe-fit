@@ -6,12 +6,13 @@ import { selectComparables } from "@/lib/fit/select-comparables";
 import type { AiStatus, FitComputed, FitInterpretation } from "@/lib/fit/types";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { buildFitInput, inputHash, interpretFit } from "@/server/ai/fit-interpreter";
+import { hasAdminRow } from "@/server/admin/is-admin";
 import { AiError, getAiProvider } from "@/server/ai/provider";
 import { GARMENT_COLUMNS, rowToGarment } from "@/server/garments/mapper";
 
 /**
  * 구매 판단 1건(PROJECT_SPEC.md 15장). 규칙 계산 결과를 먼저 보내고, AI가 켜져 있으면 요약을 붙인 뒤 저장한다.
- * - 판단은 사용자당 24시간에 20번, 그중 AI 호출은 10번(FIT_AI_DAILY_LIMIT)까지.
+ * - 판단은 사용자당 24시간에 20번, 그중 AI 호출은 10번(FIT_AI_DAILY_LIMIT)까지. 관리자는 제한 없음.
  * - 같은 입력의 AI 요약은 7일 동안 다시 쓴다(AI를 다시 부르지 않음).
  * - fit_checks는 insert만 한다(마이그레이션 6에서 사용자 update/delete를 막아 제한을 초기화할 수 없다).
  */
@@ -38,12 +39,15 @@ export function aiDailyLimit() {
 }
 
 export async function runFitCheck(supabase: Client, userId: string, req: FitRequest, send: (e: FitStreamEvent) => void) {
-  const { count } = await supabase
-    .from("fit_checks")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .gte("created_at", hoursAgo(24));
-  if ((count ?? 0) >= FIT_DAILY_LIMIT) return send({ type: "error", code: "rate_limited" });
+  const unlimited = await hasAdminRow(supabase, userId);
+  if (!unlimited) {
+    const { count } = await supabase
+      .from("fit_checks")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .gte("created_at", hoursAgo(24));
+    if ((count ?? 0) >= FIT_DAILY_LIMIT) return send({ type: "error", code: "rate_limited" });
+  }
 
   // 남의 분석 기록 id면 연결하지 않는다(RLS가 insert를 막기 전에 걸러 저장은 되게 한다).
   let importId = req.importId ?? null;
@@ -88,13 +92,15 @@ export async function runFitCheck(supabase: Client, userId: string, req: FitRequ
       aiStatus = "cached";
       aiModel = provider.model + CACHE_SUFFIX;
     } else {
-      const { count: aiCount } = await supabase
-        .from("fit_checks")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .not("ai_model", "is", null)
-        .not("ai_model", "like", `%${CACHE_SUFFIX}`)
-        .gte("created_at", hoursAgo(24));
+      const { count: aiCount } = unlimited
+        ? { count: 0 }
+        : await supabase
+            .from("fit_checks")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .not("ai_model", "is", null)
+            .not("ai_model", "like", `%${CACHE_SUFFIX}`)
+            .gte("created_at", hoursAgo(24));
       if ((aiCount ?? 0) >= aiDailyLimit()) aiStatus = "limited";
       else {
         // 호출하면 성공·실패와 관계없이 사용량으로 센다.

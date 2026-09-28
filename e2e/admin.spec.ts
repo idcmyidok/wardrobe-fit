@@ -33,6 +33,9 @@ test("관리자는 통계를 보고 사용자를 정지·해제·삭제한다", 
   await page.getByRole("menuitem", { name: "관리자 페이지" }).click();
   await expect(page.getByRole("heading", { name: "관리자", exact: true })).toBeVisible();
   await expect(page.getByText("가입자", { exact: true })).toBeVisible();
+  // 관리자는 사용 한도가 없고, 회원은 한도가 있다.
+  expect((await (await page.request.get("/api/usage")).json()).unlimited).toBe(true);
+  expect((await (await memberPage.request.get("/api/usage")).json()).unlimited).toBe(false);
 
   const row = page.locator(`tr[data-user-email="${member.email}"]`);
   await expect(row).toBeVisible();

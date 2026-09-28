@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -28,7 +28,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - name: Next.js 빌드 캐시
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .next/cache
           key: next-check-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'next.config.*') }}
@@ -50,8 +50,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - uses: actions/checkout@v7
+      - uses: supabase/setup-cli@v3
         with:
           version: latest
       # Supabase 시작(도커 이미지 받기, 1~2분)이 가장 오래 걸려서 먼저 뒤에서 돌리고,
@@ -60,7 +60,7 @@ jobs:
         run: |
           (supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta \
             > "$RUNNER_TEMP/supabase-start.log" 2>&1; echo $? > "$RUNNER_TEMP/supabase-start.exit") &
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -85,14 +85,14 @@ jobs:
             echo "E2E_MAILPIT_URL=$MAILPIT_URL"
           } >> "$GITHUB_ENV"
       - name: Next.js 빌드 캐시
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .next/cache
           key: next-e2e-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'next.config.*') }}
           restore-keys: next-e2e-${{ hashFiles('package-lock.json') }}-
       - run: npm run build
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
