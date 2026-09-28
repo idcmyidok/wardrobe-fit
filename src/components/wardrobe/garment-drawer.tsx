@@ -308,12 +308,9 @@ export function GarmentDetail({
           <div className="sticky bottom-0 flex gap-2 border-t border-text bg-bg px-6 py-3">
             {!info ? (
               <>
-                {/* 구매 판단은 옷(아우터·상의·하의)만 한다. */}
-                {g.categoryId !== "hat" && g.categoryId !== "shoes" && (
-                  <button type="button" className="btn btn-secondary" onClick={() => router.push("/fit-check")}>
-                    이 옷 기준으로 판단
-                  </button>
-                )}
+                <button type="button" className="btn btn-secondary" onClick={() => router.push("/fit-check")}>
+                  이 옷 기준으로 판단
+                </button>
                 <button type="button" className="btn btn-ghost ml-auto" onClick={() => setConfirmDelete(true)}>
                   삭제
                 </button>

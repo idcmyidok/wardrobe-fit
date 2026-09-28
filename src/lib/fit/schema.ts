@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { SUBCATEGORIES } from "@/lib/constants/categories";
-import { BOTTOM_MEASUREMENTS, TOP_MEASUREMENTS, type MeasurementKey } from "@/lib/constants/measurements";
+import { ALL_MEASUREMENT_KEYS, MEASUREMENT_KEYS, type MeasurementKey } from "@/lib/constants/measurements";
 import type { Measurements } from "@/lib/types/domain";
 
 /** POST /api/fit-checks 입력(PROJECT_SPEC.md 18.3). 화면과 서버가 같은 규칙으로 검증한다. */
@@ -8,7 +8,7 @@ import type { Measurements } from "@/lib/types/domain";
 export const MAX_FIT_SIZES = 3;
 
 const measurement = z.number().gt(0).lt(200).transform((v) => Math.round(v * 10) / 10);
-const ALL_KEYS = [...new Set<MeasurementKey>([...TOP_MEASUREMENTS, ...BOTTOM_MEASUREMENTS])];
+const ALL_KEYS = ALL_MEASUREMENT_KEYS;
 const measurements = z.object(Object.fromEntries(ALL_KEYS.map((k) => [k, measurement.nullish()]))).strict();
 
 const text = (max: number) =>
@@ -20,7 +20,7 @@ const text = (max: number) =>
 
 export const fitCandidateSchema = z
   .object({
-    categoryId: z.enum(["outer", "top", "bottom"]),
+    categoryId: z.enum(["outer", "top", "bottom", "hat", "shoes"]),
     subcategoryId: z.string().max(40).nullish().transform((v) => v || null),
     brand: text(100),
     productName: text(200),
@@ -32,7 +32,7 @@ export const fitCandidateSchema = z
   .superRefine((c, ctx) => {
     if (c.subcategoryId && !SUBCATEGORIES.some((s) => s.id === c.subcategoryId && s.categoryId === c.categoryId))
       ctx.addIssue({ code: "custom", path: ["subcategoryId"], message: "세부분류가 대분류와 맞지 않습니다." });
-    const allowed: readonly MeasurementKey[] = c.categoryId === "bottom" ? BOTTOM_MEASUREMENTS : TOP_MEASUREMENTS;
+    const allowed = MEASUREMENT_KEYS[c.categoryId];
     c.sizes.forEach((s, i) => {
       for (const [k, v] of Object.entries(s.measurements))
         if (v != null && !allowed.includes(k as MeasurementKey))

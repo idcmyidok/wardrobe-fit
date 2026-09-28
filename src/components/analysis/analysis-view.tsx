@@ -37,6 +37,8 @@ export function AnalysisView() {
 
   const price = priceSummary(garments);
   const monthly = monthlySummary(garments);
+  const [month, setMonth] = useState<string | null>(null);
+  const picked = monthly.bars.find((b) => b.key === month) ?? null;
   const brands = brandSummary(garments, brandTab);
   const colors = colorSummary(garments, colorTab);
   const seasons = seasonSummary(garments);
@@ -64,7 +66,10 @@ export function AnalysisView() {
             <span className="font-display text-total tracking-[-0.03em]">{price.totalShort}</span>
             <span className="text-lg">￦</span>
           </div>
-          <span className="font-mono text-sm text-neutral-700">{price.totalFull}</span>
+          <div className="flex flex-col gap-1 font-mono text-sm text-neutral-700">
+            <span>{price.totalFull}</span>
+            <span>{price.recentFull}</span>
+          </div>
           <div className="mt-2 flex flex-col gap-1 rounded-md bg-accent-100 px-4 py-3.5">
             <span className="text-lg font-semibold text-accent-800">{price.tierTitle}</span>
             <span className="text-base text-pretty text-neutral-800">{price.tierBody}</span>
@@ -108,20 +113,35 @@ export function AnalysisView() {
             <span id="an-month" className={sectionTitle}>
               월별 구매 금액
             </span>
-            <span className="text-xs text-neutral-700">좌우로 드래그해서 이동</span>
+            <span className="text-xs text-neutral-700">막대를 누르면 그 달을 볼 수 있어요</span>
           </div>
-          <MonthChart bars={monthly.bars} />
+          <MonthChart bars={monthly.bars} selected={month} onSelect={setMonth} />
         </div>
-        <div className="flex flex-col justify-center gap-2.5">
-          <span className={colLabel}>가장 많이 구매한 달</span>
-          <span className="font-display text-display-lg">{monthly.topMonth}</span>
-          <span className="font-mono text-md">{monthly.topMonthAmount}</span>
-          <span className="text-base text-pretty text-neutral-800">{monthly.topMonthNote}</span>
-          <div className="mt-2 flex flex-col gap-0.5 border-t border-neutral-300 pt-3 text-sm text-neutral-700">
-            <span>{monthly.span}</span>
-            <span>{monthly.average}</span>
+        {picked ? (
+          <div className="relative flex flex-col justify-center gap-2.5 self-center rounded-lg border border-neutral-300 bg-neutral-100 px-5 py-4.5">
+            <button
+              type="button"
+              aria-label="닫고 가장 많이 구매한 달 보기"
+              onClick={() => setMonth(null)}
+              className="absolute top-2 right-2 grid size-7 place-items-center rounded-md text-neutral-700 hover:bg-neutral-200 hover:text-text"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
+                <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            </button>
+            <span className={colLabel}>선택한 달</span>
+            <MonthDetail detail={picked.detail} />
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col justify-center gap-2.5">
+            <span className={colLabel}>가장 많이 구매한 달</span>
+            <MonthDetail detail={monthly.top} />
+            <div className="mt-2 flex flex-col gap-0.5 border-t border-neutral-300 pt-3 text-sm text-neutral-700">
+              <span>{monthly.span}</span>
+              <span>{monthly.average}</span>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 브랜드 */}
@@ -135,6 +155,7 @@ export function AnalysisView() {
         total={brands.total}
         totalLabel={brands.totalLabel}
         chartLabel="브랜드 비율 도넛 그래프"
+        limit={10}
         nameHeader="브랜드"
         withAmount
       />
@@ -216,10 +237,32 @@ export function AnalysisView() {
   );
 }
 
-/** 월별 막대. 가로로 길어지면 끌어서 이동한다(휠·터치 스크롤도 된다). */
-function MonthChart({ bars }: { bars: ReturnType<typeof monthlySummary>["bars"] }) {
+function MonthDetail({ detail }: { detail: ReturnType<typeof monthlySummary>["top"] }) {
+  return (
+    <>
+      <span className="font-display text-display-lg">{detail.month}</span>
+      <span className="font-mono text-md">{detail.amount}</span>
+      <span className="text-base text-pretty text-neutral-800">{detail.note}</span>
+    </>
+  );
+}
+
+/**
+ * 월별 막대. 구매한 달만 그린다. 마우스를 올리면 강조되고, 누르면 그 달을 옆에 보여 준다.
+ * 가로로 길어지면 끌어서 이동한다(휠·터치 스크롤도 된다). 끌어서 옮긴 경우에는 클릭으로 치지 않는다.
+ */
+function MonthChart({
+  bars,
+  selected,
+  onSelect,
+}: {
+  bars: ReturnType<typeof monthlySummary>["bars"];
+  selected: string | null;
+  onSelect: (key: string) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; left: number } | null>(null);
+  const moved = useRef(false);
 
   // 막대가 많아 가로 스크롤이 생기면 처음에는 최근 달(오른쪽 끝)을 보여준다.
   useEffect(() => {
@@ -229,34 +272,59 @@ function MonthChart({ bars }: { bars: ReturnType<typeof monthlySummary>["bars"] 
   return (
     <div
       ref={ref}
-      className="cursor-grab overflow-x-auto pb-1.5 select-none active:cursor-grabbing"
+      className="overflow-x-auto pb-1.5 select-none"
       style={{ touchAction: "pan-y" }}
       onPointerDown={(e) => {
         if (ref.current) drag.current = { x: e.clientX, left: ref.current.scrollLeft };
+        moved.current = false;
       }}
       onPointerMove={(e) => {
-        if (ref.current && drag.current) ref.current.scrollLeft = drag.current.left - (e.clientX - drag.current.x);
+        if (!ref.current || !drag.current) return;
+        const dx = e.clientX - drag.current.x;
+        if (Math.abs(dx) > 4) moved.current = true;
+        ref.current.scrollLeft = drag.current.left - dx;
       }}
       onPointerUp={() => (drag.current = null)}
+      onKeyDown={() => (moved.current = false)}
       onPointerLeave={() => (drag.current = null)}
     >
       <div className="flex h-65 min-w-max items-end gap-1.5 border-b border-text pt-6">
-        {bars.map((m) => (
-          <div key={m.key} title={m.title} className="flex h-full w-11 flex-none flex-col items-center justify-end gap-1">
-            <span className={cn("font-mono text-2xs whitespace-nowrap", m.isTop ? "text-accent-700" : "text-neutral-700")}>
-              {m.short}
-            </span>
-            <div
-              className={cn("w-7 rounded-t-bar", m.isTop ? "bg-accent" : "bg-text")}
-              style={{ height: m.height, minHeight: m.hasValue ? 4 : 0 }}
-            />
-          </div>
-        ))}
+        {bars.map((m) => {
+          const on = selected === m.key;
+          return (
+            <button
+              key={m.key}
+              type="button"
+              title={m.title}
+              aria-label={m.title}
+              aria-pressed={on}
+              onClick={() => !moved.current && onSelect(m.key)}
+              className="group flex h-full w-11 flex-none cursor-pointer flex-col items-center justify-end gap-1 rounded-t-sm hover:bg-neutral-100"
+            >
+              <span
+                className={cn(
+                  "font-mono text-2xs whitespace-nowrap",
+                  on ? "font-semibold text-text" : m.isTop ? "text-accent-700" : "text-neutral-700",
+                )}
+              >
+                {m.short}
+              </span>
+              <span
+                className={cn(
+                  "block min-h-1 w-7 rounded-t-bar transition-[width,opacity] group-hover:w-8",
+                  m.isTop ? "bg-accent" : "bg-text",
+                  selected && !on && "opacity-35",
+                )}
+                style={{ height: m.height }}
+              />
+            </button>
+          );
+        })}
       </div>
       <div className="flex min-w-max gap-1.5 pt-1.5">
         {bars.map((m) => (
           <div key={m.key} className="flex w-11 flex-none flex-col items-center font-mono">
-            <span className="text-label">{m.label}</span>
+            <span className={cn("text-label", selected === m.key && "font-semibold")}>{m.label}</span>
             <span className="min-h-3.5 text-2xs text-neutral-700">{m.year}</span>
           </div>
         ))}
@@ -279,6 +347,7 @@ function DonutSection({
   nameHeader,
   withAmount = false,
   swatchOutline = false,
+  limit,
 }: {
   title: string;
   name: string;
@@ -292,9 +361,13 @@ function DonutSection({
   nameHeader: string;
   withAmount?: boolean;
   swatchOutline?: boolean;
+  /** 순위표에 처음 보여 줄 행 수. 넘으면 "더보기"로 펼친다. */
+  limit?: number;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<{ i: number; x: number; y: number } | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const rows = limit && !expanded ? slices.slice(0, limit) : slices;
 
   const hoverAt = (i: number, e?: React.MouseEvent) => {
     const rect = box.current?.getBoundingClientRect();
@@ -320,6 +393,7 @@ function DonutSection({
                   onChange={() => {
                     onTab(t.id);
                     setHover(null);
+                    setExpanded(false);
                   }}
                 />
                 {t.label}
@@ -404,7 +478,7 @@ function DonutSection({
           <span className="text-right">비율</span>
           {withAmount && <span className="text-right">금액</span>}
         </div>
-        {slices.map((s, i) => (
+        {rows.map((s, i) => (
           <div
             key={s.name}
             onMouseEnter={() => hoverAt(i)}
@@ -421,6 +495,16 @@ function DonutSection({
             )}
           </div>
         ))}
+        {limit && slices.length > limit && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            className="self-start py-3 text-sm font-medium text-neutral-800 underline-offset-4 hover:underline"
+          >
+            {expanded ? "접기" : `더보기 (${slices.length - limit}개 더)`}
+          </button>
+        )}
       </div>
     </section>
   );

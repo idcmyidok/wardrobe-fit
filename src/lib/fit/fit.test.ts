@@ -5,6 +5,7 @@ import { computeFit } from "./compute";
 import { extractReviewSignals } from "./review-signals";
 import { fitCandidateSchema } from "./schema";
 import { selectComparables } from "./select-comparables";
+import { itemWording } from "./wording";
 
 const pick = (review: string, keys: readonly string[] = TOP_MEASUREMENTS) =>
   extractReviewSignals(review, keys as typeof TOP_MEASUREMENTS).map((s) => `${s.dimension}:${s.direction}:${s.strength}`);
@@ -161,7 +162,7 @@ describe("통계 엔진", () => {
 
 describe("입력 검증", () => {
   it("대분류에 없는 실측과 4개 이상 사이즈는 거절", () => {
-    const base = { categoryId: "top", subcategoryId: "top.shirt", sizes: [{ sizeLabel: "M", measurements: { waist: 40 } }] };
+    const base = { categoryId: "top", subcategoryId: "top.knit", sizes: [{ sizeLabel: "M", measurements: { waist: 40 } }] };
     expect(fitCandidateSchema.safeParse(base).success).toBe(false);
     const four = { ...base, sizes: ["S", "M", "L", "XL"].map((s) => ({ sizeLabel: s, measurements: { chest: 50 } })) };
     expect(fitCandidateSchema.safeParse(four).success).toBe(false);
@@ -170,5 +171,83 @@ describe("입력 검증", () => {
   it("세부분류가 대분류와 맞아야 한다", () => {
     const r = fitCandidateSchema.safeParse({ categoryId: "top", subcategoryId: "bottom.denim", sizes: [{ sizeLabel: "M", measurements: {} }] });
     expect(r.success).toBe(false);
+  });
+});
+
+describe("모자 판단", () => {
+  const cap = (brand: string, head: number, review: string | null = null) =>
+    g({ brand, categoryId: "hat", subcategoryId: "hat.cap", productName: "볼캡", sizeLabel: "FREE", measurements: { head, depth: 15, brim: 7 }, fitReview: review });
+  const hats = [cap("A", 58, "딱 맞고 편하다"), cap("B", 58.5, "잘 맞는다"), cap("C", 57, "머리가 조금 낀다")];
+  const jacket = g({ brand: "J", measurements: { shoulder: 46, chest: 58, length: 70 } });
+  const candidate = { categoryId: "hat" as const, subcategoryId: "hat.cap", brand: null, productName: null, sizes: [{ sizeLabel: "FREE", measurements: { head: 57, depth: 15, brim: 7 } }] };
+
+  it("모자끼리만 비교하고 머리둘레가 낀다고 적은 모자와 비슷하면 주의", () => {
+    const { selected } = selectComparables(candidate, [...hats, jacket]);
+    expect(selected.map((s) => s.garment.brand).sort()).toEqual(["A", "B", "C"]);
+    const r = computeFit(candidate, selected).sizes[0];
+    expect(r.confidence).not.toBe("insufficient");
+    const head = r.dimensions.find((d) => d.key === "head")!;
+    expect(head.tag).toBe("caution");
+    expect(r.summary).toContain("머리둘레");
+    const text = [r.summary, ...r.limitations, ...r.dimensions.map((d) => d.judgement)].join(" ");
+    expect(text).not.toMatch(/옷(?!장)/);
+  });
+
+  it("문구는 옷 대신 모자로 쓴다", () => {
+    expect(itemWording("hat", "비교할 수 있는 옷이 2벌뿐입니다. 만족했던 옷들과 비슷, 기존 옷과 비교, 옷장에 기록")).toBe(
+      "비교할 수 있는 모자가 2개뿐입니다. 만족했던 모자들과 비슷, 기존 모자와 비교, 옷장에 기록",
+    );
+    expect(itemWording("top", "기존 옷과 비교")).toBe("기존 옷과 비교");
+  });
+});
+
+describe("신발 판단", () => {
+  const shoe = (brand: string, sizeLabel: string, shoeFit: Garment["shoeFit"] = null) =>
+    g({ brand, categoryId: "shoes", subcategoryId: "shoes.sneakers", productName: "스니커즈", sizeLabel, measurements: {}, shoeFit });
+  const fit = (length: "tight" | "good" | "loose" | null, width: "tight" | "good" | "loose" | null = null) => ({ length, width, instep: null });
+  const owned = [shoe("Converse", "270", fit("good", "tight")), shoe("Converse", "265", fit("tight")), shoe("Nike", "275", fit("loose")), shoe("Adidas", "사이즈 없음")];
+  const cand = (brand: string | null, ...labels: string[]) => ({
+    categoryId: "shoes" as const,
+    subcategoryId: "shoes.sneakers",
+    brand,
+    productName: null,
+    sizes: labels.map((sizeLabel) => ({ sizeLabel, measurements: {} })),
+  });
+
+  it("사이즈를 mm로 읽는다", async () => {
+    const { shoeSizeMm } = await import("./shoes");
+    expect(shoeSizeMm("270")).toBe(270);
+    expect(shoeSizeMm("27.5cm")).toBe(275);
+    expect(shoeSizeMm("M")).toBeNull();
+  });
+
+  it("같은 브랜드 신발로 평소 사이즈를 정하고 발볼 주의를 알린다", () => {
+    const c = cand("Converse", "270", "275");
+    const { selected, lacking } = selectComparables(c, owned);
+    expect(selected).toHaveLength(3);
+    expect(lacking).toHaveLength(1);
+    const r = computeFit(c, selected);
+    const s270 = r.sizes[0];
+    expect(s270.shoe).toMatchObject({ candidateMm: 270, idealMm: 270, diffMm: 0, basis: "sameBrand", lengthVerdict: "good" });
+    expect(s270.shoe!.cautions[0]).toMatchObject({ part: "width", sameBrand: true });
+    expect(s270.confidence).toBe("high");
+    expect(s270.summary).toContain("반 치수");
+    expect(r.sizes[1].shoe!.lengthVerdict).toBe("large");
+    // 같은 브랜드에서 발볼이 좁았으니 반 치수 큰 275를 권한다.
+    expect(r.sizeNote).toContain("275");
+  });
+
+  it("같은 브랜드가 없으면 전체 신발로 보고, mm를 못 읽으면 판단하지 않는다", () => {
+    const r = computeFit(cand("Vans", "265"), selectComparables(cand("Vans", "265"), owned).selected).sizes[0];
+    expect(r.shoe!.basis).toBe("all");
+    expect(r.shoe!.idealMm).toBe(270);
+    expect(r.shoe!.lengthVerdict).toBe("small");
+    expect(r.limitations.join(" ")).toContain("같은 브랜드 신발이 없어");
+    expect(computeFit(cand(null, "M"), selectComparables(cand(null, "M"), owned).selected).sizes[0].confidence).toBe("insufficient");
+  });
+
+  it("신발에는 실측을 받지 않는다", () => {
+    expect(fitCandidateSchema.safeParse({ ...cand(null, "270"), sizes: [{ sizeLabel: "270", measurements: { length: 28 } }] }).success).toBe(false);
+    expect(fitCandidateSchema.safeParse(cand(null, "270")).success).toBe(true);
   });
 });

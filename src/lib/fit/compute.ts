@@ -1,6 +1,7 @@
 import { MEASUREMENT_LABELS, formatNum, type MeasurementKey } from "@/lib/constants/measurements";
 import type { CategoryId, Measurements } from "@/lib/types/domain";
 import { extractReviewSignals } from "./review-signals";
+import { computeShoeSize, shoeSizeNote } from "./shoes";
 import { measurementKeysFor, type SelectedComparable } from "./select-comparables";
 import type {
   Anchor,
@@ -11,7 +12,7 @@ import type {
   RangeStat,
   SizeReport,
 } from "./types";
-import { DIRECTION_WORD, cm, eunNeun, gwaWa, shortLabel, words } from "./wording";
+import { DIRECTION_WORD, cm, eunNeun, gwaWa, itemWording, shortLabel, words } from "./wording";
 
 /**
  * 치수 비교·통계 엔진(PROJECT_SPEC.md 16장). 결정적 순수 함수라 같은 입력이면 늘 같은 결과가 나온다.
@@ -29,7 +30,6 @@ export const TOLERANCE: Record<MeasurementKey, number> = {
   rise: 1,
   length: 1.5,
   sleeve: 1.5,
-  // 모자는 구매 판단을 하지 않지만 키를 모두 채워 둔다.
   head: 1,
   depth: 1,
   brim: 0.5,
@@ -39,9 +39,12 @@ export const TOLERANCE: Record<MeasurementKey, number> = {
 const WITHIN_SLACK = 0.5;
 
 /** 그룹별 핵심 치수(가중치 2) */
-export const CORE_DIMS: Record<"top" | "bottom", MeasurementKey[]> = {
+export const CORE_DIMS: Record<CategoryId, readonly MeasurementKey[]> = {
+  outer: ["shoulder", "chest", "length", "sleeve"],
   top: ["shoulder", "chest", "length", "sleeve"],
   bottom: ["waist", "thigh", "length", "rise"],
+  hat: ["head", "depth", "brim"],
+  shoes: [],
 };
 
 export interface FitCandidate {
@@ -81,6 +84,7 @@ export function snapshotComparables(selected: SelectedComparable[]): ComparableS
       measurements,
       review,
       signals: extractReviewSignals(review, keys),
+      ...(g.categoryId === "shoes" ? { shoeFit: g.shoeFit } : {}),
     };
   });
 }
@@ -140,7 +144,7 @@ function dimension(key: MeasurementKey, cand: number | null, comps: ComparableSn
 }
 
 function confidenceOf(categoryId: CategoryId, dims: DimensionResult[], comps: ComparableSnapshot[]): Confidence {
-  const core = CORE_DIMS[categoryId === "bottom" ? "bottom" : "top"];
+  const core = CORE_DIMS[categoryId];
   const candCore = dims.filter((d) => core.includes(d.key) && d.candidate != null).length;
   if (!comps.length || candCore <= 1) return "insufficient";
   const reviewed = comps.filter((c) => c.review).length;
@@ -152,7 +156,7 @@ function confidenceOf(categoryId: CategoryId, dims: DimensionResult[], comps: Co
 }
 
 function nearest(categoryId: CategoryId, cand: Measurements, comps: ComparableSnapshot[]) {
-  const core = CORE_DIMS[categoryId === "bottom" ? "bottom" : "top"];
+  const core = CORE_DIMS[categoryId];
   return comps
     .map((c) => {
       let sum = 0;
@@ -245,7 +249,10 @@ export function computeSize(
   comps: ComparableSnapshot[],
   skippedCount = 0,
 ): SizeReport {
-  const dims = measurementKeysFor(categoryId).map((k) => dimension(k, size.measurements[k] ?? null, comps));
+  const t = (text: string) => itemWording(categoryId, text);
+  const dims = measurementKeysFor(categoryId)
+    .map((k) => dimension(k, size.measurements[k] ?? null, comps))
+    .map((d) => ({ ...d, judgement: t(d.judgement) }));
   const confidence = confidenceOf(categoryId, dims, comps);
   return {
     sizeLabel: size.sizeLabel,
@@ -254,23 +261,37 @@ export function computeSize(
     dimensions: dims,
     nearest: nearest(categoryId, size.measurements, comps),
     sameBrandSameSize: [],
-    limitations: limitationsOf(dims, comps, skippedCount),
-    summary: ruleSummary(dims, comps, confidence),
+    limitations: limitationsOf(dims, comps, skippedCount).map(t),
+    summary: t(ruleSummary(dims, comps, confidence)),
   };
 }
 
 export function computeFit(candidate: FitCandidate, selected: SelectedComparable[], skippedCount = 0): FitComputed {
   const comps = snapshotComparables(selected);
-  const brand = (candidate.brand ?? "").trim().toLowerCase();
+  if (candidate.categoryId === "shoes") {
+    const sizes: SizeReport[] = candidate.sizes.map((size) => {
+      const r = computeShoeSize(size.sizeLabel, candidate.brand, comps);
+      if (skippedCount) r.limitations.push(`사이즈를 읽을 수 없는 신발 ${skippedCount}켤레는 비교에서 뺐습니다.`);
+      return {
+        sizeLabel: size.sizeLabel,
+        measurements: {},
+        confidence: r.confidence,
+        dimensions: [],
+        nearest: [],
+        sameBrandSameSize: sameBrandSameSize(candidate.brand, size.sizeLabel, comps),
+        limitations: r.limitations,
+        summary: r.summary,
+        shoe: r.report,
+      };
+    });
+    return { version: 1, categoryId: "shoes", subcategoryId: candidate.subcategoryId, comparables: comps, skippedCount, sizes, sizeNote: shoeSizeNote(sizes) };
+  }
   const sizes = candidate.sizes.map((size) => {
     const report = computeSize(candidate.categoryId, size, comps, skippedCount);
-    report.sameBrandSameSize = brand
-      ? comps
-          .filter((c) => c.brand.trim().toLowerCase() === brand && (c.sizeLabel ?? "").trim().toLowerCase() === size.sizeLabel.trim().toLowerCase())
-          .map((c) => c.garmentId)
-      : [];
+    report.sameBrandSameSize = sameBrandSameSize(candidate.brand, size.sizeLabel, comps);
     return report;
   });
+  const note = sizeNote(sizes);
   return {
     version: 1,
     categoryId: candidate.categoryId,
@@ -278,8 +299,15 @@ export function computeFit(candidate: FitCandidate, selected: SelectedComparable
     comparables: comps,
     skippedCount,
     sizes,
-    sizeNote: sizeNote(sizes),
+    sizeNote: note && itemWording(candidate.categoryId, note),
   };
+}
+
+function sameBrandSameSize(brandName: string | null, sizeLabel: string, comps: ComparableSnapshot[]) {
+  const brand = (brandName ?? "").trim().toLowerCase();
+  if (!brand) return [];
+  const size = sizeLabel.trim().toLowerCase();
+  return comps.filter((c) => c.brand.trim().toLowerCase() === brand && (c.sizeLabel ?? "").trim().toLowerCase() === size).map((c) => c.garmentId);
 }
 
 /** 사이즈를 여러 개 비교하면, 범위 안 치수가 많고 경계 거리 합이 작은 쪽을 알려 준다. */

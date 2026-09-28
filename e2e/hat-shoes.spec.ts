@@ -3,6 +3,7 @@ import { expect, login, test } from "./support";
 test("모자는 실측 3개, 신발은 착용감으로 등록하고 표에 보인다", async ({ page, admin, makeUser }) => {
   const user = await makeUser("hat-shoes");
   await login(page, user);
+  await expect(page).toHaveURL(/\/wardrobe$/);
   const manual = async () => {
     await page.goto("/wardrobe/new");
     await page.getByRole("radiogroup", { name: "추가 방법" }).locator("label", { hasText: "직접 입력" }).click();
@@ -48,4 +49,28 @@ test("모자는 실측 3개, 신발은 착용감으로 등록하고 표에 보�
   const table = page.locator("table:visible");
   await expect(table.getByRole("columnheader", { name: /머리둘레/ })).toBeVisible();
   await expect(table.getByRole("columnheader", { name: "발볼" })).toBeVisible();
+});
+
+test("신발 구매 판단: 가진 신발의 사이즈·착용감으로 평소 사이즈를 알려 준다", async ({ page, admin, makeUser, seedGarments }) => {
+  const user = await makeUser("shoe-fit");
+  await seedGarments(user, [
+    { category_id: "shoes", subcategory_id: "shoes.sneakers", brand: "Converse", product_name: "척 70 하이", size_label: "270", shoe_fit_length: "good", shoe_fit_width: "tight" },
+    { category_id: "shoes", subcategory_id: "shoes.sneakers", brand: "Converse", product_name: "잭퍼셀", size_label: "265", shoe_fit_length: "tight" },
+    { category_id: "shoes", subcategory_id: "shoes.sports", brand: "Nike", product_name: "페가수스", size_label: "275", shoe_fit_length: "loose" },
+  ]);
+  await login(page, user, "/fit-check");
+  await page.getByRole("button", { name: "링크 없이 실측 직접 입력" }).click();
+  await page.selectOption("#fm-cat", "shoes");
+  await page.fill("#fm-brand", "Converse");
+  await page.fill("#fm-size", "270");
+  await expect(page.getByTestId("comparable-note")).toContainText("3켤레");
+  await page.getByRole("button", { name: "판단하기" }).click();
+  await expect(page.getByTestId("fit-summary")).toContainText("평소 맞는 사이즈는 270mm");
+  await expect(page.getByTestId("fit-summary")).toContainText("발볼");
+  await expect(page.getByRole("heading", { name: "사이즈·착용감 비교" })).toBeVisible();
+  await expect(page).toHaveURL(/\/fit-check\/[0-9a-f-]{36}$/);
+
+  const { data } = await admin.from("fit_checks").select("computed, ai_model").eq("user_id", user.id).single();
+  expect(data?.ai_model).toBeNull();
+  expect((data?.computed as { sizes: Array<{ shoe: { idealMm: number } }> }).sizes[0].shoe.idealMm).toBe(270);
 });
