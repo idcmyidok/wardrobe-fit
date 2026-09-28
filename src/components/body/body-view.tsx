@@ -263,7 +263,7 @@ function FillFromGarments({ onApply }: { onApply: (est: Partial<Record<BodyKey, 
   return (
     <div className="flex flex-col gap-3 border border-neutral-300 bg-surface p-4">
       <p className="text-sm text-neutral-800">
-        잘 맞는 옷을 몇 벌 고르면 실측에서 몸 치수를 거꾸로 추정해요. 옷에 &ldquo;내 핏&rdquo;을 표기해 두었다면 그 핏 기준으로, 아니면 정핏으로 보고
+        잘 맞는 옷을 몇 벌 고르면 실측에서 몸 치수를 거꾸로 추정해요. 옷에 &ldquo;내 핏&rdquo;을 표기해 두었다면 그 핏 기준으로, 아니면 레귤러핏으로 보고
         계산합니다.
       </p>
       {clothes.length === 0 ? (

@@ -39,7 +39,7 @@ export type WearableLevel = (typeof WEARABLE_LEVELS)[number];
 export type FitKind = "top" | "bottom";
 
 const LEVEL_NAMES: Record<FitKind, Record<FitLevel, string>> = {
-  top: { too_small: "너무 작음", slim: "슬림핏", regular: "정핏", semi_over: "세미오버핏", over: "오버핏", too_big: "너무 큼" },
+  top: { too_small: "너무 작음", slim: "슬림핏", regular: "레귤러핏", semi_over: "세미오버핏", over: "오버핏", too_big: "너무 큼" },
   bottom: { too_small: "너무 작음", slim: "슬림", regular: "레귤러", semi_over: "세미와이드", over: "와이드", too_big: "너무 큼" },
 };
 
