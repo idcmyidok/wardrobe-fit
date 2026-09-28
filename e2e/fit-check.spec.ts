@@ -13,7 +13,7 @@ const JACKETS = [
 
 async function seedJackets(seedGarments: Fixtures["seedGarments"], user: TestUser) {
   return seedGarments(user, [
-    ...JACKETS.map((j) => ({ category_id: "outer", subcategory_id: "outer.jacket", purchase_price: 289000, product_url: "https://secret-shop.example/p", ...j })),
+    ...JACKETS.map((j) => ({ category_id: "outer", subcategory_id: "outer.blouson", purchase_price: 289000, product_url: "https://secret-shop.example/p", ...j })),
     { category_id: "top", subcategory_id: "top.knit", brand: "니트", product_name: "램스울 니트", m_shoulder: 45, m_chest: 55 },
   ]);
 }
@@ -35,7 +35,7 @@ test("직접 입력 → 비교 대상 확인 → 규칙 계산과 AI 요약(모�
 
   await login(page, user, "/fit-check");
   await fillManual(page);
-  await expect(page.getByTestId("comparable-note")).toContainText("동일 세부분류 자켓 3벌");
+  await expect(page.getByTestId("comparable-note")).toContainText("동일 세부분류 블루종/MA-1 3벌");
   await expect(page.getByRole("checkbox", { name: /램스울 니트/ })).toHaveCount(0);
   await page.getByRole("button", { name: "판단하기" }).click();
 
@@ -81,7 +81,7 @@ test("링크 분석 결과에서 사이즈 2개를 골라 함께 비교", async 
     brand: { value: "Our Legacy", source: "json_ld", confidence: "high" },
     productName: { value: "에브리데이 워크 자켓", source: "json_ld", confidence: "high" },
     categoryId: { value: "outer", source: "heuristic", confidence: "medium" },
-    subcategoryId: { value: "outer.jacket", source: "heuristic", confidence: "low" },
+    subcategoryId: { value: "outer.blouson", source: "heuristic", confidence: "low" },
     imageUrls: [],
     price: { value: 459000, source: "json_ld", confidence: "high" },
     colorOptions: [],

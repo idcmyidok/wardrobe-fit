@@ -11,7 +11,7 @@ let seq = 0;
 const g = (over: Partial<Garment>): Garment => ({
   id: `00000000-0000-4000-8000-${String(++seq).padStart(12, "0")}`,
   categoryId: "outer",
-  subcategoryId: "outer.jacket",
+  subcategoryId: "outer.blouson",
   brand: "브랜드",
   productName: "자켓",
   sizeLabel: "M",
@@ -37,7 +37,7 @@ const garments = [
 ];
 const candidate = {
   categoryId: "outer" as const,
-  subcategoryId: "outer.jacket",
+  subcategoryId: "outer.blouson",
   brand: "Our Legacy",
   productName: "워크 자켓",
   sizes: [{ sizeLabel: "48", measurements: { shoulder: 46.5, chest: 59, length: 72, sleeve: 64.5 } }],
