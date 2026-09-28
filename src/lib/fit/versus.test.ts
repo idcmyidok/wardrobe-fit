@@ -10,10 +10,10 @@ const body: BodyProfile = {
 };
 const base = { categoryId: "top" as const, subcategoryId: "top.short_tee", productName: "티셔츠" };
 const rows = [
-  { sizeLabel: "S", measurements: { chest: 50, shoulder: 44, length: 68 } },
-  { sizeLabel: "M", measurements: { chest: 53, shoulder: 46, length: 71 } },
-  { sizeLabel: "L", measurements: { chest: 57, shoulder: 50, length: 73 } },
-  { sizeLabel: "XL", measurements: { chest: 62, shoulder: 55, length: 75 } },
+  { sizeLabel: "S", measurements: { chest: 48.5, shoulder: 42, length: 68 } },
+  { sizeLabel: "M", measurements: { chest: 51.5, shoulder: 44.5, length: 71 } },
+  { sizeLabel: "L", measurements: { chest: 55, shoulder: 48, length: 73 } },
+  { sizeLabel: "XL", measurements: { chest: 60, shoulder: 54, length: 75 } },
 ];
 const entry = (key: string, chest: number, shoulder: number): VersusEntry => {
   const garment = { ...base, measurements: { chest, shoulder, length: 71 } };
@@ -30,7 +30,7 @@ describe("VS 비교", () => {
     expect(pickSize(base, rows, "regular", null, {})).toBe("M");
   });
   it("원하는 핏에 가까운 옷이 1위", () => {
-    const ranks = rankVersus([entry("A", 60, 54), entry("B", 53, 46)], "regular");
+    const ranks = rankVersus([entry("A", 60, 54), entry("B", 51.5, 44.5)], "regular");
     expect(ranks[0].key).toBe("B");
     expect(ranks[0].basis).toBe("body");
     expect(versusSummary(ranks, { A: "A", B: "B" }, "regular", "top")).toContain("B");

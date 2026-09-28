@@ -23,10 +23,11 @@ type Result = {
   probes: Probe[];
 };
 
-const BATCH = 8;
+/** 한 요청에 찾는 주문 수. 요청이 길어지지 않게 작게 나눈다. */
+const BATCH = 4;
 const cell = "border-b border-neutral-300 px-2 py-1.5 align-top";
 
-/** 관리자 시험 화면. 붙여 넣은 주문내역을 나누고, 8건씩 상품번호·실측을 찾아 본다. 저장은 하지 않는다. */
+/** 관리자 시험 화면. 붙여 넣은 주문내역을 분류하고, 남은 주문의 상품번호·실측을 끝까지 차례로 찾는다. 저장은 하지 않는다. */
 export function MusinsaOrdersTest() {
   const bookmark = useRef<HTMLAnchorElement>(null);
   const [text, setText] = useState("");
@@ -34,6 +35,7 @@ export function MusinsaOrdersTest() {
   const [result, setResult] = useState<Result | null>(null);
   const [probes, setProbes] = useState<Probe[]>([]);
   const [busy, setBusy] = useState(false);
+  const stop = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   // React는 javascript: 주소를 href로 넣지 못하게 막아서 직접 넣는다.
@@ -41,19 +43,30 @@ export function MusinsaOrdersTest() {
     bookmark.current?.setAttribute("href", MUSINSA_BOOKMARKLET);
   }, []);
 
-  async function run(offset: number, limit: number) {
+  async function call(offset: number, limit: number) {
+    const res = await fetch("/api/admin/musinsa-orders", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text, offset, limit, measure }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()) as Result;
+  }
+
+  /** 먼저 분류만 해서 표를 보여 주고, 남은 주문을 끝까지 차례로 찾는다. 요청 사이에 쉬어서 무신사에 몰리지 않게 한다. */
+  async function start() {
+    stop.current = false;
     setBusy(true);
     setError(null);
+    setProbes([]);
     try {
-      const res = await fetch("/api/admin/musinsa-orders", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text, offset, limit, measure }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as Result;
-      setResult(data);
-      setProbes((prev) => (offset === 0 ? data.probes : [...prev.filter((p) => p.index < offset), ...data.probes]));
+      const first = await call(0, 0);
+      setResult(first);
+      for (let offset = 0; offset < first.counts.keptOrders && !stop.current; offset += BATCH) {
+        if (offset > 0) await new Promise((r) => setTimeout(r, 1000));
+        const data = await call(offset, BATCH);
+        setProbes((prev) => [...prev, ...data.probes]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "실패");
     } finally {
@@ -61,7 +74,6 @@ export function MusinsaOrdersTest() {
     }
   }
 
-  const next = probes.length ? Math.max(...probes.map((p) => p.index)) + 1 : 0;
   const found = probes.filter((p) => p.goodsNo).length;
   const measured = probes.filter((p) => p.measure?.sizes.length).length;
 
@@ -93,18 +105,19 @@ export function MusinsaOrdersTest() {
           찾은 상품의 실측도 확인(느려요)
         </label>
         <div className="flex flex-wrap gap-2">
-          <Button disabled={busy || !text} onClick={() => run(0, 0)}>
-            나누기만
+          <Button variant="primary" disabled={busy || !text} onClick={start}>
+            분류하고 찾기
           </Button>
-          <Button variant="primary" disabled={busy || !text} onClick={() => run(0, BATCH)}>
-            처음 {BATCH}건 찾기
-          </Button>
-          {result && next < result.counts.keptOrders && (
-            <Button disabled={busy} onClick={() => run(next, BATCH)}>
-              다음 {BATCH}건 찾기 ({next + 1}번부터)
+          {busy && (
+            <Button onClick={() => (stop.current = true)}>
+              멈추기
             </Button>
           )}
-          {busy && <span className="self-center text-sm text-neutral-700">찾는 중…</span>}
+          {busy && (
+            <span className="self-center text-sm text-neutral-700">
+              찾는 중… {probes.length}/{result?.counts.keptOrders ?? "?"}
+            </span>
+          )}
           {error && <span className="self-center text-sm text-accent-700">{error}</span>}
         </div>
       </section>

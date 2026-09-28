@@ -47,25 +47,28 @@ interface GroupDef {
   id: FitGroupId;
   name: string;
   kind: FitKind;
-  /** 폭 치수별 여유 경계 5개: 너무 작음 | 슬림 | 정 | 세미오버 | 오버 | 너무 큼 */
+  /**
+   * 폭 치수별 여유(옷 둘레 − 몸 둘레, 어깨는 옷 − 몸) 경계 5개: 너무 작음 | 슬림 | 레귤러 | 세미오버 | 오버 | 너무 큼.
+   * 슬림은 몸에 착 붙는 정도, 레귤러는 몸 실루엣이 적당히 보이는 정도. 아우터·코트·패딩은 속에 겹쳐 입어 여유를 더 둔다.
+   */
   width: Partial<Record<WidthKey, [number, number, number, number, number]>>;
 }
 
 // 오버핏은 드롭숄더라 어깨가 몸보다 10cm 넘게 넓은 옷이 흔하다(너무 큼 경계를 넉넉히).
-const TEE_SHOULDER: [number, number, number, number, number] = [-4, -1, 2, 6, 14];
-const OUTER_SHOULDER: [number, number, number, number, number] = [-3, 0, 3, 7, 15];
+const TEE_SHOULDER: [number, number, number, number, number] = [-4, -2, 1, 5, 14];
+const OUTER_SHOULDER: [number, number, number, number, number] = [-3, -1, 2, 6, 15];
 // 엉덩이는 비스판 슬림도 2cm 이상 여유가 있어야 앉을 수 있다. 허벅지 와이드는 국내 와이드 데님·슬랙스(몸 +17~26cm) 기준.
-const PANTS_WIDTH = { hip: [2, 6, 11, 17, 26], thigh: [2, 6, 11, 17, 26] } satisfies GroupDef["width"];
+const PANTS_WIDTH = { hip: [0, 4, 8, 14, 22], thigh: [0, 4, 9, 15, 24] } satisfies GroupDef["width"];
 
 export const FIT_GROUPS: GroupDef[] = [
-  { id: "short_tee", name: "반팔 티셔츠", kind: "top", width: { chest: [4, 10, 16, 24, 34], shoulder: TEE_SHOULDER } },
-  { id: "long_tee", name: "긴팔·맨투맨·후드", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: TEE_SHOULDER } },
-  { id: "knit", name: "니트·카디건", kind: "top", width: { chest: [4, 10, 16, 24, 34], shoulder: TEE_SHOULDER } },
-  { id: "shirt", name: "셔츠", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: TEE_SHOULDER } },
-  { id: "light_outer", name: "가벼운 아우터·바람막이", kind: "top", width: { chest: [12, 18, 26, 34, 44], shoulder: OUTER_SHOULDER } },
-  { id: "leather", name: "레더·무스탕", kind: "top", width: { chest: [6, 10, 16, 22, 30], shoulder: [-3, -1, 2, 5, 9] } },
-  { id: "coat", name: "코트", kind: "top", width: { chest: [14, 20, 28, 36, 46], shoulder: OUTER_SHOULDER } },
-  { id: "padding", name: "패딩", kind: "top", width: { chest: [16, 22, 30, 38, 48], shoulder: OUTER_SHOULDER } },
+  { id: "short_tee", name: "반팔 티셔츠", kind: "top", width: { chest: [0, 6, 12, 20, 30], shoulder: TEE_SHOULDER } },
+  { id: "long_tee", name: "긴팔·맨투맨·후드", kind: "top", width: { chest: [2, 8, 14, 22, 32], shoulder: TEE_SHOULDER } },
+  { id: "knit", name: "니트·카디건", kind: "top", width: { chest: [-2, 4, 10, 18, 28], shoulder: TEE_SHOULDER } },
+  { id: "shirt", name: "셔츠", kind: "top", width: { chest: [2, 8, 14, 22, 32], shoulder: TEE_SHOULDER } },
+  { id: "light_outer", name: "가벼운 아우터·바람막이", kind: "top", width: { chest: [4, 10, 16, 24, 34], shoulder: OUTER_SHOULDER } },
+  { id: "leather", name: "레더·무스탕", kind: "top", width: { chest: [2, 6, 12, 18, 26], shoulder: [-3, -2, 1, 4, 8] } },
+  { id: "coat", name: "코트", kind: "top", width: { chest: [8, 14, 22, 30, 40], shoulder: OUTER_SHOULDER } },
+  { id: "padding", name: "패딩", kind: "top", width: { chest: [10, 16, 24, 32, 42], shoulder: OUTER_SHOULDER } },
   { id: "pants", name: "긴 바지", kind: "bottom", width: PANTS_WIDTH },
   { id: "shorts", name: "반바지", kind: "bottom", width: PANTS_WIDTH },
 ];
@@ -432,7 +435,7 @@ export function recNeeds(_groupId: FitGroupId, key: RecKey): BodyKey[] {
 }
 
 /**
- * 잘 맞는 옷으로 내 치수 추정: 고른 옷의 실측에서 여유(내 핏 표기가 있으면 그 단계, 없으면 정핏 가운데 값)를
+ * 잘 맞는 옷으로 내 치수 추정: 고른 옷의 실측에서 여유(내 핏 표기가 있으면 그 단계, 없으면 레귤러핏 가운데 값)를
  * 빼 몸 치수를 거꾸로 구한다. 여러 벌이면 중앙값. 0.5cm 단위.
  */
 export function estimateBodyFromGarments(garments: BodyFitGarment[]): Partial<Record<BodyKey, number>> {
