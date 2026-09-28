@@ -75,13 +75,16 @@ export function parseMusinsaOrders(text: string): MusinsaOrder[] {
     if (j >= lines.length || !PRICE_RE.test(lines[j])) continue;
     const option = body.find((l) => OPTION_RE.test(l)) ?? "";
     const named = body.filter((l) => !OPTION_RE.test(l));
-    // 보통 [상품명, 브랜드, 상품명]. 선물한 상품권은 앞에 "…님에게 선물"이 붙는다.
-    const start = named.length >= 3 && named[0] !== named[2] && named[1] === named[3] ? 1 : 0;
+    // 전체 선택 복사는 [상품명, 브랜드, 상품명], 북마크 버튼(화면에 보이는 글만)은 [브랜드, 상품명]으로 나온다.
+    // 두 번 나오는 줄이 상품명이다. 선물한 상품권은 앞에 "…님에게 선물"이 붙는다.
+    const start = named.length >= 4 && named[0] !== named[2] && named[1] === named[3] ? 1 : 0;
+    const repeated = named[start] === named[start + 2];
+    const [name, brand] = repeated || named.length - start !== 2 ? [named[start], named[start + 1]] : [named[start + 1], named[start]];
     orders.push({
       date,
       status: line,
-      name: named[start] ?? "",
-      brand: named[start + 1] ?? "",
+      name: name ?? "",
+      brand: brand ?? "",
       option: option.replace(/\s*\/\s*\d+개$/, "").trim(),
       price: Number(lines[j].match(PRICE_RE)![1].replace(/,/g, "")),
       goodsNo,
