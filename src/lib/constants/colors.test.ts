@@ -54,3 +54,25 @@ describe("normalizeColorName", () => {
     expect(findColorHex("Light Blue")).toBe(findColorHex("라이트 블루"));
   });
 });
+
+describe("findColorHex", () => {
+  it.each(["연청", "중청", "진청", "라이트 블루", "아쿠아 블루", "멜란지", "Light Blue", "라이트 올리브", "다크 카키", "연그레이"])(
+    "%s에 대표 색이 있다",
+    (name) => {
+      expect(findColorHex(name)).toMatch(/^#[0-9a-f]{6}$/);
+    },
+  );
+
+  it("수식어가 붙으면 밝게/어둡게 한다", () => {
+    expect(findColorHex("라이트 올리브")).not.toBe(findColorHex("올리브"));
+    expect(findColorHex("다크 카키")).not.toBe(findColorHex("카키"));
+  });
+
+  it("여러 색이면 첫 색", () => {
+    expect(findColorHex("black/white")).toBe(findColorHex("블랙"));
+  });
+
+  it("모르는 이름은 null", () => {
+    expect(findColorHex("Galaxy")).toBeNull();
+  });
+});
