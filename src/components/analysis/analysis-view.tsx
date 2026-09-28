@@ -191,7 +191,7 @@ export function AnalysisView() {
           </span>
           <span className="text-xs text-neutral-700">종류별 기본 구성 대비 부족한 순</span>
         </div>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,280px),1fr))] border-t border-text">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,280px),1fr))]">
           {recs.map((r) => (
             <div key={r.label} className="flex flex-col gap-2 border-b border-neutral-300 py-5 pr-5">
               <div className="flex items-baseline gap-2.5">
@@ -378,6 +378,16 @@ function DonutSection({
             </span>
             {withAmount && (
               <span className="font-mono text-xs text-neutral-700">{tip.amount ? won(tip.amount) : "구매가 미입력"}</span>
+            )}
+            {tip.members && !(tip.members.length === 1 && tip.members[0].name === tip.name) && (
+              <ul className="mt-1 flex flex-col gap-0.5 border-t border-neutral-300 pt-1.5">
+                {tip.members.map((m) => (
+                  <li key={m.name} className="flex justify-between gap-4 text-xs">
+                    <span>{m.name}</span>
+                    <span className="font-mono text-neutral-800">{m.count}벌</span>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         )}
