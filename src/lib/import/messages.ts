@@ -34,7 +34,7 @@ export const IMPORT_FAILURE: Record<ImportFailureCode, { title: string; body: st
   },
   network_error: { title: "페이지에 접근할 수 없습니다", body: "쇼핑몰에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요." },
   no_product: { title: "상품 정보를 찾지 못했습니다", body: "아직 지원하지 않는 쇼핑몰이거나 상품 페이지가 아닐 수 있습니다." },
-  rate_limited: { title: "잠시 후 다시 시도해 주세요", body: "링크 분석은 하루(24시간)에 50번까지 할 수 있습니다. 화면의 사용량에서 다시 쓸 수 있는 시각을 확인해 주세요." },
+  rate_limited: { title: "잠시 후 다시 시도해 주세요", body: "링크 분석은 하루(24시간)에 100번까지 할 수 있습니다. 화면의 사용량에서 다시 쓸 수 있는 시각을 확인해 주세요." },
   signed_out: { title: "로그인이 필요합니다", body: "다시 로그인한 뒤 시도해 주세요." },
   unknown: { title: "상품 정보를 읽지 못했습니다", body: "잠시 뒤 다시 시도하거나 직접 입력해 주세요." },
 };

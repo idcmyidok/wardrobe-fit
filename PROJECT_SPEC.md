@@ -576,7 +576,7 @@ admin_audit_logs(관리자 작업 기록)
 링크 분석 1건. 원래 주소, 정리된 주소, 도메인, parser id·버전, 상태, 결과(JSON, 진단 정보 포함), 오류 코드, 걸린 시간.
 
 - 원본 HTML은 저장하지 않는다.
-- 사용량 계산(24시간 50회)과 같은 링크 재사용(10분)에 이 테이블을 쓴다. 그래서 사용자는 insert와 select만 할 수 있다.
+- 사용량 계산(24시간 100회)과 같은 링크 재사용(10분)에 이 테이블을 쓴다. 그래서 사용자는 insert와 select만 할 수 있다.
 
 ### 8.7 fit_checks, fit_check_comparables, admins, admin_audit_logs
 
@@ -1044,7 +1044,7 @@ interface SizeReport {
 | 프롬프트 인젝션 | 외부 글은 구분 태그 안의 데이터로, 출력은 JSON 스키마로만, AI에 도구 실행 권한 없음, 인용·id·숫자 서버 검증, 글자로만 렌더링. |
 | XSS | React 기본 escaping, `dangerouslySetInnerHTML` 없음. CSP는 요청마다 새 nonce를 만들어 nonce 있는 스크립트만 실행한다. 이미지와 연결은 자기 자신과 Supabase만. |
 | CSRF | Server Action의 Origin 검사(Next.js 기본), 쿠키 `SameSite=Lax`. |
-| 비용 남용 | 사용자별 최근 24시간 한도: 링크 분석 50회, 구매 판단 20회(그중 AI 요약 10회). 관리자는 한도 없음. 기록 테이블이 insert 전용이라 지워서 되돌릴 수 없다. 저장 한도: 옷 2,000벌, 사진 5,000장, 사진 한 장 3MB. |
+| 비용 남용 | 사용자별 최근 24시간 한도: 링크 분석 100회, 구매 판단 20회(그중 AI 요약 10회). 관리자는 한도 없음. 기록 테이블이 insert 전용이라 지워서 되돌릴 수 없다. 저장 한도: 옷 2,000벌, 사진 5,000장, 사진 한 장 3MB. |
 | 계정 공격 | Supabase Auth rate limit, 같은 로그인 실패 문구, 비밀번호 8자 이상. CAPTCHA는 봇 가입이 생기면 붙인다. |
 | 파일 업로드 | 브라우저에서 다시 그려 WebP로 저장(EXIF 제거), bucket이 형식과 크기를 다시 제한. |
 | 비밀 관리 | `.env*`는 git에 올리지 않고 `.env.example`에는 이름만. |
