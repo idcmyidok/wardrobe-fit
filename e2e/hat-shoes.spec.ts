@@ -3,6 +3,7 @@ import { expect, login, test } from "./support";
 test("모자는 실측 3개, 신발은 착용감으로 등록하고 표에 보인다", async ({ page, admin, makeUser }) => {
   const user = await makeUser("hat-shoes");
   await login(page, user);
+  await expect(page).toHaveURL(/\/wardrobe$/);
   const manual = async () => {
     await page.goto("/wardrobe/new");
     await page.getByRole("radiogroup", { name: "추가 방법" }).locator("label", { hasText: "직접 입력" }).click();

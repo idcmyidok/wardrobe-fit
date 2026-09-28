@@ -176,9 +176,10 @@ export function FitResultView({
   const judged = size.dimensions.filter((d) => d.verdict !== "unknown").length;
   const reviewed = comps.filter((c) => c.review).length;
   const conf = CONFIDENCE[size.confidence];
-  const title = [candidate.brand, candidate.productName].filter(Boolean).join(" ") || "직접 입력한 옷";
   const shoes = computed.categoryId === "shoes";
   const unit = COUNT_UNIT[computed.categoryId];
+  const noun = shoes ? "신발" : computed.categoryId === "hat" ? "모자" : "옷";
+  const title = [candidate.brand, candidate.productName].filter(Boolean).join(" ") || `직접 입력한 ${noun}`;
   const sub = [
     CATEGORY_NAME[candidate.categoryId],
     candidate.subcategoryId ? SUBCATEGORY_NAME[candidate.subcategoryId] : null,
@@ -301,12 +302,12 @@ export function FitResultView({
             ))}
           </div>
           <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-mono text-base tabular-nums">
-            <dt className="text-neutral-700">{shoes ? "비교한 신발" : "비교한 옷"}</dt>
+            <dt className="text-neutral-700">비교한 {noun}</dt>
             <dd>
               {comps.length}
               {unit}
             </dd>
-            <dt className="text-neutral-700">후기 있는 {shoes ? "신발" : "옷"}</dt>
+            <dt className="text-neutral-700">후기 있는 {noun}</dt>
             <dd>
               {reviewed}
               {unit}
@@ -341,7 +342,7 @@ export function FitResultView({
         <section className="flex flex-col gap-3 pt-8 pb-2">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-lg">치수별 비교</h2>
-            <span className="text-sm text-neutral-700">{computed.categoryId === "hat" ? "cm" : "cm · 단면"} · 만족 범위는 후기에 불만이 없는 옷 기준(후기가 부족하면 기존 옷 범위, 참고)</span>
+            <span className="text-sm text-neutral-700">{computed.categoryId === "hat" ? "cm" : "cm · 단면"} · 만족 범위는 후기에 불만이 없는 {noun} 기준(후기가 부족하면 기존 {noun} 범위, 참고)</span>
           </div>
           <div className="overflow-x-auto">
             <table className="table min-w-240 font-mono tabular-nums">
@@ -388,11 +389,11 @@ export function FitResultView({
               );
             })
           ) : (
-            <p className="mt-3 text-base text-neutral-700">비교한 {shoes ? "신발" : "옷"}에 착용 후기가 없습니다. 후기를 남기면 판단 근거로 인용됩니다.</p>
+            <p className="mt-3 text-base text-neutral-700">비교한 {noun}에 착용 후기가 없습니다. 후기를 남기면 판단 근거로 인용됩니다.</p>
           )}
         </div>
         <div className="flex flex-col">
-          <h2 className="mb-3 border-b border-text pb-3 text-lg">비교에 사용한 {shoes ? "신발" : "옷"} ({comps.length})</h2>
+          <h2 className="mb-3 border-b border-text pb-3 text-lg">비교에 사용한 {noun} ({comps.length})</h2>
           {comps.map((c) => {
             const body = (
               <>
@@ -404,7 +405,7 @@ export function FitResultView({
                   <span className="text-xs text-neutral-700">
                     {MATCH_TEXT[c.matchLevel]}
                     {c.subcategoryId ? ` · ${SUBCATEGORY_NAME[c.subcategoryId] ?? ""}` : ""}
-                    {size.nearest[0]?.garmentId === c.garmentId ? " · 가장 가까운 옷" : ""}
+                    {size.nearest[0]?.garmentId === c.garmentId ? ` · 가장 가까운 ${noun}` : ""}
                     {size.sameBrandSameSize.includes(c.garmentId) ? " · 같은 브랜드·사이즈" : ""}
                   </span>
                 </div>
@@ -465,7 +466,7 @@ export function FitResultView({
             router.push("/wardrobe/new");
           }}
         >
-          이 옷을 구매했어요 — 옷장에 추가
+          이 {noun}{noun === "모자" ? "를" : "을"} 구매했어요 — 옷장에 추가
         </button>
         {onBack ? (
           <button type="button" className="btn btn-secondary min-h-11" onClick={onBack}>

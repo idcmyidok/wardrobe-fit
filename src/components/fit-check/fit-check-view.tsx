@@ -76,6 +76,8 @@ export function FitCheckView() {
   const product = imported?.product ?? null;
   const chartRows = product ? sizeRows(product, linkCat) : [];
   const shoes = (manual ? man.categoryId : linkCat) === "shoes";
+  const hat = (manual ? man.categoryId : linkCat) === "hat";
+  const noun = shoes ? "신발" : hat ? "모자" : "옷";
 
   // 지금 입력으로 만든 후보(검증 전)
   let candidate: FitCandidate;
@@ -449,18 +451,20 @@ export function FitCheckView() {
       {showCompare && (
         <section className="flex flex-col gap-3 py-6">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg">비교할 옷</h2>
+            <h2 className="text-lg">비교할 {noun}</h2>
             <span className="text-sm text-neutral-700" data-testid="comparable-note">
               {selected.length
-                ? `${levels.has("subcategory") && levels.size === 1 ? `동일 세부분류 ${refName}` : "같은 대분류·비슷한 분류 옷 포함"} ${selected.length}${shoes ? "켤레를" : "벌을"} 기준으로 비교합니다. 빼고 싶은 옷은 선택을 해제하세요.`
+                ? `${levels.has("subcategory") && levels.size === 1 ? `동일 세부분류 ${refName}` : `같은 대분류·비슷한 분류 ${noun} 포함`} ${selected.length}${shoes ? "켤레를" : hat ? "개를" : "벌을"} 기준으로 비교합니다. 빼고 싶은 ${noun}${hat ? "는" : "은"} 선택을 해제하세요.`
                 : hasInput
                   ? shoes
                     ? "비교할 신발이 필요합니다. 가진 신발을 사이즈와 함께 먼저 등록하세요."
-                    : "비교할 옷이 필요합니다. 같은 종류의 옷을 실측과 함께 먼저 등록하세요."
+                    : hat
+                      ? "비교할 모자가 필요합니다. 가진 모자를 실측과 함께 먼저 등록하세요."
+                      : "비교할 옷이 필요합니다. 같은 종류의 옷을 실측과 함께 먼저 등록하세요."
                   : shoes
                     ? "사이즈(mm)를 입력하면 비교할 신발을 찾습니다."
-                    : "실측을 입력하면 비교할 옷을 찾습니다."}
-              {lacking.length ? (shoes ? ` 사이즈를 mm로 읽을 수 없는 신발 ${lacking.length}켤레는 뺐습니다.` : ` 실측이 겹치지 않는 옷 ${lacking.length}벌은 뺐습니다.`) : ""}
+                    : `실측을 입력하면 비교할 ${noun}${hat ? "를" : "을"} 찾습니다.`}
+              {lacking.length ? (shoes ? ` 사이즈를 mm로 읽을 수 없는 신발 ${lacking.length}켤레는 뺐습니다.` : ` 실측이 겹치지 않는 ${noun} ${lacking.length}${hat ? "개는" : "벌은"} 뺐습니다.`) : ""}
             </span>
           </div>
           {selected.length > 0 && (

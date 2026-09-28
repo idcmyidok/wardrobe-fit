@@ -5,6 +5,7 @@ import { computeFit } from "./compute";
 import { extractReviewSignals } from "./review-signals";
 import { fitCandidateSchema } from "./schema";
 import { selectComparables } from "./select-comparables";
+import { itemWording } from "./wording";
 
 const pick = (review: string, keys: readonly string[] = TOP_MEASUREMENTS) =>
   extractReviewSignals(review, keys as typeof TOP_MEASUREMENTS).map((s) => `${s.dimension}:${s.direction}:${s.strength}`);
@@ -188,6 +189,15 @@ describe("모자 판단", () => {
     const head = r.dimensions.find((d) => d.key === "head")!;
     expect(head.tag).toBe("caution");
     expect(r.summary).toContain("머리둘레");
+    const text = [r.summary, ...r.limitations, ...r.dimensions.map((d) => d.judgement)].join(" ");
+    expect(text).not.toMatch(/옷(?!장)/);
+  });
+
+  it("문구는 옷 대신 모자로 쓴다", () => {
+    expect(itemWording("hat", "비교할 수 있는 옷이 2벌뿐입니다. 만족했던 옷들과 비슷, 기존 옷과 비교, 옷장에 기록")).toBe(
+      "비교할 수 있는 모자가 2개뿐입니다. 만족했던 모자들과 비슷, 기존 모자와 비교, 옷장에 기록",
+    );
+    expect(itemWording("top", "기존 옷과 비교")).toBe("기존 옷과 비교");
   });
 });
 

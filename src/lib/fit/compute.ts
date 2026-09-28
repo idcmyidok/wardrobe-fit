@@ -12,7 +12,7 @@ import type {
   RangeStat,
   SizeReport,
 } from "./types";
-import { DIRECTION_WORD, cm, eunNeun, gwaWa, shortLabel, words } from "./wording";
+import { DIRECTION_WORD, cm, eunNeun, gwaWa, itemWording, shortLabel, words } from "./wording";
 
 /**
  * 치수 비교·통계 엔진(PROJECT_SPEC.md 16장). 결정적 순수 함수라 같은 입력이면 늘 같은 결과가 나온다.
@@ -249,7 +249,10 @@ export function computeSize(
   comps: ComparableSnapshot[],
   skippedCount = 0,
 ): SizeReport {
-  const dims = measurementKeysFor(categoryId).map((k) => dimension(k, size.measurements[k] ?? null, comps));
+  const t = (text: string) => itemWording(categoryId, text);
+  const dims = measurementKeysFor(categoryId)
+    .map((k) => dimension(k, size.measurements[k] ?? null, comps))
+    .map((d) => ({ ...d, judgement: t(d.judgement) }));
   const confidence = confidenceOf(categoryId, dims, comps);
   return {
     sizeLabel: size.sizeLabel,
@@ -258,8 +261,8 @@ export function computeSize(
     dimensions: dims,
     nearest: nearest(categoryId, size.measurements, comps),
     sameBrandSameSize: [],
-    limitations: limitationsOf(dims, comps, skippedCount),
-    summary: ruleSummary(dims, comps, confidence),
+    limitations: limitationsOf(dims, comps, skippedCount).map(t),
+    summary: t(ruleSummary(dims, comps, confidence)),
   };
 }
 
@@ -288,6 +291,7 @@ export function computeFit(candidate: FitCandidate, selected: SelectedComparable
     report.sameBrandSameSize = sameBrandSameSize(candidate.brand, size.sizeLabel, comps);
     return report;
   });
+  const note = sizeNote(sizes);
   return {
     version: 1,
     categoryId: candidate.categoryId,
@@ -295,7 +299,7 @@ export function computeFit(candidate: FitCandidate, selected: SelectedComparable
     comparables: comps,
     skippedCount,
     sizes,
-    sizeNote: sizeNote(sizes),
+    sizeNote: note && itemWording(candidate.categoryId, note),
   };
 }
 
