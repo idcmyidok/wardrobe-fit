@@ -5,7 +5,7 @@ export const MOCK_GARMENTS: Garment[] = [
   {
     id: "g1",
     categoryId: "outer",
-    subcategoryId: "outer.jacket",
+    subcategoryId: "outer.blouson",
     brand: "A.P.C.",
     productName: "울 블렌드 워크 자켓",
     sizeLabel: "M",
@@ -101,7 +101,7 @@ export const MOCK_GARMENTS: Garment[] = [
   {
     id: "g7",
     categoryId: "outer",
-    subcategoryId: "outer.coat",
+    subcategoryId: "outer.winter_coat",
     brand: "Lemaire",
     productName: "싱글 브레스티드 코트",
     sizeLabel: "48",
@@ -133,7 +133,7 @@ export const MOCK_GARMENTS: Garment[] = [
   {
     id: "g9",
     categoryId: "outer",
-    subcategoryId: "outer.jacket",
+    subcategoryId: "outer.blouson",
     brand: "Nanamica",
     productName: "코튼 코치 자켓",
     sizeLabel: "L",
@@ -149,7 +149,7 @@ export const MOCK_GARMENTS: Garment[] = [
   {
     id: "g10",
     categoryId: "outer",
-    subcategoryId: "outer.jacket",
+    subcategoryId: "outer.blouson",
     brand: "Engineered Garments",
     productName: "베드포드 자켓",
     sizeLabel: "M",

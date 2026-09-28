@@ -42,7 +42,7 @@ let seq = 0;
 const g = (over: Partial<Garment>): Garment => ({
   id: `00000000-0000-4000-8000-${String(++seq).padStart(12, "0")}`,
   categoryId: "outer",
-  subcategoryId: "outer.jacket",
+  subcategoryId: "outer.blouson",
   brand: "",
   productName: "자켓",
   sizeLabel: "M",
@@ -63,11 +63,11 @@ describe("비교 대상 선정", () => {
     g({ brand: "B", measurements: { shoulder: 47, chest: 60, length: 71 } }),
   ];
   const blazer = g({ brand: "C", subcategoryId: "outer.blazer", measurements: { shoulder: 46, chest: 59, length: 72 } });
-  const coat = g({ brand: "D", subcategoryId: "outer.coat", measurements: { shoulder: 47, chest: 61, length: 100 } });
+  const coat = g({ brand: "D", subcategoryId: "outer.winter_coat", measurements: { shoulder: 47, chest: 61, length: 100 } });
   const knit = g({ brand: "E", categoryId: "top", subcategoryId: "top.knit", measurements: { shoulder: 46, chest: 58 } });
   const pants = g({ brand: "F", categoryId: "bottom", subcategoryId: "bottom.denim", measurements: { waist: 40, length: 100 } });
   const thin = g({ brand: "G", measurements: { shoulder: 46 } });
-  const cand = { categoryId: "outer" as const, subcategoryId: "outer.jacket", sizes: [{ measurements: { shoulder: 46, chest: 59, length: 72 } }] };
+  const cand = { categoryId: "outer" as const, subcategoryId: "outer.blouson", sizes: [{ measurements: { shoulder: 46, chest: 59, length: 72 } }] };
 
   it("세부분류가 3벌 미만이면 같은 대분류까지 넓히고, 실측이 1개만 겹치는 옷은 뺀다", () => {
     const { selected, lacking } = selectComparables(cand, [...jackets, blazer, coat, knit, pants, thin]);
@@ -98,7 +98,7 @@ describe("통계 엔진", () => {
   ];
   const candidate = {
     categoryId: "outer" as const,
-    subcategoryId: "outer.jacket",
+    subcategoryId: "outer.blouson",
     brand: "Our Legacy",
     productName: "워크 자켓",
     sizes: [{ sizeLabel: "48", measurements: { shoulder: 46.5, chest: 59, length: 72, sleeve: 64.5 } }],
