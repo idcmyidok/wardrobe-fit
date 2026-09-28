@@ -93,6 +93,7 @@ export function GarmentDetail({
   const [reviewDraft, setReviewDraft] = useState<string | null>(null);
   const [image, setImage] = useState<ImageChange>(undefined);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -210,11 +211,16 @@ export function GarmentDetail({
               <>
                 <div className="grid grid-cols-[112px_1fr] gap-5">
                   {g.imageUrl ? (
-                    <div className="aspect-[4/5] w-full bg-neutral-200">
+                    <button
+                      type="button"
+                      aria-label="사진 크게 보기"
+                      onClick={() => setZoomed(true)}
+                      className="aspect-[4/5] w-full cursor-zoom-in bg-neutral-200"
+                    >
                       {/* 불러오지 못하면(서명 주소 만료 등) 깨진 그림 대신 빈 자리만 남긴다. */}
                       {/* eslint-disable-next-line @next/next/no-img-element -- 비공개 bucket의 signed URL */}
                       <img src={g.imageUrl} alt="" onError={(e) => (e.currentTarget.style.opacity = "0")} className="size-full object-contain" />
-                    </div>
+                    </button>
                   ) : (
                     <div className="aspect-[4/5] bg-neutral-200" />
                   )}
@@ -321,7 +327,7 @@ export function GarmentDetail({
                 <button type="button" className="btn btn-secondary" onClick={() => router.push("/fit-check")}>
                   이 옷 기준으로 판단
                 </button>
-                <button type="button" className="btn btn-ghost ml-auto" onClick={() => setConfirmDelete(true)}>
+                <button type="button" className="btn btn-danger ml-auto" onClick={() => setConfirmDelete(true)}>
                   삭제
                 </button>
               </>
@@ -340,6 +346,8 @@ export function GarmentDetail({
             )}
           </div>
       </Frame>
+
+      {zoomed && g.imageUrl && <PhotoViewer src={g.imageUrl} onClose={() => setZoomed(false)} />}
 
       {confirmDelete && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-[color-mix(in_srgb,var(--n-900)_50%,transparent)] p-4">
@@ -361,7 +369,7 @@ export function GarmentDetail({
               </button>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-danger"
                 onClick={async () => {
                   setConfirmDelete(false);
                   if ((await removeGarment(g.id)) && variant === "page") router.replace("/wardrobe");
@@ -374,6 +382,42 @@ export function GarmentDetail({
         </div>
       )}
     </>
+  );
+}
+
+/** 옷 사진 크게 보기. 오른쪽 위 X·Esc·배경 클릭으로 닫는다. */
+function PhotoViewer({ src, onClose }: { src: string; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="사진 크게 보기"
+      data-photo-viewer
+      onClick={onClose}
+      // 닫기 버튼 하나뿐이라 Tab이 뒤쪽 화면으로 빠지지 않게 막는다.
+      onKeyDown={(e) => e.key === "Tab" && e.preventDefault()}
+      className="fixed inset-0 z-50 grid place-items-center overscroll-contain bg-[color-mix(in_srgb,var(--n-900)_88%,transparent)] p-4 pt-16"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- 비공개 bucket의 signed URL */}
+      <img src={src} alt="" onClick={(e) => e.stopPropagation()} className="max-h-full max-w-full object-contain" />
+      <button
+        type="button"
+        autoFocus
+        aria-label="크게 보기 닫기"
+        onClick={onClose}
+        className="absolute top-[max(12px,env(safe-area-inset-top))] right-3 grid size-11 cursor-pointer place-items-center rounded-full bg-white/15 text-white hover:bg-white/25"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
   );
 }
 
@@ -395,8 +439,8 @@ function Frame({ variant, onClose, children }: { variant: "drawer" | "page"; onC
   useEffect(() => {
     if (variant !== "drawer") return;
     const onKey = (e: KeyboardEvent) => {
-      // 삭제 확인 Dialog가 떠 있으면 Esc는 그 Dialog가 먼저 받는다.
-      if (e.key === "Escape" && !document.querySelector('[role="alertdialog"]')) onClose();
+      // 삭제 확인 Dialog나 사진 크게 보기가 떠 있으면 Esc는 그쪽이 먼저 받는다.
+      if (e.key === "Escape" && !document.querySelector('[role="alertdialog"], [data-photo-viewer]')) onClose();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
