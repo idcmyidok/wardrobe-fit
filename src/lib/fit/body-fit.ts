@@ -68,12 +68,12 @@ interface GroupDef {
 export const FIT_GROUPS: GroupDef[] = [
   { id: "short_tee", name: "반팔 티셔츠", kind: "top", width: { chest: [2, 6, 12, 20, 28], shoulder: [-1, 1, 3, 6, 10] }, weight: { chest: 0.6, shoulder: 0.4 } },
   { id: "long_tee", name: "긴팔·맨투맨·후드", kind: "top", width: { chest: [4, 8, 14, 22, 32], shoulder: [-1, 1.5, 4, 8, 13] }, weight: { chest: 0.55, shoulder: 0.45 } },
-  { id: "knit", name: "니트·카디건", kind: "top", width: { chest: [0, 5, 11, 18, 26], shoulder: [-1, 1, 3, 6, 10] }, weight: { chest: 0.65, shoulder: 0.35 } },
-  { id: "shirt", name: "셔츠", kind: "top", width: { chest: [6, 10, 16, 24, 32], shoulder: [-0.5, 1.5, 3, 6, 10] }, weight: { chest: 0.55, shoulder: 0.45 } },
-  { id: "light_outer", name: "가벼운 아우터·바람막이", kind: "top", width: { chest: [10, 16, 22, 30, 40], shoulder: [-0.5, 2, 4, 8, 13] }, weight: { chest: 0.65, shoulder: 0.35 } },
-  { id: "leather", name: "레더·무스탕", kind: "top", width: { chest: [8, 12, 18, 24, 32], shoulder: [-0.5, 1, 3, 6, 10] }, weight: { chest: 0.6, shoulder: 0.4 } },
+  { id: "knit", name: "니트·카디건", kind: "top", width: { chest: [3, 7, 13, 20, 28], shoulder: [-1, 1, 3, 6, 10] }, weight: { chest: 0.65, shoulder: 0.35 } },
+  { id: "shirt", name: "셔츠", kind: "top", width: { chest: [4, 8, 14, 22, 30], shoulder: [-0.5, 1.5, 3, 6, 10] }, weight: { chest: 0.55, shoulder: 0.45 } },
+  { id: "light_outer", name: "가벼운 아우터·바람막이", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: [-0.5, 2, 4, 8, 13] }, weight: { chest: 0.65, shoulder: 0.35 } },
+  { id: "leather", name: "레더·무스탕", kind: "top", width: { chest: [4, 8, 14, 20, 28], shoulder: [-0.5, 1, 3, 6, 10] }, weight: { chest: 0.6, shoulder: 0.4 } },
   { id: "coat", name: "코트", kind: "top", width: { chest: [10, 16, 24, 32, 42], shoulder: [-0.5, 2, 4, 8, 14] }, weight: { chest: 0.65, shoulder: 0.35 } },
-  { id: "padding", name: "패딩", kind: "top", width: { chest: [12, 18, 26, 34, 44], shoulder: [-0.5, 2, 5, 9, 14] }, weight: { chest: 0.75, shoulder: 0.25 } },
+  { id: "padding", name: "패딩", kind: "top", width: { chest: [16, 24, 34, 44, 56], shoulder: [-0.5, 2, 5, 9, 14] }, weight: { chest: 0.75, shoulder: 0.25 } },
   { id: "pants", name: "긴 바지", kind: "bottom", width: { hip: [2, 6, 10, 16, 24], thigh: [2, 4, 8, 14, 22] }, weight: { thigh: 0.55, hip: 0.45 } },
   { id: "shorts", name: "반바지", kind: "bottom", width: { hip: [3, 6, 11, 17, 25], thigh: [3, 5, 9, 15, 23] }, weight: { thigh: 0.6, hip: 0.4 } },
 ];
