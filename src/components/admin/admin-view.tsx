@@ -33,6 +33,9 @@ export function AdminView({ overview, myId }: { overview: AdminOverview | AdminO
       <div className="flex flex-col gap-1 border-b border-text pb-4">
         <span className={cn(colLabel, "uppercase")}>Admin</span>
         <h1 className="text-title">관리자</h1>
+        <Link href="/admin/musinsa-orders" className="self-start text-sm">
+          무신사 주문 가져오기 시험
+        </Link>
       </div>
 
       {!overview ? (
