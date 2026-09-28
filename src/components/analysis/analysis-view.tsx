@@ -21,6 +21,8 @@ const TABS: { id: CategoryTab; label: string }[] = [
   { id: "outer", label: "아우터" },
   { id: "top", label: "상의" },
   { id: "bottom", label: "하의" },
+  { id: "hat", label: "모자" },
+  { id: "shoes", label: "신발" },
 ];
 
 const section =

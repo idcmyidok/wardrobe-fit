@@ -1,4 +1,4 @@
-import { CATEGORY_NAME, SUBCATEGORY_NAME } from "@/lib/constants/categories";
+import { CATEGORIES, CATEGORY_NAME, COUNT_UNIT, SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { findColorHex, luminance } from "@/lib/constants/colors";
 import { FOUR_SEASONS, SEASON_NAME, wearsInSeason } from "@/lib/constants/seasons";
 import type { CategoryId, Garment, Season } from "@/lib/types/domain";
@@ -22,6 +22,8 @@ const CATEGORY_FILL: Record<CategoryId, string> = {
   outer: "var(--text)",
   top: "var(--n-500)",
   bottom: "var(--a-400)",
+  hat: "var(--a-600)",
+  shoes: "var(--n-300)",
 };
 
 /** 총액 구간별 제목. [상한(미만), 제목] */
@@ -63,7 +65,7 @@ export function priceComment(count: number, total: number, avg: number, topPrice
 export function priceSummary(G: Garment[]) {
   const priced = G.filter((g) => g.purchasePrice != null);
   const total = priced.reduce((a, g) => a + (g.purchasePrice ?? 0), 0);
-  const cats = (["outer", "top", "bottom"] as CategoryId[]).map((c) => {
+  const cats = CATEGORIES.map(({ id: c }) => {
     const gs = priced.filter((g) => g.categoryId === c);
     const amount = gs.reduce((a, g) => a + (g.purchasePrice ?? 0), 0);
     const count = G.filter((g) => g.categoryId === c).length;
@@ -74,7 +76,7 @@ export function priceSummary(G: Garment[]) {
       amount: won(amount),
       width: total ? `${((amount / total) * 100).toFixed(1)}%` : "0%",
       pct: total ? `${Math.round((amount / total) * 100)}%` : "—",
-      meta: `${count}벌${gs.length ? ` · 평균 ${man(Math.round(amount / gs.length))}원` : ""}`,
+      meta: `${count}${COUNT_UNIT[c]}${gs.length ? ` · 평균 ${man(Math.round(amount / gs.length))}원` : ""}`,
     };
   });
   const avg = priced.length ? total / priced.length : 0;

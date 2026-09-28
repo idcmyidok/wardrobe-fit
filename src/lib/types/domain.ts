@@ -1,6 +1,9 @@
 import type { MeasurementKey } from "@/lib/constants/measurements";
+import type { ShoeFit } from "@/lib/constants/shoe-fit";
 
-export type CategoryId = "outer" | "top" | "bottom";
+export type CategoryId = "outer" | "top" | "bottom" | "hat" | "shoes";
+/** 구매 판단(치수 비교)을 하는 대분류. 모자·신발은 옷장에만 저장한다. */
+export type FitCategoryId = "outer" | "top" | "bottom";
 /** "all"(사계절)은 다른 시즌과 함께 고르지 않는다. */
 export type Season = "spring" | "summer" | "fall" | "winter" | "all";
 
@@ -26,6 +29,8 @@ export interface Garment {
   thumbUrl?: string | null;
   measurements: Measurements;
   fitReview: string | null;
+  /** 신발만: 신어 본 느낌(길이감·발볼·발등). 다른 대분류는 null */
+  shoeFit: ShoeFit | null;
 }
 
 /** 목록 화면용 별칭(기존 코드 호환) */

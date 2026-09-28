@@ -57,19 +57,19 @@ export type Database = {
       categories: {
         Row: {
           id: string
-          measurement_group: Database["public"]["Enums"]["measurement_group"]
+          measurement_group: string
           name_ko: string
           sort_order: number
         }
         Insert: {
           id: string
-          measurement_group: Database["public"]["Enums"]["measurement_group"]
+          measurement_group: string
           name_ko: string
           sort_order: number
         }
         Update: {
           id?: string
-          measurement_group?: Database["public"]["Enums"]["measurement_group"]
+          measurement_group?: string
           name_ko?: string
           sort_order?: number
         }
@@ -226,7 +226,10 @@ export type Database = {
           fit_review: string | null
           id: string
           image_path: string | null
+          m_brim: number | null
           m_chest: number | null
+          m_depth: number | null
+          m_head: number | null
           m_hip: number | null
           m_leg_opening: number | null
           m_length: number | null
@@ -241,6 +244,9 @@ export type Database = {
           purchase_price: number | null
           purchased_on: string | null
           seasons: Database["public"]["Enums"]["season"][]
+          shoe_fit_instep: string | null
+          shoe_fit_length: string | null
+          shoe_fit_width: string | null
           size_label: string | null
           source_import_id: string | null
           subcategory_id: string | null
@@ -259,7 +265,10 @@ export type Database = {
           fit_review?: string | null
           id?: string
           image_path?: string | null
+          m_brim?: number | null
           m_chest?: number | null
+          m_depth?: number | null
+          m_head?: number | null
           m_hip?: number | null
           m_leg_opening?: number | null
           m_length?: number | null
@@ -274,6 +283,9 @@ export type Database = {
           purchase_price?: number | null
           purchased_on?: string | null
           seasons?: Database["public"]["Enums"]["season"][]
+          shoe_fit_instep?: string | null
+          shoe_fit_length?: string | null
+          shoe_fit_width?: string | null
           size_label?: string | null
           source_import_id?: string | null
           subcategory_id?: string | null
@@ -292,7 +304,10 @@ export type Database = {
           fit_review?: string | null
           id?: string
           image_path?: string | null
+          m_brim?: number | null
           m_chest?: number | null
+          m_depth?: number | null
+          m_head?: number | null
           m_hip?: number | null
           m_leg_opening?: number | null
           m_length?: number | null
@@ -307,6 +322,9 @@ export type Database = {
           purchase_price?: number | null
           purchased_on?: string | null
           seasons?: Database["public"]["Enums"]["season"][]
+          shoe_fit_instep?: string | null
+          shoe_fit_length?: string | null
+          shoe_fit_width?: string | null
           size_label?: string | null
           source_import_id?: string | null
           subcategory_id?: string | null
@@ -476,7 +494,6 @@ export type Database = {
         | "manual"
       fit_check_status: "computing" | "interpreting" | "completed" | "failed"
       import_status: "pending" | "succeeded" | "partial" | "failed"
-      measurement_group: "top" | "bottom"
       season: "spring" | "summer" | "fall" | "winter" | "all"
     }
     CompositeTypes: {
@@ -614,7 +631,6 @@ export const Constants = {
       ],
       fit_check_status: ["computing", "interpreting", "completed", "failed"],
       import_status: ["pending", "succeeded", "partial", "failed"],
-      measurement_group: ["top", "bottom"],
       season: ["spring", "summer", "fall", "winter", "all"],
     },
   },

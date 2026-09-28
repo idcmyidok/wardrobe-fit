@@ -372,6 +372,7 @@ export function FitResultView({
               imageUrl: null,
               measurements: size.measurements,
               fitReview: null,
+              shoeFit: null,
             });
             router.push("/wardrobe/new");
           }}

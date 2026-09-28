@@ -1,5 +1,5 @@
 import type { CheerioAPI } from "cheerio";
-import type { Measurements } from "@/lib/types/domain";
+import type { CategoryId, Measurements } from "@/lib/types/domain";
 
 /**
  * 상품 URL 분석 타입(PROJECT_SPEC.md 13~14장).
@@ -79,7 +79,7 @@ export interface Extracted<T> {
   confidence: "high" | "medium" | "low";
 }
 
-export type MeasurementGroup = "top" | "bottom";
+export type MeasurementGroup = "top" | "bottom" | "hat";
 
 export interface NormalizedSizeChart {
   measurementGroup: MeasurementGroup;
@@ -91,7 +91,7 @@ export interface NormalizedSizeChart {
 export interface NormalizedProduct {
   brand: Extracted<string> | null;
   productName: Extracted<string> | null;
-  categoryId: Extracted<"outer" | "top" | "bottom"> | null;
+  categoryId: Extracted<CategoryId> | null;
   subcategoryId: Extracted<string> | null;
   imageUrls: string[];
   /** KRW 정수 */

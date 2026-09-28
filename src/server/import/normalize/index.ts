@@ -1,9 +1,12 @@
-import type { Extracted, ExtractedSource, ImportWarning, NormalizedProduct, RawField, RawProduct } from "../types";
+import type { CategoryId } from "@/lib/types/domain";
+import type { Extracted, ExtractedSource, ImportWarning, MeasurementGroup, NormalizedProduct, RawField, RawProduct } from "../types";
 import { normalizeColorName } from "@/lib/constants/colors";
 import { mapCategory } from "./category";
 import { cleanOptions, pickColor, splitColorOption } from "./color";
 import { normalizeSizeChart } from "./size-chart";
 import { cleanText } from "./text";
+
+const MEASUREMENT_GROUP: Record<Exclude<CategoryId, "shoes">, MeasurementGroup> = { outer: "top", top: "top", bottom: "bottom", hat: "hat" };
 
 /** RawProduct의 필드마다 어느 단계에서 얻었는지 */
 export type FieldSources = Partial<Record<RawField, ExtractedSource>>;
@@ -103,8 +106,9 @@ export function normalizeProduct(raw: RawProduct, sources: FieldSources, options
   const colorCandidate = picked && { ...picked, value: normalizeColorName(picked.value) ?? picked.value };
 
   let sizeChart: NormalizedProduct["sizeChart"] = null;
-  if (raw.sizeChart) {
-    const group = category ? (category.categoryId === "bottom" ? "bottom" : "top") : null;
+  // 신발은 실측을 저장하지 않는다(발길이 표가 총장으로 잡히지 않게 사이즈표를 읽지 않는다).
+  if (raw.sizeChart && category?.categoryId !== "shoes") {
+    const group = category ? MEASUREMENT_GROUP[category.categoryId] : null;
     const result = normalizeSizeChart(raw.sizeChart, group);
     sizeChart = result.chart;
     warnings.push(...result.warnings);

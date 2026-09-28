@@ -1,5 +1,5 @@
 import { CATEGORIES } from "@/lib/constants/categories";
-import { BOTTOM_MEASUREMENTS, TOP_MEASUREMENTS, type MeasurementKey } from "@/lib/constants/measurements";
+import { MEASUREMENT_KEYS, type MeasurementKey } from "@/lib/constants/measurements";
 import { SEASONS, wearsInSeason } from "@/lib/constants/seasons";
 import type { CategoryId, Garment, Season } from "@/lib/types/domain";
 
@@ -28,7 +28,7 @@ export interface WardrobeFilters {
 export const DEFAULT_SORT: ColumnSort = { key: "purchasedOn", dir: "desc" };
 
 export const DEFAULT_FILTERS: WardrobeFilters = {
-  categories: ["outer", "top", "bottom"],
+  categories: CATEGORIES.map((c) => c.id),
   subcategory: "",
   brand: "",
   season: "",
@@ -37,7 +37,7 @@ export const DEFAULT_FILTERS: WardrobeFilters = {
 };
 
 export function isFiltered(f: WardrobeFilters): boolean {
-  return f.categories.length < 3 || Boolean(f.subcategory || f.brand || f.season || f.color || f.q);
+  return f.categories.length < CATEGORIES.length || Boolean(f.subcategory || f.brand || f.season || f.color || f.q);
 }
 
 /** 날짜·가격은 큰 값부터, 나머지는 가나다·작은 값부터 시작한다. */
@@ -129,15 +129,11 @@ export interface WardrobeState {
 }
 
 const CATEGORY_IDS = CATEGORIES.map((c) => c.id);
-const SORT_KEYS: Record<CategoryId, readonly SortableColumn[]> = {
-  outer: ["brand", "size", "color", "season", "purchasedOn", "price", ...TOP_MEASUREMENTS],
-  top: ["brand", "size", "color", "season", "purchasedOn", "price", ...TOP_MEASUREMENTS],
-  bottom: ["brand", "size", "color", "season", "purchasedOn", "price", ...BOTTOM_MEASUREMENTS],
-};
+const sortKeys = (id: CategoryId): readonly SortableColumn[] => ["brand", "size", "color", "season", "purchasedOn", "price", ...MEASUREMENT_KEYS[id]];
 const SEASON_IDS = SEASONS.map((s) => s.id);
 const MAX_TEXT = 100;
 
-const perCategory = <T,>(value: T): PerCategory<T> => ({ outer: value, top: value, bottom: value });
+const perCategory = <T,>(value: T): PerCategory<T> => ({ outer: value, top: value, bottom: value, hat: value, shoes: value });
 
 /** 잘못된 값은 조용히 기본값으로 돌린다(손으로 고친 URL, 오래된 링크). */
 export function parseWardrobeParams(params: URLSearchParams): WardrobeState {
@@ -156,7 +152,7 @@ export function parseWardrobeParams(params: URLSearchParams): WardrobeState {
   const pages = perCategory(1);
   for (const id of CATEGORY_IDS) {
     const [key, dir] = (params.get(`sort_${id}`) ?? "").split(".");
-    if (SORT_KEYS[id].includes(key as SortableColumn) && (dir === "asc" || dir === "desc")) {
+    if (sortKeys(id).includes(key as SortableColumn) && (dir === "asc" || dir === "desc")) {
       sorts[id] = { key: key as SortableColumn, dir };
     }
     const page = Number(params.get(`page_${id}`));

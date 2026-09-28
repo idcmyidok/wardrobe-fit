@@ -13,6 +13,9 @@ const KIND: Record<MeasurementKey, Kind> = {
   waist: "girth",
   hip: "girth",
   thigh: "girth",
+  head: "girth",
+  depth: "length",
+  brim: "length",
 };
 
 const WORDS: Record<Kind, Record<"above" | "below", { short: string; connect: string; end: string; feel: string }>> = {

@@ -128,7 +128,15 @@ export function FitCheckView() {
       return;
     }
     const p = outcome.product;
-    const cat = p.categoryId?.value ?? (p.sizeChart?.measurementGroup === "bottom" ? "bottom" : "outer");
+    const group = p.sizeChart?.measurementGroup;
+    const cat = p.categoryId?.value ?? (group === "bottom" ? "bottom" : group === "hat" ? "hat" : "outer");
+    if (cat === "hat" || cat === "shoes") {
+      setImportError({
+        title: `${CATEGORY_NAME[cat]}는 구매 판단을 하지 않습니다`,
+        body: "구매 판단은 아우터·상의·하의만 비교합니다. 모자·신발은 옷장에 추가해서 사이즈를 기록해 두세요.",
+      });
+      return;
+    }
     setLinkCat(cat);
     setLinkSub(p.subcategoryId?.value && SUBCATEGORIES.some((s) => s.id === p.subcategoryId!.value && s.categoryId === cat) ? p.subcategoryId.value : firstSub(cat));
     const rows = p.sizeChart?.rows ?? [];

@@ -17,6 +17,7 @@ export const MOCK_GARMENTS: Garment[] = [
     imageUrl: null,
     measurements: { shoulder: 46, chest: 58, length: 70, sleeve: 63 },
     fitReview: "어깨 딱 맞고 가슴도 여유 적당. 니트 위에 입어도 답답하지 않다. 총장은 벨트 라인 살짝 아래라 딱 좋음.",
+    shoeFit: null,
   },
   {
     id: "g2",
@@ -33,6 +34,7 @@ export const MOCK_GARMENTS: Garment[] = [
     imageUrl: null,
     measurements: { shoulder: 47.5, chest: 59, length: 76, sleeve: 62 },
     fitReview: "가슴과 품은 넉넉한 편. 총장이 길어서 넣어 입을 때만 괜찮다.",
+    shoeFit: null,
   },
   {
     id: "g3",
@@ -49,6 +51,7 @@ export const MOCK_GARMENTS: Garment[] = [
     imageUrl: null,
     measurements: { waist: 41, hip: 50, length: 104, rise: 29, thigh: 32, legOpening: 21 },
     fitReview: "허리는 딱 맞고 허벅지가 살짝 붙는다. 기장은 한 번 접어서 입는다.",
+    shoeFit: null,
   },
   {
     id: "g4",
@@ -65,6 +68,7 @@ export const MOCK_GARMENTS: Garment[] = [
     imageUrl: null,
     measurements: { shoulder: 45, chest: 54, length: 68, sleeve: 61 },
     fitReview: "몸에 붙는 편. 단독으로는 좋은데 안에 셔츠를 받쳐 입으면 가슴이 낀다.",
+    shoeFit: null,
   },
   {
     id: "g5",
@@ -81,6 +85,7 @@ export const MOCK_GARMENTS: Garment[] = [
     imageUrl: null,
     measurements: { waist: 40, hip: 52, length: 103, rise: 31, thigh: 34, legOpening: 23 },
     fitReview: "허리 밴딩이라 편하다. 통이 넓어 신발을 다 덮는다.",
+    shoeFit: null,
   },
   {
     id: "g6",
@@ -97,6 +102,7 @@ export const MOCK_GARMENTS: Garment[] = [
     imageUrl: null,
     measurements: { shoulder: 52, chest: 58, length: 72, sleeve: 25 },
     fitReview: "오버핏으로 입기 좋은 크기. 어깨가 떨어지는 편.",
+    shoeFit: null,
   },
   {
     id: "g7",
@@ -113,6 +119,7 @@ export const MOCK_GARMENTS: Garment[] = [
     imageUrl: null,
     measurements: { shoulder: 47, chest: 61, length: 104, sleeve: 64 },
     fitReview: "자켓 위에 입어도 여유가 있다. 소매는 손등을 살짝 덮는 정도.",
+    shoeFit: null,
   },
   {
     id: "g8",
@@ -129,6 +136,7 @@ export const MOCK_GARMENTS: Garment[] = [
     imageUrl: null,
     measurements: { waist: 42, hip: 53, length: 106, rise: 31, thigh: 33, legOpening: 23 },
     fitReview: null,
+    shoeFit: null,
   },
   {
     id: "g9",
@@ -145,6 +153,7 @@ export const MOCK_GARMENTS: Garment[] = [
     imageUrl: null,
     measurements: { shoulder: 47, chest: 60, length: 69.5, sleeve: 64 },
     fitReview: "어깨와 가슴은 딱 좋다. 총장은 엉덩이를 반쯤 덮어서 적당하다. 소매는 조금 긴 편.",
+    shoeFit: null,
   },
   {
     id: "g10",
@@ -161,5 +170,40 @@ export const MOCK_GARMENTS: Garment[] = [
     imageUrl: null,
     measurements: { shoulder: 45.5, chest: 57, length: 71.5, sleeve: 62 },
     fitReview: "어깨와 가슴은 마음에 드는데 총장이 조금 길다.",
+    shoeFit: null,
+  },
+  {
+    id: "g11",
+    categoryId: "hat",
+    subcategoryId: "hat.cap",
+    brand: "New Era",
+    productName: "9FORTY 로고 볼캡",
+    sizeLabel: "FREE",
+    colorName: "네이비",
+    seasons: ["all"],
+    purchasedOn: "2025-05-10",
+    purchasePrice: 39000,
+    productUrl: null,
+    imageUrl: null,
+    measurements: { head: 58, depth: 15.5, brim: 7 },
+    fitReview: null,
+    shoeFit: null,
+  },
+  {
+    id: "g12",
+    categoryId: "shoes",
+    subcategoryId: "shoes.sneakers",
+    brand: "Converse",
+    productName: "척 70 하이",
+    sizeLabel: "270",
+    colorName: "블랙",
+    seasons: ["all"],
+    purchasedOn: "2025-04-20",
+    purchasePrice: 95000,
+    productUrl: null,
+    imageUrl: null,
+    measurements: {},
+    fitReview: "발볼이 조금 좁아서 오래 걸으면 새끼발가락이 눌린다.",
+    shoeFit: { length: "good", width: "tight", instep: "good" },
   },
 ];

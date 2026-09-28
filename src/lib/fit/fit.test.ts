@@ -40,6 +40,7 @@ describe("후기 신호 규칙 v1", () => {
 
 let seq = 0;
 const g = (over: Partial<Garment>): Garment => ({
+  shoeFit: null,
   id: `00000000-0000-4000-8000-${String(++seq).padStart(12, "0")}`,
   categoryId: "outer",
   subcategoryId: "outer.blouson",

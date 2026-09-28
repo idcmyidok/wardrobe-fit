@@ -29,6 +29,10 @@ export const TOLERANCE: Record<MeasurementKey, number> = {
   rise: 1,
   length: 1.5,
   sleeve: 1.5,
+  // 모자는 구매 판단을 하지 않지만 키를 모두 채워 둔다.
+  head: 1,
+  depth: 1,
+  brim: 0.5,
 };
 
 /** 범위 경계에서 이만큼 벗어난 건 체감 차이가 작아 범위 안으로 본다. */

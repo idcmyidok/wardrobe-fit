@@ -1,5 +1,5 @@
 import { SIMILAR_SUBCATEGORIES } from "@/lib/constants/categories";
-import { BOTTOM_MEASUREMENTS, TOP_MEASUREMENTS, type MeasurementKey } from "@/lib/constants/measurements";
+import { MEASUREMENT_KEYS, type MeasurementKey } from "@/lib/constants/measurements";
 import type { CategoryId, Garment, Measurements } from "@/lib/types/domain";
 import type { MatchLevel } from "./types";
 
@@ -13,10 +13,10 @@ export const MIN_COMPARABLES = 3;
 export const MAX_COMPARABLES = 10;
 export const MIN_SHARED_DIMS = 2;
 
-export const measurementKeysFor = (categoryId: CategoryId): readonly MeasurementKey[] =>
-  categoryId === "bottom" ? BOTTOM_MEASUREMENTS : TOP_MEASUREMENTS;
+export const measurementKeysFor = (categoryId: CategoryId): readonly MeasurementKey[] => MEASUREMENT_KEYS[categoryId];
 
-const groupOf = (categoryId: CategoryId) => (categoryId === "bottom" ? "bottom" : "top");
+/** 아우터·상의는 같은 치수 그룹이라 서로 비교한다. 모자·신발은 옷과 비교하지 않는다. */
+const groupOf = (categoryId: CategoryId) => (categoryId === "outer" ? "top" : categoryId);
 
 /** 후보 사이즈들 중 하나라도 값이 있는 치수 */
 export function candidateKeys(categoryId: CategoryId, sizes: Array<{ measurements: Measurements }>): MeasurementKey[] {

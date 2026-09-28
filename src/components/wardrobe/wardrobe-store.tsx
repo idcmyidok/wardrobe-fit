@@ -88,6 +88,7 @@ const toInput = (g: GarmentDraft) => ({
   productUrl: g.productUrl,
   measurements: g.measurements,
   fitReview: g.fitReview,
+  shoeFit: g.shoeFit,
 });
 
 const fromAction = (r: GarmentActionResult): SaveResult =>

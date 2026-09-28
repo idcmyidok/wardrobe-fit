@@ -4,16 +4,29 @@ export const CATEGORIES: { id: CategoryId; name: string }[] = [
   { id: "outer", name: "아우터" },
   { id: "top", name: "상의" },
   { id: "bottom", name: "하의" },
+  { id: "hat", name: "모자" },
+  { id: "shoes", name: "신발" },
 ];
 
 export const CATEGORY_NAME: Record<CategoryId, string> = {
   outer: "아우터",
   top: "상의",
   bottom: "하의",
+  hat: "모자",
+  shoes: "신발",
+};
+
+/** 개수 단위. 분석 화면의 대분류별 개수에 쓴다. */
+export const COUNT_UNIT: Record<CategoryId, string> = {
+  outer: "벌",
+  top: "벌",
+  bottom: "벌",
+  hat: "개",
+  shoes: "켤레",
 };
 
 /**
- * PROJECT_SPEC.md 8.2 세부분류(무신사 분류 기준). supabase/migrations/…_musinsa_subcategories.sql과 같아야 한다.
+ * PROJECT_SPEC.md 8.2 세부분류(무신사 분류 기준). supabase/migrations/…_musinsa_subcategories.sql, …_hat_shoes_categories.sql과 같아야 한다.
  * id는 내부 값이라 이름이 바뀌어도 그대로 둔 것이 있다(예: bottom.chino = 코튼 팬츠).
  */
 export const SUBCATEGORIES: { id: string; categoryId: CategoryId; name: string }[] = [
@@ -56,6 +69,15 @@ export const SUBCATEGORIES: { id: string; categoryId: CategoryId; name: string }
   { id: "bottom.leggings", categoryId: "bottom", name: "레깅스" },
   { id: "bottom.jumpsuit", categoryId: "bottom", name: "점프 슈트/오버올" },
   { id: "bottom.etc", categoryId: "bottom", name: "기타 하의" },
+  { id: "hat.cap", categoryId: "hat", name: "캡" },
+  { id: "hat.beanie", categoryId: "hat", name: "비니" },
+  { id: "hat.etc", categoryId: "hat", name: "기타 모자" },
+  { id: "shoes.sneakers", categoryId: "shoes", name: "스니커즈" },
+  { id: "shoes.sports", categoryId: "shoes", name: "스포츠화" },
+  { id: "shoes.dress", categoryId: "shoes", name: "구두" },
+  { id: "shoes.boots", categoryId: "shoes", name: "부츠" },
+  { id: "shoes.sandals", categoryId: "shoes", name: "샌들" },
+  { id: "shoes.etc", categoryId: "shoes", name: "기타 신발" },
 ];
 
 /** 무신사 분류 전 세부분류. 옷은 마이그레이션으로 옮겼지만 예전 구매 판단 기록에 남아 있어 이름만 남긴다. */

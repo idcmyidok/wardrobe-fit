@@ -6,6 +6,16 @@ import { cleanText } from "./text";
  * 앞에 둔 규칙이 먼저 걸린다(예: "데님 자켓"은 트러커 재킷). 못 찾으면 null로 두고 사용자가 고른다.
  */
 const RULES: Array<[RegExp, CategoryId, string]> = [
+  // 모자·신발을 먼저 본다("트러커 캡"은 트러커 재킷이 아니라 캡). "부츠컷"은 바지라 부츠가 아니다.
+  [/비니|beanie|watch\s*cap/i, "hat", "hat.beanie"],
+  [/볼\s*캡|야구\s*모자|스냅\s*백|트러커\s*캡|캠프\s*캡|(?<![a-z])cap(?![a-z])|snapback|캡(?!틴|슐)/i, "hat", "hat.cap"],
+  [/버킷|벙거지|페도라|베레|헌팅\s*캡|모자(?!\s*(탈부착|분리|달린|포함))|bucket|fedora|beret|(?<![a-z])hats?(?![a-z])/i, "hat", "hat.etc"],
+  [/러닝화|런닝화|트레이닝화|축구화|농구화|테니스화|등산화|트레일\s*러닝|스포츠화|running\s*shoes?|trail\s*running|football\s*boots/i, "shoes", "shoes.sports"],
+  [/구두|로퍼|더비|옥스[퍼포]드(?!\s*셔츠)|몽크|드레스\s*슈즈|loafer|derby|oxford(?!\s*shirt)|monk\s*strap|dress\s*shoes?/i, "shoes", "shoes.dress"],
+  [/부츠(?!\s*컷)|워커|첼시|(?<![a-z])boots?(?!\s*cut)(?![a-z])/i, "shoes", "shoes.boots"],
+  [/샌들|슬리퍼|쪼리|sandal|slipper|flip[\s-]*flop/i, "shoes", "shoes.sandals"],
+  [/스니커즈|운동화|sneakers?/i, "shoes", "shoes.sneakers"],
+  [/신발|슈즈|(?<![a-z])shoes?(?![a-z])|footwear/i, "shoes", "shoes.etc"],
   [/경량\s*패딩|라이트\s*패딩|패딩\s*(베스트|조끼)|다운\s*(베스트|조끼)|light\s*(down|padding)|(down|padded|puffer)\s*vest/i, "outer", "outer.light_padding"],
   [/롱\s*패딩|롱\s*다운|벤치\s*파카|long\s*(padding|down|puffer)/i, "outer", "outer.long_padding"],
   [/패딩|다운|푸퍼|헤비\s*아우터|padding|down\s*jacket|puffer|parka/i, "outer", "outer.short_padding"],
