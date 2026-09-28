@@ -7,7 +7,7 @@ import { GarmentThumbnail } from "@/components/wardrobe/garment-thumbnail";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { CATEGORY_NAME } from "@/lib/constants/categories";
 import { SEASON_NAME } from "@/lib/constants/seasons";
-import { fitsSeason, localDateKey, recommendOutfit, seasonOfDate } from "@/lib/outfit/recommend";
+import { fitsSeason, localDateKey, recommendOutfit, seasonOfDate, type OutfitItem } from "@/lib/outfit/recommend";
 import type { Garment } from "@/lib/types/domain";
 
 const noop = () => () => {};
@@ -83,7 +83,7 @@ function Recommendation({ garments, today, variant, onNext }: { garments: Garmen
 }
 
 /** 고른 옷 카드를 가로로 늘어놓는다. 넘치면 가로 스크롤(터치는 밀기, 마우스는 끌기). */
-function OutfitCards({ items }: { items: Garment[] }) {
+function OutfitCards({ items }: { items: OutfitItem[] }) {
   const { openDrawer } = useWardrobe();
   const ref = useRef<HTMLUListElement>(null);
   const drag = useRef<{ x: number; left: number; moved: boolean } | null>(null);
@@ -116,16 +116,16 @@ function OutfitCards({ items }: { items: Garment[] }) {
       }}
       onDragStart={(e) => e.preventDefault()}
     >
-      {items.map((g) => (
+      {items.map(({ slot, garment: g }) => (
         <li key={g.id} className="w-40 shrink-0 snap-start sm:w-52">
           <button
             type="button"
             onClick={() => openDrawer(g.id)}
             className="flex w-full flex-col gap-2 text-left"
-            aria-label={`${CATEGORY_NAME[g.categoryId]} ${g.brand} ${g.productName} 정보 열기`}
+            aria-label={`${CATEGORY_NAME[slot]} ${g.brand} ${g.productName} 정보 열기`}
           >
             <GarmentThumbnail item={g} className="aspect-[4/5] h-auto rounded-md border border-neutral-300" />
-            <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700">{CATEGORY_NAME[g.categoryId]}</span>
+            <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700">{CATEGORY_NAME[slot]}</span>
             <span className="flex flex-col">
               {g.brand && <span className="text-sm text-neutral-700">{g.brand}</span>}
               <span className="line-clamp-2 text-base">{g.productName}</span>

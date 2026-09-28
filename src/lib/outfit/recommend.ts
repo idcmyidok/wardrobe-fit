@@ -15,8 +15,14 @@ export type WearSeason = Exclude<Season, "all">;
 /** 화면에 늘어놓는 순서(위에서 아래로) */
 export const OUTFIT_ORDER: CategoryId[] = ["hat", "outer", "top", "bottom", "shoes"];
 
+/** slot: 코디에서 맡은 자리. 아우터로 분류된 셔츠는 상의 자리에 올 수 있다. */
+export interface OutfitItem {
+  slot: CategoryId;
+  garment: Garment;
+}
+
 export type OutfitResult =
-  | { ok: true; season: WearSeason; items: Garment[]; reasons: string[] }
+  | { ok: true; season: WearSeason; items: OutfitItem[]; reasons: string[] }
   | { ok: false; season: WearSeason; missing: ("top" | "bottom")[] };
 
 /** 3~5월 봄, 6~8월 여름, 9~11월 가을, 12~2월 겨울 */
@@ -59,7 +65,7 @@ const FORMALITY: Record<string, number> = {
   "outer.transition_coat": 0.5, "outer.cardigan": 0.5,
   "outer.training": -1, "outer.anorak": -0.5, "outer.coach": -0.5, "outer.hood_zip": -0.5,
   "outer.fleece": -0.5, "outer.stadium": -0.5,
-  "top.shirt": 1, "top.knit": 0.5, "top.polo": 0.5, "top.hoodie": -0.5, "top.sleeveless": -1,
+  "outer.shirt": 1, "top.shirt": 1, "top.knit": 0.5, "top.polo": 0.5, "top.hoodie": -0.5, "top.sleeveless": -1,
   "bottom.slacks": 1, "bottom.chino": 0.5, "bottom.sweatpants": -1, "bottom.leggings": -1, "bottom.shorts": -0.5,
   "shoes.dress": 1, "shoes.boots": 0.5, "shoes.sports": -1, "shoes.sandals": -0.5,
   "hat.cap": -0.5,
@@ -99,13 +105,17 @@ interface SizeBase {
   bottomThigh: number | null;
 }
 
+/** 셔츠/블라우스는 아우터로 분류하지만 한 장만 입으면 상의 자리에 온다. */
+const TOP_LIKE = new Set(["outer.shirt"]);
+const canBeTop = (g: Garment) => g.categoryId === "top" || TOP_LIKE.has(g.subcategoryId ?? "");
+
 /** 옷장 안에서 이 옷이 넉넉한 편(1 초과)인지 딱 붙는 편인지 */
-function looseness(g: Garment, base: SizeBase): number | null {
-  if (g.categoryId === "top") {
+function looseness({ slot, garment: g }: OutfitItem, base: SizeBase): number | null {
+  if (slot === "top") {
     const v = g.measurements.chest;
     return v && base.topChest ? v / base.topChest : null;
   }
-  if (g.categoryId === "bottom") {
+  if (slot === "bottom") {
     const v = g.measurements.thigh;
     return v && base.bottomThigh ? v / base.bottomThigh : null;
   }
@@ -119,10 +129,11 @@ interface Scored {
   reasons: string[];
 }
 
-function scoreOutfit(items: Garment[], base: SizeBase): Scored {
+function scoreOutfit(picks: OutfitItem[], base: SizeBase): Scored {
   let score = 0;
   const reasons: string[] = [];
-  const by = (c: CategoryId) => items.find((g) => g.categoryId === c);
+  const items = picks.map((p) => p.garment);
+  const by = (c: CategoryId) => picks.find((p) => p.slot === c)?.garment;
   const top = by("top");
   const bottom = by("bottom");
   const outer = by("outer");
@@ -159,13 +170,13 @@ function scoreOutfit(items: Garment[], base: SizeBase): Scored {
     }
   }
   // 모자·신발은 기본색이거나 다른 옷과 같은 계열이면 좋다.
-  for (const g of items) {
-    if (g.categoryId !== "hat" && g.categoryId !== "shoes") continue;
+  for (const { slot, garment: g } of picks) {
+    if (slot !== "hat" && slot !== "shoes") continue;
     const f = family(g);
     if (!f) continue;
     const others = items.filter((o) => o !== g).map(family);
     if (NEUTRALS.has(f) || others.includes(f)) score += 0.5;
-    if (others.includes(f) && !NEUTRALS.has(f) && reasons.length < 2) reasons.push(`${g.categoryId === "hat" ? "모자" : "신발"} 색을 옷과 맞췄어요`);
+    if (others.includes(f) && !NEUTRALS.has(f) && reasons.length < 2) reasons.push(`${slot === "hat" ? "모자" : "신발"} 색을 옷과 맞췄어요`);
   }
 
   // 분류 조합: 정장과 운동복이 섞이지 않게
@@ -188,7 +199,7 @@ function scoreOutfit(items: Garment[], base: SizeBase): Scored {
   }
   // 위아래 모두 넉넉하거나 모두 딱 붙으면 균형이 덜하다.
   if (top && bottom) {
-    const lt = looseness(top, base), lb = looseness(bottom, base);
+    const lt = looseness({ slot: "top", garment: top }, base), lb = looseness({ slot: "bottom", garment: bottom }, base);
     if (lt && lb) {
       if (lt > 1.08 && lb > 1.08) score -= 1;
       else if (lt < 0.93 && lb < 0.93) score -= 0.5;
@@ -249,7 +260,7 @@ const PAIR_MARGIN = 3;
 const MAX_PAIRS = 14;
 
 /** seed로 섞은 순서. 이웃한 날에 같은 상의·하의가 이어지지 않게 한 번 더 고른다. */
-function dailyOrder<T extends { items: Garment[] }>(pairs: T[], seed: string): T[] {
+function dailyOrder<T extends { items: OutfitItem[] }>(pairs: T[], seed: string): T[] {
   const rand = rng(seed);
   const rest = [...pairs];
   for (let i = rest.length - 1; i > 0; i--) {
@@ -259,7 +270,7 @@ function dailyOrder<T extends { items: Garment[] }>(pairs: T[], seed: string): T
   const order: T[] = [];
   while (rest.length) {
     const prev = order[order.length - 1];
-    const k = prev ? rest.findIndex((p) => !p.items.some((g) => prev.items.includes(g))) : 0;
+    const k = prev ? rest.findIndex((p) => !p.items.some((a) => prev.items.some((b) => a.garment === b.garment))) : 0;
     order.push(...rest.splice(Math.max(k, 0), 1));
   }
   return order;
@@ -274,7 +285,7 @@ function dailyOrder<T extends { items: Garment[] }>(pairs: T[], seed: string): T
 export function recommendOutfit(garments: Garment[], dateKey: string, variant = 0): OutfitResult {
   const season = seasonOfDate(dateKey);
   const pool = (c: CategoryId) => garments.filter((g) => g.categoryId === c && fitsSeason(g, season));
-  const tops = pool("top");
+  const tops = garments.filter((g) => canBeTop(g) && fitsSeason(g, season));
   const bottoms = pool("bottom");
   if (tops.length === 0 || bottoms.length === 0) {
     const missing: ("top" | "bottom")[] = [];
@@ -283,14 +294,19 @@ export function recommendOutfit(garments: Garment[], dateKey: string, variant = 
     return { ok: false, season, missing };
   }
   const base: SizeBase = {
-    topChest: median(garments.filter((g) => g.categoryId === "top").map((g) => g.measurements.chest ?? 0).filter((v) => v > 0)),
+    topChest: median(garments.filter(canBeTop).map((g) => g.measurements.chest ?? 0).filter((v) => v > 0)),
     bottomThigh: median(garments.filter((g) => g.categoryId === "bottom").map((g) => g.measurements.thigh ?? 0).filter((v) => v > 0)),
   };
 
   // 1) 상의·하의 짝을 모두 매기고 좋은 짝만 남긴다(id 순으로 정렬해 옷장 순서와 상관없게).
   const scored = tops
-    .flatMap((t) => bottoms.map((b) => ({ items: [t, b], score: scoreOutfit([t, b], base).score })))
-    .sort((a, b) => b.score - a.score || a.items.map((g) => g.id).join().localeCompare(b.items.map((g) => g.id).join()));
+    .flatMap((t) =>
+      bottoms.map((b) => {
+        const items: OutfitItem[] = [{ slot: "top", garment: t }, { slot: "bottom", garment: b }];
+        return { items, key: `${t.id},${b.id}`, score: scoreOutfit(items, base).score };
+      }),
+    )
+    .sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
   const pairs = scored.filter((p) => p.score >= scored[0].score - PAIR_MARGIN).slice(0, MAX_PAIRS);
 
   // 2) 한 바퀴 = pairs.length일. 바퀴마다 다른 순서로 섞는다.
@@ -310,16 +326,17 @@ export function recommendOutfit(garments: Garment[], dateKey: string, variant = 
   const hats = pool("hat");
   const withOuter = outers.length > 0 && rand() < outerChance;
   const withHat = hats.length > 0 && rand() < 0.5;
-  const extend = (items: Garment[], options: Garment[]) => {
-    if (options.length === 0) return items;
-    const list = options.map((o) => ({ o, score: scoreOutfit([...items, o], base).score }));
-    return [...items, pickWeighted(list, rand, 0.7).o];
+  const extend = (items: OutfitItem[], slot: CategoryId, options: Garment[]) => {
+    const free = options.filter((o) => !items.some((p) => p.garment === o));
+    if (free.length === 0) return items;
+    const list = free.map((o) => ({ o, score: scoreOutfit([...items, { slot, garment: o }], base).score }));
+    return [...items, { slot, garment: pickWeighted(list, rand, 0.7).o }];
   };
   let items = pair.items;
-  if (withOuter) items = extend(items, outers);
-  items = extend(items, pool("shoes"));
-  if (withHat) items = extend(items, hats);
+  if (withOuter) items = extend(items, "outer", outers);
+  items = extend(items, "shoes", pool("shoes"));
+  if (withHat) items = extend(items, "hat", hats);
 
   const { reasons } = scoreOutfit(items, base);
-  return { ok: true, season, items: OUTFIT_ORDER.flatMap((c) => items.filter((g) => g.categoryId === c)), reasons: reasons.slice(0, 2) };
+  return { ok: true, season, items: OUTFIT_ORDER.flatMap((c) => items.filter((p) => p.slot === c)), reasons: reasons.slice(0, 2) };
 }
