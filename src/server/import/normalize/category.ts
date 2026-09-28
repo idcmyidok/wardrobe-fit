@@ -33,7 +33,7 @@ const RULES: Array<[RegExp, CategoryId, string]> = [
   [/니트|스웨터|knit|sweater|pullover/i, "top", "top.knit"],
   [/피케|폴로|카라\s*티|polo|pique/i, "top", "top.polo"],
   // "티셔츠"·"t-shirt"는 셔츠가 아니다.
-  [/(?<!티\s*)셔츠|남방|블라우스|(?<!t-?)shirt|blouse/i, "top", "top.shirt"],
+  [/(?<!티\s*)셔츠|남방|블라우스|(?<!t-?)shirt|blouse/i, "outer", "outer.shirt"],
   [/민소매|나시|슬리브리스|탱크\s*탑|sleeveless|tank/i, "top", "top.sleeveless"],
   [/반팔|반소매|short\s*sleeve|t-?shirt.*short|tee.*short/i, "top", "top.short_tee"],
   [/긴팔|긴소매|롱\s*슬리브|long\s*sleeve/i, "top", "top.long_tee"],

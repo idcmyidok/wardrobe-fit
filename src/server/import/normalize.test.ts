@@ -58,7 +58,7 @@ describe("제품명·컬러·분류", () => {
     const sub = (name: string) => mapCategory([], name)?.subcategoryId;
     expect(sub("오버핏 반팔 티셔츠")).toBe("top.short_tee");
     expect(sub("그래픽 티셔츠")).toBe("top.short_tee");
-    expect(sub("옥스포드 셔츠")).toBe("top.shirt");
+    expect(sub("옥스포드 셔츠")).toBe("outer.shirt");
     expect(sub("후드 집업")).toBe("outer.hood_zip");
     expect(sub("스웨트 후디")).toBe("top.hoodie");
     expect(sub("경량 패딩 베스트")).toBe("outer.light_padding");

@@ -2,7 +2,7 @@ import { expect, login, samplePhoto, test } from "./support";
 
 test("직접 등록(사진 포함) → 검색·필터 → 수정 → 삭제 → 실행 취소", async ({ page, browser, admin, makeUser, seedGarments }) => {
   const user = await makeUser("crud");
-  await seedGarments(user, [{ category_id: "top", subcategory_id: "top.shirt", brand: "COS", product_name: "옥스포드 셔츠", size_label: "M" }]);
+  await seedGarments(user, [{ category_id: "outer", subcategory_id: "outer.shirt", brand: "COS", product_name: "옥스포드 셔츠", size_label: "M" }]);
   await login(page, user);
   await expect(page).toHaveURL(/\/wardrobe$/);
 
