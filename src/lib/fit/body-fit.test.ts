@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { computeBodyFit, computeCalibration, estimateBodyFromGarments, fitGroupOf, garmentRange, silhouetteOf, type BodyProfile } from "./body-fit";
 
 const body: BodyProfile = {
-  values: { height: 175, shoulder: 45, chest: 94, arm: 60, waist: 80, hip: 94, thigh: 56, leg: 100 },
+  values: { height: 175, shoulder: 45, chest: 94, waist: 80, hip: 94, thigh: 56 },
   uncertain: [],
   overrides: {},
   updatedAt: null,
@@ -104,7 +104,6 @@ describe("추천 치수·보정·역산", () => {
     expect(est.chest).toBe(93);
     expect(est.shoulder).toBe(45.5);
     expect(est.hip).toBe(93.5);
-    expect(est.leg).toBeUndefined();
   });
   it("세부분류 묶음", () => {
     expect(fitGroupOf("outer", "outer.coach")).toBe("light_outer");
