@@ -266,9 +266,10 @@ export function seasonSummary(G: Garment[]) {
 
 /** 종류별 기본 구성(세부분류, 기본 벌 수, 주로 입는 시즌) */
 const ESSENTIALS: [string, number, Season][] = [
-  ["outer.jacket", 2, "fall"],
-  ["outer.coat", 1, "winter"],
-  ["outer.padding", 1, "winter"],
+  ["outer.blouson", 1, "fall"],
+  ["outer.transition_coat", 1, "fall"],
+  ["outer.winter_coat", 1, "winter"],
+  ["outer.short_padding", 1, "winter"],
   ["outer.cardigan", 1, "spring"],
   ["top.short_tee", 3, "summer"],
   ["top.long_tee", 2, "spring"],

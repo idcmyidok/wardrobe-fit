@@ -1,4 +1,4 @@
--- 4단계: 참조 데이터. src/lib/constants/categories.ts와 같아야 한다.
+-- 4단계: 참조 데이터(첫 시드). 세부분류는 20260928000011_musinsa_subcategories.sql에서 무신사 분류로 바뀌었다.
 insert into public.categories (id, name_ko, measurement_group, sort_order) values
   ('outer', '아우터', 'top', 1),
   ('top', '상의', 'top', 2),

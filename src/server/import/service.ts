@@ -17,7 +17,7 @@ import { normalizeProductUrl } from "./url";
 export const IMPORT_REUSE_MINUTES = 10;
 export const IMPORT_DAILY_LIMIT = 50;
 /** 분석 방식이 바뀌면 올린다. 이전 방식의 결과는 다시 쓰지 않는다(product_imports.parser_version). */
-export const IMPORT_ENGINE_VERSION = "v3";
+export const IMPORT_ENGINE_VERSION = "v4";
 
 type Client = SupabaseClient<Database>;
 

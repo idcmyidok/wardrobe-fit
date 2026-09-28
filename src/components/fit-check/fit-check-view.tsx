@@ -57,7 +57,7 @@ export function FitCheckView() {
   const [linkCat, setLinkCat] = useState<CategoryId>("outer");
   const [linkSub, setLinkSub] = useState<string>(firstSub("outer"));
   const [chosen, setChosen] = useState<string[]>([]);
-  const [man, setMan] = useState<ManualInput>({ categoryId: "outer", subcategoryId: "outer.jacket", brand: "", productName: "", size: "", m: {} });
+  const [man, setMan] = useState<ManualInput>({ categoryId: "outer", subcategoryId: "outer.blouson", brand: "", productName: "", size: "", m: {} });
   const [excluded, setExcluded] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
