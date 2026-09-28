@@ -1,4 +1,7 @@
+import { FEATURES } from "../src/lib/features";
 import { expect, login, test } from "./support";
+
+test.skip(!FEATURES.outfit, "오늘의 코디는 꺼 두었다(src/lib/features.ts).");
 
 test("오늘의 코디: 옷이 부족하면 안내하고, 상의·하의가 있으면 카드로 추천한다", async ({ page, admin, makeUser }) => {
   const user = await makeUser("outfit");
