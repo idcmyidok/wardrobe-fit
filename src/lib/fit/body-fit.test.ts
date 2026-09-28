@@ -124,6 +124,14 @@ describe("상의: 가슴이 기본 축, 어깨는 실루엣", () => {
   it("가슴·어깨 모두 너무 큼 → 너무 큼", () => {
     expect(ok(computeBodyFit(tee(62, 57), body)).basis.rule).toBe("both_big");
   });
+  it("패딩은 가슴 단면 60 초중반이 레귤러(가슴둘레 98 기준)", () => {
+    const b98: BodyProfile = { ...body, values: { chest: 98 } };
+    const padding = (chest: number) => ok(computeBodyFit({ categoryId: "outer", subcategoryId: "outer.short_padding", measurements: { chest } }, b98)).level;
+    expect(padding(61)).toBe("slim");
+    expect(padding(63)).toBe("regular");
+    expect(padding(66)).toBe("regular");
+    expect(padding(68)).toBe("semi_over");
+  });
   it("종류마다 가중치가 다르다(패딩은 가슴 75%)", () => {
     const r = ok(computeBodyFit({ categoryId: "outer", subcategoryId: "outer.short_padding", measurements: { chest: 60, shoulder: 47 } }, body));
     expect(r.basis.weights).toEqual({ chest: 75, shoulder: 25 });
