@@ -10,6 +10,9 @@ import type { CategoryId, Garment } from "@/lib/types/domain";
 import type { ColumnSort, SortableColumn } from "./filter-state";
 import { GarmentThumbnail } from "./garment-thumbnail";
 
+/** 옷장 목록 보기: simple은 사진·요약 목록, detail은 실측까지 보이는 표. */
+export type WardrobeViewMode = "simple" | "detail";
+
 const cell = "border-r border-neutral-300 px-2 py-2 text-center align-middle";
 const head = "border-r border-b border-r-neutral-300 border-b-text bg-surface font-mono text-[10.5px] font-medium tracking-[0.06em] text-neutral-700";
 const mono = "font-mono tabular-nums whitespace-nowrap";
@@ -26,7 +29,10 @@ export function WardrobeTable({
   onSort,
   selectedId,
   onOpen,
+  view,
 }: {
+  /** simple: 간략 목록, detail: 표. 정하지 않으면 모바일은 목록, PC는 표. */
+  view?: WardrobeViewMode;
   categoryId: CategoryId;
   items: Garment[];
   sort: ColumnSort;
@@ -41,8 +47,13 @@ export function WardrobeTable({
 
   return (
     <>
-      <MobileList items={items} selectedId={selectedId} onOpen={onOpen} />
-      <div className="hidden overflow-x-auto md:block">
+      <MobileList
+        items={items}
+        selectedId={selectedId}
+        onOpen={onOpen}
+        className={view === "simple" ? undefined : view === "detail" ? "hidden" : "md:hidden"}
+      />
+      <div className={cn("overflow-x-auto overscroll-x-contain", view === "simple" ? "hidden" : view === "detail" ? undefined : "hidden md:block")}>
         <table className="w-full min-w-312 table-fixed border-collapse border-t border-l border-neutral-300 bg-surface text-sm">
           <thead>
             <tr>
@@ -138,28 +149,45 @@ export function WardrobeTable({
   );
 }
 
-/** 모바일(768px 미만): 표 대신 두 줄 목록. 누르면 옷 정보 페이지로 간다(PROJECT_SPEC.md 5.2). */
-function MobileList({ items, selectedId, onOpen }: { items: Garment[]; selectedId: string | null; onOpen: (id: string) => void }) {
+/** 간략 목록(모바일 기본): 사진과 두 줄 요약. 모바일에서 누르면 옷 정보 페이지로 간다(PROJECT_SPEC.md 5.2). */
+function MobileList({
+  items,
+  selectedId,
+  onOpen,
+  className,
+}: {
+  items: Garment[];
+  selectedId: string | null;
+  onOpen: (id: string) => void;
+  className?: string;
+}) {
   return (
-    <ul className="border-t border-text md:hidden">
+    <ul className={cn("border-t border-text", className)}>
       {items.map((item) => (
         <li key={item.id} className="border-b border-neutral-300">
           <button
             type="button"
             onClick={() => onOpen(item.id)}
             className={cn(
-              "grid min-h-16 w-full cursor-pointer grid-cols-[48px_minmax(0,1fr)] items-center gap-3 py-2 text-left",
+              "grid min-h-16 w-full cursor-pointer grid-cols-[56px_minmax(0,1fr)] items-center gap-3 py-2 text-left",
               selectedId === item.id && "bg-accent-100",
             )}
           >
-            <GarmentThumbnail item={item} className="h-15" />
+            <GarmentThumbnail item={item} className="h-17.5" fit="contain" />
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="truncate text-base">
                 {item.brand && <span className="font-semibold">{item.brand} </span>}
                 {item.productName}
               </span>
               <span className={cn(mono, "truncate text-xs text-neutral-700")}>
-                {[item.sizeLabel, item.colorName, item.purchasedOn && formatDate(item.purchasedOn)].filter(Boolean).join(" · ") || "—"}
+                {[
+                  item.sizeLabel,
+                  item.colorName,
+                  item.purchasedOn && formatDate(item.purchasedOn),
+                  item.purchasePrice != null && formatPrice(item.purchasePrice),
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "—"}
               </span>
             </span>
           </button>

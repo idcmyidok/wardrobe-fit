@@ -43,7 +43,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {children}
         </WardrobeData>
       </Suspense>
-      <SiteFooter className="mx-auto max-w-280 px-[clamp(16px,3vw,32px)] pb-6" />
+      {/* 머리글과 같은 좌우 여백으로 PC에서는 화면 왼쪽 끝에 맞춘다. */}
+      <SiteFooter className="px-[clamp(16px,3vw,32px)] pb-6" />
     </>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ImagePicker } from "@/components/garment-form/image-picker";
 import { ShopPhotos } from "@/components/garment-form/shop-photos";
 import { UnitInput } from "@/components/ui/input";
@@ -158,11 +158,21 @@ export function GarmentDetail({
     showToast("착용 후기를 저장했습니다");
   };
 
-  const details: [string, string][] = [
+  const productHref = safeHttpUrl(g.productUrl);
+  const details: [string, ReactNode][] = [
     ["시즌", g.seasons.map((s) => SEASON_NAME[s]).join(" · ") || "—"],
     ["구매일", formatDate(g.purchasedOn)],
     ["구매가", formatPrice(g.purchasePrice)],
-    ["상품 링크", g.productUrl || "—"],
+    [
+      "상품 링크",
+      productHref ? (
+        <a href={productHref} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-accent-700">
+          {g.productUrl}
+        </a>
+      ) : (
+        g.productUrl || "—"
+      ),
+    ],
   ];
 
   return (
@@ -203,7 +213,7 @@ export function GarmentDetail({
                     <div className="aspect-[4/5] w-full bg-neutral-200">
                       {/* 불러오지 못하면(서명 주소 만료 등) 깨진 그림 대신 빈 자리만 남긴다. */}
                       {/* eslint-disable-next-line @next/next/no-img-element -- 비공개 bucket의 signed URL */}
-                      <img src={g.imageUrl} alt="" onError={(e) => (e.currentTarget.style.opacity = "0")} className="size-full object-cover" />
+                      <img src={g.imageUrl} alt="" onError={(e) => (e.currentTarget.style.opacity = "0")} className="size-full object-contain" />
                     </div>
                   ) : (
                     <div className="aspect-[4/5] bg-neutral-200" />
@@ -563,4 +573,15 @@ function InfoEditor({
       </section>
     </>
   );
+}
+
+/** http·https 주소만 링크로 연다(javascript: 같은 주소는 글자로만 보인다). */
+function safeHttpUrl(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
+  } catch {
+    return null;
+  }
 }
