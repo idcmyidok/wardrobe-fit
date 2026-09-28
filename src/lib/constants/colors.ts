@@ -38,7 +38,7 @@ export const COLOR_HEX: Record<string, string> = {
   "올리브": "#6b6b3f",
   "다크 올리브": "#4b4a2d",
   "세이지": "#a7ae8e",
-  "민트": "#bfe3d0",
+  "민트": "#a6e0c6",
   "포레스트 그린": "#2f4a34",
   "헌터 그린": "#2c4a3a",
   "보틀 그린": "#1f3b2d",
@@ -50,27 +50,27 @@ export const COLOR_HEX: Record<string, string> = {
   "다크 네이비": "#18213a",
   "미드나잇": "#161c2e",
   "인디고": "#2e3a63",
-  "로얄 블루": "#2c4aa0",
-  "블루": "#3a62a8",
+  "로얄 블루": "#2848a8",
+  "블루": "#2f5fb3",
   "코발트": "#2350a8",
-  "스카이 블루": "#a9c8e6",
-  "라이트 블루": "#b9cfe4",
-  "파우더 블루": "#c7d6e6",
-  "데님": "#4a6388",
-  "라이트 데님": "#8ea6c4",
-  "미드 데님": "#5c7699",
-  "다크 데님": "#2c3a55",
+  "스카이 블루": "#8cc3ea",
+  "라이트 블루": "#a9cbef",
+  "파우더 블루": "#b9d2ec",
+  "데님": "#4a6a96",
+  "라이트 데님": "#9db8d6",
+  "미드 데님": "#5f7fa8",
+  "다크 데님": "#2f4468",
   "스틸 블루": "#5d7892",
   "틸": "#2f6f73",
   "슬레이트": "#5a6570",
-  "레드": "#b3261e",
+  "레드": "#c0282d",
   "버건디": "#6a1f2b",
   "와인": "#5c1f2a",
   "마룬": "#5a2027",
   "옥스블러드": "#4f1c1f",
   "브릭": "#9a4436",
   "코랄": "#e27d64",
-  "핑크": "#e6a9b5",
+  "핑크": "#eca6b8",
   "더스티 핑크": "#c9a0a0",
   "로즈": "#c07a82",
   "라벤더": "#b7a8cf",
@@ -85,6 +85,25 @@ export const COLOR_HEX: Record<string, string> = {
   "탠저린": "#e58a3a",
   "골드": "#b89545",
   "오커": "#b8893a",
+  "연청": "#9db8d6",
+  "중청": "#5f7fa8",
+  "진청": "#2f4468",
+  "흑청": "#262b35",
+  "베이비 블루": "#bcd9f2",
+  "아쿠아": "#5ec8d8",
+  "아쿠아 블루": "#4fb3dc",
+  "터콰이즈": "#3db8b0",
+  "라이트 그린": "#a9d08e",
+  "다크 그린": "#24422e",
+  "라임": "#bcd64a",
+  "멜란지": "#b0b0ad",
+  "헤더 그레이": "#a9a9a6",
+  "라이트 핑크": "#f3c6d1",
+  "베이비 핑크": "#f5cdd7",
+  "핫 핑크": "#e0457b",
+  "피치": "#f4b999",
+  "라일락": "#c8a9d9",
+  "바이올렛": "#7a4fb0",
 };
 
 /** 영어 색 단어 → 한글 표기. 표기는 COLOR_HEX 이름을 따른다(yellow → 옐로, light → 라이트). */
@@ -202,11 +221,32 @@ export function normalizeColorName(name: string | null | undefined): string | nu
   return [...new Set(parts)].join("/");
 }
 
-/** 컬러명에서 대표 색을 찾는다. 한글 표기로 바꾼 뒤 정확히 같은 이름 → 이름에 포함된 색 순서. */
+/** 두 색을 섞는다(t = 0이면 a, 1이면 b). */
+function mix(a: string, b: string, t: number): string {
+  const [x, y] = [parseInt(a.slice(1), 16), parseInt(b.slice(1), 16)];
+  const ch = (v: number, s: number) => (v >> s) & 255;
+  const out = [16, 8, 0].map((s) => Math.round(ch(x, s) + (ch(y, s) - ch(x, s)) * t));
+  return `#${out.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
+
+const LIGHTER = /^(라이트|페일|베이비|연)\s*(.+)$/;
+const DARKER = /^(다크|딥|진)\s*(.+)$/;
+
+/**
+ * 컬러명에서 대표 색을 찾는다. 한글 표기로 바꾼 뒤 정확히 같은 이름 → 밝게/어둡게 하는 수식어("라이트 올리브")
+ * → 이름에 포함된 가장 긴 색 순서.
+ */
 export function findColorHex(name: string | null): string | null {
-  const n = normalizeColorName(name);
+  // "블랙/화이트"처럼 여러 색이면 첫 색으로 보여 준다.
+  const n = normalizeColorName(name)?.split("/")[0];
   if (!n) return null;
   if (COLOR_HEX[n]) return COLOR_HEX[n];
+  const light = n.match(LIGHTER);
+  const lightBase = light && findColorHex(light[2]);
+  if (lightBase) return mix(lightBase, "#ffffff", 0.45);
+  const dark = n.match(DARKER);
+  const darkBase = dark && findColorHex(dark[2]);
+  if (darkBase) return mix(darkBase, "#000000", 0.35);
   const part = Object.keys(COLOR_HEX)
     .sort((a, b) => b.length - a.length)
     .find((k) => n.includes(k));
