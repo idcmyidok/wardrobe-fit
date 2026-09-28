@@ -100,6 +100,8 @@ export interface NormalizedProduct {
   colorCandidate: Extracted<string> | null;
   sizeOptions: string[];
   sizeChart: NormalizedSizeChart | null;
+  /** 쇼핑몰이 붙인 카테고리 경로(넓은 것 → 좁은 것). 주문내역 가져오기에서 옷이 아닌 상품을 거를 때 쓴다. */
+  categoryPath?: string[];
   warnings: ImportWarning[];
   /** parser 진단 정보(화면에 안 보임) */
   diagnostics?: Record<string, unknown>;
