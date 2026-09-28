@@ -227,6 +227,18 @@
   .btn-ghost:active {
     background: var(--n-300);
   }
+  /* 삭제처럼 되돌리기 어려운 동작 */
+  .btn-danger {
+    background: var(--negative);
+    color: #ffffff;
+  }
+  .btn-danger:hover {
+    background: color-mix(in srgb, var(--negative) 86%, #000000);
+    color: #ffffff;
+  }
+  .btn-danger:active {
+    background: color-mix(in srgb, var(--negative) 74%, #000000);
+  }
   .btn-icon {
     width: 36px;
     height: 36px;
