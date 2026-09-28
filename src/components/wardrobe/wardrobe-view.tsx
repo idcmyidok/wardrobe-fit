@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useMemo } from "react";
 import { buttonClassName } from "@/components/ui/button";
-import { CATEGORIES, SUBCATEGORIES } from "@/lib/constants/categories";
+import { CATEGORIES, COUNT_UNIT, SUBCATEGORIES } from "@/lib/constants/categories";
 import { SEASONS } from "@/lib/constants/seasons";
 import {
   DEFAULT_FILTERS,
@@ -136,7 +136,7 @@ export function WardrobeView() {
                 <h2 id={`group-${group.id}`} className="text-lg">
                   {group.name}
                 </h2>
-                <span className="font-mono text-base text-neutral-700 tabular-nums">{group.total}벌</span>
+                <span className="font-mono text-base text-neutral-700 tabular-nums">{group.total}{COUNT_UNIT[group.id]}</span>
               </div>
               <WardrobeTable
                 categoryId={group.id}
