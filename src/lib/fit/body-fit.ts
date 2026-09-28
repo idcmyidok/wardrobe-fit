@@ -49,7 +49,10 @@ interface GroupDef {
   kind: FitKind;
   /** 폭 치수별 여유 경계 5개: 너무 작음 | 슬림 | 정 | 세미오버 | 오버 | 너무 큼 */
   width: Partial<Record<WidthKey, [number, number, number, number, number]>>;
-  /** 상의 총장 = 키 × [a, b] (정핏 기준). null이면 길이는 보지 않는다(코트·패딩처럼 길이가 제각각). */
+  /**
+   * 상의 총장 = 키 × [a, b] (정핏 기준, 키 175cm 남성 기준 국내 쇼핑몰 실측에 맞춘 값).
+   * null이면 길이는 보지 않는다(코트·패딩처럼 길이가 제각각).
+   */
   lengthRatio?: Band | null;
   /** 하의 총장을 볼지 */
   legLength?: boolean;
@@ -62,12 +65,12 @@ const OUTER_SHOULDER: [number, number, number, number, number] = [-3, 0, 3, 7, 1
 const PANTS_WIDTH = { hip: [0, 4, 9, 15, 24], thigh: [2, 7, 13, 20, 30] } satisfies GroupDef["width"];
 
 export const FIT_GROUPS: GroupDef[] = [
-  { id: "short_tee", name: "반팔 티셔츠", kind: "top", width: { chest: [4, 10, 16, 24, 34], shoulder: TEE_SHOULDER }, lengthRatio: [0.395, 0.42] },
-  { id: "long_tee", name: "긴팔·맨투맨·후드", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: TEE_SHOULDER }, lengthRatio: [0.395, 0.42], sleeve: true },
-  { id: "knit", name: "니트·카디건", kind: "top", width: { chest: [2, 8, 14, 22, 32], shoulder: TEE_SHOULDER }, lengthRatio: [0.38, 0.41], sleeve: true },
-  { id: "shirt", name: "셔츠", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: TEE_SHOULDER }, lengthRatio: [0.42, 0.45], sleeve: true },
-  { id: "light_outer", name: "가벼운 아우터·바람막이", kind: "top", width: { chest: [10, 16, 24, 32, 42], shoulder: OUTER_SHOULDER }, lengthRatio: [0.38, 0.42], sleeve: true },
-  { id: "leather", name: "레더·무스탕", kind: "top", width: { chest: [6, 10, 16, 22, 30], shoulder: [-3, -1, 2, 5, 9] }, lengthRatio: [0.36, 0.4], sleeve: true },
+  { id: "short_tee", name: "반팔 티셔츠", kind: "top", width: { chest: [4, 10, 16, 24, 34], shoulder: TEE_SHOULDER }, lengthRatio: [0.377, 0.406] },
+  { id: "long_tee", name: "긴팔·맨투맨·후드", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: TEE_SHOULDER }, lengthRatio: [0.371, 0.4], sleeve: true },
+  { id: "knit", name: "니트·카디건", kind: "top", width: { chest: [2, 8, 14, 22, 32], shoulder: TEE_SHOULDER }, lengthRatio: [0.36, 0.389], sleeve: true },
+  { id: "shirt", name: "셔츠", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: TEE_SHOULDER }, lengthRatio: [0.394, 0.423], sleeve: true },
+  { id: "light_outer", name: "가벼운 아우터·바람막이", kind: "top", width: { chest: [10, 16, 24, 32, 42], shoulder: OUTER_SHOULDER }, lengthRatio: [0.366, 0.4], sleeve: true },
+  { id: "leather", name: "레더·무스탕", kind: "top", width: { chest: [6, 10, 16, 22, 30], shoulder: [-3, -1, 2, 5, 9] }, lengthRatio: [0.331, 0.366], sleeve: true },
   { id: "coat", name: "코트", kind: "top", width: { chest: [12, 18, 26, 34, 44], shoulder: OUTER_SHOULDER }, lengthRatio: null, sleeve: true },
   { id: "padding", name: "패딩", kind: "top", width: { chest: [14, 20, 28, 36, 46], shoulder: OUTER_SHOULDER }, lengthRatio: null, sleeve: true },
   { id: "pants", name: "긴 바지", kind: "bottom", width: PANTS_WIDTH, legLength: true },
@@ -117,10 +120,12 @@ const WAIST_TOO_BIG = 8;
 
 /** 소매 여유 = (옷 어깨/2 + 소매) − (몸 어깨/2 + 팔길이) */
 const SLEEVE_REACH: Record<WearableLevel, Band> = { slim: [-1, 3], regular: [0, 4], semi_over: [1, 6], over: [2, 8] };
-/** 상의 총장: 정핏 기준 길이에 더하는 값 */
-const TOP_LENGTH_SHIFT: Record<WearableLevel, number> = { slim: -1, regular: 0, semi_over: 2, over: 4 };
-/** 하의 총장 − 다리길이 */
-const LEG_LENGTH: Record<WearableLevel, Band> = { slim: [-1, 3], regular: [1, 5], semi_over: [2, 7], over: [3, 9] };
+/** 상의 총장: 정핏 범위 [아래, 위]에 더하는 값. 오버핏도 박시하게 짧은 옷이 많아 아래쪽은 거의 그대로 둔다. */
+const TOP_LENGTH_SHIFT: Record<WearableLevel, Band> = { slim: [-2, -1], regular: [0, 0], semi_over: [0, 3], over: [1, 5] };
+/** 권장 총장보다 이만큼(cm)까지 짧으면 "짧다"가 아니라 크롭 기장으로 알린다. */
+const CROP_RANGE = 10;
+/** 하의 총장 − 다리길이(옆선~복숭아뼈). 슬림은 발목이 보이는 기장, 와이드는 신발을 덮는 기장. */
+const LEG_LENGTH: Record<WearableLevel, Band> = { slim: [-3, 1], regular: [0, 4], semi_over: [1, 6], over: [2, 8] };
 
 /** "정확하지 않아요" 치수는 이만큼(cm) 느슨하게 본다. */
 const UNCERTAIN_TOLERANCE = 3;
@@ -392,7 +397,7 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile, calib
   const ref: WearableLevel = (WEARABLE_LEVELS as readonly string[]).includes(level) ? (level as WearableLevel) : "regular";
   const notes: BodyFitIssue[] = [];
   const lengthRange = garmentRange(groupId, ref, "length", body, calibration);
-  if (lengthRange && m.length != null) notes.push(...rangeNote("length", "총장", m.length, lengthRange, name(ref), body.uncertain.includes(kind === "top" ? "height" : "leg")));
+  if (lengthRange && m.length != null) notes.push(...rangeNote("length", "총장", m.length, lengthRange, name(ref), body.uncertain.includes(kind === "top" ? "height" : "leg"), kind === "top"));
   const sleeveRange = garmentRange(groupId, ref, "sleeve", body, calibration, m.shoulder ?? undefined);
   if (sleeveRange && m.sleeve != null) notes.push(...rangeNote("sleeve", "소매", m.sleeve, sleeveRange, name(ref), body.uncertain.includes("arm")));
 
@@ -417,8 +422,11 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile, calib
   };
 }
 
-function rangeNote(key: "length" | "sleeve", label: string, value: number, [lo, hi]: Band, levelName: string, uncertain: boolean): BodyFitIssue[] {
+function rangeNote(key: "length" | "sleeve", label: string, value: number, [lo, hi]: Band, levelName: string, uncertain: boolean, cropOk = false): BodyFitIssue[] {
   const tol = uncertain ? UNCERTAIN_TOLERANCE : 0;
+  if (cropOk && value < lo - tol && value >= lo - tol - CROP_RANGE) {
+    return [{ key, severe: false, text: `${levelName} 기준보다 ${formatNum(round1(lo - value))}cm 짧은 크롭 기장이에요.` }];
+  }
   if (value < lo - tol) return [{ key, severe: false, text: `${iga(label)} ${levelName} 기준보다 ${formatNum(round1(lo - value))}cm 짧아요.` }];
   if (value > hi + tol) return [{ key, severe: false, text: `${iga(label)} ${levelName} 기준보다 ${formatNum(round1(value - hi))}cm 길어요.` }];
   return [];
@@ -444,8 +452,8 @@ export function garmentRange(
   if (key === "length") {
     if (group.kind === "top") {
       if (!group.lengthRatio || v.height == null) return null;
-      const shift = TOP_LENGTH_SHIFT[level];
-      return [round1(v.height * group.lengthRatio[0] + shift), round1(v.height * group.lengthRatio[1] + shift)];
+      const [lo, hi] = TOP_LENGTH_SHIFT[level];
+      return [round1(v.height * group.lengthRatio[0] + lo), round1(v.height * group.lengthRatio[1] + hi)];
     }
     if (!group.legLength || v.leg == null) return null;
     return [round1(v.leg + LEG_LENGTH[level][0]), round1(v.leg + LEG_LENGTH[level][1])];
