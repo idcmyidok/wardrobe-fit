@@ -3,47 +3,55 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>이메일 인증</title>
+<title>이메일 인증 안내</title>
 </head>
-<body style="margin:0;padding:0;background:#f4f2ee;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">버튼 하나만 누르면 가입이 끝나요.</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f2ee;">
+<body style="margin:0;padding:0;background:#ffffff;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;">
   <tr>
-    <td align="center" style="padding:32px 16px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;background:#fbfaf8;border:1px solid #d3cec5;border-radius:6px;">
+    <td align="center" style="padding:40px 20px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;word-break:keep-all;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;">
         <tr>
-          <td style="padding:28px 32px 0 32px;font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:15px;font-weight:700;letter-spacing:0.2px;color:#4a5134;">
-            Wardrobe Fit
+          <td style="padding:0 0 24px 0;border-bottom:2px solid #1c1b19;font-size:18px;font-weight:800;color:#1c1b19;">Wardrobe Fit</td>
+        </tr>
+        <tr>
+          <td style="padding:36px 0 0 0;">
+            <p style="margin:0 0 16px 0;font-size:22px;line-height:32px;font-weight:700;color:#1c1b19;">이메일 주소를 인증해 주세요</p>
+            <p style="margin:0;font-size:15px;line-height:25px;color:#42403b;">Wardrobe Fit 회원가입을 완료하려면 아래 버튼을 눌러 이메일 인증을 진행해 주세요.</p>
           </td>
         </tr>
         <tr>
-          <td style="padding:20px 32px 0 32px;font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif;">
-            <h1 style="margin:0 0 12px 0;font-size:22px;line-height:30px;font-weight:700;color:#1c1b19;">Wardrobe Fit에 오신 걸 환영해요</h1>
-            <p style="margin:0;font-size:15px;line-height:24px;color:#42403b;">가입해 주셔서 고마워요. 아래 버튼을 누르면 이메일 인증이 끝나고 바로 내 옷장으로 이동해요.</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:28px 32px 8px 32px;">
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+          <td style="padding:24px 0 0 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f2ee;">
               <tr>
-                <td style="border-radius:6px;background:#5b6340;">
-                  <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:6px;">이메일 인증하기</a>
-                </td>
+                <td style="padding:14px 16px;font-size:14px;line-height:22px;color:#5c5852;width:72px;">가입 계정</td>
+                <td style="padding:14px 16px 14px 0;font-size:14px;line-height:22px;color:#1c1b19;font-weight:600;word-break:break-all;">{{ .Email }}</td>
               </tr>
             </table>
           </td>
         </tr>
         <tr>
-          <td style="padding:12px 32px 28px 32px;font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:13px;line-height:20px;color:#77726a;">
-            링크는 한 번만, 1시간 동안 쓸 수 있어요.<br>
-            버튼이 눌리지 않으면 아래 주소를 복사해 브라우저에 붙여 넣어 주세요.<br>
-            <a href="{{ .ConfirmationURL }}" style="color:#5b6340;word-break:break-all;">{{ .ConfirmationURL }}</a>
+          <td style="padding:32px 0 0 0;">
+            <a href="{{ .ConfirmationURL }}" target="_blank" style="display:block;padding:15px 0;background:#1c1b19;border-radius:4px;font-size:16px;font-weight:700;color:#ffffff;text-align:center;text-decoration:none;">이메일 인증하기</a>
           </td>
         </tr>
         <tr>
-          <td style="padding:16px 32px;border-top:1px solid #e5e1da;font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:12px;line-height:18px;color:#948e84;">
-            내 옷장을 기록하고, 새 옷을 사기 전에 사이즈를 비교해 보세요.<br>
-            직접 가입하지 않았다면 이 메일은 무시하셔도 괜찮아요.
+          <td style="padding:20px 0 0 0;font-size:13px;line-height:21px;color:#77726a;">
+            인증 링크는 발송 후 1시간 동안 유효하며, 한 번만 사용할 수 있습니다.<br>
+            본인이 가입하지 않았다면 이 메일을 무시하셔도 됩니다.
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px 0 0 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #e5e1da;">
+              <tr>
+                <td style="padding:20px 0 0 0;font-size:12px;line-height:19px;color:#948e84;">
+                  본 메일은 발신 전용으로 회신되지 않습니다.<br>
+                  버튼이 동작하지 않으면 아래 주소를 브라우저에 붙여 넣어 주세요.<br>
+                  <a href="{{ .ConfirmationURL }}" style="color:#948e84;word-break:break-all;">{{ .ConfirmationURL }}</a><br><br>
+                  &copy; Wardrobe Fit
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
       </table>

@@ -245,7 +245,7 @@ otp_expiry = 3600
 # Uncomment to customize email template
 # 인증 메일(한국어). 운영은 Supabase 대시보드 Authentication > Emails에 같은 내용을 붙여 넣는다.
 [auth.email.template.confirmation]
-subject = "[Wardrobe Fit] 이메일 인증을 완료해 주세요"
+subject = "[Wardrobe Fit] 이메일 인증 안내"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
