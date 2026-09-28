@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { priceComment } from "./wardrobe-analysis";
+import type { Garment } from "@/lib/types/domain";
+import { colorSummary, priceComment } from "./wardrobe-analysis";
 
 describe("priceComment", () => {
   it("가격 입력이 없으면 안내 문구", () => {
@@ -23,5 +24,24 @@ describe("priceComment", () => {
 
   it("가격 입력이 2벌 이하면 덧붙인다", () => {
     expect(priceComment(2, 60000, 30000, 40000).body).toContain("2벌뿐이라");
+  });
+});
+
+describe("colorSummary", () => {
+  const g = (colorName: string | null) => ({ categoryId: "top", colorName }) as unknown as Garment;
+
+  it("비슷한 색은 계열로 묶고, 계열 안의 색별 벌 수를 많은 순으로 담는다", () => {
+    const { slices, totalLabel } = colorSummary([g("블루"), g("아쿠아 블루"), g("라이트 블루"), g("라이트 블루"), g("블랙"), g(null)], "all");
+    expect(slices.map((s) => [s.name, s.count])).toEqual([
+      ["블루", 4],
+      ["미입력", 1],
+      ["블랙", 1],
+    ]);
+    expect(slices[0].members).toEqual([
+      { name: "라이트 블루", count: 2 },
+      { name: "블루", count: 1 },
+      { name: "아쿠아 블루", count: 1 },
+    ]);
+    expect(totalLabel).toBe("전체 · 3가지 컬러");
   });
 });
