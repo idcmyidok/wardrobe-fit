@@ -3,7 +3,7 @@ import { computeBodyFit, type BodyProfile } from "./body-fit";
 import { pickSize, rankVersus, versusSummary, type VersusEntry } from "./versus";
 
 const body: BodyProfile = {
-  values: { height: 175, shoulder: 45, chest: 94, arm: 60 },
+  values: { height: 175, shoulder: 45, chest: 94 },
   uncertain: [],
   overrides: {},
   updatedAt: null,

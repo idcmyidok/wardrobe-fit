@@ -139,6 +139,8 @@ check("B는 A의 치수를 볼 수 없음", none(await as(B, "select user_id fro
 check("B가 A의 치수를 고칠 수 없음", none(await as(B, "update public.body_profiles set chest_cm = 90 where user_id = $1", [A])));
 check("비로그인은 치수를 볼 수 없음", (await as(null, "select user_id from public.body_profiles")).rows.length === 0);
 check("범위 밖 치수는 저장 불가", Boolean((await as(A, "update public.body_profiles set height_cm = 20")).error));
+check("팔길이·다리길이 열은 없음", Boolean((await as(A, "select arm_cm from public.body_profiles")).error) && Boolean((await as(A, "select leg_cm from public.body_profiles")).error));
+check("정확하지 않아요에 팔길이는 못 넣음", Boolean((await as(A, "update public.body_profiles set uncertain = array['arm']")).error));
 check("모자에는 내 핏 표기 불가", Boolean((await as(A, "insert into public.garments (category_id, product_name, user_fit) values ('hat', 'cap', 'regular')")).error));
 check("A가 내 치수 삭제", (await as(A, "delete from public.body_profiles")).affectedRows === 1);
 

@@ -16,11 +16,11 @@ export interface VersusSizeRow {
 
 export type VersusBasis = "body" | "wardrobe" | "none";
 
-/** 한 사이즈의 점수(0~100). 내 치수 기준이면 원하는 핏 점수에서 입기 어려운 치수·길이 문제를 뺀다. */
+/** 한 사이즈의 점수(0~100). 내 치수 기준이면 원하는 핏 점수에서 입기 어려운 치수 문제를 뺀다. */
 export function bodyScore(result: BodyFitResult | null, target: WearableLevel): number | null {
   if (!result || result.status !== "ok") return null;
   const severe = result.issues.filter((i) => i.severe).length;
-  return Math.max(0, result.scores[target] - severe * 30 - result.notes.length * 5);
+  return Math.max(0, result.scores[target] - severe * 30);
 }
 
 /** 옷장 비교 점수: 비교할 수 있었던 치수 중 만족(기존) 범위 안에 든 비율 */
@@ -85,7 +85,6 @@ export function rankVersus(entries: VersusEntry[], target: WearableLevel): Versu
           ? `원하는 ${name(target)}으로 입을 수 있어요(${score}점).`
           : `원하는 ${name(target)}보다 ${name(r.level)}에 가까워요(${name(target)} ${r.scores[target]}점).`,
         ...r.issues.filter((i) => i.severe).map((i) => i.text),
-        ...r.notes.slice(0, 1).map((n) => n.text),
       ];
       return { key: e.key, score, basis: "body", reasons };
     }

@@ -10,7 +10,7 @@ import { FIT_COLOR, FitMeter } from "./fit-meter";
 const MEASURE_NAME = { chest: "가슴", shoulder: "어깨", waist: "허리", hip: "엉덩이", thigh: "허벅지" } as const;
 
 /**
- * 내 치수 기준 예상 핏(옷 정보·구매 판단 공용): 6칸 미터기, 네 가지 핏 점수, 안 맞는 치수, 총장·소매 안내.
+ * 내 치수 기준 예상 핏(옷 정보·구매 판단 공용): 6칸 미터기, 네 가지 핏 점수, 안 맞는 치수. 총장·소매는 보지 않는다(옷장 옷과의 길이 비교는 구매 판단 표에서).
  * userFit: 옷에 내가 표기한 핏. 있으면 미터기는 내 표기를 보여 주고, 예상과 다르면 둘 다 보여 준다.
  */
 export function BodyFitPanel({ garment, userFit = null, showScores = true }: { garment: BodyFitGarment; userFit?: FitLevel | null; showScores?: boolean }) {
@@ -104,7 +104,7 @@ function BodyFitDetails({ result: r, userFit, showScores }: { result: Extract<Bo
         </div>
       )}
 
-      {(r.issues.length > 0 || r.notes.length > 0 || r.stretch) && (
+      {(r.issues.length > 0 || r.stretch) && (
         <ul className="flex flex-col gap-1 text-sm">
           {r.issues.map((i) => (
             <li key={`i-${i.key}`} className={i.severe ? "text-accent-800" : undefined}>
@@ -112,13 +112,10 @@ function BodyFitDetails({ result: r, userFit, showScores }: { result: Extract<Bo
               {i.text}
             </li>
           ))}
-          {r.notes.map((n) => (
-            <li key={`n-${n.key}`}>· {n.text}</li>
-          ))}
           {r.stretch && <li className="text-neutral-700">· 니트·스판처럼 늘어나는 소재로 보여요. 소재 특성상 실제 핏과 다를 수 있어요.</li>}
         </ul>
       )}
-      {r.issues.length === 0 && r.notes.length === 0 && <p className="text-sm text-neutral-700">내 치수와 크게 어긋나는 곳이 없어요.</p>}
+      {r.issues.length === 0 && <p className="text-sm text-neutral-700">내 치수와 크게 어긋나는 곳이 없어요.</p>}
     </div>
   );
 }

@@ -56,7 +56,6 @@ export type Database = {
       }
       body_profiles: {
         Row: {
-          arm_cm: number | null
           chest_cm: number | null
           consent_version: string
           consented_at: string
@@ -64,7 +63,6 @@ export type Database = {
           fit_overrides: Json
           height_cm: number | null
           hip_cm: number | null
-          leg_cm: number | null
           shoulder_cm: number | null
           thigh_cm: number | null
           uncertain: string[]
@@ -74,7 +72,6 @@ export type Database = {
           weight_kg: number | null
         }
         Insert: {
-          arm_cm?: number | null
           chest_cm?: number | null
           consent_version: string
           consented_at?: string
@@ -82,7 +79,6 @@ export type Database = {
           fit_overrides?: Json
           height_cm?: number | null
           hip_cm?: number | null
-          leg_cm?: number | null
           shoulder_cm?: number | null
           thigh_cm?: number | null
           uncertain?: string[]
@@ -92,7 +88,6 @@ export type Database = {
           weight_kg?: number | null
         }
         Update: {
-          arm_cm?: number | null
           chest_cm?: number | null
           consent_version?: string
           consented_at?: string
@@ -100,7 +95,6 @@ export type Database = {
           fit_overrides?: Json
           height_cm?: number | null
           hip_cm?: number | null
-          leg_cm?: number | null
           shoulder_cm?: number | null
           thigh_cm?: number | null
           uncertain?: string[]

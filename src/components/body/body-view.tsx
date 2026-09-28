@@ -30,9 +30,7 @@ const GROUPS = [
   { id: "lower", title: "하체" },
 ] as const;
 
-const REC_LABEL: Record<RecKey, string> = { shoulder: "어깨", chest: "가슴", length: "총장", sleeve: "소매", waist: "허리", hip: "엉덩이", thigh: "허벅지" };
-/** 단면으로 적는 치수 */
-const HALF_KEYS: RecKey[] = ["chest", "waist", "hip", "thigh"];
+const REC_LABEL: Record<RecKey, string> = { shoulder: "어깨", chest: "가슴", waist: "허리", hip: "엉덩이", thigh: "허벅지" };
 
 type ValueDraft = Record<BodyKey, string>;
 
@@ -417,7 +415,6 @@ function Recommendations({
               {keys.map((k) => (
                 <th key={k} className="text-right">
                   {REC_LABEL[k]}
-                  {HALF_KEYS.includes(k) && <span className="ml-0.5 text-2xs font-normal text-neutral-600">단면</span>}
                 </th>
               ))}
             </tr>
