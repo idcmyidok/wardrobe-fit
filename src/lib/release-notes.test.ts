@@ -13,6 +13,9 @@ describe("업데이트 노트", () => {
     expect(groups[1].notes.map((n) => n.version)).toEqual(["1.21", "1.20", "1.10"]);
     expect(majorOf("1.10")).toBe("1");
   });
+  it("신규 기능은 제목과 설명이 모두 있다", () => {
+    for (const n of RELEASE_NOTES) for (const f of n.features) expect(f.title && f.description).toBeTruthy();
+  });
   it("버전은 겹치지 않고 날짜 형식이 맞다", () => {
     const versions = RELEASE_NOTES.map((n) => n.version);
     expect(new Set(versions).size).toBe(versions.length);

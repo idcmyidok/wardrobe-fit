@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format/date";
-import { groupByMajor, type ReleaseNote } from "@/lib/release-notes";
+import { groupByMajor, type ReleaseFeature, type ReleaseNote } from "@/lib/release-notes";
 
 /**
  * 업데이트 노트 창. 최신 버전이 맨 위, 아래는 스크롤해서 본다.
@@ -94,7 +94,7 @@ function NoteItem({ note }: { note: ReleaseNote }) {
         </time>
       </header>
       {empty && <p className="text-sm text-neutral-700">내용을 준비하고 있어요.</p>}
-      <NoteSection title="신규 기능" items={note.features} />
+      <FeatureSection items={note.features} />
       <NoteSection title="변경 내용" items={note.changes} />
       {note.fixes.length > 0 && (
         <section className="flex flex-col gap-1.5">
@@ -107,6 +107,24 @@ function NoteItem({ note }: { note: ReleaseNote }) {
         </section>
       )}
     </article>
+  );
+}
+
+/** 신규 기능: 무엇이 생겼는지 한 줄 + 자세한 설명 */
+function FeatureSection({ items }: { items: ReleaseFeature[] }) {
+  if (!items.length) return null;
+  return (
+    <section className="flex flex-col gap-2">
+      <h4 className="font-mono text-xs font-medium tracking-[0.08em] text-neutral-700">신규 기능</h4>
+      <ul className="flex flex-col gap-2.5">
+        {items.map((f) => (
+          <li key={f.title} className="flex flex-col gap-0.5 border-l-2 border-accent pl-3">
+            <span className="text-base font-semibold">{f.title}</span>
+            <span className="text-sm text-pretty text-neutral-800">{f.description}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
