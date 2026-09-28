@@ -67,7 +67,8 @@ export async function runFitCheck(supabase: Client, userId: string, req: FitRequ
 
   const id = crypto.randomUUID();
   const provider = getAiProvider();
-  const judgeable = computed.sizes.some((s) => s.confidence !== "insufficient");
+  // 신발은 사이즈·착용감 규칙 판단만 한다(AI 요약 없음, 비용 0).
+  const judgeable = computed.categoryId !== "shoes" && computed.sizes.some((s) => s.confidence !== "insufficient");
   send({ type: "computed", id, computed, aiEnabled: Boolean(provider && judgeable) });
 
   let aiStatus: AiStatus = provider ? "skipped" : "disabled";

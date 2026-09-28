@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { SUBCATEGORY_NAME, CATEGORY_NAME } from "@/lib/constants/categories";
-import { BOTTOM_MEASUREMENTS, MEASUREMENT_LABELS, TOP_MEASUREMENTS, type MeasurementKey } from "@/lib/constants/measurements";
+import { MEASUREMENT_KEYS, MEASUREMENT_LABELS, type MeasurementKey } from "@/lib/constants/measurements";
 import type { FitCandidate } from "@/lib/fit/compute";
 import type { FitComputed, FitInterpretation } from "@/lib/fit/types";
 import type { AiProvider } from "./provider";
@@ -215,7 +215,7 @@ export function validateInterpretation(raw: unknown, computed: FitComputed): Fit
   const allowed = allowedNumbers(computed);
   const sizeLabels = computed.sizes.map((s) => s.sizeLabel);
   const ids = new Set(computed.comparables.map((c) => c.garmentId));
-  const dims: readonly MeasurementKey[] = computed.categoryId === "bottom" ? BOTTOM_MEASUREMENTS : TOP_MEASUREMENTS;
+  const dims = MEASUREMENT_KEYS[computed.categoryId];
   const ok = (s: string) => sentenceOk(s, allowed, sizeLabels);
 
   const perSize = out.perSize
@@ -254,7 +254,7 @@ export function validateInterpretation(raw: unknown, computed: FitComputed): Fit
 }
 
 export async function interpretFit(provider: AiProvider, candidate: FitCandidate, computed: FitComputed, input = buildFitInput(candidate, computed, provider.privacy)) {
-  const dims: readonly MeasurementKey[] = computed.categoryId === "bottom" ? BOTTOM_MEASUREMENTS : TOP_MEASUREMENTS;
+  const dims = MEASUREMENT_KEYS[computed.categoryId];
   const raw = await provider.generateStructured({
     system: SYSTEM,
     input,

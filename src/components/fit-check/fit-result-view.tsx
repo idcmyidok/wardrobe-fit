@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
-import { CATEGORY_NAME, SUBCATEGORY_NAME } from "@/lib/constants/categories";
+import { CATEGORY_NAME, COUNT_UNIT, SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { MEASUREMENT_LABELS, formatCm, formatNum } from "@/lib/constants/measurements";
 import { cn } from "@/lib/cn";
 import type { FitCandidate } from "@/lib/fit/compute";
-import type { AiStatus, ComparableSnapshot, Confidence, DimensionResult, DimensionTag, FitComputed, FitInterpretation } from "@/lib/fit/types";
+import { SHOE_FIT_FIELDS, shoeFitText } from "@/lib/constants/shoe-fit";
+import { idealFrom, shoeSizeMm } from "@/lib/fit/shoes";
+import type { AiStatus, ComparableSnapshot, Confidence, DimensionResult, DimensionTag, FitComputed, FitInterpretation, SizeReport } from "@/lib/fit/types";
 import { formatDate } from "@/lib/format/date";
 
 /**
@@ -84,6 +86,67 @@ function Row({ d, comps, note }: { d: DimensionResult; comps: ComparableSnapshot
   );
 }
 
+/** 신발: 치수 대신 가진 신발의 사이즈·착용감과 비교한 표 */
+function ShoeComparison({ size, comps }: { size: SizeReport; comps: ComparableSnapshot[] }) {
+  const shoe = size.shoe;
+  const diff = shoe?.diffMm == null ? "—" : shoe.diffMm === 0 ? "0" : `${shoe.diffMm > 0 ? "+" : "−"}${Math.abs(shoe.diffMm)}`;
+  const facts: Array<[string, string]> = [
+    ["신규 사이즈", shoe?.candidateMm != null ? `${shoe.candidateMm}mm` : "—"],
+    ["평소 맞는 사이즈", shoe?.idealMm != null ? `${shoe.idealMm}mm` : "—"],
+    ["차이", diff === "—" ? diff : `${diff}mm`],
+    ["기준", shoe?.basis === "sameBrand" ? "같은 브랜드 신발" : shoe?.basis === "all" ? "가진 신발 전체" : "—"],
+  ];
+  return (
+    <section className="flex flex-col gap-3 pt-8 pb-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-lg">사이즈·착용감 비교</h2>
+        <span className="text-sm text-neutral-700">mm · 길이감이 작았던 신발은 +5mm, 컸던 신발은 −5mm를 맞는 사이즈로 봅니다</span>
+      </div>
+      <dl className="grid grid-cols-2 border-t border-text sm:grid-cols-4">
+        {facts.map(([k, v]) => (
+          <div key={k} className="flex flex-col gap-0.5 border-b border-neutral-300 py-2.5">
+            <dt className="text-xs text-neutral-700">{k}</dt>
+            <dd className={cn("font-mono text-lg font-semibold tabular-nums", k === "차이" && Boolean(shoe?.diffMm) && "text-accent-700")}>{v}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="overflow-x-auto">
+        <table className="table min-w-160 tabular-nums">
+          <thead>
+            <tr>
+              <th>신발</th>
+              <th className="text-right">사이즈</th>
+              {SHOE_FIT_FIELDS.map((f) => (
+                <th key={f.key}>{f.label}</th>
+              ))}
+              <th className="text-right">맞았을 사이즈</th>
+            </tr>
+          </thead>
+          <tbody>
+            {comps.map((c) => {
+              const mm = shoeSizeMm(c.sizeLabel);
+              return (
+                <tr key={c.garmentId}>
+                  <td>
+                    <span className="font-semibold">{c.brand || "—"}</span> {c.productName}
+                  </td>
+                  <td className="text-right font-mono">{c.sizeLabel ?? "—"}</td>
+                  {SHOE_FIT_FIELDS.map((f) => (
+                    <td key={f.key} className={cn(c.shoeFit?.[f.key] === "tight" && f.key !== "length" && "text-accent-700")}>
+                      {shoeFitText(f.key, c.shoeFit?.[f.key])}
+                    </td>
+                  ))}
+                  <td className="text-right font-mono">{mm != null ? `${idealFrom(mm, c.shoeFit)}mm` : "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export function FitResultView({
   candidate,
   computed,
@@ -114,7 +177,13 @@ export function FitResultView({
   const reviewed = comps.filter((c) => c.review).length;
   const conf = CONFIDENCE[size.confidence];
   const title = [candidate.brand, candidate.productName].filter(Boolean).join(" ") || "직접 입력한 옷";
-  const sub = [CATEGORY_NAME[candidate.categoryId], candidate.subcategoryId ? SUBCATEGORY_NAME[candidate.subcategoryId] : null, "사이즈표 기준 실측"]
+  const shoes = computed.categoryId === "shoes";
+  const unit = COUNT_UNIT[computed.categoryId];
+  const sub = [
+    CATEGORY_NAME[candidate.categoryId],
+    candidate.subcategoryId ? SUBCATEGORY_NAME[candidate.subcategoryId] : null,
+    shoes ? "가진 신발의 사이즈·착용감 기준" : "사이즈표 기준 실측",
+  ]
     .filter(Boolean)
     .join(" · ");
   const weakDims = size.dimensions.filter((d) => d.tag === "weak" || d.tag === "none").map((d) => MEASUREMENT_LABELS[d.key]);
@@ -232,14 +301,29 @@ export function FitResultView({
             ))}
           </div>
           <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-mono text-base tabular-nums">
-            <dt className="text-neutral-700">비교한 옷</dt>
-            <dd>{comps.length}벌</dd>
-            <dt className="text-neutral-700">후기 있는 옷</dt>
-            <dd>{reviewed}벌</dd>
-            <dt className="text-neutral-700">판단한 치수</dt>
+            <dt className="text-neutral-700">{shoes ? "비교한 신발" : "비교한 옷"}</dt>
             <dd>
-              {size.dimensions.length}개 중 {judged}개
+              {comps.length}
+              {unit}
             </dd>
+            <dt className="text-neutral-700">후기 있는 {shoes ? "신발" : "옷"}</dt>
+            <dd>
+              {reviewed}
+              {unit}
+            </dd>
+            {shoes ? (
+              <>
+                <dt className="text-neutral-700">착용감 기록</dt>
+                <dd>{comps.filter((c) => c.shoeFit).length}켤레</dd>
+              </>
+            ) : (
+              <>
+                <dt className="text-neutral-700">판단한 치수</dt>
+                <dd>
+                  {size.dimensions.length}개 중 {judged}개
+                </dd>
+              </>
+            )}
           </dl>
         </div>
       </section>
@@ -251,36 +335,40 @@ export function FitResultView({
         </div>
       )}
 
-      <section className="flex flex-col gap-3 pt-8 pb-2">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg">치수별 비교</h2>
-          <span className="text-sm text-neutral-700">cm · 단면 · 만족 범위는 후기에 불만이 없는 옷 기준(후기가 부족하면 기존 옷 범위, 참고)</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="table min-w-240 font-mono tabular-nums">
-            <thead>
-              <tr>
-                <th>치수</th>
-                <th className="text-right text-text">신규 {size.sizeLabel}</th>
-                {comps.map((c) => (
-                  <th key={c.garmentId} className="text-right">
-                    {shortName(c)}
-                  </th>
+      {shoes ? (
+        <ShoeComparison size={size} comps={comps} />
+      ) : (
+        <section className="flex flex-col gap-3 pt-8 pb-2">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg">치수별 비교</h2>
+            <span className="text-sm text-neutral-700">{computed.categoryId === "hat" ? "cm" : "cm · 단면"} · 만족 범위는 후기에 불만이 없는 옷 기준(후기가 부족하면 기존 옷 범위, 참고)</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="table min-w-240 font-mono tabular-nums">
+              <thead>
+                <tr>
+                  <th>치수</th>
+                  <th className="text-right text-text">신규 {size.sizeLabel}</th>
+                  {comps.map((c) => (
+                    <th key={c.garmentId} className="text-right">
+                      {shortName(c)}
+                    </th>
+                  ))}
+                  <th className="text-right">만족 범위</th>
+                  <th className="w-40">위치</th>
+                  <th className="text-right">차이</th>
+                  <th className="pl-6">예상 핏</th>
+                </tr>
+              </thead>
+              <tbody>
+                {size.dimensions.map((d) => (
+                  <Row key={d.key} d={d} comps={comps} note={aiNote(d.key)} />
                 ))}
-                <th className="text-right">만족 범위</th>
-                <th className="w-40">위치</th>
-                <th className="text-right">차이</th>
-                <th className="pl-6">예상 핏</th>
-              </tr>
-            </thead>
-            <tbody>
-              {size.dimensions.map((d) => (
-                <Row key={d.key} d={d} comps={comps} note={aiNote(d.key)} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,380px),1fr))] gap-x-12 pt-8">
         <div className="flex flex-col">
@@ -300,11 +388,11 @@ export function FitResultView({
               );
             })
           ) : (
-            <p className="mt-3 text-base text-neutral-700">비교한 옷에 착용 후기가 없습니다. 후기를 남기면 판단 근거로 인용됩니다.</p>
+            <p className="mt-3 text-base text-neutral-700">비교한 {shoes ? "신발" : "옷"}에 착용 후기가 없습니다. 후기를 남기면 판단 근거로 인용됩니다.</p>
           )}
         </div>
         <div className="flex flex-col">
-          <h2 className="mb-3 border-b border-text pb-3 text-lg">비교에 사용한 옷 ({comps.length})</h2>
+          <h2 className="mb-3 border-b border-text pb-3 text-lg">비교에 사용한 {shoes ? "신발" : "옷"} ({comps.length})</h2>
           {comps.map((c) => {
             const body = (
               <>

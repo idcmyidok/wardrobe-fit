@@ -5,11 +5,13 @@ import { useEffect, useRef, useState } from "react";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { UnitInput } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
-import { CATEGORY_NAME, SUBCATEGORIES, SUBCATEGORY_NAME } from "@/lib/constants/categories";
+import { CATEGORIES, CATEGORY_NAME, SUBCATEGORIES, SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { formatCm, measurementFields, type MeasurementKey } from "@/lib/constants/measurements";
 import { FIT_ERROR_TEXT, streamFitCheck } from "@/lib/fit/client";
 import { computeFit, type FitCandidate } from "@/lib/fit/compute";
 import { MAX_FIT_SIZES, fitCandidateSchema } from "@/lib/fit/schema";
+import { shoeSizeMm } from "@/lib/fit/shoes";
+import { SHOE_FIT_FIELDS, shoeFitText } from "@/lib/constants/shoe-fit";
 import { candidateKeys, selectComparables } from "@/lib/fit/select-comparables";
 import type { FitComputed, FitInterpretation } from "@/lib/fit/types";
 import { streamImport, type ImportOutcome } from "@/lib/import/client";
@@ -47,6 +49,12 @@ interface Result {
 
 const firstSub = (categoryId: CategoryId) => SUBCATEGORIES.find((s) => s.categoryId === categoryId)!.id;
 
+/** 고를 수 있는 사이즈. 신발은 사이즈표 대신 mm로 읽히는 사이즈 옵션(270 등)을 쓴다. */
+function sizeRows(p: Imported["product"], categoryId: CategoryId): Array<{ sizeLabel: string; measurements: Measurements }> {
+  if (categoryId === "shoes") return p.sizeOptions.filter((s) => shoeSizeMm(s) != null).map((sizeLabel) => ({ sizeLabel, measurements: {} }));
+  return p.sizeChart?.rows ?? [];
+}
+
 export function FitCheckView() {
   const { garments, signedIn } = useWardrobe();
   const [manual, setManual] = useState(false);
@@ -66,7 +74,8 @@ export function FitCheckView() {
   useEffect(() => () => request.current?.abort(), []);
 
   const product = imported?.product ?? null;
-  const chartRows = product?.sizeChart?.rows ?? [];
+  const chartRows = product ? sizeRows(product, linkCat) : [];
+  const shoes = (manual ? man.categoryId : linkCat) === "shoes";
 
   // 지금 입력으로 만든 후보(검증 전)
   let candidate: FitCandidate;
@@ -95,7 +104,11 @@ export function FitCheckView() {
         })),
     };
   }
-  const hasInput = manual ? candidateKeys(candidate.categoryId, candidate.sizes).length > 0 : candidate.sizes.length > 0;
+  const hasInput = manual
+    ? shoes
+      ? shoeSizeMm(man.size) != null
+      : candidateKeys(candidate.categoryId, candidate.sizes).length > 0
+    : candidate.sizes.length > 0;
   const { selected, lacking } = selectComparables(candidate, garments);
   const included = selected.filter((s) => !excluded.includes(s.garment.id));
   const levels = new Set(selected.map((s) => s.matchLevel));
@@ -130,16 +143,9 @@ export function FitCheckView() {
     const p = outcome.product;
     const group = p.sizeChart?.measurementGroup;
     const cat = p.categoryId?.value ?? (group === "bottom" ? "bottom" : group === "hat" ? "hat" : "outer");
-    if (cat === "hat" || cat === "shoes") {
-      setImportError({
-        title: `${CATEGORY_NAME[cat]}는 구매 판단을 하지 않습니다`,
-        body: "구매 판단은 아우터·상의·하의만 비교합니다. 모자·신발은 옷장에 추가해서 사이즈를 기록해 두세요.",
-      });
-      return;
-    }
     setLinkCat(cat);
     setLinkSub(p.subcategoryId?.value && SUBCATEGORIES.some((s) => s.id === p.subcategoryId!.value && s.categoryId === cat) ? p.subcategoryId.value : firstSub(cat));
-    const rows = p.sizeChart?.rows ?? [];
+    const rows = sizeRows(p, cat);
     setChosen(rows.length ? [rows[Math.floor((rows.length - 1) / 2)].sizeLabel] : []);
     setImported(outcome as Imported);
   };
@@ -219,9 +225,11 @@ export function FitCheckView() {
       <div className="field">
         <label htmlFor={`${prefix}-cat`}>대분류</label>
         <select id={`${prefix}-cat`} className="input" value={cat} onChange={(e) => onCat(e.target.value as CategoryId)}>
-          <option value="outer">아우터</option>
-          <option value="top">상의</option>
-          <option value="bottom">하의</option>
+          {CATEGORIES.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
         </select>
       </div>
       <div className="field">
@@ -313,28 +321,43 @@ export function FitCheckView() {
             </div>
             <div className="field">
               <label htmlFor="fm-size">고민 중인 사이즈</label>
-              <input id="fm-size" className="input" placeholder="예: M, 48, 32" maxLength={30} value={man.size} onChange={(e) => setMan({ ...man, size: e.target.value })} />
+              <input
+                id="fm-size"
+                className="input"
+                placeholder={shoes ? "예: 270" : "예: M, 48, 32"}
+                maxLength={30}
+                value={man.size}
+                onChange={(e) => setMan({ ...man, size: e.target.value })}
+              />
             </div>
           </div>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h3 className="text-md">실측</h3>
-            <span className="text-sm text-neutral-700">cm · 단면 기준 · 사이즈표 값을 그대로 옮기세요. 비워 둔 치수는 판단하지 않습니다.</span>
-          </div>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
-            {measurementFields(man.categoryId).map((m) => (
-              <div key={m.key} className="field">
-                <label htmlFor={`fm-m-${m.key}`}>{m.label}</label>
-                <UnitInput
-                  id={`fm-m-${m.key}`}
-                  unit="cm"
-                  inputMode="decimal"
-                  className="text-body"
-                  value={man.m[m.key] ?? ""}
-                  onChange={(e) => setMan({ ...man, m: { ...man.m, [m.key]: e.target.value } })}
-                />
-              </div>
-            ))}
-          </div>
+          {shoes ? (
+            <p className="text-sm text-neutral-700">신발은 실측 대신 사이즈(mm)를 옷장에 기록한 신발의 사이즈·착용감과 비교합니다.</p>
+          ) : (
+          <>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-md">실측</h3>
+              <span className="text-sm text-neutral-700">
+                {man.categoryId === "hat" ? "cm · 머리둘레는 둘레 그대로" : "cm · 단면 기준"} · 사이즈표 값을 그대로 옮기세요. 비워 둔 치수는 판단하지 않습니다.
+              </span>
+            </div>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
+              {measurementFields(man.categoryId).map((m) => (
+                <div key={m.key} className="field">
+                  <label htmlFor={`fm-m-${m.key}`}>{m.label}</label>
+                  <UnitInput
+                    id={`fm-m-${m.key}`}
+                    unit="cm"
+                    inputMode="decimal"
+                    className="text-body"
+                    value={man.m[m.key] ?? ""}
+                    onChange={(e) => setMan({ ...man, m: { ...man.m, [m.key]: e.target.value } })}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+          )}
         </section>
       )}
 
@@ -380,39 +403,43 @@ export function FitCheckView() {
                   </label>
                 ))}
               </div>
-              <div className="overflow-x-auto">
-                <table className="table min-w-120 font-mono tabular-nums">
-                  <thead>
-                    <tr>
-                      <th>사이즈</th>
-                      {measurementFields(linkCat).map((f) => (
-                        <th key={f.key} className="text-right">
-                          {f.label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {chartRows.map((r) => (
-                      <tr key={r.sizeLabel} className={chosen.includes(r.sizeLabel) ? "bg-neutral-100" : undefined}>
-                        <td className="font-semibold">{r.sizeLabel}</td>
+              {!shoes && (
+                <div className="overflow-x-auto">
+                  <table className="table min-w-120 font-mono tabular-nums">
+                    <thead>
+                      <tr>
+                        <th>사이즈</th>
                         {measurementFields(linkCat).map((f) => (
-                          <td key={f.key} className="text-right">
-                            {formatCm(r.measurements[f.key])}
-                          </td>
+                          <th key={f.key} className="text-right">
+                            {f.label}
+                          </th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {chartRows.map((r) => (
+                        <tr key={r.sizeLabel} className={chosen.includes(r.sizeLabel) ? "bg-neutral-100" : undefined}>
+                          <td className="font-semibold">{r.sizeLabel}</td>
+                          {measurementFields(linkCat).map((f) => (
+                            <td key={f.key} className="text-right">
+                              {formatCm(r.measurements[f.key])}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </section>
           ) : (
             <div role="status" className="mt-4 flex flex-col gap-2 border border-accent p-4">
-              <span className="text-md font-semibold">사이즈표를 찾지 못했습니다</span>
-              <span className="text-base text-neutral-800">상품 페이지의 사이즈표 실측을 직접 입력하면 비교할 수 있습니다.</span>
+              <span className="text-md font-semibold">{shoes ? "사이즈 옵션을 찾지 못했습니다" : "사이즈표를 찾지 못했습니다"}</span>
+              <span className="text-base text-neutral-800">
+                {shoes ? "고민 중인 사이즈(mm)를 직접 입력하면 비교할 수 있습니다." : "상품 페이지의 사이즈표 실측을 직접 입력하면 비교할 수 있습니다."}
+              </span>
               <button type="button" className="btn btn-primary self-start" onClick={() => toManual(true)}>
-                실측 직접 입력
+                {shoes ? "사이즈 직접 입력" : "실측 직접 입력"}
               </button>
             </div>
           )}
@@ -425,11 +452,15 @@ export function FitCheckView() {
             <h2 className="text-lg">비교할 옷</h2>
             <span className="text-sm text-neutral-700" data-testid="comparable-note">
               {selected.length
-                ? `${levels.has("subcategory") && levels.size === 1 ? `동일 세부분류 ${refName}` : "같은 대분류·비슷한 분류 옷 포함"} ${selected.length}벌을 기준으로 비교합니다. 빼고 싶은 옷은 선택을 해제하세요.`
+                ? `${levels.has("subcategory") && levels.size === 1 ? `동일 세부분류 ${refName}` : "같은 대분류·비슷한 분류 옷 포함"} ${selected.length}${shoes ? "켤레를" : "벌을"} 기준으로 비교합니다. 빼고 싶은 옷은 선택을 해제하세요.`
                 : hasInput
-                  ? "비교할 옷이 필요합니다. 같은 종류의 옷을 실측과 함께 먼저 등록하세요."
-                  : "실측을 입력하면 비교할 옷을 찾습니다."}
-              {lacking.length ? ` 실측이 겹치지 않는 옷 ${lacking.length}벌은 뺐습니다.` : ""}
+                  ? shoes
+                    ? "비교할 신발이 필요합니다. 가진 신발을 사이즈와 함께 먼저 등록하세요."
+                    : "비교할 옷이 필요합니다. 같은 종류의 옷을 실측과 함께 먼저 등록하세요."
+                  : shoes
+                    ? "사이즈(mm)를 입력하면 비교할 신발을 찾습니다."
+                    : "실측을 입력하면 비교할 옷을 찾습니다."}
+              {lacking.length ? (shoes ? ` 사이즈를 mm로 읽을 수 없는 신발 ${lacking.length}켤레는 뺐습니다.` : ` 실측이 겹치지 않는 옷 ${lacking.length}벌은 뺐습니다.`) : ""}
             </span>
           </div>
           {selected.length > 0 && (
@@ -443,7 +474,9 @@ export function FitCheckView() {
                     <th>브랜드</th>
                     <th>제품명</th>
                     <th>사이즈</th>
-                    <th className="text-right">{measurementFields(candidate.categoryId).map((f) => f.label).join(" · ")}</th>
+                    <th className="text-right">
+                      {shoes ? SHOE_FIT_FIELDS.map((f) => f.label).join(" · ") : measurementFields(candidate.categoryId).map((f) => f.label).join(" · ")}
+                    </th>
                     <th>후기</th>
                   </tr>
                 </thead>
@@ -463,7 +496,9 @@ export function FitCheckView() {
                       <td>{c.productName}</td>
                       <td className="font-mono tabular-nums">{c.sizeLabel}</td>
                       <td className="text-right font-mono whitespace-nowrap tabular-nums">
-                        {measurementFields(candidate.categoryId).map((f) => formatCm(c.measurements[f.key])).join(" · ")}
+                        {shoes
+                          ? SHOE_FIT_FIELDS.map((f) => shoeFitText(f.key, c.shoeFit?.[f.key])).join(" · ")
+                          : measurementFields(candidate.categoryId).map((f) => formatCm(c.measurements[f.key])).join(" · ")}
                       </td>
                       <td className="text-sm text-neutral-700">{c.fitReview ? "있음" : "없음"}</td>
                     </tr>

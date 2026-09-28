@@ -1,6 +1,7 @@
 import { SIMILAR_SUBCATEGORIES } from "@/lib/constants/categories";
 import { MEASUREMENT_KEYS, type MeasurementKey } from "@/lib/constants/measurements";
 import type { CategoryId, Garment, Measurements } from "@/lib/types/domain";
+import { shoeSizeMm } from "./shoes";
 import type { MatchLevel } from "./types";
 
 /**
@@ -42,7 +43,9 @@ export function selectComparables(
 ): Selection {
   const keys = candidateKeys(candidate.categoryId, candidate.sizes);
   const group = groupOf(candidate.categoryId);
-  const shared = (g: Garment) => keys.filter((k) => g.measurements[k] != null).length;
+  // 신발은 실측 대신 사이즈(mm)를 읽을 수 있어야 비교한다.
+  const shoes = candidate.categoryId === "shoes";
+  const shared = (g: Garment) => (shoes ? (shoeSizeMm(g.sizeLabel) != null ? MIN_SHARED_DIMS : 0) : keys.filter((k) => g.measurements[k] != null).length);
 
   const levelOf = (g: Garment): MatchLevel | null => {
     if (groupOf(g.categoryId) !== group) return null;
