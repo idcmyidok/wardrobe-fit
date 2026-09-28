@@ -1,9 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import type { BodyKey } from "@/lib/constants/body";
-import { computeBodyFit, computeCalibration, type BodyFitGarment, type BodyFitResult, type BodyProfile, type Calibration, type FitOverrides } from "@/lib/fit/body-fit";
+import { computeBodyFit, type BodyFitGarment, type BodyFitResult, type BodyProfile, type FitOverrides } from "@/lib/fit/body-fit";
 import { goToSignIn } from "@/lib/session-expiry";
 import { deleteBodyProfile, saveBodyProfile, saveFitOverrides, type BodyActionResult } from "@/server/body/actions";
 
@@ -24,7 +23,6 @@ type Result = { ok: true } | { ok: false; error: string; fieldErrors?: Record<st
 interface BodyStore {
   /** null이면 아직 동의·저장 전 */
   profile: BodyProfile | null;
-  calibration: Calibration;
   save: (draft: BodyDraft) => Promise<Result>;
   saveOverrides: (overrides: FitOverrides) => Promise<Result>;
   remove: () => Promise<Result>;
@@ -46,8 +44,6 @@ async function call<T>(action: () => Promise<BodyActionResult<T>>): Promise<Body
 
 export function BodyProvider({ children, initialProfile, signedIn }: { children: React.ReactNode; initialProfile: BodyProfile | null; signedIn: boolean }) {
   const [profile, setProfile] = useState<BodyProfile | null>(initialProfile);
-  const { garments } = useWardrobe();
-  const calibration = useMemo(() => (profile ? computeCalibration(profile, garments) : {}), [profile, garments]);
 
   const save = useCallback(
     async (draft: BodyDraft): Promise<Result> => {
@@ -87,7 +83,7 @@ export function BodyProvider({ children, initialProfile, signedIn }: { children:
     return { ok: true };
   }, [signedIn]);
 
-  const value = useMemo(() => ({ profile, calibration, save, saveOverrides, remove }), [profile, calibration, save, saveOverrides, remove]);
+  const value = useMemo(() => ({ profile, save, saveOverrides, remove }), [profile, save, saveOverrides, remove]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -99,6 +95,6 @@ export function useBody(): BodyStore {
 
 /** 옷 한 벌의 예상 핏. 내 치수가 없으면 null */
 export function useBodyFit(garment: BodyFitGarment | null): BodyFitResult | null {
-  const { profile, calibration } = useBody();
-  return useMemo(() => (garment && profile ? computeBodyFit(garment, profile, calibration) : null), [garment, profile, calibration]);
+  const { profile } = useBody();
+  return useMemo(() => (garment && profile ? computeBodyFit(garment, profile) : null), [garment, profile]);
 }

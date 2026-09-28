@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CURRENT_VERSION } from "@/lib/release-notes";
 import { signOut } from "@/server/auth/actions";
+import { ReleaseNotesDialog } from "./release-notes-dialog";
 import { ThemeToggle } from "./theme-toggle";
 
 /** 사용자 메뉴. email이 null이면 미리보기 모드라 로그아웃 대신 첫 화면으로 돌아간다. */
 export function UserMenu({ email, admin = false }: { email: string | null; admin?: boolean }) {
   const [open, setOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const closeNotes = useCallback(() => setNotesOpen(false), []);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,6 +62,18 @@ export function UserMenu({ email, admin = false }: { email: string | null; admin
               계정 설정
             </Link>
           )}
+          <button
+            type="button"
+            role="menuitem"
+            className={`${itemClass} justify-between`}
+            onClick={() => {
+              setOpen(false);
+              setNotesOpen(true);
+            }}
+          >
+            업데이트 노트
+            <span className="font-mono text-xs text-neutral-600 tabular-nums">v{CURRENT_VERSION}</span>
+          </button>
           {email ? (
             <form action={signOut}>
               <button type="submit" role="menuitem" className={itemClass}>
@@ -71,6 +87,7 @@ export function UserMenu({ email, admin = false }: { email: string | null; admin
           )}
         </div>
       )}
+      {notesOpen && <ReleaseNotesDialog onClose={closeNotes} />}
     </div>
   );
 }

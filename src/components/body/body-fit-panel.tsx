@@ -61,7 +61,6 @@ function BodyFitDetails({ result: r, userFit, showScores }: { result: Extract<Bo
   const facts = [
     `${fitGroupName(r.group)} 기준`,
     r.silhouette ? `실루엣 ${r.baggy ? "배기(테이퍼드)" : SILHOUETTE_NAME[r.silhouette]}` : null,
-    r.calibrated ? "내 핏 표기로 기준 보정" : null,
     r.confidence === "low" ? "정확하지 않은 치수가 있어 참고용" : null,
   ].filter(Boolean);
 

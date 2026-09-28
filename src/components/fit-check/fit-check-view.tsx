@@ -69,7 +69,8 @@ export function FitCheckView() {
   const [linkSub, setLinkSub] = useState<string>(firstSub("outer"));
   const [chosen, setChosen] = useState<string[]>([]);
   const [man, setMan] = useState<ManualInput>({ categoryId: "outer", subcategoryId: "outer.blouson", brand: "", productName: "", size: "", m: {} });
-  const [excluded, setExcluded] = useState<string[]>([]);
+  /** 사용자가 직접 켜거나 끈 비교 옷(id → 포함 여부). 없으면 같은 세부분류만 켠다. */
+  const [picks, setPicks] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
@@ -115,7 +116,10 @@ export function FitCheckView() {
       : candidateKeys(candidate.categoryId, candidate.sizes).length > 0
     : candidate.sizes.length > 0;
   const { selected, lacking } = selectComparables(candidate, garments);
-  const included = selected.filter((s) => !excluded.includes(s.garment.id));
+  // 같은 세부분류 옷만 처음부터 비교에 넣고, 나머지는 사용자가 체크해야 넣는다.
+  const isPicked = (s: (typeof selected)[number]) => picks[s.garment.id] ?? s.matchLevel === "subcategory";
+  const included = selected.filter(isPicked);
+  const excluded = selected.filter((s) => !isPicked(s)).map((s) => s.garment.id);
   const levels = new Set(selected.map((s) => s.matchLevel));
   const refName = candidate.subcategoryId ? SUBCATEGORY_NAME[candidate.subcategoryId] : CATEGORY_NAME[candidate.categoryId];
 
@@ -129,7 +133,7 @@ export function FitCheckView() {
     setImportError(null);
     setImported(null);
     setChosen([]);
-    setExcluded([]);
+    setPicks({});
     let outcome: ImportOutcome;
     try {
       outcome = await streamImport(target, { signal: controller.signal, purpose: "fit_check" });
@@ -161,7 +165,7 @@ export function FitCheckView() {
       setMan({ categoryId: linkCat, subcategoryId: linkSub, brand: product.brand?.value ?? "", productName: product.productName?.value ?? "", size: "", m: {} });
     }
     setManual(true);
-    setExcluded([]);
+    setPicks({});
     setError(null);
   };
 
@@ -315,7 +319,7 @@ export function FitCheckView() {
         <section className="flex flex-col gap-5 border-b border-neutral-300 py-7">
           <div className="flex flex-col items-start gap-1.5">
             <h2 className="text-lg">사려는 옷 직접 입력</h2>
-            <button type="button" className="btn btn-ghost pl-0 text-sm" onClick={() => { setManual(false); setExcluded([]); setError(null); }}>
+            <button type="button" className="btn btn-ghost pl-0 text-sm" onClick={() => { setManual(false); setPicks({}); setError(null); }}>
               ← 상품 링크로 입력
             </button>
           </div>
@@ -325,7 +329,7 @@ export function FitCheckView() {
               man.subcategoryId,
               (categoryId) => {
                 setMan({ ...man, categoryId, subcategoryId: firstSub(categoryId), m: {} });
-                setExcluded([]);
+                setPicks({});
               },
               (subcategoryId) => setMan({ ...man, subcategoryId }),
               "fm",
@@ -395,7 +399,7 @@ export function FitCheckView() {
                 (c) => {
                   setLinkCat(c);
                   setLinkSub(firstSub(c));
-                  setExcluded([]);
+                  setPicks({});
                 },
                 setLinkSub,
                 "fl",
@@ -471,7 +475,13 @@ export function FitCheckView() {
             <h2 className="text-lg">비교할 {noun}</h2>
             <span className="text-sm text-neutral-700" data-testid="comparable-note">
               {selected.length
-                ? `${levels.has("subcategory") && levels.size === 1 ? `동일 세부분류 ${refName}` : `같은 대분류·비슷한 분류 ${noun} 포함`} ${selected.length}${shoes ? "켤레를" : hat ? "개를" : "벌을"} 기준으로 비교합니다. 빼고 싶은 ${noun}${hat ? "는" : "은"} 선택을 해제하세요.`
+                ? levels.has("subcategory") && levels.size === 1
+                  ? `동일 세부분류 ${refName} ${selected.length}${shoes ? "켤레를" : hat ? "개를" : "벌을"} 기준으로 비교합니다. 빼고 싶은 ${noun}${hat ? "는" : "은"} 선택을 해제하세요.`
+                  : `같은 대분류·비슷한 분류 ${noun} 포함 ${selected.length}${shoes ? "켤레" : hat ? "개" : "벌"}을 찾았습니다. ${
+                      levels.has("subcategory")
+                        ? `같은 세부분류(${refName})만 먼저 골랐고, 다른 ${noun}${hat ? "는" : "은"} 원하면 체크해서 넣으세요.`
+                        : `같은 세부분류(${refName}) ${noun}${hat ? "가" : "이"} 없어 자동으로 고르지 않았습니다. 비교할 ${noun}${hat ? "를" : "을"} 체크하세요.`
+                    }`
                 : hasInput
                   ? shoes
                     ? "비교할 신발이 필요합니다. 가진 신발을 사이즈와 함께 먼저 등록하세요."
@@ -492,6 +502,7 @@ export function FitCheckView() {
                     <th className="w-10">
                       <span className="sr-only">포함</span>
                     </th>
+                    <th>세부분류</th>
                     <th>브랜드</th>
                     <th>제품명</th>
                     <th>사이즈</th>
@@ -502,16 +513,22 @@ export function FitCheckView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {selected.map(({ garment: c }) => (
+                  {selected.map((item) => {
+                    const c = item.garment;
+                    const picked = isPicked(item);
+                    return (
                     <tr key={c.id}>
                       <td>
                         <input
                           type="checkbox"
                           aria-label={`${[c.brand, c.productName].filter(Boolean).join(" ")} 비교에 포함`}
-                          checked={!excluded.includes(c.id)}
-                          onChange={() => setExcluded((ex) => (ex.includes(c.id) ? ex.filter((x) => x !== c.id) : [...ex, c.id]))}
+                          checked={picked}
+                          onChange={() => setPicks((p) => ({ ...p, [c.id]: !picked }))}
                           className="size-4 accent-accent"
                         />
+                      </td>
+                      <td className={cn("whitespace-nowrap", item.matchLevel === "subcategory" ? "font-semibold" : "text-neutral-700")}>
+                        {c.subcategoryId ? SUBCATEGORY_NAME[c.subcategoryId] : CATEGORY_NAME[c.categoryId]}
                       </td>
                       <td className="font-semibold whitespace-nowrap">{c.brand || "—"}</td>
                       <td>{c.productName}</td>
@@ -523,7 +540,8 @@ export function FitCheckView() {
                       </td>
                       <td className="text-sm text-neutral-700">{c.fitReview ? "있음" : "없음"}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
