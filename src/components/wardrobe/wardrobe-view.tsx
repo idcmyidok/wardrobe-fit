@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { buttonClassName } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
 import { CATEGORIES, COUNT_UNIT, SUBCATEGORIES } from "@/lib/constants/categories";
 import { SEASONS } from "@/lib/constants/seasons";
+import type { CategoryId } from "@/lib/types/domain";
 import {
   DEFAULT_FILTERS,
   PAGE_SIZE,
@@ -38,6 +40,15 @@ export function WardrobeView() {
   // 필터·검색·정렬·페이지는 모두 URL에 둔다. 정렬과 페이지는 대분류 표마다 따로(기본은 최근 구매순, 1쪽).
   const state = useMemo(() => parseWardrobeParams(new URLSearchParams(params.toString())), [params]);
   const { filters, sorts, pages } = state;
+  // 접어 둔 대분류 표. 기본은 모두 펼침이고, 이 화면에 머무는 동안만 기억한다.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<CategoryId>>(() => new Set());
+  const toggleGroup = (id: CategoryId) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   // 서버에 다시 묻지 않고 주소만 바꾼다. 검색어 입력처럼 잦은 변경은 기록을 쌓지 않는다(replace).
   const navigate = useCallback((next: WardrobeState, mode: "push" | "replace" = "push") => {
     const search = new URLSearchParams(toWardrobeSearch(next));
@@ -130,38 +141,66 @@ export function WardrobeView() {
         <>
           <WardrobeFilters value={filters} onChange={setFilters} options={options} />
 
-          {groups.map((group) => (
-            <section key={group.id} aria-labelledby={`group-${group.id}`} className="pt-6">
-              <div className="flex items-baseline gap-2.5 pb-2">
-                <h2 id={`group-${group.id}`} className="text-lg">
-                  {group.name}
-                </h2>
-                <span className="font-mono text-base text-neutral-700 tabular-nums">{group.total}{COUNT_UNIT[group.id]}</span>
-              </div>
-              <WardrobeTable
-                categoryId={group.id}
-                items={group.items}
-                sort={sorts[group.id]}
-                onSort={(key) =>
-                  navigate({
-                    ...state,
-                    sorts: { ...sorts, [group.id]: nextSort(sorts[group.id], key) },
-                    pages: { ...pages, [group.id]: 1 },
-                  })
-                }
-                selectedId={drawerId}
-                onOpen={openDrawer}
-              />
-              {group.total > PAGE_SIZE && (
-                <Pagination
-                  label={group.name}
-                  page={group.page}
-                  total={group.total}
-                  onPage={(page) => navigate({ ...state, pages: { ...pages, [group.id]: page } })}
-                />
-              )}
-            </section>
-          ))}
+          {groups.map((group) => {
+            const open = !collapsed.has(group.id);
+            return (
+              <section key={group.id} aria-labelledby={`group-${group.id}`} className="pt-6">
+                <div className="flex items-baseline gap-2.5 pb-2">
+                  <h2 id={`group-${group.id}`} className="text-lg">
+                    {group.name}
+                  </h2>
+                  <span className="font-mono text-base text-neutral-700 tabular-nums">{group.total}{COUNT_UNIT[group.id]}</span>
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    aria-controls={`group-body-${group.id}`}
+                    aria-label={`${group.name} 표 ${open ? "접기" : "펼치기"}`}
+                    onClick={() => toggleGroup(group.id)}
+                    className="inline-flex size-7 cursor-pointer items-center justify-center self-center rounded-sm text-neutral-700 hover:bg-neutral-100 hover:text-text"
+                  >
+                    <svg
+                      aria-hidden
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={cn("transition-transform", !open && "-rotate-90")}
+                    >
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                </div>
+                <div id={`group-body-${group.id}`} hidden={!open}>
+                  <WardrobeTable
+                    categoryId={group.id}
+                    items={group.items}
+                    sort={sorts[group.id]}
+                    onSort={(key) =>
+                      navigate({
+                        ...state,
+                        sorts: { ...sorts, [group.id]: nextSort(sorts[group.id], key) },
+                        pages: { ...pages, [group.id]: 1 },
+                      })
+                    }
+                    selectedId={drawerId}
+                    onOpen={openDrawer}
+                  />
+                  {group.total > PAGE_SIZE && (
+                    <Pagination
+                      label={group.name}
+                      page={group.page}
+                      total={group.total}
+                      onPage={(page) => navigate({ ...state, pages: { ...pages, [group.id]: page } })}
+                    />
+                  )}
+                </div>
+              </section>
+            );
+          })}
 
           {items.length === 0 && (
             <div className="flex max-w-110 flex-col items-start gap-2 py-16">
