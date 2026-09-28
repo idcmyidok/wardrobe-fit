@@ -59,11 +59,10 @@ describe("예상 핏(내 치수)", () => {
     expect(loose.level).toBe("slim");
     expect(loose.confidence).toBe("low");
   });
-  it("총장·소매는 핏과 따로 알린다", () => {
-    const r = ok(computeBodyFit({ categoryId: "top", subcategoryId: "top.long_tee", measurements: { chest: 55, shoulder: 46, length: 80, sleeve: 62 } }, body));
+  it("총장·소매는 핏 판정에 넣지 않는다", () => {
+    const r = ok(computeBodyFit({ categoryId: "top", subcategoryId: "top.long_tee", measurements: { chest: 55, shoulder: 46, length: 80, sleeve: 50 } }, body));
     expect(r.level).toBe("regular");
-    expect(r.notes.map((n) => n.key)).toEqual(["length"]);
-    expect(r.notes[0].text).toContain("길어요");
+    expect(r.issues).toEqual([]);
   });
   it("하의: 품과 실루엣, 배기, 허리", () => {
     const wide = ok(computeBodyFit({ categoryId: "bottom", subcategoryId: "bottom.denim", measurements: { waist: 41, hip: 55, thigh: 36, legOpening: 22, length: 104 } }, body));
@@ -85,19 +84,6 @@ describe("예상 핏(내 치수)", () => {
 describe("추천 치수·보정·역산", () => {
   it("권장 실측 범위(단면)", () => {
     expect(garmentRange("short_tee", "regular", "chest", body)).toEqual([52, 55]);
-    expect(garmentRange("short_tee", "regular", "sleeve", body)).toBeNull();
-    expect(garmentRange("pants", "regular", "length", body)).toEqual([100, 104]);
-  });
-  it("상의 총장: 키 175cm 셔츠 정핏은 69~74cm, 오버핏은 위쪽만 늘어난다", () => {
-    expect(garmentRange("shirt", "regular", "length", body)).toEqual([69, 74]);
-    expect(garmentRange("short_tee", "regular", "length", body)).toEqual([66, 71.1]);
-    expect(garmentRange("short_tee", "over", "length", body)).toEqual([67, 76.1]);
-  });
-  it("조금 짧은 상의는 크롭 기장으로 알린다", () => {
-    const crop = ok(computeBodyFit(tee(53, 46, { length: 60 }), body));
-    expect(crop.notes[0].text).toContain("크롭 기장");
-    const tooShort = ok(computeBodyFit(tee(53, 46, { length: 50 }), body));
-    expect(tooShort.notes[0].text).toContain("짧아요");
   });
   it("사용자가 고친 범위가 추천과 판정에 모두 쓰인다", () => {
     const edited: BodyProfile = { ...body, overrides: { short_tee: { regular: { chest: [55, 57] } } } };
@@ -118,7 +104,7 @@ describe("추천 치수·보정·역산", () => {
     expect(est.chest).toBe(93);
     expect(est.shoulder).toBe(45.5);
     expect(est.hip).toBe(93.5);
-    expect(est.leg).toBe(101);
+    expect(est.leg).toBeUndefined();
   });
   it("세부분류 묶음", () => {
     expect(fitGroupOf("outer", "outer.coach")).toBe("light_outer");

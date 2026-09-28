@@ -63,8 +63,6 @@ const firstSub = (c: CategoryId) => SUBCATEGORIES.find((s) => s.categoryId === c
 const REC_OF: Partial<Record<MeasurementKey, RecKey>> = {
   shoulder: "shoulder",
   chest: "chest",
-  length: "length",
-  sleeve: "sleeve",
   waist: "waist",
   hip: "hip",
   thigh: "thigh",
@@ -507,9 +505,9 @@ export function VersusView() {
           {rowLabel("맞지 않을 수 있는 곳")}
           {entries.map((e) =>
             cell(
-              e.body?.status === "ok" && (e.body.issues.length || e.body.notes.length || e.body.stretch) ? (
+              e.body?.status === "ok" && (e.body.issues.length || e.body.stretch) ? (
                 <ul className="flex flex-col gap-1 text-left text-sm">
-                  {[...e.body.issues, ...e.body.notes].map((i) => (
+                  {e.body.issues.map((i) => (
                     <li key={i.key} className={i.severe ? "text-accent-800" : undefined}>
                       · {i.text}
                     </li>

@@ -14,8 +14,8 @@ import type { CategoryId, Measurements } from "@/lib/types/domain";
  */
 
 export type WidthKey = "chest" | "shoulder" | "waist" | "hip" | "thigh";
-/** 추천 치수 표에 쓰는 옷 실측(총장·소매 포함) */
-export type RecKey = WidthKey | "length" | "sleeve";
+/** 추천 치수 표에 쓰는 옷 실측. 총장·소매는 핏과 관계가 적어 보지 않는다(옷장 옷과의 길이 비교는 구매 판단에서). */
+export type RecKey = WidthKey;
 export type Band = [number, number];
 
 export type FitGroupId =
@@ -49,15 +49,6 @@ interface GroupDef {
   kind: FitKind;
   /** 폭 치수별 여유 경계 5개: 너무 작음 | 슬림 | 정 | 세미오버 | 오버 | 너무 큼 */
   width: Partial<Record<WidthKey, [number, number, number, number, number]>>;
-  /**
-   * 상의 총장 = 키 × [a, b] (정핏 기준, 키 175cm 남성 기준 국내 쇼핑몰 실측에 맞춘 값).
-   * null이면 길이는 보지 않는다(코트·패딩처럼 길이가 제각각).
-   */
-  lengthRatio?: Band | null;
-  /** 하의 총장을 볼지 */
-  legLength?: boolean;
-  /** 소매를 볼지(반소매는 보지 않음) */
-  sleeve?: boolean;
 }
 
 // 오버핏은 드롭숄더라 어깨가 몸보다 10cm 넘게 넓은 옷이 흔하다(너무 큼 경계를 넉넉히).
@@ -67,15 +58,15 @@ const OUTER_SHOULDER: [number, number, number, number, number] = [-3, 0, 3, 7, 1
 const PANTS_WIDTH = { hip: [2, 6, 11, 17, 26], thigh: [2, 6, 11, 17, 26] } satisfies GroupDef["width"];
 
 export const FIT_GROUPS: GroupDef[] = [
-  { id: "short_tee", name: "반팔 티셔츠", kind: "top", width: { chest: [4, 10, 16, 24, 34], shoulder: TEE_SHOULDER }, lengthRatio: [0.377, 0.406] },
-  { id: "long_tee", name: "긴팔·맨투맨·후드", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: TEE_SHOULDER }, lengthRatio: [0.371, 0.4], sleeve: true },
-  { id: "knit", name: "니트·카디건", kind: "top", width: { chest: [4, 10, 16, 24, 34], shoulder: TEE_SHOULDER }, lengthRatio: [0.36, 0.389], sleeve: true },
-  { id: "shirt", name: "셔츠", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: TEE_SHOULDER }, lengthRatio: [0.394, 0.423], sleeve: true },
-  { id: "light_outer", name: "가벼운 아우터·바람막이", kind: "top", width: { chest: [12, 18, 26, 34, 44], shoulder: OUTER_SHOULDER }, lengthRatio: [0.366, 0.4], sleeve: true },
-  { id: "leather", name: "레더·무스탕", kind: "top", width: { chest: [6, 10, 16, 22, 30], shoulder: [-3, -1, 2, 5, 9] }, lengthRatio: [0.331, 0.366], sleeve: true },
-  { id: "coat", name: "코트", kind: "top", width: { chest: [14, 20, 28, 36, 46], shoulder: OUTER_SHOULDER }, lengthRatio: null, sleeve: true },
-  { id: "padding", name: "패딩", kind: "top", width: { chest: [16, 22, 30, 38, 48], shoulder: OUTER_SHOULDER }, lengthRatio: null, sleeve: true },
-  { id: "pants", name: "긴 바지", kind: "bottom", width: PANTS_WIDTH, legLength: true },
+  { id: "short_tee", name: "반팔 티셔츠", kind: "top", width: { chest: [4, 10, 16, 24, 34], shoulder: TEE_SHOULDER } },
+  { id: "long_tee", name: "긴팔·맨투맨·후드", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: TEE_SHOULDER } },
+  { id: "knit", name: "니트·카디건", kind: "top", width: { chest: [4, 10, 16, 24, 34], shoulder: TEE_SHOULDER } },
+  { id: "shirt", name: "셔츠", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: TEE_SHOULDER } },
+  { id: "light_outer", name: "가벼운 아우터·바람막이", kind: "top", width: { chest: [12, 18, 26, 34, 44], shoulder: OUTER_SHOULDER } },
+  { id: "leather", name: "레더·무스탕", kind: "top", width: { chest: [6, 10, 16, 22, 30], shoulder: [-3, -1, 2, 5, 9] } },
+  { id: "coat", name: "코트", kind: "top", width: { chest: [14, 20, 28, 36, 46], shoulder: OUTER_SHOULDER } },
+  { id: "padding", name: "패딩", kind: "top", width: { chest: [16, 22, 30, 38, 48], shoulder: OUTER_SHOULDER } },
+  { id: "pants", name: "긴 바지", kind: "bottom", width: PANTS_WIDTH },
   { id: "shorts", name: "반바지", kind: "bottom", width: PANTS_WIDTH },
 ];
 
@@ -120,14 +111,6 @@ const WAIST_BANDS: Record<WearableLevel, Band> = { slim: [0, 3], regular: [1, 4]
 const WAIST_TOO_SMALL = -2;
 const WAIST_TOO_BIG = 8;
 
-/** 소매 여유 = (옷 어깨/2 + 소매) − (몸 어깨/2 + 팔길이) */
-const SLEEVE_REACH: Record<WearableLevel, Band> = { slim: [-1, 3], regular: [0, 4], semi_over: [1, 6], over: [2, 8] };
-/** 상의 총장: 정핏 범위 [아래, 위]에 더하는 값. 오버핏도 박시하게 짧은 옷이 많아 아래쪽은 거의 그대로 둔다. */
-const TOP_LENGTH_SHIFT: Record<WearableLevel, Band> = { slim: [-2, -1], regular: [0, 0], semi_over: [0, 3], over: [1, 5] };
-/** 권장 총장보다 이만큼(cm)까지 짧으면 "짧다"가 아니라 크롭 기장으로 알린다. */
-const CROP_RANGE = 10;
-/** 하의 총장 − 다리길이(옆선~복숭아뼈). 슬림은 발목이 보이는 기장, 와이드는 신발을 덮는 기장. */
-const LEG_LENGTH: Record<WearableLevel, Band> = { slim: [-3, 1], regular: [0, 4], semi_over: [1, 6], over: [2, 8] };
 
 /** "정확하지 않아요" 치수는 이만큼(cm) 느슨하게 본다. */
 const UNCERTAIN_TOLERANCE = 3;
@@ -270,7 +253,7 @@ export interface BodyFitDimension {
 }
 
 export interface BodyFitIssue {
-  key: WidthKey | "length" | "sleeve";
+  key: WidthKey;
   text: string;
   /** 너무 작음·너무 큼처럼 입기 어려운 문제 */
   severe: boolean;
@@ -289,8 +272,6 @@ export type BodyFitResult =
       dimensions: BodyFitDimension[];
       /** 안 맞는 폭 치수 */
       issues: BodyFitIssue[];
-      /** 총장·소매 안내(핏 판정과 별개) */
-      notes: BodyFitIssue[];
       silhouette: Silhouette | null;
       /** 배기(품이 넉넉한데 밑단이 좁음) */
       baggy: boolean;
@@ -395,14 +376,6 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile, calib
     }
   }
 
-  // 총장·소매는 예상 핏(입을 수 있는 단계면 그 단계, 아니면 정핏) 기준으로 알린다.
-  const ref: WearableLevel = (WEARABLE_LEVELS as readonly string[]).includes(level) ? (level as WearableLevel) : "regular";
-  const notes: BodyFitIssue[] = [];
-  const lengthRange = garmentRange(groupId, ref, "length", body, calibration);
-  if (lengthRange && m.length != null) notes.push(...rangeNote("length", "총장", m.length, lengthRange, name(ref), body.uncertain.includes(kind === "top" ? "height" : "leg"), kind === "top"));
-  const sleeveRange = garmentRange(groupId, ref, "sleeve", body, calibration, m.shoulder ?? undefined);
-  if (sleeveRange && m.sleeve != null) notes.push(...rangeNote("sleeve", "소매", m.sleeve, sleeveRange, name(ref), body.uncertain.includes("arm")));
-
   const silhouette = kind === "bottom" ? silhouetteOf(m) : null;
   const usedUncertain = dimensions.some((d) => d.uncertain && d.key !== "waist");
   const coreCount = dimensions.filter((d) => core.includes(d.key)).length;
@@ -415,7 +388,6 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile, calib
     scores,
     dimensions,
     issues,
-    notes,
     silhouette,
     baggy: silhouette === "tapered" && (level === "semi_over" || level === "over"),
     stretch: isStretchy(garment),
@@ -424,20 +396,9 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile, calib
   };
 }
 
-function rangeNote(key: "length" | "sleeve", label: string, value: number, [lo, hi]: Band, levelName: string, uncertain: boolean, cropOk = false): BodyFitIssue[] {
-  const tol = uncertain ? UNCERTAIN_TOLERANCE : 0;
-  if (cropOk && value < lo - tol && value >= lo - tol - CROP_RANGE) {
-    return [{ key, severe: false, text: `${levelName} 기준보다 ${formatNum(round1(lo - value))}cm 짧은 크롭 기장이에요.` }];
-  }
-  if (value < lo - tol) return [{ key, severe: false, text: `${iga(label)} ${levelName} 기준보다 ${formatNum(round1(lo - value))}cm 짧아요.` }];
-  if (value > hi + tol) return [{ key, severe: false, text: `${iga(label)} ${levelName} 기준보다 ${formatNum(round1(value - hi))}cm 길어요.` }];
-  return [];
-}
-
 /**
  * 한 핏 단계에서 권장하는 옷 실측 범위(표에 보이는 값: 가슴·허리·엉덩이·허벅지는 단면).
  * 계산에 필요한 내 치수가 없으면 null. 사용자가 고친 값이 있으면 그 값.
- * garmentShoulder: 소매 계산에 쓸 옷 어깨(없으면 같은 단계의 권장 어깨 가운데 값).
  */
 export function garmentRange(
   groupId: FitGroupId,
@@ -445,31 +406,11 @@ export function garmentRange(
   key: RecKey,
   body: BodyProfile,
   calibration: Calibration = {},
-  garmentShoulder?: number,
 ): Band | null {
   const group = GROUP[groupId];
   const override = body.overrides[groupId]?.[level]?.[key];
   if (override) return override;
   const v = body.values;
-  if (key === "length") {
-    if (group.kind === "top") {
-      if (!group.lengthRatio || v.height == null) return null;
-      const [lo, hi] = TOP_LENGTH_SHIFT[level];
-      return [round1(v.height * group.lengthRatio[0] + lo), round1(v.height * group.lengthRatio[1] + hi)];
-    }
-    if (!group.legLength || v.leg == null) return null;
-    return [round1(v.leg + LEG_LENGTH[level][0]), round1(v.leg + LEG_LENGTH[level][1])];
-  }
-  if (key === "sleeve") {
-    if (!group.sleeve || v.shoulder == null || v.arm == null) return null;
-    const shoulder = garmentShoulder ?? (() => {
-      const r = garmentRange(groupId, level, "shoulder", body, calibration);
-      return r ? center(r) : null;
-    })();
-    if (shoulder == null) return null;
-    const base = v.shoulder / 2 + v.arm - shoulder / 2;
-    return [round1(base + SLEEVE_REACH[level][0]), round1(base + SLEEVE_REACH[level][1])];
-  }
   if (!widthKeys(group).includes(key)) return null;
   const bands = effectiveBands(groupId, key, body, calibration);
   const b = v[BODY_OF[key]];
@@ -482,14 +423,11 @@ export function garmentRange(
 /** 추천 치수 표의 열(묶음마다) */
 export function recKeys(groupId: FitGroupId): RecKey[] {
   const g = GROUP[groupId];
-  if (g.kind === "top") return ["shoulder", "chest", ...(g.lengthRatio ? (["length"] as const) : []), ...(g.sleeve ? (["sleeve"] as const) : [])];
-  return ["waist", "hip", "thigh", ...(g.legLength ? (["length"] as const) : [])];
+  return g.kind === "top" ? ["shoulder", "chest"] : ["waist", "hip", "thigh"];
 }
 
 /** 추천 치수 표 한 칸에 필요한 내 치수 */
-export function recNeeds(groupId: FitGroupId, key: RecKey): BodyKey[] {
-  if (key === "length") return GROUP[groupId].kind === "top" ? ["height"] : ["leg"];
-  if (key === "sleeve") return ["shoulder", "arm"];
+export function recNeeds(_groupId: FitGroupId, key: RecKey): BodyKey[] {
   return [BODY_OF[key]];
 }
 
@@ -506,7 +444,6 @@ export function estimateBodyFromGarments(garments: BodyFitGarment[]): Partial<Re
     const group = GROUP[groupId];
     const level: WearableLevel = g.userFit && (WEARABLE_LEVELS as readonly string[]).includes(g.userFit) ? (g.userFit as WearableLevel) : "regular";
     const m = g.measurements;
-    let shoulder: number | null = null;
     for (const key of widthKeys(group)) {
       const bands = baseBands(group, key);
       const value = m[key];
@@ -514,12 +451,7 @@ export function estimateBodyFromGarments(garments: BodyFitGarment[]): Partial<Re
       // 몸 = 옷(단면이면 둘레로) − 여유
       const bodyValue = (HALF[key] ? value * 2 : value) - center(bands[level]);
       push(BODY_OF[key], bodyValue);
-      if (key === "shoulder") shoulder = bodyValue;
     }
-    if (group.kind === "top" && group.sleeve && m.sleeve != null && m.shoulder != null && shoulder != null) {
-      push("arm", m.shoulder / 2 + m.sleeve - center(SLEEVE_REACH[level]) - shoulder / 2);
-    }
-    if (group.kind === "bottom" && group.legLength && m.length != null) push("leg", m.length - center(LEG_LENGTH[level]));
   }
   const out: Partial<Record<BodyKey, number>> = {};
   for (const [k, list] of Object.entries(acc) as [BodyKey, number[]][]) if (list.length) out[k] = Math.round(median(list) * 2) / 2;
