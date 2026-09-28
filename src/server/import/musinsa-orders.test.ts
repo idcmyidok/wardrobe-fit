@@ -1,0 +1,102 @@
+import { describe, expect, it } from "vitest";
+import { optionPairs, packCount, parseMusinsaOrders, parseOrdersToGarments } from "./musinsa-orders";
+
+// 무신사 주문내역을 Ctrl+A로 복사한 글과 같은 모양(상품은 지어낸 것)
+const TEXT = `126건
+26.07.23(목)
+주문 상세
+구매 확정
+[2PACK] 에센셜 크롭 티셔츠
+브랜드A
+[2PACK] 에센셜 크롭 티셔츠
+아쿠아블루·L · 화이트 / XL / 1개
+45,900원
+
+배송 조회
+재구매
+구매 확정
+바디트리머 제모기
+브랜드B
+바디트리머 제모기
+FREE / 1개
+29,090원
+26.07.15(수)
+주문 상세
+반품 완료
+T-SHIRT / BLACK
+브랜드C
+T-SHIRT / BLACK
+1 / 1개
+1 / 1개
+38,170원
+반품 상세
+26.07.03(금)
+주문 상세
+구매 확정
+⟦G:1234567⟧
+코튼메쉬 버뮤다 쇼츠(6color)
+브랜드D
+코튼메쉬 버뮤다 쇼츠(6color)
+블랙L / 1개
+34,110원
+오프라인 구매 완료
+아노락 쓰리피스 풀 셋업_민트
+브랜드E
+아노락 쓰리피스 풀 셋업_민트
+L / 1개
+54,900원
+사용 완료
+장*현님에게 선물
+[무진장] 무신사머니 5천원 상품권
+무신사머니 상품권
+[무진장] 무신사머니 5천원 상품권
+3,000원
+`;
+
+describe("parseMusinsaOrders", () => {
+  it("상태 줄과 가격 줄 사이를 한 주문으로 읽는다", () => {
+    const orders = parseMusinsaOrders(TEXT);
+    expect(orders.map((o) => o.status)).toEqual(["구매 확정", "구매 확정", "반품 완료", "구매 확정", "오프라인 구매 완료", "사용 완료"]);
+    expect(orders[0]).toMatchObject({ date: "2026-07-23", brand: "브랜드A", option: "아쿠아블루·L · 화이트 / XL", price: 45900, goodsNo: null });
+    expect(orders[1].date).toBe("2026-07-23");
+    expect(orders[2]).toMatchObject({ name: "T-SHIRT / BLACK", option: "1" });
+    expect(orders[3]).toMatchObject({ date: "2026-07-03", goodsNo: "1234567" });
+    expect(orders[5]).toMatchObject({ name: "[무진장] 무신사머니 5천원 상품권", price: 3000 });
+  });
+});
+
+describe("parseOrdersToGarments", () => {
+  it("구매 확정·오프라인 구매만, 옷만 남기고 팩과 셋업을 나눈다", () => {
+    const r = parseOrdersToGarments(TEXT);
+    expect(r.droppedByStatus).toHaveLength(2);
+    expect(r.droppedByCategory.map((o) => o.name)).toEqual(["바디트리머 제모기"]);
+    expect(r.garments.map((g) => [g.part, g.size, g.price, g.subcategoryId])).toEqual([
+      ["1/2 · 아쿠아블루", "L", 22950, "top.short_tee"],
+      ["2/2 · 화이트", "XL", 22950, "top.short_tee"],
+      [null, "L", 34110, "bottom.shorts"],
+      ["1/2 · 상의", "L", 27450, "outer.anorak"],
+      ["2/2 · 하의", "L", 27450, "bottom.etc"],
+    ]);
+  });
+});
+
+describe("optionPairs / packCount", () => {
+  it.each([
+    ["1. 피그먼트 차콜 / 멜란지 그레이·L", [["피그먼트 차콜", "L"], ["멜란지 그레이", "L"]]],
+    ["ivoryL·blackL", [["ivory", "L"], ["black", "L"]]],
+    ["(70)VIOLET·270", [["VIOLET", "270"]]],
+    ["free (one size)", [[null, "FREE"]]],
+    ["UNISEX - M", [[null, "M"]]],
+    ["2 (L)", [[null, "2 (L)"]]],
+  ])("%s", (option, want) => {
+    expect(optionPairs(option).map((p) => [p.color, p.size])).toEqual(want);
+  });
+
+  it("묶음 수", () => {
+    expect(packCount("[2PACK] 티셔츠")).toBe(2);
+    expect(packCount("2팩 스웨트 셔츠")).toBe(2);
+    expect(packCount("하프 터틀넥 니트 세트")).toBe(2);
+    expect(packCount("[넥타이 SET] 옥스포드 셔츠")).toBe(1);
+    expect(packCount("릴렉스 핏 티셔츠")).toBe(1);
+  });
+});
