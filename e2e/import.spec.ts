@@ -74,6 +74,8 @@ test("링크 분석 → 검토(사이즈 고르면 실측 채움) → 등록, �
   await expect(page.getByText("자동", { exact: true })).toHaveCount(0);
   await expect(page.locator("#f-brand")).toHaveValue("테스트랩");
   await expect(page.locator("#f-price")).toHaveValue("59000");
+  // 가져온 값은 쇼핑몰 판매가라서 실제로 산 가격을 적도록 안내한다.
+  await expect(page.getByText("쇼핑몰 현재 판매가예요.", { exact: false })).toBeVisible();
   await expect(page.locator("#f-sub")).toHaveValue("top.shirt");
 
   // 자동 추출만으로는 저장되지 않는다(사이즈를 고르기 전 상태 표시).

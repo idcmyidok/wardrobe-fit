@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findColorHex, normalizeColorName } from "./colors";
+import { COLOR_HEX, findColorFamily, findColorHex, normalizeColorName } from "./colors";
 
 describe("normalizeColorName", () => {
   it.each([
@@ -74,5 +74,31 @@ describe("findColorHex", () => {
 
   it("모르는 이름은 null", () => {
     expect(findColorHex("Galaxy")).toBeNull();
+  });
+});
+
+describe("findColorFamily", () => {
+  it.each([
+    ["아쿠아 블루", "블루"],
+    ["라이트블루", "블루"],
+    ["blue", "블루"],
+    ["스카이 블루", "블루"],
+    ["네이비", "네이비"],
+    ["연청", "데님"],
+    ["아이보리", "화이트"],
+    ["차콜", "그레이"],
+    ["라이트 올리브", "카키"],
+    ["블랙/화이트", "블랙"],
+    ["멀티", "멀티"],
+  ])("%s → %s", (input, expected) => {
+    expect(findColorFamily(input)).toBe(expected);
+  });
+
+  it("비어 있으면 null", () => {
+    expect(findColorFamily("")).toBeNull();
+  });
+
+  it("대표 색 목록의 모든 색이 계열에 속하고, 계열 이름에도 대표 색이 있다", () => {
+    for (const name of Object.keys(COLOR_HEX)) expect(COLOR_HEX[findColorFamily(name)!], name).toBeDefined();
   });
 });
