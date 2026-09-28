@@ -15,7 +15,7 @@ export const FIT_COLOR: Record<FitLevel, string> = {
  * 핏 미터기 6칸: 너무 작음 · 슬림 · 정 · 세미오버 · 오버 · 너무 큼(하의는 슬림 · 레귤러 · 세미와이드 · 와이드).
  * 모든 칸을 제 색으로 옅게 깔고, 해당 칸만 진하게 채운다.
  * sm: 옷장 표 한 칸(작은 막대 + 이름), lg: 옷 정보·구매 판단(칸 아래 이름).
- * mine: 사용자가 직접 표기한 핏이면 true(이름 옆에 "내 표기").
+ * mine: 사용자가 직접 표기한 핏이면 true(작은 미터기는 이름 아래 "직접 평가").
  */
 export function FitMeter({
   level,
@@ -47,8 +47,12 @@ export function FitMeter({
         </span>
         <span className="text-2xs leading-none font-semibold whitespace-nowrap" style={{ color: FIT_COLOR[level] }} aria-hidden>
           {name}
-          {mine && <span className="ml-0.5 font-normal text-neutral-600">·내</span>}
         </span>
+        {mine && (
+          <span className="text-2xs leading-none whitespace-nowrap text-neutral-600" aria-hidden>
+            직접 평가
+          </span>
+        )}
       </span>
     );
   }
