@@ -113,8 +113,8 @@ export const fitGroupKind = (id: FitGroupId) => GROUP[id].kind;
 
 /** 하의 허리: 핏 단계와 거의 상관없어(와이드도 허리는 맞춘다) 너무 작거나 큰지만 본다. */
 const WAIST_BANDS: Record<WearableLevel, Band> = { slim: [0, 2], regular: [2, 4], semi_over: [4, 6], over: [6, 8] };
-const WAIST_TOO_SMALL = -2;
-const WAIST_TOO_BIG = 8;
+export const WAIST_TOO_SMALL = -2;
+export const WAIST_TOO_BIG = 8;
 
 
 /** "정확하지 않아요" 치수는 이만큼(cm) 느슨하게 본다. */
@@ -144,6 +144,12 @@ const hasBatchim = (word: string) => {
 };
 const iga = (w: string) => `${w}${hasBatchim(w) ? "이" : "가"}`;
 const eunNeun = (w: string) => `${w}${hasBatchim(w) ? "은" : "는"}`;
+/** 으로/로: 받침이 없거나 ㄹ 받침이면 "로" */
+const euro = (w: string) => {
+  const c = w.charCodeAt(w.length - 1);
+  const jong = c >= 0xac00 && c <= 0xd7a3 ? (c - 0xac00) % 28 : 0;
+  return `${w}${jong === 0 || jong === 8 ? "로" : "으로"}`;
+};
 
 /** 기본 여유 구간(내 핏 보정 전) */
 function baseBands(group: GroupDef, key: WidthKey): Record<WearableLevel, Band> | null {
@@ -255,6 +261,16 @@ export interface BodyFitDimension {
   ease: number;
   level: FitLevel;
   uncertain: boolean;
+  /** 판단 근거용: 옷 실측(표에 보이는 값), 내 치수, 단면이면 true */
+  garmentValue: number;
+  bodyValue: number;
+  half: boolean;
+  /** 판단에 쓴 핏 단계별 여유 구간(보정 반영). 허리는 null(너무 작음·큼만 본다) */
+  bands: Record<WearableLevel, Band> | null;
+  /** 내 핏 표기로 옮긴 기준(cm) */
+  shift: number;
+  /** 사용자가 고친 추천 치수를 썼는지 */
+  overridden: boolean;
 }
 
 export interface BodyFitIssue {
@@ -339,11 +355,19 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile, calib
     const uncertain = body.uncertain.includes(BODY_OF[key]);
     const tol = uncertain ? UNCERTAIN_TOLERANCE : 0;
     const label = WIDTH_LABEL[key];
+    const facts = {
+      garmentValue: m[key]!,
+      bodyValue: body.values[BODY_OF[key]]!,
+      half: HALF[key],
+      bands: key === "waist" ? null : bands,
+      shift: key === "waist" ? 0 : (calibration[groupId]?.[key] ?? 0),
+      overridden: WEARABLE_LEVELS.some((l) => body.overrides[groupId]?.[l]?.[key]),
+    };
 
     if (key === "waist") {
       // 허리는 판정에 넣지 않고 너무 작거나 클 때만 알린다.
       const level: FitLevel = ease < WAIST_TOO_SMALL - tol ? "too_small" : ease > WAIST_TOO_BIG + tol ? "too_big" : "regular";
-      dimensions.push({ key, label, ease, level, uncertain });
+      dimensions.push({ key, label, ease, level, uncertain, ...facts });
       if (level === "too_small") {
         severeSmall = true;
         issues.push({ key, severe: true, text: `허리가 내 허리둘레보다 ${formatNum(Math.abs(ease))}cm 작아요. 잠기지 않거나 끼일 수 있어요.` });
@@ -354,7 +378,7 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile, calib
     }
 
     const level = classify(ease, bands, tol);
-    dimensions.push({ key, label, ease, level, uncertain });
+    dimensions.push({ key, label, ease, level, uncertain, ...facts });
     const w = WEIGHT[key] * (uncertain ? 0.5 : 1);
     for (const l of WEARABLE_LEVELS) scores[l] += bandScore(ease, bands[l], tol) * w;
     weightSum += w;
@@ -460,5 +484,78 @@ export function estimateBodyFromGarments(garments: BodyFitGarment[]): Partial<Re
   }
   const out: Partial<Record<BodyKey, number>> = {};
   for (const [k, list] of Object.entries(acc) as [BodyKey, number[]][]) if (list.length) out[k] = Math.round(median(list) * 2) / 2;
+  return out;
+}
+
+export const signed = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${formatNum(Math.abs(round1(v)))}`;
+const bandText = (b: Band) => `${signed(b[0])}~${signed(b[1])}cm`;
+
+/**
+ * 예상 핏 판단 근거(규칙 계산을 그대로 문장으로). 치수마다 "옷 실측 → 내 치수와의 여유 → 어느 핏 구간인지",
+ * 마지막에 전체 판정이 어떻게 나왔는지 한 줄. 화면에 그대로 보여 준다.
+ */
+export interface BodyFitReason {
+  key: WidthKey | "overall";
+  label: string;
+  /** 비교 전체 문장 */
+  text: string;
+  /** 어느 핏 구간인지만(비교 표에서 숫자 칸 아래에 쓴다) */
+  verdict: string;
+}
+
+export function bodyFitReasons(r: Extract<BodyFitResult, { status: "ok" }>): BodyFitReason[] {
+  const name = (l: FitLevel) => fitLevelName(l, r.kind);
+  const out: BodyFitReason[] = [];
+  for (const d of r.dimensions) {
+    const bodyName = d.key === "shoulder" ? "어깨너비" : `${d.label}둘레`;
+    const girth = d.half ? round1(d.garmentValue * 2) : d.garmentValue;
+    const garment = d.half ? `옷 단면 ${formatNum(d.garmentValue)}cm(둘레 ${formatNum(girth)}cm)` : `옷 ${d.label} ${formatNum(d.garmentValue)}cm`;
+    const diff =
+      d.ease === 0
+        ? `내 ${bodyName} ${formatNum(d.bodyValue)}cm와 같아요`
+        : `내 ${bodyName} ${formatNum(d.bodyValue)}cm보다 ${formatNum(Math.abs(d.ease))}cm ${d.ease > 0 ? (d.half ? "여유가 있어요" : "넓어요") : d.half ? "작아요" : "좁아요"}`;
+    let verdict: string;
+    if (!d.bands) {
+      const where = d.level === "too_small" ? "보다 작아요" : d.level === "too_big" ? "보다 커요" : " 안이에요";
+      verdict = `허리는 핏 판정에 넣지 않고 여유 ${bandText([WAIST_TOO_SMALL, WAIST_TOO_BIG])}를 벗어날 때만 알려요. 이 범위${where}.`;
+    } else {
+      const range = (l: WearableLevel) => {
+        const b = d.bands![l];
+        const g = (e: number) => (d.half ? Math.round(((e + d.bodyValue) / 2) * 2) / 2 : round1(e + d.bodyValue));
+        return `${d.half ? "여유" : "차이"} ${bandText(b)}, ${d.half ? "단면" : d.label} ${formatNum(g(b[0]))}~${formatNum(g(b[1]))}cm`;
+      };
+      if (d.level === "too_small") verdict = `가장 작은 ${name("slim")} 범위(${range("slim")})보다도 작아요.`;
+      else if (d.level === "too_big") verdict = `가장 큰 ${name("over")} 범위(${range("over")})보다도 커요.`;
+      else {
+        const b = d.bands[d.level as WearableLevel];
+        const inside = d.ease >= b[0] && d.ease <= b[1];
+        verdict = `${name(d.level)} 범위(${range(d.level as WearableLevel)})${inside ? "에 들어요" : "에 가장 가까워요"}.`;
+      }
+      if (d.overridden) verdict += " 범위는 내가 고친 추천 치수 기준이에요.";
+      else if (d.shift) verdict += ` 내 핏 표기 옷에 맞춰 기준을 ${signed(d.shift)}cm 옮겼어요.`;
+    }
+    if (d.uncertain) verdict += ` 정확하지 않다고 표시한 치수라 ${UNCERTAIN_TOLERANCE}cm 느슨하게 봤어요.`;
+    out.push({ key: d.key, label: d.label, text: `${garment}는 ${diff}. ${verdict}`, verdict });
+  }
+
+  const scored = r.dimensions.filter((d) => d.bands);
+  const severe = r.dimensions.find((d) => d.level === r.level && (r.level === "too_small" || r.level === "too_big"));
+  let overall: string;
+  if (severe) {
+    const edge = r.level === "too_small" ? `가장 작은 ${name("slim")} 범위보다도 작아` : `가장 큰 ${name("over")} 범위보다도 커`;
+    overall = `${iga(severe.label)} ${edge} 전체를 ${euro(name(r.level))} 봤어요.`;
+  }
+  else {
+    const weights = scored.map((d) => `${d.label}${scored.length > 1 ? `(비중 ${WEIGHT[d.key] * (d.uncertain ? 0.5 : 1)})` : ""}`).join("·");
+    const ranked = [...WEARABLE_LEVELS].sort((a, b) => r.scores[b] - r.scores[a]);
+    const top = r.scores[r.level as WearableLevel];
+    const second = ranked.find((l) => l !== r.level)!;
+    overall =
+      r.scores[second] === top
+        ? `${weights} 기준으로 핏마다 점수를 매기면 ${name(r.level)}${hasBatchim(name(r.level)) ? "과" : "와"} ${iga(name(second))} ${top}점으로 같아 두 핏의 경계예요. ${euro(name(r.level))} 표시했어요.`
+        : `${weights} 기준으로 핏마다 점수를 매기면 ${iga(name(r.level))} ${top}점으로 가장 높아요(다음은 ${name(second)} ${r.scores[second]}점).`;
+    if (r.kind === "bottom") overall += " 허리는 점수에 넣지 않아요.";
+  }
+  out.push({ key: "overall", label: "종합", text: overall, verdict: overall });
   return out;
 }

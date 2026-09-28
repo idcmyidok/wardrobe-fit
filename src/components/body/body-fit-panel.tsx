@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { BODY_LABELS, WEARABLE_LEVELS, fitLevelName, type FitLevel } from "@/lib/constants/body";
 import { cn } from "@/lib/cn";
-import { SILHOUETTE_NAME, fitGroupKind, fitGroupName, fitGroupOf, type BodyFitGarment, type BodyFitResult } from "@/lib/fit/body-fit";
+import { SILHOUETTE_NAME, bodyFitReasons, fitGroupKind, fitGroupName, fitGroupOf, type BodyFitGarment, type BodyFitResult } from "@/lib/fit/body-fit";
 import { useBody, useBodyFit } from "./body-store";
+import { BodyFitCompare } from "./body-fit-compare";
 import { FIT_COLOR, FitMeter } from "./fit-meter";
 
 const MEASURE_NAME = { chest: "가슴", shoulder: "어깨", waist: "허리", hip: "엉덩이", thigh: "허벅지" } as const;
@@ -103,6 +104,8 @@ function BodyFitDetails({ result: r, userFit, showScores }: { result: Extract<Bo
           ))}
         </div>
       )}
+
+      <BodyFitCompare dimensions={r.dimensions} reasons={bodyFitReasons(r)} kind={r.kind} />
 
       {(r.issues.length > 0 || r.stretch) && (
         <ul className="flex flex-col gap-1 text-sm">
