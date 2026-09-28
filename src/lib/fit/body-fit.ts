@@ -111,8 +111,8 @@ export const fitGroupKind = (id: FitGroupId) => GROUP[id].kind;
 
 /** 하의 허리: 핏 단계와 거의 상관없어(와이드도 허리는 맞춘다) 너무 작거나 큰지만 본다. */
 const WAIST_BANDS: Record<WearableLevel, Band> = { slim: [0, 3], regular: [1, 4], semi_over: [1, 5], over: [2, 6] };
-const WAIST_TOO_SMALL = -2;
-const WAIST_TOO_BIG = 8;
+export const WAIST_TOO_SMALL = -2;
+export const WAIST_TOO_BIG = 8;
 
 
 /** "정확하지 않아요" 치수는 이만큼(cm) 느슨하게 본다. */
@@ -485,16 +485,25 @@ export function estimateBodyFromGarments(garments: BodyFitGarment[]): Partial<Re
   return out;
 }
 
-const signed = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${formatNum(Math.abs(round1(v)))}`;
+export const signed = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${formatNum(Math.abs(round1(v)))}`;
 const bandText = (b: Band) => `${signed(b[0])}~${signed(b[1])}cm`;
 
 /**
  * 예상 핏 판단 근거(규칙 계산을 그대로 문장으로). 치수마다 "옷 실측 → 내 치수와의 여유 → 어느 핏 구간인지",
  * 마지막에 전체 판정이 어떻게 나왔는지 한 줄. 화면에 그대로 보여 준다.
  */
-export function bodyFitReasons(r: Extract<BodyFitResult, { status: "ok" }>): { key: WidthKey | "overall"; label: string; text: string }[] {
+export interface BodyFitReason {
+  key: WidthKey | "overall";
+  label: string;
+  /** 비교 전체 문장 */
+  text: string;
+  /** 어느 핏 구간인지만(비교 표에서 숫자 칸 아래에 쓴다) */
+  verdict: string;
+}
+
+export function bodyFitReasons(r: Extract<BodyFitResult, { status: "ok" }>): BodyFitReason[] {
   const name = (l: FitLevel) => fitLevelName(l, r.kind);
-  const out: { key: WidthKey | "overall"; label: string; text: string }[] = [];
+  const out: BodyFitReason[] = [];
   for (const d of r.dimensions) {
     const bodyName = d.key === "shoulder" ? "어깨너비" : `${d.label}둘레`;
     const girth = d.half ? round1(d.garmentValue * 2) : d.garmentValue;
@@ -524,7 +533,7 @@ export function bodyFitReasons(r: Extract<BodyFitResult, { status: "ok" }>): { k
       else if (d.shift) verdict += ` 내 핏 표기 옷에 맞춰 기준을 ${signed(d.shift)}cm 옮겼어요.`;
     }
     if (d.uncertain) verdict += ` 정확하지 않다고 표시한 치수라 ${UNCERTAIN_TOLERANCE}cm 느슨하게 봤어요.`;
-    out.push({ key: d.key, label: d.label, text: `${garment}는 ${diff}. ${verdict}` });
+    out.push({ key: d.key, label: d.label, text: `${garment}는 ${diff}. ${verdict}`, verdict });
   }
 
   const scored = r.dimensions.filter((d) => d.bands);
@@ -545,6 +554,6 @@ export function bodyFitReasons(r: Extract<BodyFitResult, { status: "ok" }>): { k
         : `${weights} 기준으로 핏마다 점수를 매기면 ${iga(name(r.level))} ${top}점으로 가장 높아요(다음은 ${name(second)} ${r.scores[second]}점).`;
     if (r.kind === "bottom") overall += " 허리는 점수에 넣지 않아요.";
   }
-  out.push({ key: "overall", label: "종합", text: overall });
+  out.push({ key: "overall", label: "종합", text: overall, verdict: overall });
   return out;
 }

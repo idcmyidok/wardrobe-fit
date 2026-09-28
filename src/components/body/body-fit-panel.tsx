@@ -5,6 +5,7 @@ import { BODY_LABELS, WEARABLE_LEVELS, fitLevelName, type FitLevel } from "@/lib
 import { cn } from "@/lib/cn";
 import { SILHOUETTE_NAME, bodyFitReasons, fitGroupKind, fitGroupName, fitGroupOf, type BodyFitGarment, type BodyFitResult } from "@/lib/fit/body-fit";
 import { useBody, useBodyFit } from "./body-store";
+import { BodyFitCompare } from "./body-fit-compare";
 import { FIT_COLOR, FitMeter } from "./fit-meter";
 
 const MEASURE_NAME = { chest: "가슴", shoulder: "어깨", waist: "허리", hip: "엉덩이", thigh: "허벅지" } as const;
@@ -104,17 +105,7 @@ function BodyFitDetails({ result: r, userFit, showScores }: { result: Extract<Bo
         </div>
       )}
 
-      <section className="flex flex-col gap-1.5" data-testid="body-fit-reasons" aria-label="예상 핏 판단 근거">
-        <h4 className="font-mono text-xs font-medium tracking-[0.08em] text-neutral-700">판단 근거</h4>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
-          {bodyFitReasons(r).map((x) => (
-            <div key={x.key} className="contents">
-              <dt className={cn("whitespace-nowrap", x.key === "overall" ? "font-semibold" : "text-neutral-700")}>{x.label}</dt>
-              <dd className="text-pretty">{x.text}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
+      <BodyFitCompare dimensions={r.dimensions} reasons={bodyFitReasons(r)} kind={r.kind} />
 
       {(r.issues.length > 0 || r.stretch) && (
         <ul className="flex flex-col gap-1 text-sm">
