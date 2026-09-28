@@ -13,11 +13,9 @@ export const BODY_COLUMN: Record<BodyKey, keyof BodyRow> = {
   weight: "weight_kg",
   shoulder: "shoulder_cm",
   chest: "chest_cm",
-  arm: "arm_cm",
   waist: "waist_cm",
   hip: "hip_cm",
   thigh: "thigh_cm",
-  leg: "leg_cm",
 };
 
 export function rowToBody(row: BodyRow): BodyProfile {
