@@ -51,10 +51,10 @@ export const SUBCATEGORIES: { id: string; categoryId: CategoryId; name: string }
   { id: "outer.winter_coat", categoryId: "outer", name: "겨울 기타 코트" },
   { id: "outer.short_padding", categoryId: "outer", name: "숏패딩/헤비 아우터" },
   { id: "outer.long_padding", categoryId: "outer", name: "롱패딩/헤비 아우터" },
+  { id: "outer.shirt", categoryId: "outer", name: "셔츠/블라우스" },
   { id: "outer.etc", categoryId: "outer", name: "기타 아우터" },
   { id: "top.long_tee", categoryId: "top", name: "긴소매 티셔츠" },
   { id: "top.sweatshirt", categoryId: "top", name: "맨투맨/스웨트" },
-  { id: "top.shirt", categoryId: "top", name: "셔츠/블라우스" },
   { id: "top.hoodie", categoryId: "top", name: "후드 티셔츠" },
   { id: "top.short_tee", categoryId: "top", name: "반소매 티셔츠" },
   { id: "top.polo", categoryId: "top", name: "피케/카라 티셔츠" },
@@ -80,12 +80,13 @@ export const SUBCATEGORIES: { id: string; categoryId: CategoryId; name: string }
   { id: "shoes.etc", categoryId: "shoes", name: "기타 신발" },
 ];
 
-/** 무신사 분류 전 세부분류. 옷은 마이그레이션으로 옮겼지만 예전 구매 판단 기록에 남아 있어 이름만 남긴다. */
+/** 무신사 분류 전 세부분류와 아우터로 옮긴 셔츠. 옷은 마이그레이션으로 옮겼지만 예전 구매 판단 기록에 남아 있어 이름만 남긴다. */
 const LEGACY_SUBCATEGORY_NAME: Record<string, string> = {
   "outer.jacket": "자켓",
   "outer.coat": "코트",
   "outer.padding": "패딩",
   "bottom.cargo": "카고",
+  "top.shirt": "셔츠/블라우스",
 };
 
 export const SUBCATEGORY_NAME: Record<string, string> = {

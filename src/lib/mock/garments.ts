@@ -21,8 +21,8 @@ export const MOCK_GARMENTS: Garment[] = [
   },
   {
     id: "g2",
-    categoryId: "top",
-    subcategoryId: "top.shirt",
+    categoryId: "outer",
+    subcategoryId: "outer.shirt",
     brand: "Uniqlo U",
     productName: "옥스포드 레귤러 셔츠",
     sizeLabel: "L",

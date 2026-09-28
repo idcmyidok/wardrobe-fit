@@ -65,7 +65,7 @@ describe("제품명·컬러·분류", () => {
     const sub = (name: string) => mapCategory([], name)?.subcategoryId;
     expect(sub("오버핏 반팔 티셔츠")).toBe("top.short_tee");
     expect(sub("그래픽 티셔츠")).toBe("top.short_tee");
-    expect(sub("옥스포드 셔츠")).toBe("top.shirt");
+    expect(sub("옥스포드 셔츠")).toBe("outer.shirt");
     expect(sub("후드 집업")).toBe("outer.hood_zip");
     expect(sub("스웨트 후디")).toBe("top.hoodie");
     expect(sub("경량 패딩 베스트")).toBe("outer.light_padding");
@@ -97,8 +97,8 @@ describe("제품명·컬러·분류", () => {
     expect(sub("척 70 하이 스니커즈")).toBe("shoes.sneakers");
     // 옷 이름에 섞인 말은 모자·신발이 아니다.
     expect(sub("부츠컷 데님 팬츠")).toBe("bottom.denim");
-    expect(sub("옥스포드 셔츠")).toBe("top.shirt");
-    expect(sub("Oxford Shirt")).toBe("top.shirt");
+    expect(sub("옥스포드 셔츠")).toBe("outer.shirt");
+    expect(sub("Oxford Shirt")).toBe("outer.shirt");
     expect(sub("모자 탈부착 패딩")).toBe("outer.short_padding");
     expect(sub("캡슐 컬렉션 후디")).toBe("top.hoodie");
   });

@@ -7,8 +7,8 @@ import { expect, login, samplePhoto, test } from "./support";
 const PRODUCT = {
   brand: { value: "테스트랩", source: "json_ld", confidence: "high" },
   productName: { value: "옥스포드 셔츠", source: "json_ld", confidence: "high" },
-  categoryId: { value: "top", source: "keyword", confidence: "medium" },
-  subcategoryId: { value: "top.shirt", source: "keyword", confidence: "low" },
+  categoryId: { value: "outer", source: "keyword", confidence: "medium" },
+  subcategoryId: { value: "outer.shirt", source: "keyword", confidence: "low" },
   imageUrls: ["https://shop.example/a.jpg", "https://shop.example/b.jpg"],
   price: { value: 59000, source: "json_ld", confidence: "high" },
   colorOptions: ["화이트", "블루"],
@@ -76,7 +76,7 @@ test("링크 분석 → 검토(사이즈 고르면 실측 채움) → 등록, �
   await expect(page.locator("#f-price")).toHaveValue("59000");
   // 가져온 값은 쇼핑몰 판매가라서 실제로 산 가격을 적도록 안내한다.
   await expect(page.getByText("쇼핑몰 현재 판매가예요.", { exact: false })).toBeVisible();
-  await expect(page.locator("#f-sub")).toHaveValue("top.shirt");
+  await expect(page.locator("#f-sub")).toHaveValue("outer.shirt");
 
   // 자동 추출만으로는 저장되지 않는다(사이즈를 고르기 전 상태 표시).
   await expect(page.getByText("구매한 사이즈를 선택하세요.")).toBeVisible();

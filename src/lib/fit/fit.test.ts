@@ -161,7 +161,7 @@ describe("통계 엔진", () => {
 
 describe("입력 검증", () => {
   it("대분류에 없는 실측과 4개 이상 사이즈는 거절", () => {
-    const base = { categoryId: "top", subcategoryId: "top.shirt", sizes: [{ sizeLabel: "M", measurements: { waist: 40 } }] };
+    const base = { categoryId: "top", subcategoryId: "top.knit", sizes: [{ sizeLabel: "M", measurements: { waist: 40 } }] };
     expect(fitCandidateSchema.safeParse(base).success).toBe(false);
     const four = { ...base, sizes: ["S", "M", "L", "XL"].map((s) => ({ sizeLabel: s, measurements: { chest: 50 } })) };
     expect(fitCandidateSchema.safeParse(four).success).toBe(false);
