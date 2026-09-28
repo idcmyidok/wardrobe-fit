@@ -292,7 +292,7 @@ const ESSENTIALS: [string, number, Season][] = [
   ["outer.cardigan", 1, "spring"],
   ["top.short_tee", 3, "summer"],
   ["top.long_tee", 2, "spring"],
-  ["top.shirt", 2, "spring"],
+  ["outer.shirt", 2, "spring"],
   ["top.knit", 2, "winter"],
   ["top.sweatshirt", 1, "fall"],
   ["bottom.denim", 2, "fall"],

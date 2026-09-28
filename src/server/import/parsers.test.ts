@@ -26,8 +26,8 @@ describe("generic parser: JSON-LD", () => {
     expect(p.productName?.value).toBe("헤비 코튼 오버셔츠");
     expect(p.price?.value).toBe(119000);
     expect(p.imageUrls).toEqual(["https://shop.example.com/images/main.jpg", "https://cdn.example.com/2.jpg"]);
-    expect(p.categoryId?.value).toBe("top");
-    expect(p.subcategoryId?.value).toBe("top.shirt");
+    expect(p.categoryId?.value).toBe("outer");
+    expect(p.subcategoryId?.value).toBe("outer.shirt");
     expect(p.sizeOptions).toEqual(["S", "M", "L"]);
     expect(p.colorCandidate?.value).toBe("다크 네이비");
     expect(p.sizeChart?.measurementGroup).toBe("top");
