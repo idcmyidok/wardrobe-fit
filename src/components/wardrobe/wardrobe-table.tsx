@@ -54,7 +54,7 @@ export function WardrobeTable({
               <th scope="col" className={cn(head, "w-44")}>
                 제품명
               </th>
-              {sortHead("size", "사이즈", "w-9.5", true)}
+              {sortHead("size", "사이즈", "w-15", true)}
               {sortHead("color", "컬러", "w-24")}
               {sortHead("season", "시즌", "w-26")}
               {measurements.map((m) => sortHead(m.key, m.label, "bg-neutral-100", true))}
@@ -94,7 +94,9 @@ export function WardrobeTable({
                       <span className="line-clamp-2 break-words">{item.productName}</span>
                     </button>
                   </td>
-                  <td className={cn(cell, mono, "px-0 text-xs")}>{item.sizeLabel ?? "—"}</td>
+                  <td className={cn(cell, mono, "truncate px-1 text-xs")} title={item.sizeLabel ?? undefined}>
+                    {item.sizeLabel ?? "—"}
+                  </td>
                   <td className={cn(cell, "text-sm")}>
                     <span className="inline-block rounded-sm px-1.5 py-0.5" style={chip}>
                       {item.colorName ?? "—"}
