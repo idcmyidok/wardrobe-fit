@@ -1,4 +1,6 @@
 import type { Database } from "@/lib/supabase/database.types";
+import { MEASUREMENT_KEYS, type MeasurementKey } from "@/lib/constants/measurements";
+import { SHOE_FIT_LEVELS, shoeFitOrNull, type ShoeFitLevel } from "@/lib/constants/shoe-fit";
 import type { CategoryId, Garment } from "@/lib/types/domain";
 import type { GarmentInput } from "./schema";
 
@@ -7,7 +9,7 @@ type GarmentWrite = Database["public"]["Tables"]["garments"]["Update"];
 
 /** 목록·상세에 필요한 열만 읽는다. */
 export const GARMENT_COLUMNS =
-  "id, category_id, subcategory_id, brand, product_name, size_label, color_name, seasons, purchased_on, purchase_price, product_url, image_path, thumb_path, m_length, m_shoulder, m_chest, m_sleeve, m_waist, m_hip, m_thigh, m_rise, m_leg_opening, fit_review, created_at";
+  "id, category_id, subcategory_id, brand, product_name, size_label, color_name, seasons, purchased_on, purchase_price, product_url, image_path, thumb_path, m_length, m_shoulder, m_chest, m_sleeve, m_waist, m_hip, m_thigh, m_rise, m_leg_opening, m_head, m_depth, m_brim, shoe_fit_length, shoe_fit_width, shoe_fit_instep, fit_review, created_at";
 
 export type GarmentListRow = Pick<
   GarmentRow,
@@ -33,25 +35,40 @@ export type GarmentListRow = Pick<
   | "m_thigh"
   | "m_rise"
   | "m_leg_opening"
+  | "m_head"
+  | "m_depth"
+  | "m_brim"
+  | "shoe_fit_length"
+  | "shoe_fit_width"
+  | "shoe_fit_instep"
   | "fit_review"
   | "created_at"
 >;
 
 const num = (v: number | string | null) => (v == null ? null : Number(v));
+const level = (v: string | null) => (SHOE_FIT_LEVELS.includes(v as ShoeFitLevel) ? (v as ShoeFitLevel) : null);
+
+/** 실측 키 → DB 열 */
+const COLUMN: Record<MeasurementKey, keyof GarmentListRow & `m_${string}`> = {
+  length: "m_length",
+  shoulder: "m_shoulder",
+  chest: "m_chest",
+  sleeve: "m_sleeve",
+  waist: "m_waist",
+  hip: "m_hip",
+  thigh: "m_thigh",
+  rise: "m_rise",
+  legOpening: "m_leg_opening",
+  head: "m_head",
+  depth: "m_depth",
+  brim: "m_brim",
+};
 
 export function rowToGarment(row: GarmentListRow, urls: { imageUrl: string | null; thumbUrl: string | null }): Garment {
   const categoryId = row.category_id as CategoryId;
-  const measurements: Garment["measurements"] =
-    categoryId === "bottom"
-      ? {
-          length: num(row.m_length),
-          waist: num(row.m_waist),
-          hip: num(row.m_hip),
-          thigh: num(row.m_thigh),
-          rise: num(row.m_rise),
-          legOpening: num(row.m_leg_opening),
-        }
-      : { length: num(row.m_length), shoulder: num(row.m_shoulder), chest: num(row.m_chest), sleeve: num(row.m_sleeve) };
+  const measurements: Garment["measurements"] = Object.fromEntries(
+    MEASUREMENT_KEYS[categoryId].map((k) => [k, num(row[COLUMN[k]])]),
+  );
   return {
     id: row.id,
     categoryId,
@@ -68,6 +85,10 @@ export function rowToGarment(row: GarmentListRow, urls: { imageUrl: string | nul
     thumbUrl: urls.thumbUrl,
     measurements,
     fitReview: row.fit_review,
+    shoeFit:
+      categoryId === "shoes"
+        ? shoeFitOrNull({ length: level(row.shoe_fit_length), width: level(row.shoe_fit_width), instep: level(row.shoe_fit_instep) })
+        : null,
   };
 }
 
@@ -95,6 +116,12 @@ export function inputToRow(input: GarmentInput): GarmentWrite {
     m_thigh: m.thigh ?? null,
     m_rise: m.rise ?? null,
     m_leg_opening: m.legOpening ?? null,
+    m_head: m.head ?? null,
+    m_depth: m.depth ?? null,
+    m_brim: m.brim ?? null,
+    shoe_fit_length: input.shoeFit?.length ?? null,
+    shoe_fit_width: input.shoeFit?.width ?? null,
+    shoe_fit_instep: input.shoeFit?.instep ?? null,
     fit_review: input.fitReview,
   };
 }

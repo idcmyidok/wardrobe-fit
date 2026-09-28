@@ -2,6 +2,7 @@ import { SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { colorChip } from "@/lib/constants/colors";
 import { TABLE_MEASUREMENTS, formatCm } from "@/lib/constants/measurements";
 import { SEASON_NAME } from "@/lib/constants/seasons";
+import { SHOE_FIT_FIELDS, shoeFitText } from "@/lib/constants/shoe-fit";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format/date";
 import { formatPrice } from "@/lib/format/price";
@@ -14,7 +15,8 @@ const head = "border-r border-b border-r-neutral-300 border-b-text bg-surface fo
 const mono = "font-mono tabular-nums whitespace-nowrap";
 
 /**
- * 대분류 하나의 표. 실측 열은 대분류에 맞춰 바뀐다(상의·아우터 4열 / 하의 6열). 행을 누르면 옷 정보가 열린다.
+ * 대분류 하나의 표. 실측 열은 대분류에 맞춰 바뀐다(상의·아우터 4열 / 하의 6열 / 모자 3열).
+ * 신발은 실측 대신 착용감(길이감·발볼·발등) 3열을 보여 준다. 행을 누르면 옷 정보가 열린다.
  * 세 표의 공통 열은 모두 고정 폭이라 표끼리 같은 자리에 선다. 실측 열만 폭을 정하지 않아 남는 폭을 나눠 가진다.
  */
 export function WardrobeTable({
@@ -60,6 +62,12 @@ export function WardrobeTable({
                 시즌
               </th>
               {measurements.map((m) => sortHead(m.key, m.label, "bg-neutral-100", true))}
+              {categoryId === "shoes" &&
+                SHOE_FIT_FIELDS.map((f) => (
+                  <th key={f.key} scope="col" className={cn(head, "bg-neutral-100 px-0 text-2xs tracking-[-0.02em]")}>
+                    {f.label}
+                  </th>
+                ))}
               {sortHead("purchasedOn", "구매일", "w-32")}
               {sortHead("price", "구매가", "w-32")}
             </tr>
@@ -112,6 +120,12 @@ export function WardrobeTable({
                       {formatCm(item.measurements[m.key])}
                     </td>
                   ))}
+                  {categoryId === "shoes" &&
+                    SHOE_FIT_FIELDS.map((f) => (
+                      <td key={f.key} className={cn(cell, "bg-neutral-100/60 px-0 text-xs")}>
+                        {shoeFitText(f.key, item.shoeFit?.[f.key])}
+                      </td>
+                    ))}
                   <td className={cn(cell, mono, "text-neutral-700")}>{formatDate(item.purchasedOn)}</td>
                   <td className={cn(cell, mono)}>{formatPrice(item.purchasePrice)}</td>
                 </tr>

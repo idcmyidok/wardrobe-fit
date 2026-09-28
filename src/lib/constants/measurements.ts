@@ -1,9 +1,26 @@
 import type { CategoryId } from "@/lib/types/domain";
 
-/** 옷장 표에 보이는 실측만 쓴다(PROJECT_SPEC.md 9장). cm, 단면 기준 */
+/** 옷장 표에 보이는 실측만 쓴다(PROJECT_SPEC.md 9장). cm, 옷은 단면 기준(모자 머리둘레만 둘레) */
 export const TOP_MEASUREMENTS = ["length", "shoulder", "chest", "sleeve"] as const;
 export const BOTTOM_MEASUREMENTS = ["length", "waist", "hip", "thigh", "rise", "legOpening"] as const;
-export type MeasurementKey = (typeof TOP_MEASUREMENTS)[number] | (typeof BOTTOM_MEASUREMENTS)[number];
+export const HAT_MEASUREMENTS = ["head", "depth", "brim"] as const;
+export type MeasurementKey =
+  | (typeof TOP_MEASUREMENTS)[number]
+  | (typeof BOTTOM_MEASUREMENTS)[number]
+  | (typeof HAT_MEASUREMENTS)[number];
+
+/** 대분류별 실측. 신발은 실측 없이 사이즈 표기와 착용감(shoe-fit.ts)만 저장한다. */
+export const MEASUREMENT_KEYS: Record<CategoryId, readonly MeasurementKey[]> = {
+  outer: TOP_MEASUREMENTS,
+  top: TOP_MEASUREMENTS,
+  bottom: BOTTOM_MEASUREMENTS,
+  hat: HAT_MEASUREMENTS,
+  shoes: [],
+};
+
+export const ALL_MEASUREMENT_KEYS: readonly MeasurementKey[] = [
+  ...new Set<MeasurementKey>([...TOP_MEASUREMENTS, ...BOTTOM_MEASUREMENTS, ...HAT_MEASUREMENTS]),
+];
 
 export const MEASUREMENT_LABELS: Record<MeasurementKey, string> = {
   length: "총장",
@@ -15,12 +32,14 @@ export const MEASUREMENT_LABELS: Record<MeasurementKey, string> = {
   thigh: "허벅지단면",
   rise: "밑위",
   legOpening: "밑단단면",
+  head: "머리둘레",
+  depth: "깊이",
+  brim: "챙길이",
 };
 
 /** 대분류별 입력·상세용 실측 목록(라벨 포함) */
 export function measurementFields(categoryId: CategoryId): { key: MeasurementKey; label: string }[] {
-  const keys = categoryId === "bottom" ? BOTTOM_MEASUREMENTS : TOP_MEASUREMENTS;
-  return keys.map((key) => ({ key, label: MEASUREMENT_LABELS[key] }));
+  return MEASUREMENT_KEYS[categoryId].map((key) => ({ key, label: MEASUREMENT_LABELS[key] }));
 }
 
 /** 옷장 표에 보여줄 실측 열. 좁은 열이라 짧은 이름을 쓴다. */
@@ -41,6 +60,12 @@ export const TABLE_MEASUREMENTS: Record<CategoryId, { key: MeasurementKey; label
     { key: "rise", label: "밑위" },
     { key: "legOpening", label: "밑단" },
   ],
+  hat: [
+    { key: "head", label: "머리둘레" },
+    { key: "depth", label: "깊이" },
+    { key: "brim", label: "챙길이" },
+  ],
+  shoes: [],
 };
 
 /** 72.5 → "72.5", 72 → "72" (소수점 한 자리, .0은 뺀다) */

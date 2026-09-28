@@ -1,17 +1,22 @@
-import { BOTTOM_MEASUREMENTS, TOP_MEASUREMENTS, type MeasurementKey } from "@/lib/constants/measurements";
+import { BOTTOM_MEASUREMENTS, HAT_MEASUREMENTS, TOP_MEASUREMENTS, type MeasurementKey } from "@/lib/constants/measurements";
 import type { Measurements } from "@/lib/types/domain";
 import type { ImportWarning, MeasurementGroup, NormalizedSizeChart, RawSizeChart } from "../types";
 import { cleanText } from "./text";
 
 /**
  * 쇼핑몰 사이즈표 → 옷장 실측(PROJECT_SPEC.md 14.2). 옷장 표에 있는 항목만 남긴다.
- * 상의·아우터: 총장·어깨·가슴·소매 / 하의: 총장·허리·엉덩이·허벅지·밑위·밑단. 암홀, 상의 밑단, 인심 등은 버린다.
+ * 상의·아우터: 총장·어깨·가슴·소매 / 하의: 총장·허리·엉덩이·허벅지·밑위·밑단 / 모자: 머리둘레·깊이·챙길이.
+ * 암홀, 상의 밑단, 인심 등은 버린다.
  */
 
 /** 먼저 걸러 버리는 헤더. "소매"가 들어가도 소매통·소매단면은 소매 길이가 아니다. */
 const DROP = /암홀|인심|안쪽기장|소매통|소매단|소매폭|소매너비|팔통|팔꿈치|목너비|목둘레|넥|armhole|inseam|sleeve\s*(width|opening)|neck|bicep/i;
 
 const SYNONYMS: Array<[RegExp, MeasurementKey]> = [
+  // 모자. "둘레"는 머리둘레일 때만 모자 치수로 본다(가슴둘레 등은 아래 규칙으로).
+  [/머리둘레|헤드|head/i, "head"],
+  [/깊이|depth|crown/i, "depth"],
+  [/챙|brim|visor|peak/i, "brim"],
   [/어깨|shoulder/i, "shoulder"],
   [/가슴|chest|bust|pit\s*to\s*pit|p2p/i, "chest"],
   [/소매|sleeve/i, "sleeve"],
@@ -24,6 +29,8 @@ const SYNONYMS: Array<[RegExp, MeasurementKey]> = [
 ];
 
 const BOTTOM_ONLY = new Set<MeasurementKey>(["waist", "hip", "thigh", "rise"]);
+const HAT_ONLY = new Set<MeasurementKey>(HAT_MEASUREMENTS);
+const ALLOWED: Record<MeasurementGroup, readonly MeasurementKey[]> = { top: TOP_MEASUREMENTS, bottom: BOTTOM_MEASUREMENTS, hat: HAT_MEASUREMENTS };
 
 /** 헤더 한 칸을 실측 키로. 모르는 헤더는 null */
 export function mapHeader(header: string): MeasurementKey | null {
@@ -71,8 +78,9 @@ export function normalizeSizeChart(
   if (raw.headers.length < 2 || raw.rows.length === 0) return { chart: null, warnings };
 
   const keys = raw.headers.map((h, i) => (i === 0 && isSizeHeader(h) ? null : mapHeader(h)));
-  const group: MeasurementGroup = groupHint ?? (keys.some((k) => k && BOTTOM_ONLY.has(k)) ? "bottom" : "top");
-  const allowed = new Set<MeasurementKey>(group === "bottom" ? BOTTOM_MEASUREMENTS : TOP_MEASUREMENTS);
+  const group: MeasurementGroup =
+    groupHint ?? (keys.some((k) => k && HAT_ONLY.has(k)) ? "hat" : keys.some((k) => k && BOTTOM_ONLY.has(k)) ? "bottom" : "top");
+  const allowed = new Set<MeasurementKey>(ALLOWED[group]);
 
   const inch =
     raw.unitHint === "inch" || raw.headers.some((h) => /\binch(es)?\b|\(in\)|"/i.test(h)) ? true : false;
@@ -99,7 +107,8 @@ export function normalizeSizeChart(
           converted = true;
         }
         const over = CIRCUMFERENCE_OVER[key];
-        if (circumferenceHeader[i] || (over != null && v > over)) {
+        // 머리둘레는 둘레 그대로 저장한다.
+        if (key !== "head" && (circumferenceHeader[i] || (over != null && v > over))) {
           v /= 2;
           halved = true;
         }

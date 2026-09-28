@@ -13,6 +13,9 @@ const KIND: Record<MeasurementKey, Kind> = {
   waist: "girth",
   hip: "girth",
   thigh: "girth",
+  head: "girth",
+  depth: "length",
+  brim: "length",
 };
 
 const WORDS: Record<Kind, Record<"above" | "below", { short: string; connect: string; end: string; feel: string }>> = {
@@ -53,3 +56,13 @@ export function shortLabel(key: MeasurementKey) {
 }
 
 export const cm = (v: number) => `${formatNum(Math.abs(v))}cm`;
+
+const HAT_PARTICLE: Record<string, string> = { 이: "가", 과: "와", 을: "를", 은: "는" };
+
+/** 옷 기준으로 쓴 문장을 모자 판단에 맞게 바꾼다("옷이" → "모자가", "3벌" → "3개"). 옷장은 그대로 둔다. */
+export function itemWording(categoryId: string, text: string): string {
+  if (categoryId !== "hat") return text;
+  return text
+    .replace(/옷(들)?(이|과|을|은|의|에|도)?(?![가-힣])/g, (_, many: string | undefined, p: string | undefined) => `모자${many ?? ""}${p ? (many ? p : (HAT_PARTICLE[p] ?? p)) : ""}`)
+    .replace(/(\d+)벌/g, "$1개");
+}

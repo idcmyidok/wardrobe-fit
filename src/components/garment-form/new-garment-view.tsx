@@ -8,8 +8,9 @@ import { DateLabel } from "./date-label";
 import { ImagePicker } from "./image-picker";
 import { PageImageGrid } from "./page-image-grid";
 import { UnitInput } from "@/components/ui/input";
-import { SUBCATEGORIES } from "@/lib/constants/categories";
-import { BOTTOM_MEASUREMENTS, TOP_MEASUREMENTS, measurementFields } from "@/lib/constants/measurements";
+import { CATEGORIES, SUBCATEGORIES } from "@/lib/constants/categories";
+import { ALL_MEASUREMENT_KEYS, measurementFields } from "@/lib/constants/measurements";
+import { EMPTY_SHOE_FIT, shoeFitOrNull, type ShoeFit } from "@/lib/constants/shoe-fit";
 import { SEASONS, toggleSeason } from "@/lib/constants/seasons";
 import { cn } from "@/lib/cn";
 import { importImageFile, importImageUrl, streamImport, type AnalyzeStage, type ImportOutcome } from "@/lib/import/client";
@@ -17,6 +18,7 @@ import { importFailure } from "@/lib/import/messages";
 import { takeStashedDraft } from "@/lib/session-expiry";
 import { notifyUsageChanged } from "@/lib/usage";
 import { UsageNote } from "@/components/usage/usage-note";
+import { ShoeFitPicker } from "./shoe-fit-picker";
 import type { CategoryId, Measurements, Season } from "@/lib/types/domain";
 
 type Phase = "url" | "analyzing" | "failed" | "review" | "manual";
@@ -34,6 +36,7 @@ interface FormState {
   color: string;
   review: string;
   m: Record<string, string>;
+  shoeFit: ShoeFit;
 }
 
 const ANALYZE_STEPS: { stage: AnalyzeStage; label: string }[] = [
@@ -57,6 +60,7 @@ const EMPTY_FORM: FormState = {
   color: "",
   review: "",
   m: {},
+  shoeFit: EMPTY_SHOE_FIT,
 };
 
 /** 분석 결과 → 검토 폼. 사이즈·컬러는 옵션이 하나뿐일 때만 미리 고른다. */
@@ -92,6 +96,7 @@ const draftToForm = (d: GarmentDraft): FormState => ({
   size: d.sizeLabel ?? "",
   url: d.productUrl ?? "",
   m: Object.fromEntries(Object.entries(d.measurements).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])),
+  shoeFit: d.shoeFit ?? EMPTY_SHOE_FIT,
 });
 
 /** 새 옷 추가: 상품 링크 분석(분석 중 / 실패) → 검토 폼, 또는 직접 입력 폼 */
@@ -248,6 +253,7 @@ export function NewGarmentView() {
       imageUrl: null,
       measurements,
       fitReview: form.review || null,
+      shoeFit: form.categoryId === "shoes" ? shoeFitOrNull(form.shoeFit) : null,
     }, image === undefined && isReview && chosenUrl ? await importImageFile(chosenUrl) : image, imported?.importId ?? null);
     setSaving(false);
     if (!result.ok) {
@@ -440,12 +446,14 @@ export function NewGarmentView() {
                     className="input"
                     value={form.categoryId}
                     onChange={(e) => {
-                      setForm((f) => ({ ...f, categoryId: e.target.value as CategoryId, subcategoryId: "", m: {} }));
+                      setForm((f) => ({ ...f, categoryId: e.target.value as CategoryId, subcategoryId: "", m: {}, shoeFit: EMPTY_SHOE_FIT }));
                     }}
                   >
-                    <option value="outer">아우터</option>
-                    <option value="top">상의</option>
-                    <option value="bottom">하의</option>
+                    {CATEGORIES.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="field">
@@ -574,35 +582,47 @@ export function NewGarmentView() {
             </div>
           </section>
 
-          <section className="flex flex-col gap-4 border-b border-text py-7">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-lg">실측</h2>
-              <span className="text-sm text-neutral-700">cm · 단면 기준 · 직접 잰 값이 있으면 덮어쓰세요</span>
-            </div>
-            {isReview && product && !product.sizeChart && (
-              <p className="text-sm text-neutral-800">
-                이 페이지에서 실측 정보를 찾지 못했습니다. 직접 잰 값이나 상품 페이지의 실측을 입력해 주세요.
-              </p>
-            )}
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
-              {measurementFields(form.categoryId).map((m) => (
-                <div key={m.key} className="field">
-                  <label htmlFor={`f-m-${m.key}`}>{m.label}</label>
-                  <UnitInput
-                    id={`f-m-${m.key}`}
-                    unit="cm"
-                    inputMode="decimal"
-                    className="text-body"
-                    value={form.m[m.key] ?? ""}
-                    aria-invalid={Boolean(fieldErrors[`measurements.${m.key}`])}
-                    aria-describedby={fieldErrors[`measurements.${m.key}`] ? `e-m-${m.key}` : undefined}
-                    onChange={(e) => setForm((f) => ({ ...f, m: { ...f.m, [m.key]: e.target.value } }))}
-                  />
-                  <FieldError id={`e-m-${m.key}`} message={fieldErrors[`measurements.${m.key}`]} />
-                </div>
-              ))}
-            </div>
-          </section>
+          {form.categoryId === "shoes" ? (
+            <section className="flex flex-col gap-4 border-b border-text py-7">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="text-lg">착용감</h2>
+                <span className="text-sm text-neutral-700">선택 입력 · 신어 본 느낌을 남기면 다음 신발 사이즈를 고를 때 씁니다</span>
+              </div>
+              <ShoeFitPicker idPrefix="f-shoe" value={form.shoeFit} onChange={(v) => update("shoeFit", v)} />
+            </section>
+          ) : (
+            <section className="flex flex-col gap-4 border-b border-text py-7">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="text-lg">실측</h2>
+                <span className="text-sm text-neutral-700">
+                  {form.categoryId === "hat" ? "cm · 머리둘레는 둘레 그대로" : "cm · 단면 기준"} · 직접 잰 값이 있으면 덮어쓰세요
+                </span>
+              </div>
+              {isReview && product && !product.sizeChart && (
+                <p className="text-sm text-neutral-800">
+                  이 페이지에서 실측 정보를 찾지 못했습니다. 직접 잰 값이나 상품 페이지의 실측을 입력해 주세요.
+                </p>
+              )}
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
+                {measurementFields(form.categoryId).map((m) => (
+                  <div key={m.key} className="field">
+                    <label htmlFor={`f-m-${m.key}`}>{m.label}</label>
+                    <UnitInput
+                      id={`f-m-${m.key}`}
+                      unit="cm"
+                      inputMode="decimal"
+                      className="text-body"
+                      value={form.m[m.key] ?? ""}
+                      aria-invalid={Boolean(fieldErrors[`measurements.${m.key}`])}
+                      aria-describedby={fieldErrors[`measurements.${m.key}`] ? `e-m-${m.key}` : undefined}
+                      onChange={(e) => setForm((f) => ({ ...f, m: { ...f.m, [m.key]: e.target.value } }))}
+                    />
+                    <FieldError id={`e-m-${m.key}`} message={fieldErrors[`measurements.${m.key}`]} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="flex flex-col gap-3 py-7">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -613,7 +633,7 @@ export function NewGarmentView() {
               className="input text-body leading-relaxed"
               rows={4}
               aria-label="착용 후기"
-              placeholder="예: 어깨와 가슴은 마음에 드는데 총장이 조금 길다."
+              placeholder={form.categoryId === "shoes" ? "예: 발볼이 조금 좁아서 다음엔 반 치수 크게 사고 싶다." : "예: 어깨와 가슴은 마음에 드는데 총장이 조금 길다."}
               value={form.review}
               onChange={(e) => update("review", e.target.value)}
             />
@@ -649,7 +669,7 @@ const FIELD_IDS: Record<string, string> = {
   sizeLabel: "f-size",
   colorName: "f-color",
   subcategoryId: "f-sub",
-  ...Object.fromEntries([...new Set([...TOP_MEASUREMENTS, ...BOTTOM_MEASUREMENTS])].map((k) => [`measurements.${k}`, `f-m-${k}`])),
+  ...Object.fromEntries(ALL_MEASUREMENT_KEYS.map((k) => [`measurements.${k}`, `f-m-${k}`])),
 };
 
 function FieldError({ id, message }: { id: string; message?: string }) {
