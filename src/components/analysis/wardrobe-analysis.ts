@@ -24,6 +24,42 @@ const CATEGORY_FILL: Record<CategoryId, string> = {
   bottom: "var(--a-400)",
 };
 
+/** 총액 구간별 제목. [상한(미만), 제목] */
+const TOTAL_TIERS: [number, string][] = [
+  [100000, "이제 막 옷장을 채우기 시작했어요!"],
+  [300000, "알뜰살뜰 실속파 패션 러버!"],
+  [600000, "가성비를 즐기는 패션 러버!"],
+  [1000000, "옷 고르는 재미를 아는 패션 러버!"],
+  [2000000, "패션에 돈을 좀 쓴 패션 러버!"],
+  [4000000, "밥보다 패션이 중요한 패션 러버!"],
+  [7000000, "옷장에 진심인 헤비 패션 러버!"],
+  [12000000, "옷장이 곧 자산인 컬렉터!"],
+  [Infinity, "패션 하우스급 옷장의 주인!"],
+];
+
+/** 한 벌 평균가 구간별 설명. [상한(미만), 문장] */
+const AVG_TIERS: [number, string][] = [
+  [20000, "저렴한 옷을 잘 찾아내는 알뜰한 쇼핑 스타일입니다."],
+  [50000, "합리적인 가격대에서 알차게 고르는 옷장입니다."],
+  [100000, "기본은 실속 있게, 마음에 드는 옷에는 아낌없이 쓰는 편입니다."],
+  [200000, "한 벌 한 벌 품질을 따져 고르는 옷장입니다."],
+  [400000, "한 벌 한 벌에 확실히 투자하는 옷장입니다. 그만큼 사이즈 실패는 아깝겠죠."],
+  [Infinity, "고가의 옷이 옷장의 중심입니다. 구매 전 치수 비교가 꼭 필요한 타입이에요."],
+];
+
+/**
+ * 옷장 총 가격 멘트. 제목은 총액, 설명은 한 벌 평균가로 고른다.
+ * 가격 입력이 적을 때와 한 벌이 총액의 절반 이상일 때는 한 문장을 덧붙인다.
+ */
+export function priceComment(count: number, total: number, avg: number, topPrice: number) {
+  if (!count) return { title: "아직 가격 기록이 없는 옷장", body: "구매 가격을 입력하면 옷장 총액과 소비 성향을 알려 드릴게요." };
+  const title = TOTAL_TIERS.find(([max]) => total < max)![1];
+  let body = `${AVG_TIERS.find(([max]) => avg < max)![1]} 한 벌 평균 ${man(Math.round(avg))}원입니다.`;
+  if (count >= 3 && topPrice / total >= 0.5) body += ` 가장 비싼 한 벌이 총액의 ${Math.round((topPrice / total) * 100)}%를 차지해요.`;
+  if (count <= 2) body += ` 가격을 입력한 옷이 ${count}벌뿐이라, 더 입력할수록 분석이 정확해져요.`;
+  return { title, body };
+}
+
 export function priceSummary(G: Garment[]) {
   const priced = G.filter((g) => g.purchasePrice != null);
   const total = priced.reduce((a, g) => a + (g.purchasePrice ?? 0), 0);
@@ -42,23 +78,13 @@ export function priceSummary(G: Garment[]) {
     };
   });
   const avg = priced.length ? total / priced.length : 0;
-  const highN = priced.filter((g) => (g.purchasePrice ?? 0) >= 400000).length;
-  const highShare = priced.length ? highN / priced.length : 0;
-  const score = total / 1000000 + (avg / 100000) * 1.5 + highShare * 4;
-  const tail = priced.length ? ` 한 벌 평균 ${man(Math.round(avg))}원, 40만 원이 넘는 옷이 ${highN}벌입니다.` : "";
-  const tiers: [number, string, string][] = [
-    [4, "가성비를 즐기는 패션 러버!", "합리적인 가격대에서 알차게 고르는 옷장입니다."],
-    [8, "패션에 돈을 좀 쓴 패션 러버!", "기본은 실속 있게, 마음에 드는 옷에는 과감하게 쓰는 편입니다."],
-    [14, "밥보다 패션이 중요한 패션 러버!", "한 벌 한 벌에 확실히 투자하는 옷장입니다. 그만큼 사이즈 실패는 아깝겠죠."],
-    [Infinity, "옷장에 진심인 헤비 패션 러버!", "고가의 옷이 옷장의 중심입니다. 구매 전 치수 비교가 꼭 필요한 타입이에요."],
-  ];
-  const tier = tiers.find((t) => score < t[0])!;
   const top = priced.slice().sort((a, b) => (b.purchasePrice ?? 0) - (a.purchasePrice ?? 0))[0];
+  const { title, body } = priceComment(priced.length, total, avg, top?.purchasePrice ?? 0);
   return {
     totalShort: man(total),
     totalFull: `${total.toLocaleString("ko-KR")} ￦ · ${priced.length}벌 합산`,
-    tierTitle: tier[1],
-    tierBody: tier[2] + tail,
+    tierTitle: title,
+    tierBody: body,
     cats,
     avg: priced.length ? won(Math.round(avg)) : "—",
     topItem: top ? `${[top.brand, top.productName].filter(Boolean).join(" ")} · ${man(top.purchasePrice ?? 0)}원` : "—",
