@@ -47,7 +47,7 @@ try {
 
   const ins = await A.client
     .from("garments")
-    .insert({ category_id: "outer", subcategory_id: "outer.jacket", product_name: "RLS 테스트 자켓", m_length: 70 })
+    .insert({ category_id: "outer", subcategory_id: "outer.etc", product_name: "RLS 테스트 자켓", m_length: 70 })
     .select("id, user_id")
     .single();
   check("A가 자기 옷 등록", !ins.error && ins.data.user_id === A.id, ins.error?.message);

@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { SUBCATEGORY_NAME, CATEGORY_NAME } from "@/lib/constants/categories";
-import { BOTTOM_MEASUREMENTS, MEASUREMENT_LABELS, TOP_MEASUREMENTS, type MeasurementKey } from "@/lib/constants/measurements";
+import { MEASUREMENT_KEYS, MEASUREMENT_LABELS, type MeasurementKey } from "@/lib/constants/measurements";
 import type { FitCandidate } from "@/lib/fit/compute";
 import type { FitComputed, FitInterpretation } from "@/lib/fit/types";
 import type { AiProvider } from "./provider";
@@ -28,6 +28,7 @@ const SYSTEM = `당신은 사용자가 이미 가진 옷의 실측과 착용 후
 - 후기를 인용할 때는 원문에서 그대로 잘라 쓰세요(quote). 고쳐 쓰지 마세요.
 - 옷을 가리킬 때는 입력에 있는 garment_id만 쓰세요.
 - 신뢰도가 low이면 overallFit에 불확실하다는 점을 꼭 넣으세요.
+- 분류가 모자이면 문장에서 '옷' 대신 '모자'라고 쓰세요.
 - 한국어 존댓말(~습니다), 짧고 쉬운 문장. overallFit은 2~3문장.
 - 결과는 반드시 fit_summary 형식으로만 답하세요.`;
 
@@ -215,7 +216,7 @@ export function validateInterpretation(raw: unknown, computed: FitComputed): Fit
   const allowed = allowedNumbers(computed);
   const sizeLabels = computed.sizes.map((s) => s.sizeLabel);
   const ids = new Set(computed.comparables.map((c) => c.garmentId));
-  const dims: readonly MeasurementKey[] = computed.categoryId === "bottom" ? BOTTOM_MEASUREMENTS : TOP_MEASUREMENTS;
+  const dims = MEASUREMENT_KEYS[computed.categoryId];
   const ok = (s: string) => sentenceOk(s, allowed, sizeLabels);
 
   const perSize = out.perSize
@@ -254,7 +255,7 @@ export function validateInterpretation(raw: unknown, computed: FitComputed): Fit
 }
 
 export async function interpretFit(provider: AiProvider, candidate: FitCandidate, computed: FitComputed, input = buildFitInput(candidate, computed, provider.privacy)) {
-  const dims: readonly MeasurementKey[] = computed.categoryId === "bottom" ? BOTTOM_MEASUREMENTS : TOP_MEASUREMENTS;
+  const dims = MEASUREMENT_KEYS[computed.categoryId];
   const raw = await provider.generateStructured({
     system: SYSTEM,
     input,

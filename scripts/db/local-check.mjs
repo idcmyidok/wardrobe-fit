@@ -49,7 +49,7 @@ check("가입 시 profile 자동 생성", (await db.query("select count(*)::int 
 const ins = await as(
   A,
   `insert into public.garments (category_id, subcategory_id, product_name, seasons, m_length, m_shoulder)
-   values ('outer', 'outer.jacket', '워크 자켓', '{fall,winter}', 70, 46) returning id, user_id`,
+   values ('outer', 'outer.etc', '워크 자켓', '{fall,winter}', 70, 46) returning id, user_id`,
 );
 check("A가 자기 옷 등록", !ins.error && ins.rows[0]?.user_id === A, ins.error?.message);
 const gid = ins.rows[0]?.id;
@@ -63,7 +63,11 @@ check("A의 옷은 그대로 남아 있음", (await db.query("select product_nam
 check("B가 A 명의로 등록 못 함", Boolean((await as(B, `insert into public.garments (user_id, category_id, product_name) values ('${A}', 'top', 'x')`)).error));
 check("비로그인은 옷 테이블 접근 불가", Boolean((await as(null, "select 1 from public.garments")).error));
 check("비로그인은 분류도 못 읽음", Boolean((await as(null, "select 1 from public.categories")).error));
-check("로그인하면 분류를 읽음", (await as(A, "select id from public.subcategories")).rows.length === 23);
+check("로그인하면 분류를 읽음", (await as(A, "select id from public.subcategories")).rows.length === 48);
+check("모자는 모자 실측만 저장", !(await as(A, `insert into public.garments (category_id, subcategory_id, product_name, m_head, m_brim) values ('hat', 'hat.cap', '볼캡', 58, 7)`)).error);
+check("신발에 옷 실측은 못 넣음", Boolean((await as(A, `insert into public.garments (category_id, product_name, m_length) values ('shoes', 'x', 28)`)).error));
+check("착용감은 신발만", Boolean((await as(A, `insert into public.garments (category_id, product_name, shoe_fit_width) values ('top', 'x', 'tight')`)).error));
+check("신발 착용감 저장", !(await as(A, `insert into public.garments (category_id, subcategory_id, product_name, size_label, shoe_fit_width) values ('shoes', 'shoes.sneakers', '척 70', '270', 'tight')`)).error);
 check("분류는 수정 불가", Boolean((await as(A, "update public.categories set name_ko = 'x'")).error));
 
 check(

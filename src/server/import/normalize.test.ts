@@ -29,6 +29,13 @@ describe("사이즈표 헤더", () => {
     expect(normalizeSizeChart(raw, "bottom").chart?.rows[0].measurements).toEqual({ length: 70, legOpening: 50 });
   });
 
+  it("모자 표는 머리둘레를 둘레 그대로 두고 깊이·챙길이를 읽는다", () => {
+    const raw = { headers: ["사이즈", "머리둘레", "깊이", "챙길이"], rows: [["FREE", "58", "15.5", "7"]] };
+    const { chart } = normalizeSizeChart(raw, null);
+    expect(chart?.measurementGroup).toBe("hat");
+    expect(chart?.rows[0].measurements).toEqual({ head: 58, depth: 15.5, brim: 7 });
+  });
+
   it("0 이하·200 초과 값은 비우고 경고한다", () => {
     const { chart, warnings } = normalizeSizeChart({ headers: ["사이즈", "총장", "어깨"], rows: [["M", "0", "250"], ["L", "72", "47"]] }, "top");
     expect(chart?.rows).toEqual([{ sizeLabel: "L", measurements: { length: 72, shoulder: 47 } }]);
@@ -73,6 +80,27 @@ describe("제품명·컬러·분류", () => {
     expect(sub("카고 팬츠")).toBe("bottom.chino");
     expect(sub("데님 오버올")).toBe("bottom.jumpsuit");
     expect(sub("워크 자켓")).toBe("outer.etc");
+  });
+
+  it("모자·신발을 나눈다", () => {
+    const sub = (name: string) => mapCategory([], name)?.subcategoryId;
+    expect(mapCategory(["모자", "캡/야구 모자"])).toEqual({ categoryId: "hat", subcategoryId: "hat.cap", fromName: false });
+    expect(mapCategory(["모자", "버킷/사파리햇"])?.subcategoryId).toBe("hat.etc");
+    expect(mapCategory(["신발", "스니커즈", "캔버스/단화"])?.subcategoryId).toBe("shoes.sneakers");
+    expect(mapCategory(["신발", "부츠/워커", "첼시 부츠"])?.subcategoryId).toBe("shoes.boots");
+    expect(sub("트러커 캡")).toBe("hat.cap");
+    expect(sub("울 비니")).toBe("hat.beanie");
+    expect(sub("Classic Logo Cap")).toBe("hat.cap");
+    expect(sub("페니 로퍼")).toBe("shoes.dress");
+    expect(sub("레더 샌들")).toBe("shoes.sandals");
+    expect(sub("러닝화 젤 카야노")).toBe("shoes.sports");
+    expect(sub("척 70 하이 스니커즈")).toBe("shoes.sneakers");
+    // 옷 이름에 섞인 말은 모자·신발이 아니다.
+    expect(sub("부츠컷 데님 팬츠")).toBe("bottom.denim");
+    expect(sub("옥스포드 셔츠")).toBe("outer.shirt");
+    expect(sub("Oxford Shirt")).toBe("outer.shirt");
+    expect(sub("모자 탈부착 패딩")).toBe("outer.short_padding");
+    expect(sub("캡슐 컬렉션 후디")).toBe("top.hoodie");
   });
 });
 

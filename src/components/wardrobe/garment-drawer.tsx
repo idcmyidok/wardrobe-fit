@@ -6,9 +6,11 @@ import { ImagePicker } from "@/components/garment-form/image-picker";
 import { ShopPhotos } from "@/components/garment-form/shop-photos";
 import { UnitInput } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
-import { CATEGORY_NAME, SUBCATEGORIES, SUBCATEGORY_NAME } from "@/lib/constants/categories";
+import { ShoeFitPicker } from "@/components/garment-form/shoe-fit-picker";
+import { CATEGORIES, CATEGORY_NAME, SUBCATEGORIES, SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { formatCm, measurementFields } from "@/lib/constants/measurements";
 import { SEASONS, SEASON_NAME, toggleSeason } from "@/lib/constants/seasons";
+import { EMPTY_SHOE_FIT, SHOE_FIT_FIELDS, shoeFitOrNull, shoeFitText, type ShoeFit } from "@/lib/constants/shoe-fit";
 import { formatDate } from "@/lib/format/date";
 import { DateLabel } from "@/components/garment-form/date-label";
 import { formatPrice } from "@/lib/format/price";
@@ -38,6 +40,7 @@ interface InfoDraft {
   seasons: Season[];
   measurements: Record<string, string>;
   fitReview: string;
+  shoeFit: ShoeFit;
 }
 
 const toDraft = (g: Garment): InfoDraft => ({
@@ -53,7 +56,11 @@ const toDraft = (g: Garment): InfoDraft => ({
   seasons: g.seasons.slice(),
   measurements: Object.fromEntries(Object.entries(g.measurements).map(([k, v]) => [k, v == null ? "" : String(v)])),
   fitReview: g.fitReview ?? "",
+  shoeFit: g.shoeFit ?? EMPTY_SHOE_FIT,
 });
+
+/** 실측 칸 수에 맞춘 열 수(상의·아우터 4칸은 2열, 하의 6칸·모자 3칸은 3열) */
+const measureCols = (categoryId: CategoryId) => (measurementFields(categoryId).length === 4 ? "grid-cols-2" : "grid-cols-3");
 
 /**
  * 옷 정보 Drawer: 상세 보기, 기본 정보·실측·후기 수정, 삭제(확인 Dialog + 실행 취소).
@@ -126,6 +133,7 @@ export function GarmentDetail({
       seasons: info.seasons,
       measurements,
       fitReview: info.fitReview.trim() || null,
+      shoeFit: info.categoryId === "shoes" ? shoeFitOrNull(info.shoeFit) : null,
     }, image);
     setSaving(false);
     if (!result.ok) {
@@ -220,17 +228,31 @@ export function GarmentDetail({
                     ))}
                   </dl>
                 </section>
-                <section>
-                  <SectionTitle aside={<span className="text-xs text-neutral-700">cm · 단면</span>}>실측</SectionTitle>
-                  <div className={g.categoryId === "bottom" ? "grid grid-cols-3" : "grid grid-cols-2"}>
-                    {measurementFields(g.categoryId).map((m) => (
-                      <div key={m.key} className="flex flex-col gap-0.5 border-b border-neutral-300 py-2.5">
-                        <span className="text-xs text-neutral-700">{m.label}</span>
-                        <span className="font-mono text-lg font-semibold tabular-nums">{formatCm(g.measurements[m.key])}</span>
-                      </div>
-                    ))}
-                  </div>
-                </section>
+                {g.categoryId === "shoes" ? (
+                  <section>
+                    <SectionTitle>착용감</SectionTitle>
+                    <div className="grid grid-cols-3">
+                      {SHOE_FIT_FIELDS.map((f) => (
+                        <div key={f.key} className="flex flex-col gap-0.5 border-b border-neutral-300 py-2.5">
+                          <span className="text-xs text-neutral-700">{f.label}</span>
+                          <span className="text-lg font-semibold">{shoeFitText(f.key, g.shoeFit?.[f.key])}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ) : (
+                  <section>
+                    <SectionTitle aside={<span className="text-xs text-neutral-700">{g.categoryId === "hat" ? "cm" : "cm · 단면"}</span>}>실측</SectionTitle>
+                    <div className={cn("grid", measureCols(g.categoryId))}>
+                      {measurementFields(g.categoryId).map((m) => (
+                        <div key={m.key} className="flex flex-col gap-0.5 border-b border-neutral-300 py-2.5">
+                          <span className="text-xs text-neutral-700">{m.label}</span>
+                          <span className="font-mono text-lg font-semibold tabular-nums">{formatCm(g.measurements[m.key])}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
               </>
             ) : (
               <InfoEditor info={info} setField={setField} imageUrl={g.imageUrl} image={image} setImage={setImage} />
@@ -450,9 +472,11 @@ function InfoEditor({
                 setField("subcategoryId", "");
               }}
             >
-              <option value="outer">아우터</option>
-              <option value="top">상의</option>
-              <option value="bottom">하의</option>
+              {CATEGORIES.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
             </select>
           </div>
           <div className="field">
@@ -501,24 +525,31 @@ function InfoEditor({
           {text("productUrl", "상품 링크", true)}
         </div>
       </section>
-      <section className="flex flex-col gap-3.5">
-        <SectionTitle aside={<span className="text-xs text-neutral-700">cm · 단면</span>}>실측 수정</SectionTitle>
-        <div className={info.categoryId === "bottom" ? "grid grid-cols-3 gap-3" : "grid grid-cols-2 gap-3"}>
-          {measurementFields(info.categoryId).map((m) => (
-            <div key={m.key} className="field">
-              <label htmlFor={`ie-m-${m.key}`}>{m.label}</label>
-              <UnitInput
-                id={`ie-m-${m.key}`}
-                unit="cm"
-                inputMode="decimal"
-                className="text-body"
-                value={info.measurements[m.key] ?? ""}
-                onChange={(e) => setField("measurements", { ...info.measurements, [m.key]: e.target.value })}
-              />
-            </div>
-          ))}
-        </div>
-      </section>
+      {info.categoryId === "shoes" ? (
+        <section className="flex flex-col gap-3.5">
+          <SectionTitle>착용감 수정</SectionTitle>
+          <ShoeFitPicker idPrefix="ie-shoe" value={info.shoeFit} onChange={(v) => setField("shoeFit", v)} />
+        </section>
+      ) : (
+        <section className="flex flex-col gap-3.5">
+          <SectionTitle aside={<span className="text-xs text-neutral-700">{info.categoryId === "hat" ? "cm" : "cm · 단면"}</span>}>실측 수정</SectionTitle>
+          <div className={cn("grid gap-3", measureCols(info.categoryId))}>
+            {measurementFields(info.categoryId).map((m) => (
+              <div key={m.key} className="field">
+                <label htmlFor={`ie-m-${m.key}`}>{m.label}</label>
+                <UnitInput
+                  id={`ie-m-${m.key}`}
+                  unit="cm"
+                  inputMode="decimal"
+                  className="text-body"
+                  value={info.measurements[m.key] ?? ""}
+                  onChange={(e) => setField("measurements", { ...info.measurements, [m.key]: e.target.value })}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <section className="flex flex-col gap-2.5">
         <SectionTitle>착용 후기 수정</SectionTitle>
         <textarea

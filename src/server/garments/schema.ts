@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { SUBCATEGORIES } from "@/lib/constants/categories";
 import { normalizeColorName } from "@/lib/constants/colors";
-import { BOTTOM_MEASUREMENTS, TOP_MEASUREMENTS, type MeasurementKey } from "@/lib/constants/measurements";
+import { ALL_MEASUREMENT_KEYS, MEASUREMENT_KEYS, type MeasurementKey } from "@/lib/constants/measurements";
+import { SHOE_FIT_LEVELS, shoeFitOrNull } from "@/lib/constants/shoe-fit";
 import { FOUR_SEASONS } from "@/lib/constants/seasons";
 import type { Measurements, Season } from "@/lib/types/domain";
 
@@ -25,7 +26,8 @@ const measurement = z
   .transform((v) => Math.round(v * 10) / 10)
   .nullish();
 
-const ALL_KEYS = [...new Set<MeasurementKey>([...TOP_MEASUREMENTS, ...BOTTOM_MEASUREMENTS])];
+const ALL_KEYS = ALL_MEASUREMENT_KEYS as [MeasurementKey, ...MeasurementKey[]];
+const shoeFitLevel = z.enum(SHOE_FIT_LEVELS).nullish();
 
 const isValidDate = (v: string) => {
   const d = new Date(`${v}T00:00:00Z`);
@@ -34,7 +36,7 @@ const isValidDate = (v: string) => {
 
 export const garmentInputSchema = z
   .object({
-    categoryId: z.enum(["outer", "top", "bottom"], { error: "대분류를 선택해 주세요." }),
+    categoryId: z.enum(["outer", "top", "bottom", "hat", "shoes"], { error: "대분류를 선택해 주세요." }),
     subcategoryId: z.string().nullish().transform((v) => v || null),
     brand: optionalText(100, "브랜드"),
     productName: z
@@ -67,7 +69,12 @@ export const garmentInputSchema = z
         return false;
       }
     }, "상품 링크는 http:// 또는 https://로 시작하는 주소여야 합니다."),
-    measurements: z.partialRecord(z.enum(ALL_KEYS as [MeasurementKey, ...MeasurementKey[]]), measurement).default({}),
+    measurements: z.partialRecord(z.enum(ALL_KEYS), measurement).default({}),
+    /** 신발만 저장한다(길이감·발볼·발등). */
+    shoeFit: z
+      .object({ length: shoeFitLevel, width: shoeFitLevel, instep: shoeFitLevel })
+      .nullish()
+      .transform((v) => v ?? null),
     fitReview: optionalText(2000, "착용 후기"),
     /** 링크 분석으로 등록할 때 그 분석 기록(product_imports) id. 등록할 때만 쓴다. */
     sourceImportId: z.uuid().nullish().transform((v) => v ?? null),
@@ -82,10 +89,10 @@ export const garmentInputSchema = z
   })
   .transform((v) => {
     // 대분류에 없는 실측은 버린다(대분류를 바꾸고 저장해도 다른 분류 실측이 남지 않게).
-    const allowed: readonly MeasurementKey[] = v.categoryId === "bottom" ? BOTTOM_MEASUREMENTS : TOP_MEASUREMENTS;
     const measurements: Measurements = {};
-    for (const key of allowed) measurements[key] = v.measurements[key] ?? null;
-    return { ...v, measurements, seasons: normalizeSeasons(v.seasons) };
+    for (const key of MEASUREMENT_KEYS[v.categoryId]) measurements[key] = v.measurements[key] ?? null;
+    const shoeFit = v.categoryId === "shoes" ? shoeFitOrNull(v.shoeFit) : null;
+    return { ...v, measurements, shoeFit, seasons: normalizeSeasons(v.seasons) };
   });
 
 export type GarmentInput = z.output<typeof garmentInputSchema>;

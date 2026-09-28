@@ -1,4 +1,5 @@
 import type { MeasurementKey } from "@/lib/constants/measurements";
+import type { ShoeFit } from "@/lib/constants/shoe-fit";
 import type { CategoryId, Measurements } from "@/lib/types/domain";
 
 /**
@@ -30,6 +31,19 @@ export interface ComparableSnapshot {
   measurements: Measurements;
   review: string | null;
   signals: ReviewSignal[];
+  /** 신발만: 기록한 착용감 */
+  shoeFit?: ShoeFit | null;
+}
+
+/** 신발 판단(실측 대신 사이즈 mm와 착용감). shoes.ts */
+export interface ShoeSizeReport {
+  candidateMm: number | null;
+  /** 가진 신발로 추정한 평소 사이즈(5mm 단위) */
+  idealMm: number | null;
+  diffMm: number | null;
+  basis: "sameBrand" | "all" | null;
+  lengthVerdict: "small" | "good" | "large" | "unknown";
+  cautions: Array<{ part: "width" | "instep"; garmentId: string; sameBrand: boolean; text: string }>;
 }
 
 export interface RangeStat {
@@ -80,6 +94,8 @@ export interface SizeReport {
   limitations: string[];
   /** 규칙으로 만든 예상 핏 문장(AI 없이도 항상 있음) */
   summary: string;
+  /** 신발만 */
+  shoe?: ShoeSizeReport;
 }
 
 export interface FitComputed {
