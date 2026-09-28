@@ -117,7 +117,7 @@ describe("추천 치수·보정·역산", () => {
     const est = estimateBodyFromGarments([tee(53, 46), { categoryId: "bottom", subcategoryId: "bottom.denim", measurements: { waist: 41, hip: 51, thigh: 32, length: 103 } }]);
     expect(est.chest).toBe(93);
     expect(est.shoulder).toBe(45.5);
-    expect(est.hip).toBe(95.5);
+    expect(est.hip).toBe(93.5);
     expect(est.leg).toBe(101);
   });
   it("세부분류 묶음", () => {

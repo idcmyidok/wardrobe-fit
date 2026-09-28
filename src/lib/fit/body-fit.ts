@@ -60,19 +60,21 @@ interface GroupDef {
   sleeve?: boolean;
 }
 
-const TEE_SHOULDER: [number, number, number, number, number] = [-4, -1, 2, 6, 11];
-const OUTER_SHOULDER: [number, number, number, number, number] = [-3, 0, 3, 7, 12];
-const PANTS_WIDTH = { hip: [0, 4, 9, 15, 24], thigh: [2, 7, 13, 20, 30] } satisfies GroupDef["width"];
+// 오버핏은 드롭숄더라 어깨가 몸보다 10cm 넘게 넓은 옷이 흔하다(너무 큼 경계를 넉넉히).
+const TEE_SHOULDER: [number, number, number, number, number] = [-4, -1, 2, 6, 14];
+const OUTER_SHOULDER: [number, number, number, number, number] = [-3, 0, 3, 7, 15];
+// 엉덩이는 비스판 슬림도 2cm 이상 여유가 있어야 앉을 수 있다. 허벅지 와이드는 국내 와이드 데님·슬랙스(몸 +17~26cm) 기준.
+const PANTS_WIDTH = { hip: [2, 6, 11, 17, 26], thigh: [2, 6, 11, 17, 26] } satisfies GroupDef["width"];
 
 export const FIT_GROUPS: GroupDef[] = [
   { id: "short_tee", name: "반팔 티셔츠", kind: "top", width: { chest: [4, 10, 16, 24, 34], shoulder: TEE_SHOULDER }, lengthRatio: [0.377, 0.406] },
   { id: "long_tee", name: "긴팔·맨투맨·후드", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: TEE_SHOULDER }, lengthRatio: [0.371, 0.4], sleeve: true },
-  { id: "knit", name: "니트·카디건", kind: "top", width: { chest: [2, 8, 14, 22, 32], shoulder: TEE_SHOULDER }, lengthRatio: [0.36, 0.389], sleeve: true },
+  { id: "knit", name: "니트·카디건", kind: "top", width: { chest: [4, 10, 16, 24, 34], shoulder: TEE_SHOULDER }, lengthRatio: [0.36, 0.389], sleeve: true },
   { id: "shirt", name: "셔츠", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: TEE_SHOULDER }, lengthRatio: [0.394, 0.423], sleeve: true },
-  { id: "light_outer", name: "가벼운 아우터·바람막이", kind: "top", width: { chest: [10, 16, 24, 32, 42], shoulder: OUTER_SHOULDER }, lengthRatio: [0.366, 0.4], sleeve: true },
+  { id: "light_outer", name: "가벼운 아우터·바람막이", kind: "top", width: { chest: [12, 18, 26, 34, 44], shoulder: OUTER_SHOULDER }, lengthRatio: [0.366, 0.4], sleeve: true },
   { id: "leather", name: "레더·무스탕", kind: "top", width: { chest: [6, 10, 16, 22, 30], shoulder: [-3, -1, 2, 5, 9] }, lengthRatio: [0.331, 0.366], sleeve: true },
-  { id: "coat", name: "코트", kind: "top", width: { chest: [12, 18, 26, 34, 44], shoulder: OUTER_SHOULDER }, lengthRatio: null, sleeve: true },
-  { id: "padding", name: "패딩", kind: "top", width: { chest: [14, 20, 28, 36, 46], shoulder: OUTER_SHOULDER }, lengthRatio: null, sleeve: true },
+  { id: "coat", name: "코트", kind: "top", width: { chest: [14, 20, 28, 36, 46], shoulder: OUTER_SHOULDER }, lengthRatio: null, sleeve: true },
+  { id: "padding", name: "패딩", kind: "top", width: { chest: [16, 22, 30, 38, 48], shoulder: OUTER_SHOULDER }, lengthRatio: null, sleeve: true },
   { id: "pants", name: "긴 바지", kind: "bottom", width: PANTS_WIDTH, legLength: true },
   { id: "shorts", name: "반바지", kind: "bottom", width: PANTS_WIDTH },
 ];
