@@ -4,8 +4,8 @@ import { SiteFooter } from "./site-footer";
 /** 개인정보처리방침·이용약관 공통 틀. 로그인하지 않아도 볼 수 있다. */
 export function LegalPage({ title, effectiveDate, children }: { title: string; effectiveDate: string; children: React.ReactNode }) {
   return (
-    <>
-      <main className="mx-auto max-w-190 px-[clamp(16px,3vw,32px)] pt-6 pb-10">
+    <div className="flex min-h-dvh flex-col">
+      <main className="mx-auto w-full max-w-190 flex-1 px-[clamp(16px,3vw,32px)] pt-6 pb-10">
         <Link href="/" className="btn btn-ghost mb-2 text-sm">
           ← 처음으로
         </Link>
@@ -15,8 +15,8 @@ export function LegalPage({ title, effectiveDate, children }: { title: string; e
         </div>
         <div className="legal flex flex-col gap-8 py-7 text-base leading-relaxed text-neutral-800">{children}</div>
       </main>
-      <SiteFooter className="mx-auto max-w-190 border-t border-neutral-300 px-[clamp(16px,3vw,32px)] py-5" />
-    </>
+      <SiteFooter className="mx-auto w-full max-w-190 border-t border-neutral-300 px-[clamp(16px,3vw,32px)] py-5" />
+    </div>
   );
 }
 

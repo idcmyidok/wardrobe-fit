@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { optionPairs, packCount, parseMusinsaOrders, parseOrdersToGarments } from "./musinsa-orders";
+import { garmentFromCategoryPath, matchSizeRow, optionPairs, packCount, parseMusinsaOrders, parseOrdersToGarments } from "./musinsa-orders";
 
 // 무신사 주문내역을 Ctrl+A로 복사한 글과 같은 모양(상품은 지어낸 것)
 const TEXT = `126건
@@ -98,5 +98,39 @@ describe("optionPairs / packCount", () => {
     expect(packCount("하프 터틀넥 니트 세트")).toBe(2);
     expect(packCount("[넥타이 SET] 옥스포드 셔츠")).toBe(1);
     expect(packCount("릴렉스 핏 티셔츠")).toBe(1);
+  });
+});
+
+describe("garmentFromCategoryPath", () => {
+  it("옷장 분류가 있는 카테고리는 세부분류로, 없는 카테고리는 옷 아님으로", () => {
+    expect(garmentFromCategoryPath(["상의", "반소매 티셔츠"])).toEqual({ categoryId: "top", subcategoryId: "top.short_tee" });
+    expect(garmentFromCategoryPath(["신발", "스니커즈", "캔버스/단화"])).toEqual({ categoryId: "shoes", subcategoryId: "shoes.sneakers" });
+    expect(garmentFromCategoryPath(["가방", "크로스백"])).toBe("not_garment");
+    expect(garmentFromCategoryPath(["뷰티", "헤어케어"])).toBe("not_garment");
+    expect(garmentFromCategoryPath(["패션소품", "키링"])).toBe("not_garment");
+    expect(garmentFromCategoryPath([])).toBeNull();
+  });
+});
+
+describe("matchSizeRow", () => {
+  const rows = [{ sizeLabel: "S" }, { sizeLabel: "M" }, { sizeLabel: "L" }];
+  it.each([
+    ["L", "L"],
+    ["LARGE", "L"],
+    ["2 (L)", "L"],
+    ["XL", null],
+  ])("%s → %s", (size, want) => {
+    expect(matchSizeRow(rows, size)?.sizeLabel ?? null).toBe(want);
+  });
+  it("원사이즈", () => {
+    expect(matchSizeRow([{ sizeLabel: "ONE SIZE" }], "FREE")?.sizeLabel).toBe("ONE SIZE");
+    expect(matchSizeRow([{ sizeLabel: "F" }], "FREE")?.sizeLabel).toBe("F");
+  });
+});
+
+describe("북마크 버튼 글(화면에 보이는 글만)", () => {
+  it("[브랜드, 상품명] 순서도 상품명·브랜드를 바르게 읽는다", () => {
+    const [order] = parseMusinsaOrders(`25.10.15(수)\n구매 확정\n⟦G:4567890⟧\n아캄\nSmall Sun Jacquard Beanie (Brown)\nFREE / 1개\n31,870원\n`);
+    expect(order).toMatchObject({ brand: "아캄", name: "Small Sun Jacquard Beanie (Brown)", goodsNo: "4567890" });
   });
 });

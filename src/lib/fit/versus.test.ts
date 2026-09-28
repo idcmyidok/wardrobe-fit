@@ -23,12 +23,12 @@ const entry = (key: string, chest: number, shoulder: number): VersusEntry => {
 
 describe("VS 비교", () => {
   it("원하는 핏 점수가 가장 높은 사이즈를 고른다", () => {
-    expect(pickSize(base, rows, "regular", body, {})).toBe("M");
-    expect(pickSize(base, rows, "over", body, {})).toBe("XL");
-    expect(pickSize(base, rows, "slim", body, {})).toBe("S");
+    expect(pickSize(base, rows, "regular", body)).toBe("M");
+    expect(pickSize(base, rows, "over", body)).toBe("XL");
+    expect(pickSize(base, rows, "slim", body)).toBe("S");
   });
   it("내 치수도 옷장 기록도 없으면 가운데 사이즈", () => {
-    expect(pickSize(base, rows, "regular", null, {})).toBe("M");
+    expect(pickSize(base, rows, "regular", null)).toBe("M");
   });
   it("원하는 핏에 가까운 옷이 1위", () => {
     const ranks = rankVersus([entry("A", 60, 54), entry("B", 51.5, 44.5)], "regular");

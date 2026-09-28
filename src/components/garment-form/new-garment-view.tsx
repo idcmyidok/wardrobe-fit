@@ -333,6 +333,9 @@ export function NewGarmentView() {
             상품 페이지 주소를 붙여 넣으면 제품명·가격·사진·사이즈표를 읽어 옵니다. 읽지 못한 항목은 직접 채우면 됩니다.
           </div>
           <UsageNote kind="import" />
+          <Link href="/wardrobe/import-orders" className="btn btn-secondary mt-8 min-h-11 self-start">
+            무신사 주문내역으로 여러 벌 한꺼번에 추가
+          </Link>
 
           {phase === "analyzing" && (
             <div className="mt-4 border-t border-text" aria-live="polite">

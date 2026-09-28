@@ -1,7 +1,7 @@
 import { fitLevelName, type WearableLevel } from "@/lib/constants/body";
 import { MEASUREMENT_LABELS } from "@/lib/constants/measurements";
 import type { Measurements } from "@/lib/types/domain";
-import { computeBodyFit, type BodyFitGarment, type BodyFitResult, type BodyProfile, type Calibration } from "./body-fit";
+import { computeBodyFit, type BodyFitGarment, type BodyFitResult, type BodyProfile } from "./body-fit";
 import type { SizeReport } from "./types";
 
 /**
@@ -40,12 +40,11 @@ export function pickSize(
   rows: VersusSizeRow[],
   target: WearableLevel,
   body: BodyProfile | null,
-  calibration: Calibration,
   wardrobeReports?: SizeReport[],
 ): string | null {
   if (!rows.length) return null;
   const scored = rows.map((r, i) => {
-    const b = body ? bodyScore(computeBodyFit({ ...base, measurements: r.measurements }, body, calibration), target) : null;
+    const b = body ? bodyScore(computeBodyFit({ ...base, measurements: r.measurements }, body), target) : null;
     const w = wardrobeScore(wardrobeReports?.find((s) => s.sizeLabel === r.sizeLabel));
     return { label: r.sizeLabel, score: b ?? w, i };
   });
