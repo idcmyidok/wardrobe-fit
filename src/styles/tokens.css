@@ -34,6 +34,14 @@
   --shadow-sm: 0 1px 2px rgb(28 27 25 / 0.06);
   --shadow-md: 0 6px 20px rgb(28 27 25 / 0.08);
   --shadow-lg: 0 16px 40px rgb(28 27 25 / 0.12);
+
+  /* 핏 미터기 6칸(너무 작음 → 너무 큼). 가운데 정핏이 초록, 양 끝이 붉은 흙색 */
+  --fit-too-small: #b4533f;
+  --fit-slim: #4a7ca3;
+  --fit-regular: #3f8350;
+  --fit-semi-over: #7d8a2f;
+  --fit-over: #b07a22;
+  --fit-too-big: #b4533f;
 }
 
 [data-theme="dark"] {
@@ -66,6 +74,14 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
   --shadow-md: 0 6px 20px rgb(0 0 0 / 0.45);
   --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.55);
+
+  /* 핏 미터기 6칸(너무 작음 → 너무 큼). 가운데 정핏이 초록, 양 끝이 붉은 흙색 */
+  --fit-too-small: #d0806c;
+  --fit-slim: #7fa6c4;
+  --fit-regular: #7fb28a;
+  --fit-semi-over: #b3bb6a;
+  --fit-over: #d4a95c;
+  --fit-too-big: #d0806c;
 }
 
 /* semantic 토큰: 램프에서 파생하므로 테마가 바뀌면 함께 바뀐다. */

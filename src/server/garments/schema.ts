@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FIT_LEVELS } from "@/lib/constants/body";
 import { SUBCATEGORIES } from "@/lib/constants/categories";
 import { normalizeColorName } from "@/lib/constants/colors";
 import { ALL_MEASUREMENT_KEYS, MEASUREMENT_KEYS, type MeasurementKey } from "@/lib/constants/measurements";
@@ -75,6 +76,8 @@ export const garmentInputSchema = z
       .object({ length: shoeFitLevel, width: shoeFitLevel, instep: shoeFitLevel })
       .nullish()
       .transform((v) => v ?? null),
+    /** 아우터·상의·하의만: 내가 표기한 핏 */
+    userFit: z.enum(FIT_LEVELS).nullish().transform((v) => v ?? null),
     fitReview: optionalText(2000, "착용 후기"),
     /** 링크 분석으로 등록할 때 그 분석 기록(product_imports) id. 등록할 때만 쓴다. */
     sourceImportId: z.uuid().nullish().transform((v) => v ?? null),
@@ -92,7 +95,8 @@ export const garmentInputSchema = z
     const measurements: Measurements = {};
     for (const key of MEASUREMENT_KEYS[v.categoryId]) measurements[key] = v.measurements[key] ?? null;
     const shoeFit = v.categoryId === "shoes" ? shoeFitOrNull(v.shoeFit) : null;
-    return { ...v, measurements, shoeFit, seasons: normalizeSeasons(v.seasons) };
+    const userFit = ["outer", "top", "bottom"].includes(v.categoryId) ? v.userFit : null;
+    return { ...v, measurements, shoeFit, userFit, seasons: normalizeSeasons(v.seasons) };
   });
 
 export type GarmentInput = z.output<typeof garmentInputSchema>;

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWardrobe, type GarmentDraft, type ImageChange } from "@/components/wardrobe/wardrobe-store";
 import { DateLabel } from "./date-label";
 import { ImagePicker } from "./image-picker";
@@ -19,6 +19,9 @@ import { takeStashedDraft } from "@/lib/session-expiry";
 import { notifyUsageChanged } from "@/lib/usage";
 import { UsageNote } from "@/components/usage/usage-note";
 import { ShoeFitPicker } from "./shoe-fit-picker";
+import { BodyFitPanel } from "@/components/body/body-fit-panel";
+import { UserFitPicker } from "@/components/body/user-fit-picker";
+import type { FitLevel } from "@/lib/constants/body";
 import type { CategoryId, Measurements, Season } from "@/lib/types/domain";
 
 type Phase = "url" | "analyzing" | "failed" | "review" | "manual";
@@ -37,6 +40,7 @@ interface FormState {
   review: string;
   m: Record<string, string>;
   shoeFit: ShoeFit;
+  userFit: FitLevel | null;
 }
 
 const ANALYZE_STEPS: { stage: AnalyzeStage; label: string }[] = [
@@ -61,6 +65,7 @@ const EMPTY_FORM: FormState = {
   review: "",
   m: {},
   shoeFit: EMPTY_SHOE_FIT,
+  userFit: null,
 };
 
 /** 분석 결과 → 검토 폼. 사이즈·컬러는 옵션이 하나뿐일 때만 미리 고른다. */
@@ -97,6 +102,7 @@ const draftToForm = (d: GarmentDraft): FormState => ({
   url: d.productUrl ?? "",
   m: Object.fromEntries(Object.entries(d.measurements).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])),
   shoeFit: d.shoeFit ?? EMPTY_SHOE_FIT,
+  userFit: d.userFit ?? null,
 });
 
 /** 새 옷 추가: 상품 링크 분석(분석 중 / 실패) → 검토 폼, 또는 직접 입력 폼 */
@@ -254,6 +260,7 @@ export function NewGarmentView() {
       measurements,
       fitReview: form.review || null,
       shoeFit: form.categoryId === "shoes" ? shoeFitOrNull(form.shoeFit) : null,
+      userFit: isClothes(form.categoryId) ? form.userFit : null,
     }, image === undefined && isReview && chosenUrl ? await importImageFile(chosenUrl) : image, imported?.importId ?? null);
     setSaving(false);
     if (!result.ok) {
@@ -446,7 +453,7 @@ export function NewGarmentView() {
                     className="input"
                     value={form.categoryId}
                     onChange={(e) => {
-                      setForm((f) => ({ ...f, categoryId: e.target.value as CategoryId, subcategoryId: "", m: {}, shoeFit: EMPTY_SHOE_FIT }));
+                      setForm((f) => ({ ...f, categoryId: e.target.value as CategoryId, subcategoryId: "", m: {}, shoeFit: EMPTY_SHOE_FIT, userFit: null }));
                     }}
                   >
                     {CATEGORIES.map((c) => (
@@ -624,6 +631,24 @@ export function NewGarmentView() {
             </section>
           )}
 
+          {isClothes(form.categoryId) && (
+            <section className="flex flex-col gap-4 border-b border-text py-7">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 id="f-user-fit" className="text-lg">
+                  내 핏
+                </h2>
+                <span className="text-sm text-neutral-700">선택 입력 · 비워 두면 내 치수로 계산한 예상 핏을 보여 줍니다</span>
+              </div>
+              <UserFitPicker
+                labelledBy="f-user-fit"
+                kind={form.categoryId === "bottom" ? "bottom" : "top"}
+                value={form.userFit}
+                onChange={(v) => update("userFit", v)}
+              />
+              <FormBodyFit form={form} />
+            </section>
+          )}
+
           <section className="flex flex-col gap-3 py-7">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-lg">착용 후기</h2>
@@ -671,6 +696,18 @@ const FIELD_IDS: Record<string, string> = {
   subcategoryId: "f-sub",
   ...Object.fromEntries(ALL_MEASUREMENT_KEYS.map((k) => [`measurements.${k}`, `f-m-${k}`])),
 };
+
+const isClothes = (c: CategoryId) => c === "outer" || c === "top" || c === "bottom";
+
+/** 폼에 입력한 실측으로 바로 계산한 예상 핏(점수는 옷 정보에서) */
+function FormBodyFit({ form }: { form: FormState }) {
+  const garment = useMemo(() => {
+    const measurements: Measurements = {};
+    for (const [k, v] of Object.entries(form.m)) if (v !== "" && !isNaN(Number(v))) measurements[k as keyof Measurements] = Number(v);
+    return { categoryId: form.categoryId, subcategoryId: form.subcategoryId || null, productName: form.productName, measurements };
+  }, [form.categoryId, form.subcategoryId, form.productName, form.m]);
+  return <BodyFitPanel garment={garment} userFit={form.userFit} showScores={false} />;
+}
 
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;

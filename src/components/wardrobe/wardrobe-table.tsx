@@ -9,6 +9,8 @@ import { formatPrice } from "@/lib/format/price";
 import type { CategoryId, Garment } from "@/lib/types/domain";
 import type { ColumnSort, SortableColumn } from "./filter-state";
 import { GarmentThumbnail } from "./garment-thumbnail";
+import { useBodyFit } from "@/components/body/body-store";
+import { FitMeter } from "@/components/body/fit-meter";
 
 /** 옷장 목록 보기: simple은 사진·요약 목록, detail은 실측까지 보이는 표. */
 export type WardrobeViewMode = "simple" | "detail";
@@ -41,6 +43,8 @@ export function WardrobeTable({
   onOpen: (id: string) => void;
 }) {
   const measurements = TABLE_MEASUREMENTS[categoryId];
+  // 모자·신발을 뺀 의류 표에만 예상 핏 열을 둔다.
+  const fitColumn = categoryId === "outer" || categoryId === "top" || categoryId === "bottom";
   const sortHead = (key: SortableColumn, label: string, className: string, narrow = false) => (
     <SortHeader key={key} column={key} label={label} active={sort.key === key ? sort.dir : null} onSort={onSort} className={className} narrow={narrow} />
   );
@@ -79,6 +83,11 @@ export function WardrobeTable({
                     {f.label}
                   </th>
                 ))}
+              {fitColumn && (
+                <th scope="col" className={cn(head, "w-24")}>
+                  예상핏
+                </th>
+              )}
               {sortHead("purchasedOn", "구매일", "w-32")}
               {sortHead("price", "구매가", "w-32")}
             </tr>
@@ -137,6 +146,11 @@ export function WardrobeTable({
                         {shoeFitText(f.key, item.shoeFit?.[f.key])}
                       </td>
                     ))}
+                  {fitColumn && (
+                    <td className={cn(cell, "px-1")}>
+                      <FitCell item={item} />
+                    </td>
+                  )}
                   <td className={cn(cell, mono, "text-neutral-700")}>{formatDate(item.purchasedOn)}</td>
                   <td className={cn(cell, mono)}>{formatPrice(item.purchasePrice)}</td>
                 </tr>
@@ -147,6 +161,15 @@ export function WardrobeTable({
       </div>
     </>
   );
+}
+
+/** 예상핏 칸: 내가 표기한 핏이 있으면 그것, 없으면 내 치수로 계산한 예상 핏. 계산할 수 없으면 "—" */
+function FitCell({ item }: { item: Garment }) {
+  const result = useBodyFit(item);
+  const kind = item.categoryId === "bottom" ? "bottom" : "top";
+  if (item.userFit) return <FitMeter level={item.userFit} kind={kind} mine />;
+  if (result?.status !== "ok") return <span className="text-neutral-500">—</span>;
+  return <FitMeter level={result.level} kind={kind} />;
 }
 
 /** 간략 목록(모바일 기본): 사진과 두 줄 요약. 모바일에서 누르면 옷 정보 페이지로 간다(PROJECT_SPEC.md 5.2). */

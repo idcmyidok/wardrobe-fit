@@ -54,6 +54,63 @@ export type Database = {
         }
         Relationships: []
       }
+      body_profiles: {
+        Row: {
+          arm_cm: number | null
+          chest_cm: number | null
+          consent_version: string
+          consented_at: string
+          created_at: string
+          fit_overrides: Json
+          height_cm: number | null
+          hip_cm: number | null
+          leg_cm: number | null
+          shoulder_cm: number | null
+          thigh_cm: number | null
+          uncertain: string[]
+          updated_at: string
+          user_id: string
+          waist_cm: number | null
+          weight_kg: number | null
+        }
+        Insert: {
+          arm_cm?: number | null
+          chest_cm?: number | null
+          consent_version: string
+          consented_at?: string
+          created_at?: string
+          fit_overrides?: Json
+          height_cm?: number | null
+          hip_cm?: number | null
+          leg_cm?: number | null
+          shoulder_cm?: number | null
+          thigh_cm?: number | null
+          uncertain?: string[]
+          updated_at?: string
+          user_id?: string
+          waist_cm?: number | null
+          weight_kg?: number | null
+        }
+        Update: {
+          arm_cm?: number | null
+          chest_cm?: number | null
+          consent_version?: string
+          consented_at?: string
+          created_at?: string
+          fit_overrides?: Json
+          height_cm?: number | null
+          hip_cm?: number | null
+          leg_cm?: number | null
+          shoulder_cm?: number | null
+          thigh_cm?: number | null
+          uncertain?: string[]
+          updated_at?: string
+          user_id?: string
+          waist_cm?: number | null
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           id: string
@@ -252,6 +309,7 @@ export type Database = {
           subcategory_id: string | null
           thumb_path: string | null
           updated_at: string
+          user_fit: string | null
           user_id: string
         }
         Insert: {
@@ -291,6 +349,7 @@ export type Database = {
           subcategory_id?: string | null
           thumb_path?: string | null
           updated_at?: string
+          user_fit?: string | null
           user_id?: string
         }
         Update: {
@@ -330,6 +389,7 @@ export type Database = {
           subcategory_id?: string | null
           thumb_path?: string | null
           updated_at?: string
+          user_fit?: string | null
           user_id?: string
         }
         Relationships: [
