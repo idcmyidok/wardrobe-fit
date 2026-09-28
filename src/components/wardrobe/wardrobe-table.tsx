@@ -85,7 +85,7 @@ export function WardrobeTable({
                 ))}
               {fitColumn && (
                 <th scope="col" className={cn(head, "w-24")}>
-                  예상핏
+                  핏
                 </th>
               )}
               {sortHead("purchasedOn", "구매일", "w-32")}
@@ -163,7 +163,7 @@ export function WardrobeTable({
   );
 }
 
-/** 예상핏 칸: 내가 표기한 핏이 있으면 그것, 없으면 내 치수로 계산한 예상 핏. 계산할 수 없으면 "—" */
+/** 핏 칸: 내가 표기한 핏이 있으면 그것, 없으면 내 치수로 계산한 예상 핏. 계산할 수 없으면 "—" */
 function FitCell({ item }: { item: Garment }) {
   const result = useBodyFit(item);
   const kind = item.categoryId === "bottom" ? "bottom" : "top";
