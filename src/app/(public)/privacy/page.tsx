@@ -132,7 +132,10 @@ export default function PrivacyPage() {
       </LegalSection>
 
       <LegalSection title="10. 만 14세 미만 아동">
-        <p>서비스는 만 14세 이상만 가입할 수 있으며, 만 14세 미만 아동의 개인정보는 받지 않습니다.</p>
+        <p>
+          서비스는 만 14세 이상만 가입할 수 있으며, 가입할 때 만 14세 이상인지 본인 확인을 받습니다. 만 14세 미만 아동이 가입한 사실을 알게 되면 해당 계정과
+          기록을 지체 없이 삭제합니다.
+        </p>
       </LegalSection>
 
       <LegalSection title="11. 개인정보 보호책임자">

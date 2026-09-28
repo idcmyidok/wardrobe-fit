@@ -13,8 +13,10 @@ export const signUpSchema = z
     email,
     password: newPassword,
     passwordConfirm: z.string(),
-    // 만 14세 이상 확인과 약관·개인정보 수집 안내 확인(체크박스 값 "on")
-    agree: z.literal("on", { error: "만 14세 이상인지, 약관과 개인정보 수집 안내를 확인해 주세요." }),
+    // 필수 동의(체크박스 값 "on"): 만 14세 이상, 이용약관, 개인정보 수집·이용
+    age: z.literal("on", { error: "만 14세 이상만 가입할 수 있습니다." }),
+    terms: z.literal("on", { error: "이용약관에 동의해 주세요." }),
+    privacy: z.literal("on", { error: "개인정보 수집·이용에 동의해 주세요." }),
   })
   .refine((v) => v.password === v.passwordConfirm, {
     path: ["passwordConfirm"],
