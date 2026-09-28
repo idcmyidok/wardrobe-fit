@@ -81,7 +81,7 @@ Supabase 값(`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)을 비
 
 - PR마다 GitHub Actions가 lint, 타입 검사, 단위 테스트, 빌드, 번들 키 검사를 하고, 로컬 Supabase를 띄워 E2E를 돌립니다. E2E는 외부 쇼핑몰과 AI를 부르지 않고 모의 응답을 씁니다.
 - 브랜치는 `feature/*` → `develop` → `main` 순서입니다. Vercel은 `main`(운영)과 `develop`만 배포합니다.
-- 사용자별로 하루(최근 24시간) 링크 분석 50회, 구매 판단 20회, 그중 AI 요약 10회까지 쓸 수 있고, 화면에 남은 횟수와 초기화까지 남은 시간이 나옵니다.
+- 사용자별로 하루(최근 24시간) 링크 분석 100회, 구매 판단 20회, 그중 AI 요약 10회까지 쓸 수 있고, 화면에 남은 횟수와 초기화까지 남은 시간이 나옵니다.
 
 ## 폴더
 

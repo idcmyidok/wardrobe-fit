@@ -10,12 +10,12 @@ import { normalizeProductUrl } from "./url";
 /**
  * 링크 분석 1건을 실행하고 product_imports에 남긴다(PROJECT_SPEC.md 12.1 [6], 12.3).
  * - 같은 사용자·같은 주소는 10분 동안 이전 결과를 다시 쓴다(쇼핑몰에 다시 요청하지 않음).
- * - 사용자당 24시간에 50번까지(PROJECT_SPEC.md 19장 비용 남용). 관리자는 제한 없음.
+ * - 사용자당 24시간에 100번까지(PROJECT_SPEC.md 19장 비용 남용). 관리자는 제한 없음.
  *   AI(Gemini)는 규칙으로 사이즈표를 못 찾았을 때만 1번 부르므로 실제 AI 호출은 이보다 훨씬 적다.
  */
 
 export const IMPORT_REUSE_MINUTES = 10;
-export const IMPORT_DAILY_LIMIT = 50;
+export const IMPORT_DAILY_LIMIT = 100;
 /** 분석 방식이 바뀌면 올린다. 이전 방식의 결과는 다시 쓰지 않는다(product_imports.parser_version). */
 export const IMPORT_ENGINE_VERSION = "v4";
 
