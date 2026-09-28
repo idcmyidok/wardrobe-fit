@@ -12,6 +12,7 @@ const NAV = [
   { href: "/fit-check", label: "AI 구매 판단기" },
   { href: "/analysis", label: "옷장 분석" },
   ...(FEATURES.outfit ? [{ href: "/outfit", label: "오늘의 코디" }] : []),
+  { href: "/body", label: "내 치수" },
 ];
 
 /** email이 null이면 인증 서버가 없는 미리보기 모드다. admin이면 사용자 메뉴에 관리자 링크가 생긴다. */

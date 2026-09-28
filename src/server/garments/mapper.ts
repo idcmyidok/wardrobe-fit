@@ -1,5 +1,6 @@
 import type { Database } from "@/lib/supabase/database.types";
 import { MEASUREMENT_KEYS, type MeasurementKey } from "@/lib/constants/measurements";
+import { isFitLevel } from "@/lib/constants/body";
 import { SHOE_FIT_LEVELS, shoeFitOrNull, type ShoeFitLevel } from "@/lib/constants/shoe-fit";
 import type { CategoryId, Garment } from "@/lib/types/domain";
 import type { GarmentInput } from "./schema";
@@ -9,7 +10,7 @@ type GarmentWrite = Database["public"]["Tables"]["garments"]["Update"];
 
 /** 목록·상세에 필요한 열만 읽는다. */
 export const GARMENT_COLUMNS =
-  "id, category_id, subcategory_id, brand, product_name, size_label, color_name, seasons, purchased_on, purchase_price, product_url, image_path, thumb_path, m_length, m_shoulder, m_chest, m_sleeve, m_waist, m_hip, m_thigh, m_rise, m_leg_opening, m_head, m_depth, m_brim, shoe_fit_length, shoe_fit_width, shoe_fit_instep, fit_review, created_at";
+  "id, category_id, subcategory_id, brand, product_name, size_label, color_name, seasons, purchased_on, purchase_price, product_url, image_path, thumb_path, m_length, m_shoulder, m_chest, m_sleeve, m_waist, m_hip, m_thigh, m_rise, m_leg_opening, m_head, m_depth, m_brim, shoe_fit_length, shoe_fit_width, shoe_fit_instep, user_fit, fit_review, created_at";
 
 export type GarmentListRow = Pick<
   GarmentRow,
@@ -41,6 +42,7 @@ export type GarmentListRow = Pick<
   | "shoe_fit_length"
   | "shoe_fit_width"
   | "shoe_fit_instep"
+  | "user_fit"
   | "fit_review"
   | "created_at"
 >;
@@ -89,6 +91,7 @@ export function rowToGarment(row: GarmentListRow, urls: { imageUrl: string | nul
       categoryId === "shoes"
         ? shoeFitOrNull({ length: level(row.shoe_fit_length), width: level(row.shoe_fit_width), instep: level(row.shoe_fit_instep) })
         : null,
+    userFit: isFitLevel(row.user_fit) ? row.user_fit : null,
   };
 }
 
@@ -122,6 +125,7 @@ export function inputToRow(input: GarmentInput): GarmentWrite {
     shoe_fit_length: input.shoeFit?.length ?? null,
     shoe_fit_width: input.shoeFit?.width ?? null,
     shoe_fit_instep: input.shoeFit?.instep ?? null,
+    user_fit: input.userFit,
     fit_review: input.fitReview,
   };
 }

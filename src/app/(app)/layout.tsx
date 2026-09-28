@@ -11,6 +11,8 @@ import { getSupabaseEnv, isAuthConfigured } from "@/lib/supabase/config";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { isAdmin } from "@/server/admin/guard";
 import { listMyGarments } from "@/server/garments/queries";
+import { getMyBodyProfile } from "@/server/body/queries";
+import { BodyProvider } from "@/components/body/body-store";
 
 /**
  * 로그인 후 화면 공통 레이아웃. 옷 정보 Drawer와 알림은 어느 화면에서든 열리도록 여기에 둔다.
@@ -60,16 +62,19 @@ async function WardrobeData({
   admin: boolean;
   children: React.ReactNode;
 }) {
-  const garments = userId ? await listMyGarments() : MOCK_GARMENTS;
+  const [garments, body] = userId ? await Promise.all([listMyGarments(), getMyBodyProfile()]) : [MOCK_GARMENTS, null];
   return (
     <WardrobeProvider initialGarments={garments} userId={userId} supabaseEnv={userId ? getSupabaseEnv() : null}>
-      <AppHeader email={email} admin={admin} />
-      {children}
-      {/* 주소의 ?item=을 읽는다 */}
-      <Suspense>
-        <GarmentDrawer />
-      </Suspense>
-      <WardrobeToast />
+      {/* 내 치수: 예상 핏을 화면에서 계산하려고 옷 목록과 함께 읽는다. */}
+      <BodyProvider initialProfile={body} signedIn={Boolean(userId)}>
+        <AppHeader email={email} admin={admin} />
+        {children}
+        {/* 주소의 ?item=을 읽는다 */}
+        <Suspense>
+          <GarmentDrawer />
+        </Suspense>
+        <WardrobeToast />
+      </BodyProvider>
     </WardrobeProvider>
   );
 }
