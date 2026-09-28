@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { CATEGORIES, SUBCATEGORIES, SUBCATEGORY_NAME } from "@/lib/constants/categories";
@@ -48,6 +49,8 @@ interface Item {
 
 /** 주문 사이에 쉬는 시간. 무신사에 요청이 몰리지 않게 한다. */
 const PAUSE_MS = 800;
+/** 등록을 마친 뒤 완료 팝업을 보여 주고 옷장으로 가기까지의 시간 */
+const DONE_POPUP_MS = 3000;
 
 const STATUS_TEXT: Record<Status, string> = {
   waiting: "대기",
@@ -69,6 +72,7 @@ function chartMeasurements(rows: Item["sizeRows"], size: string, categoryId: Cat
 }
 
 export function OrderImportView() {
+  const router = useRouter();
   const { addGarment, signedIn } = useWardrobe();
   const bookmark = useRef<HTMLAnchorElement>(null);
   const stop = useRef(false);
@@ -78,6 +82,8 @@ export function OrderImportView() {
   const [phase, setPhase] = useState<"input" | "finding" | "review" | "saving" | "done">("input");
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [notice, setNotice] = useState<string | null>(null);
+  /** 모두 등록한 벌 수. 값이 있으면 완료 팝업을 띄운다. */
+  const [finished, setFinished] = useState<number | null>(null);
 
   // React는 javascript: 주소를 href로 넣지 못하게 막아서 직접 넣는다.
   useEffect(() => {
@@ -170,6 +176,9 @@ export function OrderImportView() {
       const row = matchSizeRow(rows, it.size || null);
       return {
         status: "found",
+        // 브랜드·제품명은 상품 페이지 값을 쓴다(주문내역 글은 복사 방법에 따라 줄 순서가 달라진다).
+        brand: product.brand?.value ?? it.brand,
+        productName: product.productName?.value ?? it.productName,
         include: Boolean(categoryId),
         categoryId,
         subcategoryId,
@@ -188,6 +197,8 @@ export function OrderImportView() {
     if (!items) return;
     setPhase("saving");
     const targets = items.filter((it) => it.include && it.categoryId && it.saved !== "yes");
+    let saved = 0;
+    let failed = 0;
     for (const it of targets) {
       patch((k) => k === it.key, () => ({ saved: "saving", error: undefined }));
       const file = it.hasImage && it.importId ? await importImageFile(importImageUrl(it.importId, 0)) : undefined;
@@ -212,9 +223,18 @@ export function OrderImportView() {
         file,
         it.importId,
       );
+      if (result.ok) saved++;
+      else failed++;
       patch((k) => k === it.key, () => (result.ok ? { saved: "yes" } : { saved: "error", error: result.error }));
     }
     setPhase("done");
+    // 모두 등록되면 끝났다는 팝업을 잠깐 보여 주고 옷장으로 간다. 실패한 옷이 있으면 이 화면에 남아 다시 시도할 수 있게 한다.
+    if (!failed) {
+      setFinished(saved);
+      setTimeout(() => router.push("/wardrobe"), DONE_POPUP_MS);
+    } else {
+      setNotice(`${saved}벌을 등록했고 ${failed}벌은 등록하지 못했어요. 표시된 옷을 확인한 뒤 다시 추가해 주세요.`);
+    }
   }
 
   const counts = useMemo(() => {
@@ -245,7 +265,10 @@ export function OrderImportView() {
       {phase === "input" && (
         <section className="flex max-w-190 flex-col gap-4 py-8">
           <ol className="flex list-decimal flex-col gap-2 pl-5 text-base text-pretty">
-            <li>PC에서 무신사 마이페이지의 주문내역을 열고 맨 아래까지 스크롤해요.</li>
+            <li>
+              PC에서 무신사 마이페이지의 주문내역을 열어요. 검색창을 눌러 검색 기간을 최대(5년)로 늘린 뒤 맨 아래까지 스크롤하면 예전 주문까지
+              모두 가져올 수 있어요.
+            </li>
             <li>
               아래 <b>무신사 주문 복사</b> 버튼을 즐겨찾기 막대로 끌어다 놓은 뒤, 주문내역 화면에서 그 즐겨찾기를 눌러요. 상품번호까지 함께 복사돼서
               더 정확해요. 휴대폰이라면 주문내역 화면을 전체 선택해서 복사해도 돼요.
@@ -268,7 +291,11 @@ export function OrderImportView() {
             옷만 골라서 찾기 시작
           </button>
           {!signedIn && <p className="text-sm text-neutral-700">로그인해야 쓸 수 있어요.</p>}
-          <p className="text-sm text-neutral-700">상품 하나를 찾을 때마다 하루 가져오기 한도(100번)에서 1번씩 써요.</p>
+          <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-neutral-700">
+            <li>지금은 무신사 주문내역만 가져올 수 있어요.</li>
+            <li>상품 하나를 찾을 때마다 하루 링크 분석 횟수(100번)를 1번씩 써서, 한 번에 많이 쓰게 돼요.</li>
+            <li>옷이 100벌을 넘으면 오늘 분석 횟수를 다 써서 일부는 찾지 못하거나 등록에 실패할 수 있어요.</li>
+          </ul>
         </section>
       )}
 
@@ -323,6 +350,14 @@ export function OrderImportView() {
             </div>
           </div>
         </section>
+      )}
+      {finished !== null && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 px-4" role="status" aria-live="polite">
+          <div className="flex flex-col items-center gap-2 border border-text bg-bg px-8 py-6 text-center shadow-lg">
+            <span className="text-lg">{finished}벌을 옷장에 등록했어요</span>
+            <span className="text-sm text-neutral-700">잠시 후 내 옷장으로 이동해요</span>
+          </div>
+        </div>
       )}
     </main>
   );

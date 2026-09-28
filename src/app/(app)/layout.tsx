@@ -30,8 +30,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const admin = user ? await isAdmin(user.id) : false;
 
   return (
-    <>
+    // 내용이 짧아도 법적 고지가 화면 맨 아래에 오도록 세로로 채운다.
+    <div className="flex min-h-dvh flex-col">
       <OfflineBanner />
+      <div className="flex-1">
       {/* 옷 목록을 읽는 동안 머리글과 표 자리(Skeleton)를 먼저 보여 준다. */}
       <Suspense
         fallback={
@@ -45,9 +47,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {children}
         </WardrobeData>
       </Suspense>
+      </div>
       {/* 머리글과 같은 좌우 여백으로 PC에서는 화면 왼쪽 끝에 맞춘다. */}
-      <SiteFooter className="px-[clamp(16px,3vw,32px)] pb-6" />
-    </>
+      <SiteFooter className="px-[clamp(16px,3vw,32px)] pt-6 pb-6" />
+    </div>
   );
 }
 

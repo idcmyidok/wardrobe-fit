@@ -127,3 +127,10 @@ describe("matchSizeRow", () => {
     expect(matchSizeRow([{ sizeLabel: "F" }], "FREE")?.sizeLabel).toBe("F");
   });
 });
+
+describe("북마크 버튼 글(화면에 보이는 글만)", () => {
+  it("[브랜드, 상품명] 순서도 상품명·브랜드를 바르게 읽는다", () => {
+    const [order] = parseMusinsaOrders(`25.10.15(수)\n구매 확정\n⟦G:4567890⟧\n아캄\nSmall Sun Jacquard Beanie (Brown)\nFREE / 1개\n31,870원\n`);
+    expect(order).toMatchObject({ brand: "아캄", name: "Small Sun Jacquard Beanie (Brown)", goodsNo: "4567890" });
+  });
+});
