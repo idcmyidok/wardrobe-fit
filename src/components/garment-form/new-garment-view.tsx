@@ -476,8 +476,13 @@ export function NewGarmentView() {
                 </div>
                 <div className="field">
                   <label htmlFor="f-price">구매가</label>
-                  <UnitInput id="f-price" unit="원" inputMode="numeric" aria-invalid={Boolean(fieldErrors.purchasePrice)} aria-describedby={fieldErrors.purchasePrice ? "e-purchasePrice" : undefined} value={form.price} onChange={(e) => update("price", e.target.value)} />
+                  <UnitInput id="f-price" unit="원" inputMode="numeric" aria-invalid={Boolean(fieldErrors.purchasePrice)} aria-describedby={[fieldErrors.purchasePrice && "e-purchasePrice", product?.price && "h-price"].filter(Boolean).join(" ") || undefined} value={form.price} onChange={(e) => update("price", e.target.value)} />
                   <FieldError id="e-purchasePrice" message={fieldErrors.purchasePrice} />
+                  {product?.price && (
+                    <span id="h-price" className="whitespace-nowrap text-xs text-neutral-700">
+                      쇼핑몰 현재 판매가예요. 실제 산 가격으로 고쳐 주세요.
+                    </span>
+                  )}
                 </div>
                 <div className="field col-span-full">
                   <label>시즌</label>
