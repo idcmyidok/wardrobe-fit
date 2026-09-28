@@ -13,7 +13,7 @@ import type { CategoryId, Measurements } from "@/lib/types/domain";
  * - 한 부위만 너무 작음·너무 큼이면 전체를 그렇게 만들지 않는다(상의 가슴 너무 작음, 하의 몸보다 좁음은 예외).
  * 제품명(오버핏·슬림핏 등)과 원단·두께·신축성은 판정에 쓰지 않는다.
  *
- * 보정 순서: 기본 경계값 → "내 핏"을 표기한 옷으로 옮긴 기준(최대 ±4cm) → 사용자가 고친 추천 치수.
+ * 사용자가 추천 치수를 고쳤으면 그 범위를 기본 경계값 대신 쓴다.
  * 숫자는 FIT_GROUPS·WAIST·아래 상수에만 둔다. 실제 입어 본 느낌과 다르면 여기 숫자만 고친다.
  */
 
@@ -97,8 +97,6 @@ const INDEX_LEVEL: FitLevel[] = ["too_small", "slim", "regular", "semi_over", "o
 const BOUNDARY_CM = 1;
 /** "정확하지 않아요" 치수는 이만큼(cm) 느슨하게 본다. */
 const UNCERTAIN_TOLERANCE = 3;
-/** 내 핏 표기로 옮기는 기준의 한계(cm) */
-const CALIBRATION_LIMIT = 4;
 
 const GROUP = Object.fromEntries(FIT_GROUPS.map((g) => [g.id, g])) as Record<FitGroupId, GroupDef>;
 
@@ -195,36 +193,6 @@ export interface BodyFitGarment {
   userFit?: FitLevel | null;
 }
 
-/** "내 핏"을 표기한 옷으로 기준을 옮긴 값(ease cm). 같은 묶음 옷만 쓴다. */
-export type Calibration = Partial<Record<FitGroupId, Partial<Record<WidthKey, number>>>>;
-
-export function computeCalibration(body: BodyProfile, garments: BodyFitGarment[]): Calibration {
-  const deltas: Partial<Record<FitGroupId, Partial<Record<WidthKey, number[]>>>> = {};
-  for (const g of garments) {
-    const level = g.userFit;
-    if (!level || !(WEARABLE_LEVELS as readonly string[]).includes(level)) continue;
-    const groupId = fitGroupOf(g.categoryId, g.subcategoryId);
-    if (!groupId) continue;
-    const group = GROUP[groupId];
-    for (const key of widthKeys(group)) {
-      if (key === "waist") continue;
-      const bands = baseBands(group, key);
-      const ease = easeOf(key, g.measurements, body);
-      if (!bands || ease == null) continue;
-      ((deltas[groupId] ??= {})[key] ??= []).push(ease - center(bands[level as WearableLevel]));
-    }
-  }
-  const result: Calibration = {};
-  for (const [groupId, byKey] of Object.entries(deltas) as [FitGroupId, Partial<Record<WidthKey, number[]>>][]) {
-    for (const [key, list] of Object.entries(byKey) as [WidthKey, number[]][]) {
-      // 한 벌뿐이면 절반만 옮긴다.
-      const shift = clamp(median(list) * (list.length >= 2 ? 1 : 0.5), -CALIBRATION_LIMIT, CALIBRATION_LIMIT);
-      if (Math.abs(shift) >= 0.5) (result[groupId] ??= {})[key] = round1(shift);
-    }
-  }
-  return result;
-}
-
 function easeOf(key: WidthKey, m: Measurements, body: BodyProfile): number | null {
   const g = m[key];
   const b = body.values[BODY_OF[key]];
@@ -236,8 +204,8 @@ function easeOf(key: WidthKey, m: Measurements, body: BodyProfile): number | nul
 const toEase = (key: WidthKey, garmentValue: number, bodyValue: number) => (HALF[key] ? garmentValue * 2 : garmentValue) - bodyValue;
 const fromEase = (key: WidthKey, ease: number, bodyValue: number) => (HALF[key] ? (ease + bodyValue) / 2 : ease + bodyValue);
 
-/** 보정·사용자 수정까지 반영한 폭 치수 구간(여유 기준) */
-function effectiveBands(groupId: FitGroupId, key: WidthKey, body: BodyProfile, calibration: Calibration): Record<WearableLevel, Band> | null {
+/** 사용자 수정까지 반영한 폭 치수 구간(여유 기준) */
+function effectiveBands(groupId: FitGroupId, key: WidthKey, body: BodyProfile): Record<WearableLevel, Band> | null {
   const group = GROUP[groupId];
   const base = baseBands(group, key);
   const b = body.values[BODY_OF[key]];
@@ -247,11 +215,10 @@ function effectiveBands(groupId: FitGroupId, key: WidthKey, body: BodyProfile, c
     const band: Band = o ? [toEase(key, o[0], b), toEase(key, o[1], b)] : WAIST.fit;
     return { slim: band, regular: band, semi_over: band, over: band };
   }
-  const shift = calibration[groupId]?.[key] ?? 0;
   const out = {} as Record<WearableLevel, Band>;
   for (const level of WEARABLE_LEVELS) {
     const o = body.overrides[groupId]?.[level]?.[key];
-    out[level] = o ? [toEase(key, o[0], b), toEase(key, o[1], b)] : [base[level][0] + shift, base[level][1] + shift];
+    out[level] = o ? [toEase(key, o[0], b), toEase(key, o[1], b)] : base[level];
   }
   return out;
 }
@@ -328,10 +295,8 @@ export interface BodyFitDimension {
   garmentValue: number;
   bodyValue: number;
   half: boolean;
-  /** 판단에 쓴 핏 단계별 여유 구간(보정 반영). 허리는 null(적정 범위만 본다) */
+  /** 판단에 쓴 핏 단계별 여유 구간(사용자 수정 반영). 허리는 null(적정 범위만 본다) */
   bands: Record<WearableLevel, Band> | null;
-  /** 내 핏 표기로 옮긴 기준(cm) */
-  shift: number;
   /** 사용자가 고친 추천 치수를 썼는지 */
   overridden: boolean;
   /** 허리 상태(허리만) */
@@ -402,7 +367,6 @@ export type BodyFitResult =
       stretch: boolean;
       /** 정확하지 않은 치수를 썼거나 핵심 치수가 하나뿐이면 low */
       confidence: "normal" | "low";
-      calibrated: boolean;
       basis: FitBasis;
     }
   | { status: "unsupported" }
@@ -509,7 +473,7 @@ function levelScores(level: FitLevel, average: number | null): Record<WearableLe
 /**
  * 옷 한 벌의 예상 핏. 핵심 치수(상의 가슴, 하의 엉덩이·허벅지 중 하나)가 옷과 내 치수 양쪽에 있어야 계산한다.
  */
-export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile, calibration: Calibration = {}): BodyFitResult {
+export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile): BodyFitResult {
   const groupId = fitGroupOf(garment.categoryId, garment.subcategoryId);
   if (!groupId) return { status: "unsupported" };
   const group = GROUP[groupId];
@@ -534,7 +498,7 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile, calib
 
   for (const key of widthKeys(group)) {
     const ease = easeOf(key, m, body);
-    const bands = effectiveBands(groupId, key, body, calibration);
+    const bands = effectiveBands(groupId, key, body);
     if (ease == null || !bands) continue;
     const uncertain = body.uncertain.includes(BODY_OF[key]);
     const tol = uncertain ? UNCERTAIN_TOLERANCE : 0;
@@ -543,7 +507,6 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile, calib
       garmentValue: m[key]!,
       bodyValue: body.values[BODY_OF[key]]!,
       half: HALF[key],
-      shift: key === "waist" ? 0 : (calibration[groupId]?.[key] ?? 0),
       overridden: key === "waist" ? Boolean(waistOverride(body, groupId)) : WEARABLE_LEVELS.some((l) => body.overrides[groupId]?.[l]?.[key]),
     };
 
@@ -607,7 +570,6 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile, calib
     baggy: silhouette === "tapered" && (level === "semi_over" || level === "over"),
     stretch: isStretchy(garment),
     confidence: usedUncertain || (kind === "bottom" && coreCount < 2) ? "low" : "normal",
-    calibrated: Boolean(calibration[groupId] && Object.keys(calibration[groupId]!).length),
     basis,
   };
 }
@@ -621,14 +583,13 @@ export function garmentRange(
   level: WearableLevel,
   key: RecKey,
   body: BodyProfile,
-  calibration: Calibration = {},
 ): Band | null {
   const group = GROUP[groupId];
   const override = key === "waist" ? waistOverride(body, groupId) : body.overrides[groupId]?.[level]?.[key];
   if (override) return override;
   const v = body.values;
   if (!widthKeys(group).includes(key)) return null;
-  const bands = effectiveBands(groupId, key, body, calibration);
+  const bands = effectiveBands(groupId, key, body);
   const b = v[BODY_OF[key]];
   if (!bands || b == null) return null;
   // 단면 치수는 0.5cm 단위로 둥글린다.
@@ -725,7 +686,6 @@ export function bodyFitReasons(r: Extract<BodyFitResult, { status: "ok" }>): Bod
         verdict = `${name(d.level)} 범위(${range(d.level as WearableLevel)})${inside ? "에 들어요" : "에 가장 가까워요"}.`;
       }
       if (d.overridden) verdict += " 범위는 내가 고친 추천 치수 기준이에요.";
-      else if (d.shift) verdict += ` 내 핏 표기 옷에 맞춰 기준을 ${signed(d.shift)}cm 옮겼어요.`;
     }
     if (d.uncertain) verdict += ` 정확하지 않다고 표시한 치수라 ${UNCERTAIN_TOLERANCE}cm 느슨하게 봤어요.`;
     out.push({ key: d.key, label: d.label, text: `${garment}는 ${diff}. ${verdict}`, verdict });

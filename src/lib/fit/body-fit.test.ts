@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_BODY, bodyFitReasons, computeBodyFit, computeCalibration, estimateBodyFromGarments, fitGroupOf, garmentRange, silhouetteOf, type BodyProfile } from "./body-fit";
+import { EMPTY_BODY, bodyFitReasons, computeBodyFit, estimateBodyFromGarments, fitGroupOf, garmentRange, silhouetteOf, type BodyProfile } from "./body-fit";
 
 const body: BodyProfile = {
   values: { height: 175, shoulder: 45, chest: 94, waist: 80, hip: 94, thigh: 56 },
@@ -195,15 +195,11 @@ describe("추천 치수·보정·역산", () => {
     expect(garmentRange("short_tee", "regular", "chest", edited)).toEqual([55, 57]);
     expect(ok(computeBodyFit(tee(56), edited)).dimensions.find((d) => d.key === "chest")!.level).toBe("regular");
   });
-  it("내 핏 표기로 기준을 옮긴다(최대 ±4cm)", () => {
-    const labeled = [
-      { ...tee(55, 47), userFit: "regular" as const },
-      { ...tee(55.5, 47), userFit: "regular" as const },
-    ];
-    const cal = computeCalibration(body, labeled);
-    expect(cal.short_tee?.chest).toBe(4);
-    expect(ok(computeBodyFit(tee(54.5, 48), body)).level).toBe("semi_over");
-    expect(ok(computeBodyFit(tee(54.5, 48), body, cal)).level).toBe("regular");
+  it("내 핏 표기는 판정 기준을 옮기지 않는다", () => {
+    const plain = ok(computeBodyFit(tee(54.5, 48), body));
+    const labeled = ok(computeBodyFit({ ...tee(54.5, 48), userFit: "regular" }, body));
+    expect(labeled.level).toBe(plain.level);
+    expect(garmentRange("short_tee", "regular", "chest", body)).toEqual([50, 53]);
   });
   it("잘 맞는 옷으로 내 치수 추정", () => {
     const est = estimateBodyFromGarments([tee(51.5, 44.5), { categoryId: "bottom", subcategoryId: "bottom.denim", measurements: { waist: 41, hip: 51, thigh: 32, length: 103 } }]);

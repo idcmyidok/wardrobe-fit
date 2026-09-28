@@ -43,7 +43,7 @@ const toDraft = (p: BodyProfile | null): ValueDraft =>
  * 옷 종류·핏별 추천 실측 표(칸마다 고치고 되돌리기), 삭제(동의 철회).
  */
 export function BodyView() {
-  const { profile, calibration, save, saveOverrides, remove } = useBody();
+  const { profile, save, saveOverrides, remove } = useBody();
   const { showToast } = useWardrobe();
   const [values, setValues] = useState<ValueDraft>(() => toDraft(profile));
   const [uncertain, setUncertain] = useState<BodyKey[]>(profile?.uncertain ?? []);
@@ -186,7 +186,7 @@ export function BodyView() {
         </div>
       </section>
 
-      {profile && <Recommendations profile={profile} calibration={calibration} onSave={saveOverrides} />}
+      {profile && <Recommendations profile={profile} onSave={saveOverrides} />}
 
       {profile && (
         <section className="flex flex-col gap-3 py-7">
@@ -308,11 +308,9 @@ const fmtBand = (b: Band) => (b[0] === b[1] ? formatNum(b[0]) : `${formatNum(b[0
 /** 옷 종류·핏별 추천 실측 표. 칸을 고치면 그 값이 예상 핏 계산에도 쓰인다. */
 function Recommendations({
   profile,
-  calibration,
   onSave,
 }: {
   profile: BodyProfile;
-  calibration: ReturnType<typeof useBody>["calibration"];
   onSave: (o: FitOverrides) => Promise<{ ok: true } | { ok: false; error: string }>;
 }) {
   const { showToast } = useWardrobe();
@@ -326,8 +324,8 @@ function Recommendations({
   const noOverrides: BodyProfile = { ...profile, overrides: {} };
   // 허리처럼 핏 단계와 관계없는 열은 모든 단계가 한 칸을 같이 쓴다.
   const cellKey = (level: WearableLevel, key: RecKey) => (isLevelFreeKey(key) ? `common.${key}` : `${level}.${key}`);
-  const current = (level: WearableLevel, key: RecKey) => garmentRange(groupId, level, key, profile, calibration);
-  const suggested = (level: WearableLevel, key: RecKey) => garmentRange(groupId, level, key, noOverrides, calibration);
+  const current = (level: WearableLevel, key: RecKey) => garmentRange(groupId, level, key, profile);
+  const suggested = (level: WearableLevel, key: RecKey) => garmentRange(groupId, level, key, noOverrides);
   const isEdited = (level: WearableLevel, key: RecKey) =>
     isLevelFreeKey(key) ? WEARABLE_LEVELS.some((l) => overrides[groupId]?.[l]?.[key]) : Boolean(overrides[groupId]?.[level]?.[key]);
   const groupEdited = Boolean(overrides[groupId] && Object.values(overrides[groupId]!).some((l) => l && Object.keys(l).length));
@@ -533,7 +531,7 @@ function Recommendations({
         )}
       </div>
       <p className="text-xs text-neutral-700">
-        고친 값은 이 옷 종류의 예상 핏 판정에도 그대로 쓰입니다. 옷에 &ldquo;내 핏&rdquo;을 표기하면 같은 종류의 기준이 내 취향 쪽으로 조금씩(최대 4cm) 옮겨집니다.
+        고친 값은 이 옷 종류의 예상 핏 판정에도 그대로 쓰입니다.
       </p>
     </section>
   );

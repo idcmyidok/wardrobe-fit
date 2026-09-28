@@ -71,7 +71,7 @@ const fmtBand = (b: Band) => (b[0] === b[1] ? formatNum(b[0]) : `${formatNum(b[0
 
 export function VersusView() {
   const { garments, signedIn } = useWardrobe();
-  const { profile, calibration } = useBody();
+  const { profile } = useBody();
   const [urls, setUrls] = useState<string[]>(["", ""]);
   const [importing, setImporting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -105,7 +105,6 @@ export function VersusView() {
           it.rows,
           target,
           profile,
-          calibration,
           wardrobeOf[it.key]?.sizes,
         );
 
@@ -117,7 +116,7 @@ export function VersusView() {
       key: it.key,
       name: name(it),
       garment,
-      body: profile ? computeBodyFit(garment, profile, calibration) : null,
+      body: profile ? computeBodyFit(garment, profile) : null,
       wardrobe: wardrobeOf[it.key]?.sizes.find((s) => s.sizeLabel === size),
     };
   });
@@ -242,7 +241,7 @@ export function VersusView() {
   ];
   const recRange = (key: MeasurementKey): Band | null => {
     const rk = REC_OF[key];
-    return profile && group && rk ? garmentRange(group, target, rk, profile, calibration) : null;
+    return profile && group && rk ? garmentRange(group, target, rk, profile) : null;
   };
   const cols = items.length + 1;
   const grid = { gridTemplateColumns: `repeat(${cols}, minmax(190px, 1fr))` };
