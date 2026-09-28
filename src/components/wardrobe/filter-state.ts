@@ -3,8 +3,8 @@ import { BOTTOM_MEASUREMENTS, TOP_MEASUREMENTS, type MeasurementKey } from "@/li
 import { SEASONS, wearsInSeason } from "@/lib/constants/seasons";
 import type { CategoryId, Garment, Season } from "@/lib/types/domain";
 
-/** 표 헤더를 눌러 정렬할 수 있는 열. 이미지·세부분류·제품명은 정렬하지 않는다. */
-export type SortableColumn = "brand" | "size" | "color" | "season" | "purchasedOn" | "price" | MeasurementKey;
+/** 표 헤더를 눌러 정렬할 수 있는 열. 이미지·세부분류·제품명·시즌은 정렬하지 않는다(시즌은 위 필터로 거른다). */
+export type SortableColumn = "brand" | "size" | "color" | "purchasedOn" | "price" | MeasurementKey;
 export type SortDirection = "asc" | "desc";
 export interface ColumnSort {
   key: SortableColumn;
@@ -56,10 +56,29 @@ export function nextSort(cur: ColumnSort, key: SortableColumn): ColumnSort {
   return DEFAULT_SORT;
 }
 
-const LETTER_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"];
-const SEASON_ORDER = SEASONS.map((s) => s.id);
+const LETTER_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"];
+const LETTER_SIZE = /(?<![A-Z])(X{0,4}S|M|X{0,4}L|[2-4]X[SL])(?![A-Z])/;
+const FREE_SIZE = /^(FREE|F|OS|ONE ?SIZE)$|프리/;
 
-/** 정렬용 값. 문자 사이즈(XS~XXXL)는 치수 순서, 숫자 사이즈는 그 뒤에 숫자 순서 */
+/**
+ * 사이즈의 크기 순서. 작은 값이 작은 사이즈다.
+ * 문자 사이즈(XS~4XL)는 치수 순서로 먼저, FREE는 그 뒤, 숫자 사이즈(28, 95 등)는 숫자 순서로 그 뒤에 온다.
+ * "3(M)", "M(95)"처럼 문자가 함께 적힌 사이즈는 문자 사이즈로 본다. 읽지 못한 값은 맨 뒤.
+ */
+export function sizeRank(label: string): number {
+  const s = label.trim().toUpperCase();
+  const letter = s.match(LETTER_SIZE)?.[1];
+  if (letter) {
+    const n = /^[2-4]X/.test(letter) ? "X".repeat(Number(letter[0])) + letter.slice(2) : letter;
+    const i = LETTER_SIZES.indexOf(n);
+    if (i >= 0) return i;
+  }
+  if (FREE_SIZE.test(s)) return LETTER_SIZES.length;
+  const num = parseFloat(s);
+  return Number.isFinite(num) ? 100 + num : 1e6;
+}
+
+/** 정렬용 값 */
 function sortValue(g: Garment, key: SortableColumn): string | number | null {
   switch (key) {
     case "brand":
@@ -70,13 +89,8 @@ function sortValue(g: Garment, key: SortableColumn): string | number | null {
       return g.purchasedOn;
     case "price":
       return g.purchasePrice;
-    case "season":
-      return g.seasons.length ? Math.min(...g.seasons.map((s) => SEASON_ORDER.indexOf(s))) : null;
-    case "size": {
-      if (!g.sizeLabel) return null;
-      const i = LETTER_SIZES.indexOf(g.sizeLabel.toUpperCase());
-      return i >= 0 ? i : 100 + (parseFloat(g.sizeLabel) || 0);
-    }
+    case "size":
+      return g.sizeLabel ? sizeRank(g.sizeLabel) : null;
     default:
       return g.measurements[key] ?? null;
   }
@@ -130,9 +144,9 @@ export interface WardrobeState {
 
 const CATEGORY_IDS = CATEGORIES.map((c) => c.id);
 const SORT_KEYS: Record<CategoryId, readonly SortableColumn[]> = {
-  outer: ["brand", "size", "color", "season", "purchasedOn", "price", ...TOP_MEASUREMENTS],
-  top: ["brand", "size", "color", "season", "purchasedOn", "price", ...TOP_MEASUREMENTS],
-  bottom: ["brand", "size", "color", "season", "purchasedOn", "price", ...BOTTOM_MEASUREMENTS],
+  outer: ["brand", "size", "color", "purchasedOn", "price", ...TOP_MEASUREMENTS],
+  top: ["brand", "size", "color", "purchasedOn", "price", ...TOP_MEASUREMENTS],
+  bottom: ["brand", "size", "color", "purchasedOn", "price", ...BOTTOM_MEASUREMENTS],
 };
 const SEASON_IDS = SEASONS.map((s) => s.id);
 const MAX_TEXT = 100;

@@ -24,16 +24,16 @@ const CATEGORY_FILL: Record<CategoryId, string> = {
   bottom: "var(--a-400)",
 };
 
-/** 총액 구간별 제목. [상한(미만), 제목] */
-const TOTAL_TIERS: [number, string][] = [
-  [100000, "이제 막 옷장을 채우기 시작했어요!"],
-  [300000, "알뜰살뜰 실속파 패션 러버!"],
-  [600000, "가성비를 즐기는 패션 러버!"],
-  [1000000, "옷 고르는 재미를 아는 패션 러버!"],
-  [2000000, "패션에 돈을 좀 쓴 패션 러버!"],
-  [4000000, "밥보다 패션이 중요한 패션 러버!"],
-  [7000000, "옷장에 진심인 헤비 패션 러버!"],
-  [12000000, "옷장이 곧 자산인 컬렉터!"],
+/** 6개월 평균 구매액 구간별 제목. [상한(미만), 제목] */
+const HALF_YEAR_TIERS: [number, string][] = [
+  [50000, "이제 막 옷장을 채우기 시작했어요!"],
+  [150000, "알뜰살뜰 실속파 패션 러버!"],
+  [300000, "가성비를 즐기는 패션 러버!"],
+  [500000, "옷 고르는 재미를 아는 패션 러버!"],
+  [1000000, "패션에 돈을 좀 쓴 패션 러버!"],
+  [2000000, "밥보다 패션이 중요한 패션 러버!"],
+  [3500000, "옷장에 진심인 헤비 패션 러버!"],
+  [6000000, "옷장이 곧 자산인 컬렉터!"],
   [Infinity, "패션 하우스급 옷장의 주인!"],
 ];
 
@@ -48,19 +48,49 @@ const AVG_TIERS: [number, string][] = [
 ];
 
 /**
- * 옷장 총 가격 멘트. 제목은 총액, 설명은 한 벌 평균가로 고른다.
+ * 옷장 총 가격 멘트. 제목은 6개월마다 평균 얼마를 썼는지, 설명은 한 벌 평균가로 고른다.
  * 가격 입력이 적을 때와 한 벌이 총액의 절반 이상일 때는 한 문장을 덧붙인다.
  */
-export function priceComment(count: number, total: number, avg: number, topPrice: number) {
+export function priceComment(p: { count: number; total: number; avg: number; topPrice: number; perHalfYear: number }) {
+  const { count, total, avg, topPrice, perHalfYear } = p;
   if (!count) return { title: "아직 가격 기록이 없는 옷장", body: "구매 가격을 입력하면 옷장 총액과 소비 성향을 알려 드릴게요." };
-  const title = TOTAL_TIERS.find(([max]) => total < max)![1];
-  let body = `${AVG_TIERS.find(([max]) => avg < max)![1]} 한 벌 평균 ${man(Math.round(avg))}원입니다.`;
+  const title = HALF_YEAR_TIERS.find(([max]) => perHalfYear < max)![1];
+  let body = `${AVG_TIERS.find(([max]) => avg < max)![1]} 한 벌 평균 ${man(Math.round(avg))}원, 6개월마다 평균 ${man(Math.round(perHalfYear))}원을 옷에 씁니다.`;
   if (count >= 3 && topPrice / total >= 0.5) body += ` 가장 비싼 한 벌이 총액의 ${Math.round((topPrice / total) * 100)}%를 차지해요.`;
   if (count <= 2) body += ` 가격을 입력한 옷이 ${count}벌뿐이라, 더 입력할수록 분석이 정확해져요.`;
   return { title, body };
 }
 
-export function priceSummary(G: Garment[]) {
+const monthIndex = (ym: string) => {
+  const [y, m] = ym.split("-").map(Number);
+  return y * 12 + m - 1;
+};
+const dateKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/**
+ * 6개월 평균 구매액: 가장 이른 구매월부터 이번 달까지를 6개월씩 나눈 구간 수로 총액을 나눈다.
+ * 구매일이 없는 옷도 금액에는 넣는다. 구매일이 하나도 없으면 한 구간으로 본다.
+ */
+export function halfYearAverage(G: Garment[], now = new Date()) {
+  const priced = G.filter((g) => g.purchasePrice != null);
+  const total = priced.reduce((a, g) => a + (g.purchasePrice ?? 0), 0);
+  const dates = priced.map((g) => g.purchasedOn).filter((d): d is string => !!d).sort();
+  const months = dates.length ? Math.max(1, monthIndex(dateKey(now)) - monthIndex(dates[0]) + 1) : 1;
+  const periods = Math.ceil(months / 6);
+  return { perHalfYear: total / periods, periods };
+}
+
+/** 최근 6개월(오늘 기준, 같은 날짜부터) 안에 산 옷의 구매가 합계 */
+export function recentSixMonths(G: Garment[], now = new Date()) {
+  const from = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+  const since = dateKey(from);
+  return G.filter((g) => g.purchasePrice != null && g.purchasedOn && g.purchasedOn >= since).reduce(
+    (a, g) => a + (g.purchasePrice ?? 0),
+    0,
+  );
+}
+
+export function priceSummary(G: Garment[], now = new Date()) {
   const priced = G.filter((g) => g.purchasePrice != null);
   const total = priced.reduce((a, g) => a + (g.purchasePrice ?? 0), 0);
   const cats = (["outer", "top", "bottom"] as CategoryId[]).map((c) => {
@@ -79,10 +109,12 @@ export function priceSummary(G: Garment[]) {
   });
   const avg = priced.length ? total / priced.length : 0;
   const top = priced.slice().sort((a, b) => (b.purchasePrice ?? 0) - (a.purchasePrice ?? 0))[0];
-  const { title, body } = priceComment(priced.length, total, avg, top?.purchasePrice ?? 0);
+  const { perHalfYear } = halfYearAverage(G, now);
+  const { title, body } = priceComment({ count: priced.length, total, avg, topPrice: top?.purchasePrice ?? 0, perHalfYear });
   return {
     totalShort: man(total),
     totalFull: `${total.toLocaleString("ko-KR")} ￦ · ${priced.length}벌 합산`,
+    recentFull: `${recentSixMonths(G, now).toLocaleString("ko-KR")} ￦ · 최근 6개월 이내 구매`,
     tierTitle: title,
     tierBody: body,
     cats,
@@ -91,48 +123,46 @@ export function priceSummary(G: Garment[]) {
   };
 }
 
+/** 월별 구매 막대. 구매한 달만 보여 준다(빈 달은 건너뛴다). 막대마다 그 달의 설명을 담아 두어 누르면 바꿔 보여 준다. */
 export function monthlySummary(G: Garment[]) {
   const dated = G.filter((g) => g.purchasedOn && g.purchasePrice != null);
-  const keys = dated.map((g) => g.purchasedOn!.slice(0, 7)).sort();
-  const months: { k: string; y: number; m: number; amt: number; n: number }[] = [];
-  if (keys.length) {
-    let [y, m] = keys[0].split("-").map(Number);
-    const [ey, em] = keys[keys.length - 1].split("-").map(Number);
-    while (y < ey || (y === ey && m <= em)) {
-      const k = `${y}-${String(m).padStart(2, "0")}`;
-      const gs = dated.filter((g) => g.purchasedOn!.startsWith(k));
-      months.push({ k, y, m, amt: gs.reduce((a, g) => a + (g.purchasePrice ?? 0), 0), n: gs.length });
-      m++;
-      if (m > 12) {
-        m = 1;
-        y++;
-      }
-    }
-  }
+  const byMonth = new Map<string, Garment[]>();
+  dated.forEach((g) => {
+    const k = g.purchasedOn!.slice(0, 7);
+    byMonth.set(k, [...(byMonth.get(k) ?? []), g]);
+  });
+  const months = [...byMonth.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([k, gs]) => {
+      const [y, m] = k.split("-").map(Number);
+      return { k, y, m, amt: gs.reduce((a, g) => a + (g.purchasePrice ?? 0), 0), n: gs.length, gs };
+    })
+    .filter((x) => x.amt > 0);
   const max = Math.max(1, ...months.map((x) => x.amt));
   const top = months.slice().sort((a, b) => b.amt - a.amt)[0];
-  const active = months.filter((x) => x.amt).length;
+  const span = months.length ? monthIndex(months[months.length - 1].k) - monthIndex(months[0].k) + 1 : 0;
+  const detail = (x: (typeof months)[number]) => ({
+    month: `${x.y}.${String(x.m).padStart(2, "0")}`,
+    amount: `${won(x.amt)} · ${x.n}벌`,
+    note: x.gs.map((g) => [g.brand, g.productName].filter(Boolean).join(" ")).join(", "),
+  });
   return {
     bars: months.map((x, i) => ({
       key: x.k,
       label: `${x.m}월`,
-      year: i === 0 || x.m === 1 ? String(x.y) : "",
-      short: x.amt ? man(x.amt) : "",
+      // 첫 막대와 해가 바뀌는 막대에만 연도를 적는다.
+      year: i === 0 || months[i - 1].y !== x.y ? String(x.y) : "",
+      short: man(x.amt),
       height: `${((x.amt / max) * 100).toFixed(1)}%`,
-      hasValue: x.amt > 0,
       isTop: top?.k === x.k,
       title: `${x.y}년 ${x.m}월 · ${won(x.amt)} · ${x.n}벌`,
+      detail: detail(x),
     })),
-    topMonth: top ? `${top.y}.${String(top.m).padStart(2, "0")}` : "—",
-    topMonthAmount: top ? `${won(top.amt)} · ${top.n}벌` : "",
-    topMonthNote: top
-      ? dated
-          .filter((g) => g.purchasedOn!.startsWith(top.k))
-          .map((g) => [g.brand, g.productName].filter(Boolean).join(" "))
-          .join(", ")
-      : "구매일이 있는 옷이 없습니다.",
-    span: months.length ? `${months.length}개월 중 ${active}개월 구매` : "",
-    average: active ? `구매한 달 평균 ${won(Math.round(dated.reduce((a, g) => a + (g.purchasePrice ?? 0), 0) / active))}` : "",
+    top: top ? detail(top) : { month: "—", amount: "", note: "구매일이 있는 옷이 없습니다." },
+    span: months.length ? `${span}개월 중 ${months.length}개월 구매` : "",
+    average: months.length
+      ? `구매한 달 평균 ${won(Math.round(months.reduce((a, x) => a + x.amt, 0) / months.length))}`
+      : "",
   };
 }
 
@@ -292,7 +322,7 @@ const ESSENTIALS: [string, number, Season][] = [
   ["outer.cardigan", 1, "spring"],
   ["top.short_tee", 3, "summer"],
   ["top.long_tee", 2, "spring"],
-  ["top.shirt", 2, "spring"],
+  ["outer.shirt", 2, "spring"],
   ["top.knit", 2, "winter"],
   ["top.sweatshirt", 1, "fall"],
   ["bottom.denim", 2, "fall"],
