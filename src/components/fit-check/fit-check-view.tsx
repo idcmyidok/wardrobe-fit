@@ -21,6 +21,7 @@ import { notifyUsageChanged } from "@/lib/usage";
 import type { CategoryId, Measurements } from "@/lib/types/domain";
 import { UsageNote } from "@/components/usage/usage-note";
 import { FitResultView, type ResultAiStatus } from "./fit-result-view";
+import { VersusView } from "./versus-view";
 
 /**
  * AI 구매 판단기 입력(PROJECT_SPEC.md 5.5 Step 1~3).
@@ -58,6 +59,8 @@ function sizeRows(p: Imported["product"], categoryId: CategoryId): Array<{ sizeL
 export function FitCheckView() {
   const { garments, signedIn } = useWardrobe();
   const [manual, setManual] = useState(false);
+  /** VS 비교(링크 2~3개). 끄면 지금까지와 같은 한 벌 판단 */
+  const [versus, setVersus] = useState(false);
   const [url, setUrl] = useState("");
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState<Imported | null>(null);
@@ -260,6 +263,20 @@ export function FitCheckView() {
         <UsageNote kind="fit" />
       </div>
 
+      <div className="seg mt-5" role="radiogroup" aria-label="판단 방식">
+        <label className="seg-opt px-4 py-2 text-sm">
+          <input type="radio" name="fit-mode" checked={!versus} onChange={() => setVersus(false)} />한 벌 판단
+        </label>
+        <label className="seg-opt px-4 py-2 text-sm">
+          <input type="radio" name="fit-mode" checked={versus} onChange={() => setVersus(true)} />
+          VS 비교 · 2~3벌
+        </label>
+      </div>
+
+      {versus ? (
+        <VersusView />
+      ) : (
+      <>
       {!manual ? (
         <section className="flex max-w-190 flex-col gap-3 py-7">
           <div className="field">
@@ -523,6 +540,8 @@ export function FitCheckView() {
             <span className="text-sm text-neutral-700">구매가, 구매일, 링크는 AI에 보내지 않습니다.</span>
           </div>
         </section>
+      )}
+      </>
       )}
     </main>
   );

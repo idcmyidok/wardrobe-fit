@@ -157,6 +157,7 @@ export function FitResultView({
   productUrl = null,
   onBack,
   onRetry,
+  embedded = false,
 }: {
   candidate: FitCandidate;
   computed: FitComputed;
@@ -166,6 +167,8 @@ export function FitResultView({
   productUrl?: string | null;
   onBack?: () => void;
   onRetry?: () => void;
+  /** VS 비교 아래에 붙일 때: 바깥 main·뒤로 가기·다른 옷 판단 버튼 없이 */
+  embedded?: boolean;
 }) {
   const { garments, openDrawer, setPendingDraft } = useWardrobe();
   const router = useRouter();
@@ -219,9 +222,10 @@ export function FitResultView({
     [candidate.categoryId, candidate.subcategoryId, candidate.productName, size.measurements],
   );
 
+  const Wrapper = embedded ? "div" : "main";
   return (
-    <main className="mx-auto max-w-320 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
-      {onBack ? (
+    <Wrapper className={embedded ? undefined : "mx-auto max-w-320 px-[clamp(16px,3vw,32px)] pt-6 pb-16"}>
+      {embedded ? null : onBack ? (
         <button type="button" className="btn btn-ghost mb-2 text-sm" onClick={onBack}>
           ← 입력으로
         </button>
@@ -485,7 +489,7 @@ export function FitResultView({
         >
           이 {noun}{noun === "모자" ? "를" : "을"} 구매했어요 — 옷장에 추가
         </button>
-        {onBack ? (
+        {embedded ? null : onBack ? (
           <button type="button" className="btn btn-secondary min-h-11" onClick={onBack}>
             다른 옷 판단하기
           </button>
@@ -496,6 +500,6 @@ export function FitResultView({
         )}
         <span className="text-sm text-neutral-700">구매가, 구매일, 링크는 AI에 보내지 않습니다.</span>
       </div>
-    </main>
+    </Wrapper>
   );
 }
