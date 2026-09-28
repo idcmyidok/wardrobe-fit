@@ -1,5 +1,5 @@
 import { CATEGORIES, CATEGORY_NAME, COUNT_UNIT, SUBCATEGORY_NAME } from "@/lib/constants/categories";
-import { findColorHex, luminance } from "@/lib/constants/colors";
+import { findColorFamily, findColorHex, luminance } from "@/lib/constants/colors";
 import { FOUR_SEASONS, SEASON_NAME, wearsInSeason } from "@/lib/constants/seasons";
 import type { CategoryId, Garment, Season } from "@/lib/types/domain";
 
@@ -146,11 +146,14 @@ export interface DonutSlice {
   pct: string;
   dash: string;
   offset: string;
+  /** 묶인 조각 안의 세부 항목(컬러 분석: 계열 안의 색별 벌 수, 많은 순) */
+  members?: { name: string; count: number }[];
 }
 
 /** 도넛 조각: 반지름 80 원 둘레를 비율대로 나눈다. 조각 사이에 2px 틈을 둔다. */
 const CIRCUMFERENCE = 2 * Math.PI * 80;
-function toSlices(list: { name: string; count: number; amount: number; color: string }[], total: number): DonutSlice[] {
+type SliceInput = Pick<DonutSlice, "name" | "count" | "amount" | "color" | "members">;
+function toSlices(list: SliceInput[], total: number): DonutSlice[] {
   const n = total || 1;
   let acc = 0;
   return list.map((x) => {
@@ -213,13 +216,29 @@ export function brandSummary(G: Garment[], tab: CategoryTab) {
   return { message, slices, total: list.length, totalLabel: `${tabLabel(tab)} · ${pool.length}벌` };
 }
 
+/** 컬러 분석: 비슷한 색은 계열로 묶는다("아쿠아 블루"·"라이트 블루" → 블루). 계열 안의 색별 벌 수는 members에 둔다. */
 export function colorSummary(G: Garment[], tab: CategoryTab) {
   const pool = G.filter((g) => tab === "all" || g.categoryId === tab);
-  const map = new Map<string, number>();
-  pool.forEach((g) => map.set(g.colorName || "미입력", (map.get(g.colorName || "미입력") ?? 0) + 1));
-  const list = [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"));
+  const map = new Map<string, Map<string, number>>();
+  pool.forEach((g) => {
+    const family = findColorFamily(g.colorName) ?? "미입력";
+    const members = map.get(family) ?? new Map<string, number>();
+    const name = g.colorName || "미입력";
+    members.set(name, (members.get(name) ?? 0) + 1);
+    map.set(family, members);
+  });
+  const byCount = (a: [string, number], b: [string, number]) => b[1] - a[1] || a[0].localeCompare(b[0], "ko");
+  const list = [...map.entries()]
+    .map(([name, m]) => [name, [...m.values()].reduce((a, c) => a + c, 0), [...m.entries()].sort(byCount)] as const)
+    .sort((a, b) => byCount([a[0], a[1]], [b[0], b[1]]));
   const slices = toSlices(
-    list.map(([name, count]) => ({ name, count, amount: 0, color: findColorHex(name) ?? "var(--n-400)" })),
+    list.map(([name, count, members]) => ({
+      name,
+      count,
+      amount: 0,
+      color: findColorHex(name) ?? "var(--n-400)",
+      members: members.map(([n, c]) => ({ name: n, count: c })),
+    })),
     pool.length,
   );
   const n = pool.length || 1;

@@ -269,3 +269,44 @@ export function colorChip(name: string | null): { background: string; color: str
   if (!hex) return { background: "transparent", color: "var(--n-700)" };
   return { background: hex, color: luminance(hex) > 0.35 ? "#1c1b19" : "#f4f2ee" };
 }
+
+/**
+ * 옷장 분석 컬러 도넛에서 묶어 보여 줄 색 계열. 계열 이름도 COLOR_HEX 이름이라 대표 색을 그대로 쓴다.
+ * 네이비와 데님(연청·진청 등)은 옷에서 따로 부르는 색이라 블루와 나눠 둔다.
+ */
+const COLOR_FAMILIES: Record<string, string[]> = {
+  "블랙": ["블랙", "오프 블랙", "제트 블랙"],
+  "그레이": ["차콜", "다크 그레이", "그레이", "미디엄 그레이", "멜란지 그레이", "라이트 그레이", "실버", "애쉬", "멜란지", "헤더 그레이", "슬레이트"],
+  "화이트": ["화이트", "오프 화이트", "아이보리", "크림", "에크루"],
+  "베이지": ["내추럴", "베이지", "라이트 베이지", "샌드", "스톤", "오트밀", "토프"],
+  "브라운": ["카멜", "탄", "코냑", "모카", "초콜릿", "브라운", "다크 브라운", "에스프레소", "테라코타", "러스트", "카라멜"],
+  "카키": ["카키", "올리브", "다크 올리브", "모스"],
+  "그린": ["세이지", "민트", "포레스트 그린", "헌터 그린", "보틀 그린", "그린", "피스타치오", "에메랄드", "라이트 그린", "다크 그린", "라임"],
+  "네이비": ["네이비", "다크 네이비", "미드나잇", "인디고"],
+  "데님": ["데님", "라이트 데님", "미드 데님", "다크 데님", "연청", "중청", "진청", "흑청"],
+  "블루": ["로얄 블루", "블루", "코발트", "스카이 블루", "라이트 블루", "파우더 블루", "베이비 블루", "스틸 블루", "아쿠아", "아쿠아 블루", "틸", "터콰이즈"],
+  "레드": ["레드", "버건디", "와인", "마룬", "옥스블러드", "브릭"],
+  "핑크": ["코랄", "핑크", "더스티 핑크", "로즈", "라이트 핑크", "베이비 핑크", "핫 핑크"],
+  "퍼플": ["라벤더", "라일락", "퍼플", "바이올렛", "플럼", "모브"],
+  "옐로": ["옐로", "머스타드", "버터", "레몬", "골드", "오커"],
+  "오렌지": ["오렌지", "탠저린", "피치"],
+};
+
+const FAMILY_OF: Record<string, string> = {};
+for (const [family, names] of Object.entries(COLOR_FAMILIES)) for (const n of names) FAMILY_OF[n] = family;
+
+/**
+ * 컬러명이 속한 색 계열("아쿠아 블루"·"라이트 블루" → "블루"). 여러 색이면 첫 색으로 본다.
+ * 사전에 없으면 수식어("라이트 올리브" → 올리브) → 이름에 포함된 가장 긴 색 순서로 찾고, 그래도 모르면 이름 그대로 둔다.
+ */
+export function findColorFamily(name: string | null): string | null {
+  const n = normalizeColorName(name)?.split("/")[0];
+  if (!n) return null;
+  if (FAMILY_OF[n]) return FAMILY_OF[n];
+  const base = n.match(LIGHTER)?.[2] ?? n.match(DARKER)?.[2];
+  if (base && FAMILY_OF[base]) return FAMILY_OF[base];
+  const part = Object.keys(FAMILY_OF)
+    .sort((a, b) => b.length - a.length)
+    .find((k) => n.includes(k));
+  return part ? FAMILY_OF[part] : n;
+}
