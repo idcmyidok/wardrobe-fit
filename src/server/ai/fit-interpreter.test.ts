@@ -81,6 +81,15 @@ describe("AI 출력 검증", () => {
     expect(validateInterpretation({ ...base, perSize: [{ ...base.perSize[0], overallFit: "키가 크시면 괜찮습니다." }] }, computed)).toBeNull();
     expect(validateInterpretation({ ...base, perSize: [{ ...base.perSize[0], sizeLabel: "XL" }] }, computed)).toBeNull();
   });
+  it("범위 경계와의 차이, 서버 요약에 있는 숫자는 통과한다", () => {
+    const d = computed.sizes[0].dimensions.find((x) => x.key === "length")!;
+    const r = d.comfortRange ?? d.ownedRange!;
+    const diff = Math.round(Math.abs(d.candidate! - r.max) * 10) / 10;
+    const text = `총장은 범위 끝보다 ${diff}cm 깁니다.`;
+    expect(validateInterpretation({ ...base, perSize: [{ ...base.perSize[0], overallFit: text }] }, computed)?.perSize[0].overallFit).toBe(text);
+    const summary = computed.sizes[0].summary;
+    expect(validateInterpretation({ ...base, perSize: [{ ...base.perSize[0], overallFit: summary }] }, computed)).not.toBeNull();
+  });
   it("후기 인용은 원문에 있어야 하고, 옷 id는 비교 대상이어야 한다", () => {
     const r = validateInterpretation(
       {
@@ -153,11 +162,33 @@ describe("Gemini 제공자", () => {
     expect(init.headers["x-goog-api-key"]).toBe("g-key");
     expect(JSON.parse(init.body).generationConfig.responseJsonSchema).toEqual({ type: "object" });
   });
-  it("스키마를 받지 않으면(400) 지시문에 스키마를 넣어 다시", async () => {
-    const fetch = vi.fn().mockResolvedValueOnce(reply(400)).mockResolvedValueOnce(reply(200, "{}"));
+  it("생각(thinking)은 끄고 출력 한도는 넉넉히 둔다(JSON 잘림 방지)", async () => {
+    const fetch = vi.fn().mockResolvedValue(reply(200, "{}"));
+    vi.stubGlobal("fetch", fetch);
+    await geminiProvider("k", "m").generateStructured(req);
+    const config = JSON.parse(fetch.mock.calls[0][1].body).generationConfig;
+    expect(config.thinkingConfig).toEqual({ thinkingBudget: 0 });
+    expect(config.maxOutputTokens).toBeGreaterThanOrEqual(8192);
+  });
+  it("설정을 받지 않으면(400) 생각 끄기 → 스키마 강제 순으로 빼고 다시", async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(reply(400)).mockResolvedValueOnce(reply(400)).mockResolvedValueOnce(reply(200, "{}"));
     vi.stubGlobal("fetch", fetch);
     expect(await geminiProvider("k", "m").generateStructured(req)).toEqual({});
-    expect(JSON.parse(fetch.mock.calls[1][1].body).generationConfig.responseJsonSchema).toBeUndefined();
+    const body = (i: number) => JSON.parse(fetch.mock.calls[i][1].body).generationConfig;
+    expect(body(1).thinkingConfig).toBeUndefined();
+    expect(body(1).responseJsonSchema).toEqual({ type: "object" });
+    expect(body(2).responseJsonSchema).toBeUndefined();
+  });
+  it("출력 한도에서 잘리면 max_tokens, 앞뒤 설명이 붙은 JSON은 읽는다", async () => {
+    const cut = new Response(JSON.stringify({ candidates: [{ finishReason: "MAX_TOKENS", content: { parts: [{ text: '{"perS' }] } }] }), { status: 200 });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(cut));
+    await expect(geminiProvider("k", "m").generateStructured(req)).rejects.toEqual(new AiError("max_tokens"));
+    const thought = new Response(
+      JSON.stringify({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: "생각 {x}", thought: true }, { text: '결과입니다: {"a":1}' }] } }] }),
+      { status: 200 },
+    );
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(thought));
+    expect(await geminiProvider("k", "m").generateStructured(req)).toEqual({ a: 1 });
   });
   it("무료 한도 초과(429)는 quota 오류", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(429)));

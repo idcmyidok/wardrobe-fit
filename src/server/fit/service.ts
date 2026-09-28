@@ -109,11 +109,13 @@ export async function runFitCheck(supabase: Client, userId: string, req: FitRequ
         try {
           interpretation = await interpretFit(provider, req.candidate, computed, input);
           aiStatus = interpretation ? "ok" : "failed";
+          if (!interpretation) console.error("[fit-checks] ai invalid_output");
         } catch (e) {
           // 무료 등급 한도 초과(429)는 "오늘 한도"로 안내하고 규칙 요약을 쓴다.
           aiStatus = e instanceof AiError && e.message === "quota" ? "limited" : "failed";
           // 입력·출력 전문은 남기지 않는다(PROJECT_SPEC.md 19장 로그).
-          console.error("[fit-checks] ai", e instanceof Error ? e.name : "error");
+          // 원인 코드(quota, http_404, invalid_json, max_tokens, TimeoutError 등)만 남긴다.
+          console.error("[fit-checks] ai", e instanceof AiError ? e.message : e instanceof Error ? e.name : "error");
         }
       }
     }

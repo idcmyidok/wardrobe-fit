@@ -195,8 +195,19 @@ function allowedNumbers(computed: FitComputed): number[] {
         if (v != null) add(d.candidate - v);
       }
       d.anchors.forEach((a) => add(a.value));
+      // 범위 경계·가운데와의 차이(예: "만족 범위보다 2.5cm 짧다")
+      if (d.candidate != null) for (const r of [d.comfortRange, d.ownedRange]) if (r) [r.min, r.max, r.median].forEach((v) => add(d.candidate! - v));
     }
+    // 서버 요약 문장에 있는 숫자는 그대로 옮겨 써도 된다.
+    for (const n of s.summary.match(/\d+(?:\.\d+)?/g) ?? []) add(Number(n));
   }
+  // 사이즈끼리의 차이(예: "L은 M보다 가슴이 2cm 넓다")
+  for (const a of computed.sizes)
+    for (const b of computed.sizes)
+      for (const [k, v] of Object.entries(a.measurements)) {
+        const w = b.measurements[k as MeasurementKey];
+        if (v != null && w != null) add(v - w);
+      }
   return [...nums];
 }
 
@@ -263,7 +274,7 @@ export async function interpretFit(provider: AiProvider, candidate: FitCandidate
     toolDescription: TOOL_DESCRIPTION,
     jsonSchema: jsonSchema(dims),
     maxOutputTokens: 1500,
-    timeoutMs: 15_000,
+    timeoutMs: 22_000,
   });
   return validateInterpretation(raw, computed);
 }
