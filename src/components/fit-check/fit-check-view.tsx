@@ -262,7 +262,9 @@ export function FitCheckView() {
   const showCompare = manual || (product && chartRows.length > 0);
 
   return (
-    <main className="mx-auto max-w-280 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
+    // 판단 영역은 1120px, 아래 구매 보류 옷 표는 내 옷장과 같은 폭(1600px)까지 넓혀 가로 스크롤 없이 보인다.
+    <main className="mx-auto max-w-400 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
+      <div className="max-w-280">
       <Link href="/wardrobe" className="btn btn-ghost mb-2 text-sm">
         ← 내 옷장
       </Link>
@@ -566,6 +568,7 @@ export function FitCheckView() {
       )}
       </>
       )}
+      </div>
 
       {/* 구매 보류 옷(옷장과 별개). ?item=을 읽으므로 Suspense 안에 둔다. */}
       <Suspense>
