@@ -681,8 +681,9 @@ function Recommendations({
       </div>
       <p className="text-xs text-neutral-700">
         고친 값은 이 옷 종류의 예상 핏 판정에도 그대로 쓰입니다.
-        {lengthGroup &&
-          ` 총장은 키${height ? ` ${height}cm` : ""} 기준 길이감이고, ${LENGTH_GROUP_NAME[lengthGroup]} 탭끼리 같은 값을 씁니다(셔츠·코트·롱패딩·하의는 보지 않아요).`}
+        {lengthGroup
+          ? ` 총장은 키${height ? ` ${height}cm` : ""} 기준 길이감이고, ${LENGTH_GROUP_NAME[lengthGroup]} 탭끼리 같은 값을 씁니다(셔츠·코트·롱패딩·하의는 보지 않아요).`
+          : ` ${group.name}은(는) 총장 길이감을 보지 않습니다.`}
       </p>
     </section>
   );
