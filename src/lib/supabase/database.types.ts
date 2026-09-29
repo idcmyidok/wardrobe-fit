@@ -482,6 +482,27 @@ export type Database = {
         }
         Relationships: []
       }
+      release_note_edits: {
+        Row: {
+          body: string
+          updated_at: string
+          updated_by: string | null
+          version: string
+        }
+        Insert: {
+          body: string
+          updated_at?: string
+          updated_by?: string | null
+          version: string
+        }
+        Update: {
+          body?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       subcategories: {
         Row: {
           category_id: string

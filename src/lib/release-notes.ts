@@ -162,3 +162,40 @@ export function groupByMajor(notes: ReleaseNote[] = RELEASE_NOTES): { major: str
   }
   return groups;
 }
+
+/**
+ * 관리자가 화면에서 고친 노트(버전별 자유 글). DB(release_note_edits)에 있으면 코드의 노트 대신 보여 준다.
+ * 글 규칙: "신규 기능"·"변경 내용"·"수정사항" 같은 제목 줄이나 "# "로 시작하는 줄은 소제목,
+ * "- "(또는 "·", "•")로 시작하는 줄은 목록, 나머지는 문단. 빈 줄은 건너뛴다.
+ */
+export type ReleaseNoteEdits = Record<string, string>;
+
+export const RELEASE_NOTE_BODY_MAX = 20000;
+
+const SECTION_TITLES = ["신규 기능", "변경 내용", "수정사항"];
+
+/** 수정 창을 처음 열 때 채울 글. 코드의 노트를 위 글 규칙으로 옮긴다. */
+export function noteToText(note: ReleaseNote): string {
+  const sections: string[] = [];
+  if (note.features.length) sections.push(["신규 기능", ...note.features.map((f) => `- ${f.title}: ${f.description}`)].join("\n"));
+  if (note.changes.length) sections.push(["변경 내용", ...note.changes.map((c) => `- ${c}`)].join("\n"));
+  if (note.fixes.length) sections.push(["수정사항", ...note.fixes.map((f) => `- ${f}`)].join("\n"));
+  return sections.join("\n\n");
+}
+
+export type NoteBlock = { kind: "heading" | "item" | "text"; text: string };
+
+export function parseNoteText(body: string): NoteBlock[] {
+  const blocks: NoteBlock[] = [];
+  for (const raw of body.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const heading = /^#+\s*(.+)$/.exec(line);
+    const item = /^[-·•]\s*(.+)$/.exec(line);
+    if (heading) blocks.push({ kind: "heading", text: heading[1] });
+    else if (SECTION_TITLES.includes(line)) blocks.push({ kind: "heading", text: line });
+    else if (item) blocks.push({ kind: "item", text: item[1] });
+    else blocks.push({ kind: "text", text: line });
+  }
+  return blocks;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import pkg from "../../package.json";
-import { CURRENT_VERSION, RELEASE_NOTES, groupByMajor, majorOf, type ReleaseNote } from "./release-notes";
+import { CURRENT_VERSION, RELEASE_NOTES, groupByMajor, majorOf, noteToText, parseNoteText, type ReleaseNote } from "./release-notes";
 
 const note = (version: string): ReleaseNote => ({ version, date: "2026-09-28", features: [], changes: [], fixes: [] });
 
@@ -25,5 +25,35 @@ describe("업데이트 노트", () => {
       expect(n.version).toMatch(/^\d+\.\d+\.\d+$/);
       expect(n.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
+  });
+});
+
+describe("업데이트 노트 수정 글", () => {
+  const full: ReleaseNote = {
+    version: "1.2.0",
+    date: "2026-09-28",
+    features: [{ title: "새 기능", description: "설명" }],
+    changes: ["바뀐 점"],
+    fixes: ["고친 점"],
+  };
+  it("코드의 노트를 글로 옮기고 다시 읽으면 제목·목록이 된다", () => {
+    const text = noteToText(full);
+    expect(text).toBe("신규 기능\n- 새 기능: 설명\n\n변경 내용\n- 바뀐 점\n\n수정사항\n- 고친 점");
+    expect(parseNoteText(text)).toEqual([
+      { kind: "heading", text: "신규 기능" },
+      { kind: "item", text: "새 기능: 설명" },
+      { kind: "heading", text: "변경 내용" },
+      { kind: "item", text: "바뀐 점" },
+      { kind: "heading", text: "수정사항" },
+      { kind: "item", text: "고친 점" },
+    ]);
+  });
+  it("빈 섹션은 쓰지 않고, 자유 문단과 # 제목도 읽는다", () => {
+    expect(noteToText(note("1.0.1"))).toBe("");
+    expect(parseNoteText("# 안내\n\n그냥 문단\n· 점 목록\r\n")).toEqual([
+      { kind: "heading", text: "안내" },
+      { kind: "text", text: "그냥 문단" },
+      { kind: "item", text: "점 목록" },
+    ]);
   });
 });

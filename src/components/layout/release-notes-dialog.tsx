@@ -1,21 +1,51 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format/date";
-import { groupByMajor, type ReleaseFeature, type ReleaseNote } from "@/lib/release-notes";
+import {
+  groupByMajor,
+  noteToText,
+  parseNoteText,
+  RELEASE_NOTE_BODY_MAX,
+  type ReleaseFeature,
+  type ReleaseNote,
+  type ReleaseNoteEdits,
+} from "@/lib/release-notes";
+import { getReleaseNoteEdits, resetReleaseNoteEdit, saveReleaseNoteEdit } from "@/server/release-notes/actions";
 
 /**
  * 업데이트 노트 창. 최신 버전이 맨 위, 아래는 스크롤해서 본다.
  * 첫째 자리 버전(1.x, 2.x)이 둘 이상이면 탭으로 나누고 최신 탭을 먼저 연다. Esc·배경·X로 닫는다.
+ * 관리자에게는 버전마다 "수정" 버튼이 보이고, 자유 글로 고쳐 저장하면 그 글이 코드의 노트 대신 보인다.
  */
-export function ReleaseNotesDialog({ onClose }: { onClose: () => void }) {
+export function ReleaseNotesDialog({ onClose, admin = false }: { onClose: () => void; admin?: boolean }) {
   const groups = groupByMajor();
   const [major, setMajor] = useState(groups[0]?.major ?? "");
   const notes = groups.find((g) => g.major === major)?.notes ?? [];
   const panel = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  // 고친 노트를 읽기 전에는 코드의 노트를 먼저 보여 준다.
+  const [edits, setEdits] = useState<ReleaseNoteEdits>({});
+
+  useEffect(() => {
+    let alive = true;
+    getReleaseNoteEdits()
+      .then((data) => alive && setEdits(data))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const applyEdit = (version: string, body: string | null) =>
+    setEdits((prev) => {
+      const next = { ...prev };
+      if (body === null) delete next[version];
+      else next[version] = body;
+      return next;
+    });
 
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -74,7 +104,7 @@ export function ReleaseNotesDialog({ onClose }: { onClose: () => void }) {
 
         <div ref={scroller} className="flex flex-col overflow-y-auto overscroll-contain px-5" data-testid="release-notes">
           {notes.map((note) => (
-            <NoteItem key={note.version} note={note} />
+            <NoteItem key={note.version} note={note} edited={edits[note.version]} admin={admin} onSaved={applyEdit} />
           ))}
         </div>
       </div>
@@ -83,17 +113,150 @@ export function ReleaseNotesDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-function NoteItem({ note }: { note: ReleaseNote }) {
-  const empty = !note.features.length && !note.changes.length && !note.fixes.length;
+function NoteItem({
+  note,
+  edited,
+  admin,
+  onSaved,
+}: {
+  note: ReleaseNote;
+  edited: string | undefined;
+  admin: boolean;
+  onSaved: (version: string, body: string | null) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const editing = draft !== null;
+  const blocks = edited === undefined ? null : parseNoteText(edited);
+  const empty = blocks ? !blocks.length : !note.features.length && !note.changes.length && !note.fixes.length;
+
+  const run = (action: () => Promise<{ ok: true } | { ok: false; error: string }>, body: string | null) =>
+    startTransition(async () => {
+      setError(null);
+      const result = await action().catch(() => ({ ok: false as const, error: "저장하지 못했습니다. 잠시 후 다시 시도해 주세요." }));
+      if (!result.ok) return setError(result.error);
+      onSaved(note.version, body);
+      setDraft(null);
+    });
+
   return (
     <article className="flex flex-col gap-4 border-b border-neutral-300 py-5 last:border-b-0">
       <header className="flex items-baseline justify-between gap-3">
         <h3 className="text-lg font-semibold">{note.version} 패치노트</h3>
-        <time dateTime={note.date} className="font-mono text-sm text-neutral-700 tabular-nums">
-          {formatDate(note.date)}
-        </time>
+        <div className="flex items-baseline gap-3">
+          <time dateTime={note.date} className="font-mono text-sm text-neutral-700 tabular-nums">
+            {formatDate(note.date)}
+          </time>
+          {admin && !editing && (
+            <button
+              type="button"
+              className="btn btn-secondary min-h-8 px-3 py-1 text-sm"
+              onClick={() => {
+                setError(null);
+                setDraft(edited ?? noteToText(note));
+              }}
+            >
+              수정
+            </button>
+          )}
+        </div>
       </header>
-      {empty && <p className="text-sm text-neutral-700">내용을 준비하고 있어요.</p>}
+      {editing ? (
+        <div className="flex flex-col gap-2">
+          <textarea
+            className="input text-sm leading-relaxed"
+            rows={12}
+            aria-label={`${note.version} 패치노트 내용`}
+            value={draft}
+            maxLength={RELEASE_NOTE_BODY_MAX}
+            disabled={pending}
+            autoFocus
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              // Esc는 창을 닫지 않고 수정만 취소한다.
+              if (e.key === "Escape") {
+                e.stopPropagation();
+                setDraft(null);
+              }
+            }}
+          />
+          <p className="text-xs text-neutral-700">
+            &quot;신규 기능&quot;·&quot;변경 내용&quot;·&quot;수정사항&quot;이나 &quot;# &quot;로 시작하는 줄은 소제목, &quot;- &quot;로 시작하는 줄은 목록이 됩니다.
+          </p>
+          {error && (
+            <p role="alert" className="text-sm text-negative">
+              {error}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className="btn btn-primary" disabled={pending} onClick={() => run(() => saveReleaseNoteEdit(note.version, draft), draft)}>
+              {pending ? "저장 중…" : "완료"}
+            </button>
+            <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => setDraft(null)}>
+              취소
+            </button>
+            {edited !== undefined && (
+              <button
+                type="button"
+                className="btn btn-ghost ml-auto"
+                disabled={pending}
+                onClick={() => run(() => resetReleaseNoteEdit(note.version), null)}
+              >
+                원래 노트로 되돌리기
+              </button>
+            )}
+          </div>
+        </div>
+      ) : blocks ? (
+        <>
+          {empty && <p className="text-sm text-neutral-700">내용을 준비하고 있어요.</p>}
+          <EditedBody blocks={blocks} />
+        </>
+      ) : (
+        <>
+          {empty && <p className="text-sm text-neutral-700">내용을 준비하고 있어요.</p>}
+          <CodeNoteBody note={note} />
+        </>
+      )}
+    </article>
+  );
+}
+
+/** 관리자가 고친 글. 소제목·목록·문단을 코드 노트와 같은 모양으로 그린다. */
+function EditedBody({ blocks }: { blocks: ReturnType<typeof parseNoteText> }) {
+  const groups: { kind: "heading" | "item" | "text"; texts: string[] }[] = [];
+  for (const b of blocks) {
+    const last = groups.at(-1);
+    if (b.kind === "item" && last?.kind === "item") last.texts.push(b.text);
+    else groups.push({ kind: b.kind, texts: [b.text] });
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      {groups.map((g, i) =>
+        g.kind === "heading" ? (
+          <h4 key={i} className="mt-2 font-mono text-xs font-medium tracking-[0.08em] text-neutral-700 first:mt-0">
+            {g.texts[0]}
+          </h4>
+        ) : g.kind === "item" ? (
+          <ul key={i} className="flex list-disc flex-col gap-1 pl-5 text-base">
+            {g.texts.map((t, j) => (
+              <li key={j}>{t}</li>
+            ))}
+          </ul>
+        ) : (
+          <p key={i} className="text-base text-pretty">
+            {g.texts[0]}
+          </p>
+        ),
+      )}
+    </div>
+  );
+}
+
+function CodeNoteBody({ note }: { note: ReleaseNote }) {
+  return (
+    <>
       <FeatureSection items={note.features} />
       <NoteSection title="변경 내용" items={note.changes} />
       {note.fixes.length > 0 && (
@@ -106,7 +269,7 @@ function NoteItem({ note }: { note: ReleaseNote }) {
           </ul>
         </section>
       )}
-    </article>
+    </>
   );
 }
 

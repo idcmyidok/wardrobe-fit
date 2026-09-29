@@ -87,7 +87,7 @@ export function UserMenu({ email, admin = false }: { email: string | null; admin
           )}
         </div>
       )}
-      {notesOpen && <ReleaseNotesDialog onClose={closeNotes} />}
+      {notesOpen && <ReleaseNotesDialog onClose={closeNotes} admin={admin} />}
     </div>
   );
 }
