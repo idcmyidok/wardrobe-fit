@@ -28,7 +28,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     version: "1.2.4",
     date: "2026-09-29",
     features: [],
-    changes: [],
+    changes: ["사파리의 북마크 만들기·편집 안내를 최신 아이폰 화면에 맞게 고쳤어요."],
     fixes: ["업데이트 노트를 열면 수정 전 내용이 잠깐 보였다가 바뀌던 문제"],
   },
   {
