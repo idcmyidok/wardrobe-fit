@@ -10,7 +10,6 @@ export type BodyRow = Database["public"]["Tables"]["body_profiles"]["Row"];
 /** 내 치수 키 → DB 열 */
 export const BODY_COLUMN: Record<BodyKey, keyof BodyRow> = {
   height: "height_cm",
-  weight: "weight_kg",
   shoulder: "shoulder_cm",
   chest: "chest_cm",
   waist: "waist_cm",

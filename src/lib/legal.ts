@@ -7,6 +7,6 @@ export const PRIVACY_OFFICER = {
   name: "장세현",
   email: "s1206h@naver.com",
 };
-export const PRIVACY_EFFECTIVE_DATE = "2026년 9월 28일";
-export const PRIVACY_HISTORY: string[] = ["2026년 9월 27일"];
+export const PRIVACY_EFFECTIVE_DATE = "2026년 9월 29일";
+export const PRIVACY_HISTORY: string[] = ["2026년 9월 28일", "2026년 9월 27일"];
 export const TERMS_EFFECTIVE_DATE = "2026년 9월 28일";
