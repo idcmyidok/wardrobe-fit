@@ -512,27 +512,6 @@ export type Database = {
         }
         Relationships: []
       }
-      release_note_images: {
-        Row: {
-          path: string
-          updated_at: string
-          updated_by: string | null
-          version: string
-        }
-        Insert: {
-          path: string
-          updated_at?: string
-          updated_by?: string | null
-          version: string
-        }
-        Update: {
-          path?: string
-          updated_at?: string
-          updated_by?: string | null
-          version?: string
-        }
-        Relationships: []
-      }
       roast_text_edits: {
         Row: {
           body: string

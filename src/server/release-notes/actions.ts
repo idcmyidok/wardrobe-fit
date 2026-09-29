@@ -4,11 +4,9 @@ import { z } from "zod";
 import {
   parseEditBody,
   RELEASE_NOTE_BODY_MAX,
-  RELEASE_NOTE_IMAGE_BUCKET,
   RELEASE_NOTES,
   type ReleaseNoteContent,
   type ReleaseNoteEdits,
-  type ReleaseNoteImages,
 } from "@/lib/release-notes";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAdminUser } from "@/server/admin/guard";
@@ -86,52 +84,4 @@ export async function resetReleaseNoteEdit(version: string): Promise<ReleaseNote
     return { ok: false, error: "되돌리지 못했습니다. 잠시 후 다시 시도해 주세요." };
   }
   return { ok: true };
-}
-
-/** 버전별 노트 사진의 공개 주소. 테이블이 아직 없으면(마이그레이션 전) 사진이 없는 것으로 본다. */
-export async function getReleaseNoteImages(): Promise<ReleaseNoteImages> {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) return {};
-  const { data, error } = await supabase.from("release_note_images").select("version, path");
-  if (error) {
-    console.error("[release-notes] images read", error.message);
-    return {};
-  }
-  const bucket = supabase.storage.from(RELEASE_NOTE_IMAGE_BUCKET);
-  return Object.fromEntries(data.map((row) => [row.version, bucket.getPublicUrl(row.path).data.publicUrl]));
-}
-
-export type ReleaseNoteImageResult = { ok: true; url: string | null } | { ok: false; error: string };
-
-/** 브라우저가 올린 사진(경로 {version}/{uuid}.webp)을 그 버전의 사진으로 정하고, 이전 사진은 지운다. */
-export async function saveReleaseNoteImage(version: string, path: string): Promise<ReleaseNoteImageResult> {
-  const ready = await prepare(version);
-  if (ready.error !== undefined) return { ok: false, error: ready.error };
-  if (!new RegExp(`^${ready.version.replaceAll(".", "\\.")}/[0-9a-f-]{36}\\.(webp|jpg)$`).test(path)) return { ok: false, error: "사진 경로가 맞지 않습니다." };
-  const bucket = ready.supabase.storage.from(RELEASE_NOTE_IMAGE_BUCKET);
-  const { data: previous } = await ready.supabase.from("release_note_images").select("path").eq("version", ready.version).maybeSingle();
-  const { error } = await ready.supabase
-    .from("release_note_images")
-    .upsert({ version: ready.version, path, updated_by: ready.adminId, updated_at: new Date().toISOString() });
-  if (error) {
-    console.error("[release-notes] image save", error.message);
-    await bucket.remove([path]);
-    return { ok: false, error: "사진을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요." };
-  }
-  if (previous?.path && previous.path !== path) await bucket.remove([previous.path]);
-  return { ok: true, url: bucket.getPublicUrl(path).data.publicUrl };
-}
-
-/** 그 버전의 노트 사진을 지운다. */
-export async function removeReleaseNoteImage(version: string): Promise<ReleaseNoteImageResult> {
-  const ready = await prepare(version);
-  if (ready.error !== undefined) return { ok: false, error: ready.error };
-  const { data: previous } = await ready.supabase.from("release_note_images").select("path").eq("version", ready.version).maybeSingle();
-  const { error } = await ready.supabase.from("release_note_images").delete().eq("version", ready.version);
-  if (error) {
-    console.error("[release-notes] image remove", error.message);
-    return { ok: false, error: "사진을 지우지 못했습니다. 잠시 후 다시 시도해 주세요." };
-  }
-  if (previous?.path) await ready.supabase.storage.from(RELEASE_NOTE_IMAGE_BUCKET).remove([previous.path]);
-  return { ok: true, url: null };
 }

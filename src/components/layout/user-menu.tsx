@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CURRENT_VERSION, type ReleaseNoteEdits, type ReleaseNoteImages } from "@/lib/release-notes";
+import { CURRENT_VERSION, type ReleaseNoteEdits } from "@/lib/release-notes";
 import { signOut } from "@/server/auth/actions";
 import { ReleaseNotesDialog } from "./release-notes-dialog";
 import { ThemeToggle } from "./theme-toggle";
@@ -12,18 +12,15 @@ export function UserMenu({
   email,
   admin = false,
   releaseNoteEdits = {},
-  releaseNoteImages = {},
 }: {
   email: string | null;
   admin?: boolean;
   releaseNoteEdits?: ReleaseNoteEdits;
-  releaseNoteImages?: ReleaseNoteImages;
 }) {
   const [open, setOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   // 관리자가 저장·되돌린 결과가 창을 닫았다 열어도 남도록 여기서 들고 있는다.
   const [edits, setEdits] = useState(releaseNoteEdits);
-  const [images, setImages] = useState(releaseNoteImages);
   const closeNotes = useCallback(() => setNotesOpen(false), []);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -100,7 +97,7 @@ export function UserMenu({
           )}
         </div>
       )}
-      {notesOpen && <ReleaseNotesDialog onClose={closeNotes} admin={admin} edits={edits} onEditsChange={setEdits} images={images} onImagesChange={setImages} />}
+      {notesOpen && <ReleaseNotesDialog onClose={closeNotes} admin={admin} edits={edits} onEditsChange={setEdits} />}
     </div>
   );
 }

@@ -340,9 +340,3 @@ export function parseEditBody(body: string): ReleaseNoteContent | null {
     return null;
   }
 }
-
-/** 버전 → 그 노트에 넣은 사진 주소(관리자가 넣는다) */
-export type ReleaseNoteImages = Record<string, string>;
-
-/** 노트 사진을 담는 Storage bucket(공개 읽기, 관리자만 쓰기) */
-export const RELEASE_NOTE_IMAGE_BUCKET = "release-note-images";

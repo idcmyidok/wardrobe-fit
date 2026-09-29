@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { FEATURES } from "@/lib/features";
-import type { ReleaseNoteEdits, ReleaseNoteImages } from "@/lib/release-notes";
+import type { ReleaseNoteEdits } from "@/lib/release-notes";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
@@ -22,12 +22,10 @@ export function AppHeader({
   email,
   admin = false,
   releaseNoteEdits = {},
-  releaseNoteImages = {},
 }: {
   email: string | null;
   admin?: boolean;
   releaseNoteEdits?: ReleaseNoteEdits;
-  releaseNoteImages?: ReleaseNoteImages;
 }) {
   const pathname = usePathname();
   return (
@@ -61,7 +59,7 @@ export function AppHeader({
           <div className="hidden sm:block">
             <ThemeToggle />
           </div>
-          <UserMenu email={email} admin={admin} releaseNoteEdits={releaseNoteEdits} releaseNoteImages={releaseNoteImages} />
+          <UserMenu email={email} admin={admin} releaseNoteEdits={releaseNoteEdits} />
         </div>
       </div>
     </header>
