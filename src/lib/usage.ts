@@ -10,9 +10,13 @@ export interface UsageCounter {
   newestAt: string | null;
 }
 
+/** 한도가 없는 이유: 관리자 계정, 또는 관리자가 지정한 테스터 계정. */
+export type UnlimitedReason = "admin" | "tester";
+
 export interface Usage {
-  /** 관리자 계정은 한도가 없다. */
+  /** 관리자·테스터 계정은 한도가 없다. */
   unlimited: boolean;
+  unlimitedReason: UnlimitedReason | null;
   imports: UsageCounter;
   fits: UsageCounter;
   ai: UsageCounter;

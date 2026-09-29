@@ -132,7 +132,7 @@ function Users({ overview, myId }: { overview: AdminOverview; myId: string }) {
           사용자
         </h2>
         <span className="text-sm text-neutral-700">
-          정지하면 바로 로그아웃되고 다시 로그인할 수 없습니다. 삭제하면 옷·기록·사진이 모두 지워지고 되돌릴 수 없습니다.
+          정지하면 바로 로그아웃되고 다시 로그인할 수 없습니다. 삭제하면 옷·기록·사진이 모두 지워지고 되돌릴 수 없습니다. 테스터는 관리자처럼 분석 한도가 없습니다.
         </span>
       </div>
       <div className="overflow-x-auto">
@@ -162,12 +162,13 @@ function Users({ overview, myId }: { overview: AdminOverview; myId: string }) {
                 <td className={cn(cell, mono, "text-right")}>{n(u.imports)}</td>
                 <td className={cell}>
                   {u.isAdmin ? "관리자" : u.banned ? <span className="text-negative">정지됨</span> : u.confirmed ? "정상" : "인증 전"}
+                  {u.isTester && !u.isAdmin && <span className="ml-2 border border-text px-1.5 py-0.5 text-xs font-medium">테스터</span>}
                 </td>
                 <td className={cn(cell, "whitespace-nowrap")}>
                   {u.isAdmin || u.id === myId ? (
                     <span className="text-neutral-700">—</span>
                   ) : (
-                    <UserActions userId={u.id} email={u.email ?? u.id} banned={u.banned} />
+                    <UserActions userId={u.id} email={u.email ?? u.id} banned={u.banned} tester={u.isTester} />
                   )}
                 </td>
               </tr>

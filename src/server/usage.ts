@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import type { Usage, UsageCounter } from "@/lib/usage";
-import { hasAdminRow } from "@/server/admin/is-admin";
+import { getQuotaExemption } from "@/server/admin/is-admin";
 import { aiDailyLimit, CACHE_SUFFIX, FIT_DAILY_LIMIT, hoursAgo } from "@/server/fit/service";
 import { IMPORT_DAILY_LIMIT } from "@/server/import/service";
 
@@ -26,11 +26,11 @@ export async function getUsage(supabase: Client, userId: string): Promise<Usage>
     return { used: oldest.count ?? 0, limit, oldestAt: oldest.data?.[0]?.created_at ?? null, newestAt: newest.data?.[0]?.created_at ?? null };
   };
 
-  const [unlimited, importUsage, fitUsage, aiUsage] = await Promise.all([
-    hasAdminRow(supabase, userId),
+  const [exemption, importUsage, fitUsage, aiUsage] = await Promise.all([
+    getQuotaExemption(supabase, userId),
     counter(imports, IMPORT_DAILY_LIMIT),
     counter(fits, FIT_DAILY_LIMIT),
     counter(ai, aiDailyLimit()),
   ]);
-  return { unlimited, imports: importUsage, fits: fitUsage, ai: aiUsage };
+  return { unlimited: Boolean(exemption), unlimitedReason: exemption, imports: importUsage, fits: fitUsage, ai: aiUsage };
 }
