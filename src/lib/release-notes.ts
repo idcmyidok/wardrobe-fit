@@ -25,6 +25,16 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "1.2.3",
+    date: "2026-09-29",
+    features: [],
+    changes: [
+      "휴대폰의 크롬·사파리에서도 무신사 주문내역을 가져올 수 있어요.",
+      "주문내역 가져오기 안내가 접속한 기기(PC·휴대폰)에 맞는 방법 하나만 보여 줘요.",
+    ],
+    fixes: [],
+  },
+  {
     version: "1.2.2",
     date: "2026-09-29",
     features: [],

@@ -11,9 +11,17 @@ export async function streamImport(
     onStage,
     purpose = "wardrobe",
     photosOnly = false,
-  }: { signal?: AbortSignal; onStage?: (stage: AnalyzeStage) => void; purpose?: "wardrobe" | "fit_check"; photosOnly?: boolean } = {},
+  }: {
+    signal?: AbortSignal;
+    onStage?: (stage: AnalyzeStage) => void;
+    purpose?: "wardrobe" | "fit_check";
+    photosOnly?: boolean;
+  } = {},
 ): Promise<ImportOutcome> {
-  const failed = (errorCode: ImportOutcome["errorCode"], errorDetail: string | null = null): ImportOutcome => ({
+  const failed = (
+    errorCode: ImportOutcome["errorCode"],
+    errorDetail: string | null = null,
+  ): ImportOutcome => ({
     importId: null,
     status: "failed",
     reused: false,
@@ -45,7 +53,9 @@ export async function streamImport(
     buffer = lines.pop() ?? "";
     for (const line of lines) {
       if (!line.trim()) continue;
-      const msg = JSON.parse(line) as { type: "stage"; stage: AnalyzeStage } | ({ type: "result" } & ImportOutcome);
+      const msg = JSON.parse(line) as
+        | { type: "stage"; stage: AnalyzeStage }
+        | ({ type: "result" } & ImportOutcome);
       if (msg.type === "stage") onStage?.(msg.stage);
       else result = msg;
     }
@@ -55,7 +65,8 @@ export async function streamImport(
 }
 
 /** 분석 결과의 i번째 이미지 미리보기 주소(서버가 대신 받아 준다) */
-export const importImageUrl = (importId: string, index: number) => `/api/imports/${importId}/image?i=${index}`;
+export const importImageUrl = (importId: string, index: number) =>
+  `/api/imports/${importId}/image?i=${index}`;
 
 /** 고른 페이지 이미지를 받아 올릴 사진 파일로. 실패하면 undefined(PROJECT_SPEC.md 12.4). */
 export async function importImageFile(src: string): Promise<File | undefined> {
@@ -63,7 +74,9 @@ export async function importImageFile(src: string): Promise<File | undefined> {
     const res = await fetch(src);
     if (!res.ok) return undefined;
     const blob = await res.blob();
-    return new File([blob], "product-image", { type: blob.type || "image/jpeg" });
+    return new File([blob], "product-image", {
+      type: blob.type || "image/jpeg",
+    });
   } catch {
     return undefined;
   }
