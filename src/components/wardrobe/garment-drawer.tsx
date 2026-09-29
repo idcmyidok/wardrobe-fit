@@ -284,7 +284,7 @@ export function GarmentDetail({
                   <section>
                     <SectionTitle aside={<span className="text-xs text-neutral-700">내 치수 기준</span>}>핏</SectionTitle>
                     <div className="flex flex-col gap-4 pt-1">
-                      <BodyFitPanel garment={g} userFit={g.userFit ?? null} />
+                      <BodyFitPanel garment={g} userFit={g.userFit ?? null} collapseReasons />
                       <div className="flex flex-col gap-2">
                         <span id={`uf-${g.id}`} className="text-xs text-neutral-700">
                           내 핏 표기 · 입어 보고 고르면 예상 핏 대신 보이고, 다시 누르면 지워져 예상 핏으로 돌아갑니다

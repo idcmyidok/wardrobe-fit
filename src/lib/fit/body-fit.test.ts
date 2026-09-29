@@ -212,6 +212,8 @@ describe("추천 치수·보정·역산", () => {
     expect(fitGroupOf("outer", "outer.coach")).toBe("light_outer");
     expect(fitGroupOf("outer", "outer.leather")).toBe("leather");
     expect(fitGroupOf("top", null)).toBe("long_tee");
+    expect(fitGroupOf("outer", "outer.long_padding")).toBe("long_padding");
+    expect(fitGroupOf("outer", "outer.short_padding")).toBe("padding");
   });
 });
 
