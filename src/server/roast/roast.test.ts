@@ -5,8 +5,8 @@ import { BRANDS, brandGroups, findBrand, isTrendBrand } from "./brands";
 import { buildScript, composeResult } from "./compose";
 import { productFamilies } from "./keywords";
 import { QUESTIONS, Q_TEXT } from "./questions";
-import { QUIZ, QUIZ_TEXT } from "./quiz";
-import { applyTextEdits, checkText, flattenTexts } from "./texts";
+import { QUIZ } from "./quiz";
+import { applyTextEdits, checkUnit, fromRows, toRows, unitsOf } from "./texts";
 import { fill, josa, MissingVar } from "./text";
 
 describe("브랜드 이름 맞추기", () => {
@@ -44,18 +44,19 @@ describe("브랜드 그룹", () => {
       expect(isTrendBrand(b!), n).toBe(true);
     }
   });
-  it("퀴즈 브랜드는 모두 자료에 있는 명품·디자이너·일본 데님이고, 문구와 정답 번호가 맞다", () => {
+  it("퀴즈 브랜드는 모두 자료에 있고, 선택지 4개에 정답 번호가 맞고, 정답 번호가 한쪽에 몰리지 않는다", () => {
     const byName = new Map(BRANDS.map((b) => [b.name, b]));
-    for (const q of QUIZ) {
-      const b = byName.get(q.brand);
-      expect(b, q.brand).toBeDefined();
-      expect(brandGroups(b!).some((x) => x === "luxury" || x === "designer" || x === "jp_denim"), q.brand).toBe(true);
-      const t = QUIZ_TEXT[q.id];
-      expect(t, q.id).toBeDefined();
-      expect(t.options).toHaveLength(4);
-      expect(new Set(t.options).size).toBe(4);
-      expect(t.options[q.answer], q.id).toBeDefined();
+    const answers = [0, 0, 0, 0];
+    for (const [id, q] of Object.entries(QUIZ)) {
+      expect(byName.get(q.brand), `${id} ${q.brand}`).toBeDefined();
+      expect(q.options, id).toHaveLength(4);
+      expect(new Set(q.options).size, id).toBe(4);
+      expect(q.options[q.answer], id).toBeDefined();
+      expect(q.correct.length && q.wrong.length, id).toBeTruthy();
+      answers[q.answer]++;
     }
+    const total = Object.keys(QUIZ).length;
+    for (const n of answers) expect(n / total).toBeLessThan(0.4);
   });
 });
 
@@ -128,7 +129,7 @@ describe("분석과 결과", () => {
     const p2 = buildScript(a, 42, "세현");
     expect(p1.script).toEqual(p2.script);
     expect(p1.script.questions.length).toBeGreaterThan(0);
-    expect(p1.script.questions.length).toBeLessThanOrEqual(3);
+    expect(p1.script.questions.length).toBeLessThanOrEqual(5);
     const r = composeResult(a, "세현", 42);
     expect(r.headline).not.toMatch(/[{}]/);
     expect(r.paragraphs.map((x) => x.text).join(" ")).not.toMatch(/[{}]/);
@@ -149,21 +150,104 @@ describe("질문 문구", () => {
 });
 
 describe("관리자 문장 수정", () => {
-  it("모든 문장에 위치(key)가 있다", () => {
-    const keys = flattenTexts().map((e) => e.key);
-    expect(new Set(keys).size).toBe(keys.length);
-    expect(keys).toContain("lines.black_bias.say.0");
-    expect(keys).toContain("quiz.cdg-meaning.options.0");
+  it("고치는 단위: 문장 목록은 통째로, 퀴즈 정답은 숫자로", () => {
+    const units = new Map(unitsOf().map((u) => [u.key, u]));
+    expect(units.get("lines.black_bias.say")?.kind).toBe("list");
+    expect(units.get("lines.black_bias.head")?.kind).toBe("pairs");
+    expect(units.get("questions.odd_photo.text")?.kind).toBe("text");
+    expect(units.get("quiz.cdg-play.answer")?.kind).toBe("number");
+    expect(units.has("lines.black_bias.say.0")).toBe(false);
   });
-  it("그 문장에 없는 자리는 막는다", () => {
-    expect(checkText("lines.black_bias.say.0", "검정이 {n}벌, {pct}%")).toBeNull();
-    expect(checkText("lines.black_bias.say.0", "검정이 {amountWon}")).toMatch(/자리/);
-    expect(checkText("lines.nope.say.0", "x")).toMatch(/없는/);
-    expect(checkText("lines.black_bias.say.0", " ")).toMatch(/비워/);
+  it("그 문장에 없는 자리는 막고, 목록은 비울 수 없다", () => {
+    expect(checkUnit("lines.black_bias.say", ["검정이 {n}벌, {pct}%", "새 문장"])).toEqual({ value: ["검정이 {n}벌, {pct}%", "새 문장"] });
+    expect(checkUnit("lines.black_bias.say", ["검정이 {amountWon}"])).toMatchObject({ error: expect.stringMatching(/자리/) });
+    expect(checkUnit("lines.black_bias.say", [])).toMatchObject({ error: expect.stringMatching(/이상/) });
+    expect(checkUnit("lines.nope.say", ["x"])).toMatchObject({ error: expect.stringMatching(/없는/) });
+    expect(checkUnit("questions.odd_photo.text", " ")).toMatchObject({ error: expect.stringMatching(/비워/) });
+    expect(checkUnit("common.HEAD_SINGLE_PREFIX", ["", "결론은,"])).toEqual({ value: ["", "결론은,"] });
   });
-  it("고친 문장이 분석에 쓰인다", () => {
-    const T = applyTextEdits({ "common.THINKING.0": "헐 대박.", "lines.black_bias.say.0": "{bad}" });
-    expect(T.common.THINKING[0]).toBe("헐 대박.");
+  it("고친 문장이 분석에 쓰이고, 예전 방식(목록 안 한 줄)과 잘못된 값은 무시한다", () => {
+    const T = applyTextEdits({
+      "common.THINKING": JSON.stringify(["헐 대박.", "음."]),
+      "lines.black_bias.say": JSON.stringify(["{bad}"]),
+      "common.CLOSING.0": "예전 방식",
+    });
+    expect(T.common.THINKING).toEqual(["헐 대박.", "음."]);
     expect(T.lines.black_bias.say[0]).not.toBe("{bad}");
+    expect(T.common.CLOSING[0]).not.toBe("예전 방식");
+  });
+  it("긴 목록은 나눠 저장하고 다시 합친다", () => {
+    const long = Array.from({ length: 30 }, (_, i) => `아주 긴 마무리 문장 ${i}번입니다. `.repeat(3));
+    const rows = toRows("common.CLOSING", long);
+    expect(Object.keys(rows).length).toBeGreaterThan(1);
+    for (const body of Object.values(rows)) expect(body.length).toBeLessThanOrEqual(1000);
+    expect(fromRows(rows)["common.CLOSING"]).toEqual(long);
+  });
+  it("퀴즈를 새로 만들고, 기본 퀴즈를 지울 수 있다", () => {
+    const T = applyTextEdits({
+      "quiz.c-test1.brand": "Stüssy",
+      "quiz.c-test1.question": "문제?",
+      "quiz.c-test1.options": JSON.stringify(["가", "나", "다"]),
+      "quiz.c-test1.answer": "2",
+      "quiz.c-test1.correct": JSON.stringify(["맞음"]),
+      "quiz.c-test1.wrong": JSON.stringify(["틀림"]),
+      "quiz.c-half.question": "칸이 모자란 퀴즈",
+      "quiz.cdg-play.deleted": "1",
+    });
+    expect(T.quiz["c-test1"]).toMatchObject({ brand: "Stüssy", answer: 2, options: ["가", "나", "다"] });
+    expect(T.quiz["c-half"]).toBeUndefined();
+    expect(T.quiz["cdg-play"]).toBeUndefined();
+  });
+});
+
+describe("새 패턴", () => {
+  const now = new Date("2026-09-29T12:00:00+09:00");
+  it("같은 달 구매는 연도를 합쳐 센다(9월)", () => {
+    const w = Array.from({ length: 16 }, (_, i) =>
+      g(i, { purchasedOn: i < 3 ? "2025-09-10" : i < 6 ? "2024-09-03" : `2025-${String((i % 8) + 1).padStart(2, "0")}-15`, productName: `옷${i}` }),
+    );
+    const p = analyze(w, null, 1360, now).patterns.find((x) => x.id === "month_binge");
+    expect(p?.stats).toEqual({ month: 9, n: 6 });
+  });
+  it("이름·색이 같은 옷 3벌 이상은 짱구 질문", () => {
+    const w = Array.from({ length: 12 }, (_, i) => g(i, { productName: i < 3 ? "베이직 반팔 티셔츠" : `옷${i}`, colorName: i < 3 ? "화이트" : "블랙" }));
+    const a = analyze(w, null, 1360, now);
+    expect(a.patterns.find((x) => x.id === "identical_items")?.stats.n).toBe(3);
+    const asked = buildScript(a, 7, null).asked.map((q) => q.id);
+    expect(asked).toContain("jjanggu_q");
+  });
+  it("무신사 링크가 많고 국내 대중 브랜드가 많으면 무신사 패턴", () => {
+    const w = Array.from({ length: 12 }, (_, i) =>
+      g(i, { brand: i < 8 ? "Musinsa Standard" : "UNIQLO", productName: `옷${i}`, productUrl: i < 9 ? `https://www.musinsa.com/products/${i}` : "https://www.29cm.co.kr/p/1" }),
+    );
+    const a = analyze(w, null, 1360, now);
+    expect(a.patterns.find((x) => x.id === "musinsa_kr")).toBeDefined();
+    expect(a.patterns.find((x) => x.id === "shop_focus")).toBeUndefined();
+  });
+  it("질문과 같은 사진이면 같은 섹션의 앞 문장에서는 사진을 뺀다", () => {
+    const w = Array.from({ length: 12 }, (_, i) =>
+      g(i, { productName: i < 4 ? "베이직 반팔 티셔츠" : `옷${i}`, colorName: i < 4 ? "화이트" : "블랙", imageUrl: "https://x/y.jpg" }),
+    );
+    const a = analyze(w, null, 1360, now);
+    for (let seed = 1; seed < 20; seed++) {
+      const { script } = buildScript(a, seed, null);
+      script.steps.forEach((s, i) => {
+        if (s.t !== "ask") return;
+        const q = script.questions[s.q];
+        const before = script.steps.slice(0, i);
+        const since = before.slice(before.map((x) => x.t).lastIndexOf("status") + 1);
+        for (const x of since) if (x.t === "say" && x.photos && q.photos.length) expect(x.photos.some((id) => q.photos.includes(id))).toBe(false);
+      });
+    }
+  });
+  it("결과 글에 답을 두고 비꼬는 문단이 들어간다", () => {
+    const w = Array.from({ length: 12 }, (_, i) => g(i, { productName: i < 3 ? "베이직 반팔 티셔츠" : `옷${i}`, colorName: i < 3 ? "화이트" : "블랙" }));
+    const a = analyze(w, null, 1360, now);
+    const plan = buildScript(a, 7, null);
+    const answers = Object.fromEntries(plan.asked.map((q) => [q.id, q.options[0].id]));
+    const r = composeResult(a, null, 7, undefined, plan.asked, answers);
+    const roastTexts = plan.asked.map((q) => q.roast[answers[q.id]]).filter(Boolean);
+    expect(roastTexts.length).toBeGreaterThan(0);
+    expect(r.paragraphs.map((p) => p.text)).toEqual(expect.arrayContaining([roastTexts[0]]));
   });
 });

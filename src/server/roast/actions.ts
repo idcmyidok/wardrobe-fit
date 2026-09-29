@@ -111,14 +111,14 @@ export async function finishRoast(input: { seed: number; name: string | null; an
     if (a.clothes.length < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 10개 이상일 때 분석할 수 있습니다." };
     const texts = await getRoastTexts(s.supabase);
     const plan = buildScript(a, seed, name, texts);
-    const composed = composeResult(a, name, seed, texts);
+    const composed = composeResult(a, name, seed, texts, plan.asked, answers);
 
     let written: Pick<RoastResult, "headline" | "paragraphs" | "closing"> = composed;
     let aiUsed = false;
     const left = await aiLeft(s);
     const provider = s.userId && (left === null || left > 0) ? getAiProvider() : null;
     if (provider) {
-      const withPhoto = (ids: string[]) => ids.filter((id) => a.items.find((i) => i.id === id)?.hasPhoto).slice(0, 2);
+      const withPhoto = (ids: string[]) => ids.filter((id) => a.items.find((i) => i.id === id)?.hasPhoto).slice(0, 40);
       const ai = await writeWithAi(provider, buildAiInput(a, plan, composed, answers, name), withPhoto);
       if (ai) {
         written = ai;

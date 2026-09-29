@@ -18,6 +18,8 @@ export interface RoastQuestion {
   /** 선택지 id별 즉시 반응 */
   reactions: Record<string, string>;
   photos: string[];
+  /** 패션 퀴즈 정답 선택지 id(틀렸을 때 정답을 표시) */
+  answer?: string;
 }
 
 export type RoastStep =
