@@ -121,7 +121,8 @@ export async function finishRoast(input: { seed: number; name: string | null; an
       const withPhoto = (ids: string[]) => ids.filter((id) => a.items.find((i) => i.id === id)?.hasPhoto).slice(0, 40);
       const ai = await writeWithAi(provider, buildAiInput(a, plan, composed, answers, name), withPhoto);
       if (ai) {
-        written = ai;
+        // 코디 조합 수는 계산값이라 AI 글 뒤에 그대로 붙인다.
+        written = composed.outfit ? { ...ai, paragraphs: [...ai.paragraphs, { text: composed.outfit, photos: [] }] } : ai;
         aiUsed = true;
       }
     }

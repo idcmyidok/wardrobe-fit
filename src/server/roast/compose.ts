@@ -153,11 +153,32 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
   return { script: { seed, steps, questions }, asked, convo };
 }
 
+/** 코디 조합 수: 기본(상의×하의×신발) × (1+아우터) × (1+모자). 아우터만·모자만·둘 다 얹은 경우를 기본에 더한 것과 같다. */
+export function outfitCounts(a: Analysis) {
+  const n = (c: CategoryId) => a.items.filter((i) => i.cat === c).length;
+  const top = n("top"), bottom = n("bottom"), shoes = n("shoes"), outer = n("outer"), hat = n("hat");
+  const base = top * bottom * shoes;
+  return { top, bottom, shoes, outer, hat, base, combos: base * (1 + outer) * (1 + hat) };
+}
+
+function outfitText(a: Analysis, r: Rng, T: RoastTexts): string | null {
+  if (!a.items.length) return null;
+  const c = outfitCounts(a);
+  const num = (x: number) => x.toLocaleString("ko-KR");
+  if (!c.base) {
+    const missing = (["top", "bottom", "shoes"] as const).filter((k) => !c[k]).map((k) => CATEGORY_NAME[k]).join("·");
+    return tryFill(r, T.common.OUTFIT_NONE, { missing });
+  }
+  return tryFill(r, T.common.OUTFIT_COMBOS, { top: num(c.top), bottom: num(c.bottom), shoes: num(c.shoes), outer: num(c.outer), hat: num(c.hat), base: num(c.base), combos: num(c.combos) });
+}
+
 export interface Composed {
   headline: string;
   paragraphs: RoastParagraph[];
   closing: string[];
   used: Pattern[];
+  /** 코디 조합 문단(AI가 글을 써도 이 문단은 그대로 넣는다) */
+  outfit: string | null;
 }
 
 /**
@@ -201,6 +222,9 @@ export function composeResult(
   if (!paragraphs.length) paragraphs.push({ text: fill(r.pick(C.PLAIN_PARA), { n: a.clothes.length }), photos: [] });
   if (used.length < 2) paragraphs.push({ text: r.pick(C.FEW_PATTERNS), photos: [] });
 
+  const outfit = outfitText(a, r, T);
+  if (outfit) paragraphs.push({ text: outfit, photos: [] });
+
   // 답을 두고 한 번 더(질문 순서대로, 네 개까지)
   let roasts = 0;
   for (const q of asked) {
@@ -213,5 +237,5 @@ export function composeResult(
   }
 
   const closing = r.shuffle(C.CLOSING).slice(0, 2 + Math.floor(r.next() * 2));
-  return { headline, paragraphs, closing, used };
+  return { headline, paragraphs, closing, used, outfit };
 }

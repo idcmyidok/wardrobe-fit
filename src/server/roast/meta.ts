@@ -13,6 +13,7 @@ export const VAR_LABEL: Record<string, string> = {
   most: "많은 계절", mostN: "많은 계절 벌 수", least: "적은 계절", leastN: "적은 계절 벌 수", avgWon: "평균 금액", priceWon: "금액", amountWon: "금액",
   ratio: "배수", name: "제품명", oldest: "가장 오래된 브랜드", maxWon: "최고 구매가", traitText: "다른 점(색, 종류 등)",
   spendPct: "금액 비중%", countPct: "벌 수 비중%", count: "벌 수", total: "전체 개수", shop: "쇼핑몰", krN: "국내 대중 브랜드 벌 수", krPct: "국내 대중 브랜드 비율%",
+  top: "상의 벌 수", bottom: "하의 벌 수", shoes: "신발 켤레 수", outer: "아우터 벌 수", hat: "모자 개수", base: "기본 조합 수(상의×하의×신발)", combos: "전체 조합 수", missing: "없는 종류",
 };
 
 export const SECTION_NAME: Record<string, string> = {
@@ -169,6 +170,8 @@ export const COMMON_NAME: Record<string, string> = {
   FEW_PATTERNS: "패턴이 적을 때",
   WRAP_UP: "마무리 전",
   CLOSING: "결과 맨 끝(2~3줄 고름)",
+  OUTFIT_COMBOS: "결과 글: 코디 조합 가짓수",
+  OUTFIT_NONE: "결과 글: 조합이 0가지일 때(상의·하의·신발 중 없는 것)",
   PLAIN_HEADLINE: "패턴이 없을 때 헤드라인",
   PLAIN_PARA: "패턴이 없을 때 본문",
   HEAD_SINGLE_PREFIX: "헤드라인을 패턴 하나로 만들 때 앞말",
