@@ -14,7 +14,7 @@ import { DEFAULT_TEXTS, type RoastTexts } from "./texts";
  * 숫자와 이름은 모두 패턴의 근거 값에서 채운다.
  */
 
-const SECTION_ORDER: Section[] = ["size", "acc", "color", "brand", "repeat", "season", "timing", "money", "odd"];
+const SECTION_ORDER: Section[] = ["size", "acc", "color", "brand", "shop", "repeat", "season", "timing", "money", "odd"];
 /** 관련 패턴이 없는 질문이 들어갈 자리 */
 const QUESTION_SECTION: Record<string, Section> = { quiz: "brand", brand_best: "brand", drop_item: "money", count_guess: "size", max_budget: "money", food_vs_clothes: "money", golden_spoon: "money" };
 
@@ -49,8 +49,8 @@ function tryFill(r: Rng, templates: readonly string[], vars: Vars): string | nul
   return null;
 }
 
-/** 흥미도·강도 순. 같은 섹션은 두 개까지. */
-function rank(a: Analysis, r: Rng, max: number, T: RoastTexts): Pattern[] {
+/** 흥미도·강도 순. 같은 섹션은 perSection개까지. */
+function rank(a: Analysis, r: Rng, max: number, T: RoastTexts, perSection = 2): Pattern[] {
   const scored = a.patterns
     .filter((p) => T.lines[p.id] && LINE_SECTION[p.id])
     .map((p) => ({ p, s: p.strength * p.interest + r.next() * 0.12 }))
@@ -59,7 +59,7 @@ function rank(a: Analysis, r: Rng, max: number, T: RoastTexts): Pattern[] {
   const out: Pattern[] = [];
   for (const { p } of scored) {
     const sec = LINE_SECTION[p.id];
-    if ((per.get(sec) ?? 0) >= 2) continue;
+    if ((per.get(sec) ?? 0) >= perSection) continue;
     per.set(sec, (per.get(sec) ?? 0) + 1);
     out.push(p);
     if (out.length >= max) break;
@@ -67,10 +67,11 @@ function rank(a: Analysis, r: Rng, max: number, T: RoastTexts): Pattern[] {
   return out;
 }
 
-const photosOf = (a: Analysis, r: Rng, p: Pattern, max: number) =>
-  r.shuffle(p.garmentIds.filter((id) => a.items.find((i) => i.id === id)?.hasPhoto)).slice(0, max);
+/** 패턴에 해당하는 옷 사진 전부(말한 벌 수와 사진 수가 같게). 너무 많으면 화면이 가로로 넘겨 본다. */
+const MAX_PHOTOS = 40;
+const photosOf = (a: Analysis, p: Pattern) => p.garmentIds.filter((id) => a.items.find((i) => i.id === id)?.hasPhoto).slice(0, MAX_PHOTOS);
 
-const NO_PHOTO = new Set(["subcategory_spend", "count_small", "count_many", "count_huge", "avg_price", "trait_hype", "trait_trendy", "trait_timeless", "trait_functional", "trait_niche", "trait_mainstream", "trait_formal", "trait_casual", "trait_heritage", "trait_pricey", "country_bias", "season_bias"]);
+const NO_PHOTO = new Set(["subcategory_spend", "count_small", "count_many", "count_huge", "avg_price", "trait_hype", "trait_trendy", "trait_timeless", "trait_functional", "trait_niche", "trait_mainstream", "trait_formal", "trait_casual", "trait_heritage", "trait_pricey", "country_bias", "season_bias", "musinsa_kr"]);
 
 export interface Plan {
   script: RoastScript;
@@ -82,7 +83,7 @@ export interface Plan {
 export function buildScript(a: Analysis, seed: number, name: string | null, T: RoastTexts = DEFAULT_TEXTS): Plan {
   const r = rng(seed);
   const C = T.common;
-  const convo = rank(a, r, 6, T);
+  const convo = rank(a, r, 10, T, 3);
   const asked = pickQuestions(a, r, fill, T);
   const steps: RoastStep[] = [];
   const say = (text: string, photos?: string[]) => steps.push(photos?.length ? { t: "say", text, photos } : { t: "say", text });
@@ -99,6 +100,13 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
   const ask = (i: number) => {
     if (placed.has(i)) return;
     placed.add(i);
+    // 같은 섹션 안에서 먼저 보여 준 사진이 질문 사진과 겹치면 질문에서만 보여 준다(같은 사진이 두 번 나오지 않게).
+    const photos = new Set(asked[i].photos);
+    for (let k = steps.length - 1; photos.size && k >= 0; k--) {
+      const s = steps[k];
+      if (s.t === "status") break;
+      if (s.t === "say" && s.photos?.some((id) => photos.has(id))) delete s.photos;
+    }
     steps.push({ t: "think" });
     steps.push({ t: "ask", q: i });
   };
@@ -121,7 +129,7 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
         nameUsed = true;
       }
       if (r.next() < 0.4) steps.push({ t: "say", text: r.pick(C.THINKING) });
-      say(text, NO_PHOTO.has(p.id) ? undefined : photosOf(a, r, p, 3));
+      say(text, NO_PHOTO.has(p.id) ? undefined : photosOf(a, p));
       for (const { i } of questionFor(p)) ask(i);
     }
     for (const { i } of secQuestions) ask(i);
@@ -133,7 +141,15 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
   steps.push({ t: "think" });
   say(r.pick(C.WRAP_UP));
 
-  const questions: RoastQuestion[] = asked.map((q) => ({ id: q.id, lead: q.lead, text: q.text, options: q.options, reactions: q.reactions, photos: q.photos }));
+  const questions: RoastQuestion[] = asked.map((q) => ({
+    id: q.id,
+    lead: q.lead,
+    text: q.text,
+    options: q.options,
+    reactions: q.reactions,
+    photos: q.photos,
+    ...(q.answer != null ? { answer: q.answer } : {}),
+  }));
   return { script: { seed, steps, questions }, asked, convo };
 }
 
@@ -145,14 +161,21 @@ export interface Composed {
 }
 
 /**
- * 템플릿 결과 글. 대화에서 받은 답은 되풀이하지 않고(사용자 요청), 가장 뚜렷한 패턴 3개까지만 짧게 쓴다.
- * answers는 지금은 쓰지 않지만 AI 입력과 결과 저장에 함께 넘긴다.
+ * 템플릿 결과 글. 뚜렷한 패턴 5개까지 문단으로 쓰고, 대화에서 받은 답은 숫자를 되풀이하지 않고
+ * 답을 골랐다는 사실을 두고 한 번 더 비꼬는 문단(roast)으로 쓴다.
  */
-export function composeResult(a: Analysis, name: string | null, seed: number, T: RoastTexts = DEFAULT_TEXTS): Composed {
+export function composeResult(
+  a: Analysis,
+  name: string | null,
+  seed: number,
+  T: RoastTexts = DEFAULT_TEXTS,
+  asked: AskedQuestion[] = [],
+  answers: Record<string, string> = {},
+): Composed {
   // 대화와 다른 순서로 뽑히지 않게 결과용 난수는 따로 만든다.
   const r = rng(seed ^ 0x5bd1e995);
   const C = T.common;
-  const used = rank(a, r, 3, T);
+  const used = rank(a, r, 5, T);
 
   let headline: string;
   if (used.length >= 2) {
@@ -162,7 +185,7 @@ export function composeResult(a: Analysis, name: string | null, seed: number, T:
     const second = tryFill(r, [h2[1]], varsOf(used[1]));
     headline = first && second ? `${first} ${second}` : (second ?? first ?? r.pick(C.PLAIN_HEADLINE));
   } else if (used.length === 1) {
-    const pre = r.pick(C.HEAD_SINGLE_PREFIX);
+    const pre = r.pick(C.HEAD_SINGLE_PREFIX) ?? "";
     headline = (pre && !pre.endsWith(" ") ? `${pre} ` : pre) + (tryFill(r, [r.pick(T.lines[used[0].id].head)[1]], varsOf(used[0])) ?? r.pick(C.PLAIN_HEADLINE));
   } else headline = r.pick(C.PLAIN_HEADLINE);
 
@@ -173,10 +196,21 @@ export function composeResult(a: Analysis, name: string | null, seed: number, T:
     // 첫 문단은 "그리고"로 시작하지 않게 한다(튀는 옷 문단).
     if (idx === 0) text = text.replace(/^그리고 /, "");
     if (idx === 0 && name) text = `${name}님, ${text}`;
-    paragraphs.push({ text, photos: NO_PHOTO.has(p.id) ? [] : photosOf(a, r, p, 2) });
+    paragraphs.push({ text, photos: NO_PHOTO.has(p.id) ? [] : photosOf(a, p) });
   });
   if (!paragraphs.length) paragraphs.push({ text: fill(r.pick(C.PLAIN_PARA), { n: a.clothes.length }), photos: [] });
   if (used.length < 2) paragraphs.push({ text: r.pick(C.FEW_PATTERNS), photos: [] });
+
+  // 답을 두고 한 번 더(질문 순서대로, 네 개까지)
+  let roasts = 0;
+  for (const q of asked) {
+    if (roasts >= 4) break;
+    const picked = answers[q.id];
+    const text = picked ? q.roast[picked] : undefined;
+    if (!text) continue;
+    paragraphs.push({ text, photos: [] });
+    roasts++;
+  }
 
   const closing = r.shuffle(C.CLOSING).slice(0, 2 + Math.floor(r.next() * 2));
   return { headline, paragraphs, closing, used };

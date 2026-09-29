@@ -50,6 +50,8 @@ export interface Item {
   hasPhoto: boolean;
   /** 모자·신발 */
   accessory: boolean;
+  /** 구매 링크의 쇼핑몰(예: 무신사). 링크가 없으면 null */
+  shop: string | null;
 }
 
 export type Stat = string | number;
@@ -73,9 +75,8 @@ export interface Analysis {
   oddOne: { item: Item; traits: string[] } | null;
   /** 구매금액 상위 브랜드(목록에 있는 브랜드만) */
   topSpendBrands: { label: string; amount: number; count: number; ids: string[] }[];
-  /** 가진 브랜드 중 퀴즈 대상 그룹(명품·디자이너·일본 데님) */
-  quizBrands: BrandInfo[];
-  quizGroups: BrandGroup[];
+  /** 가진 브랜드(브랜드 자료 이름). 퀴즈는 이 중 문제가 있는 브랜드로 낸다. */
+  brandNames: string[];
   now: Date;
 }
 
@@ -130,9 +131,53 @@ export function prepare(garments: Garment[], body: BodyProfile | null, usdRate: 
         date: g.purchasedOn,
         hasPhoto: Boolean(g.thumbUrl || g.imageUrl),
         accessory,
+        shop: shopOf(g.productUrl),
       };
     });
 }
+
+/** 쇼핑몰 주소 → 이름. 목록에 없으면 주소의 이름 부분(예: example.com → example) */
+const SHOPS: [RegExp, string][] = [
+  [/(^|\.)musinsa\.com$/, "무신사"],
+  [/(^|\.)29cm\.co\.kr$/, "29CM"],
+  [/(^|\.)wconcept\.co\.kr$/, "W컨셉"],
+  [/(^|\.)ssfshop\.com$/, "SSF샵"],
+  [/(^|\.)kream\.co\.kr$/, "KREAM"],
+  [/(^|\.)ably\.co\.kr$|(^|\.)a-bly\.com$/, "에이블리"],
+  [/(^|\.)zigzag\.kr$/, "지그재그"],
+  [/(^|\.)coupang\.com$/, "쿠팡"],
+  [/(^|\.)hfashionmall\.com$/, "더한섬닷컴"],
+  [/(^|\.)lotteon\.com$/, "롯데온"],
+  [/(^|\.)ssg\.com$/, "SSG"],
+  [/(^|\.)ssense\.com$/, "SSENSE"],
+  [/(^|\.)mrporter\.com$/, "MR PORTER"],
+  [/(^|\.)farfetch\.com$/, "파페치"],
+  [/(^|\.)matchesfashion\.com$|(^|\.)matches\.com$/, "매치스"],
+  [/(^|\.)endclothing\.com$/, "END."],
+  [/(^|\.)uniqlo\.com$/, "유니클로"],
+  [/(^|\.)zara\.com$/, "자라"],
+  [/(^|\.)cos\.com$/, "COS"],
+  [/(^|\.)nike\.com$/, "나이키"],
+];
+
+export function shopOf(url: string | null | undefined): string | null {
+  if (!url) return null;
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase().replace(/^www\.|^m\./, "");
+  } catch {
+    return null;
+  }
+  const hit = SHOPS.find(([re]) => re.test(host));
+  if (hit) return hit[1];
+  const parts = host.split(".");
+  // example.co.kr → example, shop.example.com → example
+  const main = parts.length >= 3 && /^(co|or|ac|go)$/.test(parts[parts.length - 2]) ? parts[parts.length - 3] : parts[parts.length - 2];
+  return main || null;
+}
+
+/** 같은 옷인지 볼 때 제품명(띄어쓰기·기호·대소문자 무시) */
+const sameName = (s: string) => s.toLowerCase().replace(/[^0-9a-z가-힣]/g, "");
 
 /** 한 브랜드(자료 기준)의 옷들에서 가장 많이 쓴 표기를 이름으로 쓴다. */
 const labelOf = (list: Item[]) => top(countBy(list, (i) => i.brandLabel || i.brand?.name))?.[0] ?? list[0].brand!.name;
@@ -150,8 +195,6 @@ export const GROUP_THRESHOLD: Record<BrandGroup, number> = {
   outdoor: 0.25,
   mass: 0.35,
 };
-
-const QUIZ_GROUPS: BrandGroup[] = ["luxury", "designer", "jp_denim"];
 
 const dayKey = (d: Date) => {
   const k = new Date(d.getTime() + 9 * 3_600_000); // 한국 날짜
@@ -291,7 +334,26 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     }
   }
 
+  // 구매처 -------------------------------------------------------------------
+  const linked = items.filter((i) => i.shop);
+  if (linked.length >= 5) {
+    const musinsa = linked.filter((i) => i.shop === "무신사");
+    const krPopular = known.filter((i) => i.brand!.country === "한국" && i.brand!.pop >= 4);
+    const musinsaKr = musinsa.length >= 4 && musinsa.length / linked.length >= 0.5 && krPopular.length >= 4 && krPopular.length / Math.max(K, 1) >= 0.4;
+    if (musinsaKr)
+      add("musinsa_kr", ramp(musinsa.length / linked.length, 0.5, 0.9), 0.9, { n: musinsa.length, pct: pct(musinsa.length, linked.length), krN: krPopular.length, krPct: pct(krPopular.length, K) }, [...new Set([...musinsa, ...krPopular])]);
+    const [shop, shopList] = top(countBy(linked, (i) => i.shop)) ?? [null, []];
+    if (shop && shopList.length >= 4 && shopList.length / linked.length >= 0.6 && !(musinsaKr && shop === "무신사"))
+      add("shop_focus", ramp(shopList.length / linked.length, 0.6, 0.95), 0.7, { shop, n: shopList.length, pct: pct(shopList.length, linked.length) }, shopList);
+  }
+
   // 반복 ---------------------------------------------------------------------
+  // 이름·색까지 같은 옷(같은 옷을 여러 벌)
+  const twins = countBy(items.filter((i) => i.color && sameName(i.g.productName).length >= 2), (i) => `${i.cat}|${sameName(i.g.productName)}|${i.color}`);
+  const [twinKey, twinList] = top(twins) ?? [null, []];
+  if (twinKey && twinList.length >= 3)
+    add("identical_items", ramp(twinList.length, 3, 6), 0.95, { name: twinList[0].g.productName, color: twinList[0].color!, n: twinList.length }, twinList);
+
   const fitted = clothes.filter((i) => i.fit && i.fit.level !== "too_small" && i.fit.level !== "too_big");
   const combos = countBy(clothes.filter((i) => i.sub && i.color), (i) => `${i.sub}|${i.color}|${i.fit?.level ?? "-"}`);
   const [comboKey, comboList] = top(combos) ?? [null, []];
@@ -347,13 +409,14 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     if (r30.length >= 3) add("recent_30", ramp(r30.length, 3, 8), 0.85, { n: r30.length }, r30);
     else if (r90.length >= 5) add("recent_90", ramp(r90.length, 5, 12), 0.7, { n: r90.length }, r90);
 
-    const byMonth = countBy(withDate, (i) => i.date!.slice(0, 7));
-    const months = [...byMonth.keys()].sort();
-    const span = monthIndex(months[months.length - 1]) - monthIndex(months[0]) + 1;
+    // 연도와 상관없이 같은 달(예: 9월)에 몰아 산 옷. 기록한 기간이 1년이 안 되면 그 기간의 달 수로 평균을 낸다.
+    const byMonth = countBy(withDate, (i) => String(Number(i.date!.slice(5, 7))));
+    const months = [...new Set(withDate.map((i) => i.date!.slice(0, 7)))].sort();
+    const span = Math.min(12, monthIndex(months[months.length - 1]) - monthIndex(months[0]) + 1);
     const avg = withDate.length / span;
-    const [ym, ymList] = top(byMonth) ?? [null, []];
-    if (ym && ymList.length >= 4 && ymList.length >= avg * 2)
-      add("month_binge", ramp(ymList.length / avg, 2, 6), 0.85, { year: Number(ym.slice(0, 4)), month: Number(ym.slice(5, 7)), n: ymList.length }, ymList);
+    const [m, mList] = top(byMonth) ?? [null, []];
+    if (m && mList.length >= 4 && mList.length >= avg * 2)
+      add("month_binge", ramp(mList.length / avg, 2, 6), 0.85, { month: Number(m), n: mList.length }, mList);
   }
 
   // 금액 ---------------------------------------------------------------------
@@ -405,10 +468,9 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
   const oddOne = findOddOne(clothes, colored.length ? colored.filter((i) => i.achromatic).length / colored.length : 0);
   if (oddOne) add("odd_one", ramp(oddOne.traits.length, 2, 4), 0.9, { brand: oddOne.item.brandLabel, name: oddOne.item.g.productName, traits: oddOne.traits.join(",") }, [oddOne.item]);
 
-  const quizBrands = [...new Set(known.filter((i) => i.groups.some((g) => QUIZ_GROUPS.includes(g))).map((i) => i.brand!))];
-  const quizGroups = QUIZ_GROUPS.filter((g) => known.some((i) => i.groups.includes(g)));
+  const brandNames = [...new Set(known.map((i) => i.brand!.name))];
 
-  return { items, clothes, patterns: P, oddOne, topSpendBrands, quizBrands, quizGroups, now };
+  return { items, clothes, patterns: P, oddOne, topSpendBrands, brandNames, now };
 }
 
 /** 핏을 아는 옷이 5벌 이상일 때 가장 많은 핏 */

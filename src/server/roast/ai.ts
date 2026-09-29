@@ -19,10 +19,10 @@ import { fill, MissingVar, type Vars } from "./text";
 export const ROAST_AI_DAILY_LIMIT = 3;
 export const ROAST_PROMPT_VERSION = "roast-v1";
 
-const SYSTEM = `당신은 옷장 관리 사이트의 "옷장분석팀 AI"입니다. 사용자의 옷장 분석 결과를 받아, 시니컬하고 건조한 말투로 짧은 글을 씁니다.
+const SYSTEM = `당신은 옷장 관리 사이트의 "옷장분석팀 AI"입니다. 사용자의 옷장 분석 결과와 대화 중 답변을 받아, 시니컬하고 공격적인 로스팅(roasting) 글을 씁니다. "How Bad Is Your Spotify"처럼 취향을 신랄하게 놀리는 글입니다.
 
 말투:
-- 재치 있고 약간 무심한, 관찰력이 날카로운 느낌. 들뜬 인터넷 밈 말투, 이모지, 느낌표 남발은 쓰지 않습니다.
+- 재치 있고 약간 무심한, 관찰력이 날카롭고 거침없는 느낌. 들뜬 인터넷 밈 말투, 이모지, 느낌표 남발은 쓰지 않습니다.
 - 좋은 예: "이건 취향이라기보다 운영 방침에 가까워 보입니다." "브랜드는 달라도 결국 도착지는 비슷하네요." "상당히 일관적입니다. 조금 무서울 정도로."
 - 한국어 존댓말(~습니다, ~네요).
 
@@ -35,14 +35,15 @@ const SYSTEM = `당신은 옷장 관리 사이트의 "옷장분석팀 AI"입니�
 
 쓸 것:
 - headline: 여러 특징을 한 문장으로 묶은 대표 헤드라인(80자 이하). "~옷장입니다."로 끝나면 좋습니다.
-- paragraphs: 본문 2~3문단. 문단마다 2문장 안팎으로 짧게. 중요한 패턴부터. 조금 더 시니컬하게, 하지만 선은 지키세요.
-- 사용자의 답변은 되풀이하지 마세요. 질문과 답을 다시 요약하는 문장은 쓰지 않습니다. 답은 말투의 온도를 정하는 데만 참고하세요.
+- paragraphs: 본문 4~6문단. 문단마다 3~4문장. 중요한 패턴부터. 신랄하고 공격적으로, 하지만 선은 지키세요.
+- 사용자의 답변도 글에 넣으세요. 다만 "~가 ~벌이네요" 같은 숫자 요약이 아니라, 그 답을 고른 사람의 심리와 모순을 문장으로 길게 비꼬세요. 예: 옷장이 랭킹과 똑같은데 "랭킹은 안 본다"고 답했다면 그 모순을 파고드세요.
+- 쏠림을 말할 때는 무엇으로 쏠렸는지 반드시 이름을 적으세요. "스타일이 쏠려 있다"(X) → "아메카지 스타일로 쏠려 있다"(O). 색·스타일·세부분류·쇼핑몰 이름은 입력에 있는 그대로 씁니다.
 - closing: 건조한 마무리 2~3줄(각 한 문장).
 - {name}이 입력에 있으면 글 전체에서 한두 번만 "{name}님"으로 부르세요.`;
 
 const schema = z.object({
   headline: z.string().min(5).max(200),
-  paragraphs: z.array(z.string().min(10).max(500)).min(1).max(4),
+  paragraphs: z.array(z.string().min(10).max(700)).min(1).max(7),
   closing: z.array(z.string().min(2).max(200)).min(1).max(3),
 });
 
@@ -52,7 +53,7 @@ const jsonSchema = {
   required: ["headline", "paragraphs", "closing"],
   properties: {
     headline: { type: "string", description: "대표 헤드라인 한 문장" },
-    paragraphs: { type: "array", items: { type: "string" }, description: "본문 2~3문단" },
+    paragraphs: { type: "array", items: { type: "string" }, description: "본문 4~6문단" },
     closing: { type: "array", items: { type: "string" }, description: "마무리 2~3줄" },
   },
 };
@@ -84,10 +85,10 @@ const DESCRIBE: Record<string, string> = {
   trait_casual: "아주 캐주얼한 브랜드만 있음",
   trait_heritage: "역사가 긴 헤리티지 브랜드가 많음",
   trait_pricey: "고가 브랜드가 대부분",
-  tag_bias: "브랜드 스타일이 한쪽({tag})에 쏠림({pct}%)",
+  tag_bias: "브랜드 스타일이 {tag} 스타일로 쏠림({pct}%)",
   same_color: "브랜드는 {brands}개로 다양한데 색은 {pct}%가 무채색",
   same_fit: "브랜드는 {brands}개인데 핏은 {pct}%가 {fit}",
-  same_tag: "브랜드는 {brands}개인데 스타일은 {pct}%가 {tag}",
+  same_tag: "브랜드는 {brands}개인데 스타일은 {pct}%가 {tag} 스타일",
   old_brands: "설립 50년 넘은 브랜드가 대부분({pct}%). 가장 오래된 {oldest}는 {year}년 설립",
   combo_repeat: "같은 세부분류·색·핏 조합 반복: {fitPhrase}{color} {sub} {n}벌",
   family_repeat: "제품명에 '{familyName}'이 들어간 옷 {n}벌",
@@ -96,7 +97,10 @@ const DESCRIBE: Record<string, string> = {
   season_bias: "{most} 옷 {mostN}벌, {least} 옷 {leastN}벌로 계절 쏠림",
   recent_30: "최근 30일에 {n}벌 구매",
   recent_90: "최근 90일에 {n}벌 구매",
-  month_binge: "{year}년 {month}월에 {n}벌 몰아 삼",
+  month_binge: "해마다 {month}월에 옷을 몰아 삼(연도 상관없이 {month}월 구매 {n}벌)",
+  musinsa_kr: "구매 링크의 {pct}%가 무신사이고, 누구나 아는 국내 대중 브랜드가 브랜드 아는 옷의 {krPct}%",
+  shop_focus: "구매 링크의 {pct}%가 한 쇼핑몰({shop})",
+  identical_items: "이름·색까지 똑같은 옷({color} {name})이 {n}벌",
   avg_price: "한 벌 평균 구매가 {avgWon}(가격 적은 옷 {n}벌)",
   top_item: "가장 비싼 옷({brand} {name})이 {priceWon}, 가운데 가격의 {ratio}배",
   category_spend: "{catName}의 금액 비중({spendPct}%)이 벌 수 비중({countPct}%)보다 훨씬 큼",
@@ -144,7 +148,7 @@ export function buildAiInput(a: Analysis, plan: Plan, composed: Composed, answer
     return fakeBrand.get(real)!;
   };
 
-  const patterns = [...composed.used, ...plan.convo.filter((p) => !composed.used.includes(p))].slice(0, 7);
+  const patterns = [...composed.used, ...plan.convo.filter((p) => !composed.used.includes(p))].slice(0, 10);
   patterns.forEach((p: Pattern, i) => {
     const tag = `p${i + 1}`;
     const vars = varsOf(p);
@@ -185,12 +189,18 @@ export function buildAiInput(a: Analysis, plan: Plan, composed: Composed, answer
     })
     .filter(Boolean);
 
+  // 구매 링크로 본 쇼핑몰(많이 산 순서, 세 곳까지)
+  const shopCount = new Map<string, number>();
+  for (const i of a.items) if (i.shop) shopCount.set(i.shop, (shopCount.get(i.shop) ?? 0) + 1);
+  const shops = [...shopCount.entries()].sort((x, y) => y[1] - x[1]).slice(0, 3).map(([s]) => s);
+
   if (name) values.name = name;
   const text = [
     "<data>",
     `옷(모자·신발 제외): {total}벌`,
     "패턴(중요한 순):",
     ...lines,
+    shops.length ? `구매 링크로 본 주로 산 쇼핑몰(많은 순): ${shops.join(", ")}` : "",
     answerLines.length ? "사용자의 답변:" : "",
     ...answerLines,
     name ? "사용자 호칭: {name}" : "사용자 호칭: 없음({name} 쓰지 말 것)",
@@ -245,7 +255,7 @@ export async function writeWithAi(provider: AiProvider, input: AiInput, pickPhot
       toolName: "roast_result",
       toolDescription: "옷장 분석 결과 글(헤드라인·문단·마무리)",
       jsonSchema,
-      maxOutputTokens: 2000,
+      maxOutputTokens: 4000,
       timeoutMs: 25_000,
     });
   } catch (e) {

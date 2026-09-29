@@ -59,6 +59,9 @@ export function RoastView({ initialResult, copy = ROAST_COPY }: { initialResult:
   const [mode, setMode] = useState<"result" | "intro" | "name" | "chat">(initialResult ? "result" : "intro");
   // 이름은 이번 결과에만 쓰고 다음 분석 때 미리 채우지 않는다.
   const [name, setName] = useState<string | null>(null);
+  // 방금 끝난 분석의 결과는 대화 아래에 이어 붙인다(다시 들어오면 결과만 보인다).
+  const [fresh, setFresh] = useState<RoastResult | null>(null);
+  const [run, setRun] = useState(0);
 
   // 미리보기 모드: 결과는 브라우저 저장소에 있다.
   useEffect(() => {
@@ -98,29 +101,61 @@ export function RoastView({ initialResult, copy = ROAST_COPY }: { initialResult:
             onRetry={() => setMode("name")}
           />
         ) : mode === "chat" ? (
-          <Chat
-            name={name}
-            preview={signedIn ? undefined : garments}
-            photoOf={photoOf}
-            onDone={(r) => {
-              if (!signedIn) writePreview(r);
-              else notifyUsageChanged();
-              setResult(r);
-              setMode("result");
-            }}
-          />
+          <>
+            <Chat
+              key={run}
+              name={name}
+              preview={signedIn ? undefined : garments}
+              photoOf={photoOf}
+              onDone={(r) => {
+                if (!signedIn) writePreview(r);
+                else notifyUsageChanged();
+                setResult(r);
+                setFresh(r);
+              }}
+            />
+            {fresh && (
+              <FreshResult>
+                <ResultView
+                  result={fresh}
+                  changed={false}
+                  photoOf={photoOf}
+                  onRetry={() => {
+                    setFresh(null);
+                    setMode("name");
+                  }}
+                />
+              </FreshResult>
+            )}
+          </>
         ) : (
           <Intro
             clothes={clothes}
             skipIntro={mode === "name"}
             onStart={(n) => {
               setName(n);
+              setFresh(null);
+              setRun((x) => x + 1);
               setMode("chat");
             }}
           />
         )}
       </main>
     </CopyContext.Provider>
+  );
+}
+
+/** 대화 아래에 붙는 결과: 구분선을 두고, 나타나면 그 자리로 내려간다. */
+function FreshResult({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" });
+  }, []);
+  return (
+    <div ref={ref} className="roast-fresh">
+      <hr className="roast-divider" aria-hidden />
+      {children}
+    </div>
   );
 }
 
@@ -164,8 +199,8 @@ function Photos({ ids, photoOf }: { ids?: string[]; photoOf: (id: string) => str
   const urls = (ids ?? []).map(photoOf).filter((u): u is string => Boolean(u));
   const drag = useRef<{ x: number; left: number } | null>(null);
   if (!urls.length) return null;
-  // 4장 이상이면 한 줄로 늘어놓고 옆으로 넘겨 본다(터치는 스크롤, 마우스는 끌기).
-  const strip = urls.length > 3;
+  // 3장 이상이면 한 줄로 늘어놓고 옆으로 넘겨 본다(터치는 스크롤, 마우스는 끌기).
+  const strip = urls.length > 2;
   return (
     <div
       className={strip ? "roast-photos roast-photos-strip mt-2" : "roast-photos mt-2"}
@@ -198,6 +233,7 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
   return (
     <div className="roast-mono roast-log mt-8" aria-live="polite">
       <p className="roast-ai">{skipIntro ? copy.INTRO : <Typed text={copy.INTRO} onDone={() => setTyped(true)} />}</p>
+      {!skipIntro && copy.CREDIT && <p className="roast-credit">{copy.CREDIT}</p>}
       {typed && !enough && <p className="roast-ai">{tooFew(copy, clothes)}</p>}
       {typed && enough && !asking && (
         <>
@@ -299,9 +335,10 @@ function Chat({
     [push],
   );
 
-  // 새 메시지·타이핑이 늘어날 때마다 맨 아래로
+  // 새 메시지·타이핑이 늘어날 때마다 맨 아래로(결과가 붙은 뒤에는 멈춘다)
+  const finished = useRef(false);
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end", behavior: reducedMotion() ? "auto" : "smooth" });
+    if (!finished.current) endRef.current?.scrollIntoView({ block: "end", behavior: reducedMotion() ? "auto" : "smooth" });
   });
 
   useEffect(() => {
@@ -325,6 +362,7 @@ function Chat({
         return;
       }
       await sleep(400);
+      finished.current = true;
       onDone(done.result);
     })();
 
@@ -390,6 +428,10 @@ function Chat({
                 className="roast-choice"
                 disabled={m.picked !== null}
                 data-picked={m.picked === o.id}
+                // 퀴즈를 틀리면 정답 선택지를 따로 표시한다.
+                data-wrong={m.q.answer != null && m.picked === o.id && o.id !== m.q.answer ? "true" : undefined}
+                data-answer={m.picked !== null && m.q.answer != null && m.picked !== m.q.answer && o.id === m.q.answer ? "true" : undefined}
+                aria-label={m.picked !== null && m.q.answer != null && o.id === m.q.answer && m.picked !== o.id ? `${o.label} (정답)` : undefined}
                 onClick={() => {
                   setMsgs((list) => list.map((x) => (x.id === m.id ? { ...x, picked: o.id } : x)));
                   choiceWaiter.current?.(o.id);
