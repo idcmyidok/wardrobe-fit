@@ -72,6 +72,21 @@ export const BRAND_GROUPS: BrandGroup[] = [
   "mass",
 ];
 
+/** 브랜드 그룹을 문장에 쓸 때 */
+export const GROUP_WORD: Record<BrandGroup, string> = {
+  luxury: "명품",
+  designer: "디자이너 브랜드",
+  contemporary: "컨템포러리 브랜드",
+  premium_casual: "프리미엄 캐주얼",
+  specialist: "한 제품 전문 브랜드",
+  jp_denim: "일본 데님·워크웨어",
+  heritage: "헤리티지 브랜드",
+  street: "스트릿 브랜드",
+  sports: "스포츠 브랜드",
+  outdoor: "아웃도어 브랜드",
+  mass: "SPA·대중 브랜드",
+};
+
 /** 비교용 이름: NFKC → 소문자 → 한글·영문·숫자만 */
 export function normalizeBrand(s: string): string {
   return s

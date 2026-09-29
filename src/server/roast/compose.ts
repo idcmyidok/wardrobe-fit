@@ -118,7 +118,7 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
     const secQuestions = asked.map((q, i) => ({ q, i })).filter(({ q, i }) => !placed.has(i) && QUESTION_SECTION[q.id] === sec);
     if (!inSec.length && !secQuestions.length) continue;
     // 섹션 사이에 가끔 혼잣말을 끼운다.
-    if (sections++ > 0 && r.next() < 0.3) say(r.pick(C.MID_REMARKS));
+    if (sections++ > 0 && r.next() < 0.3) steps.push({ t: "say", text: r.pick(C.MID_REMARKS), gap: true });
     steps.push({ t: "status", text: r.pick(C.SECTION_STATUS[sec]) });
     for (const p of inSec) {
       let text = tryFill(r, T.lines[p.id].say, varsOf(p));

@@ -54,7 +54,7 @@ const DAY = 86_400_000;
 
 export const QUESTIONS: QuestionDef[] = [
   { id: "odd_photo", bucket: "odd", pattern: "odd_one", base: 0.9, options: ["mine", "gift", "dunno"],
-    when: (a) => (a.oddOne?.item.hasPhoto ? { brand: a.oddOne.item.brandLabel || "이 옷", name: a.oddOne.item.g.productName } : null),
+    when: (a) => (a.oddOne?.item.hasPhoto ? { brand: a.oddOne.item.brandLabel || "이 옷", name: a.oddOne.item.g.productName, reason: a.oddOne.reason || "다른 옷들과 거의 안 겹치는 점" } : null),
     photos: (a) => (a.oddOne ? [a.oddOne.item.id] : []) },
   { id: "justify_combo", bucket: "justify", pattern: "combo_repeat", base: 0.85, options: ["different", "similar", "dunno"],
     when: (a) => stats(pat(a, "combo_repeat")),
@@ -203,7 +203,7 @@ export const QUESTIONS: QuestionDef[] = [
 
 export const Q_TEXT: Record<string, QuestionText> = {
   odd_photo: {
-    lead: ["잠깐만요."],
+    lead: ["잠깐만요.", "이 옷을 고른 이유는 {reason}입니다. 옷장 전체에서 열 벌에 한 벌도 안 되는 것들인데, 이 옷 하나에 전부 몰려 있어요."],
     text: "이건 정말 본인 옷 맞나요?",
     options: { mine: "내 옷 맞음", gift: "선물 받은 거", dunno: "나도 왜 샀는지 모르겠음" },
     react: {

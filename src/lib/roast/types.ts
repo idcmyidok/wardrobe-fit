@@ -24,7 +24,8 @@ export interface RoastQuestion {
 
 export type RoastStep =
   | { t: "status"; text: string }
-  | { t: "say"; text: string; photos?: string[] }
+  /** gap: 앞 이야기와 끊어서 보여 준다(섹션 사이 혼잣말) */
+  | { t: "say"; text: string; photos?: string[]; gap?: boolean }
   | { t: "think" }
   | { t: "ask"; q: number };
 

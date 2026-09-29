@@ -21,7 +21,7 @@ const PREVIEW_KEY = "wardrobe-fit:roast-result";
 const TYPE_MS = 26;
 
 type Msg =
-  | { id: number; kind: "ai"; text: string; photos?: string[] }
+  | { id: number; kind: "ai"; text: string; photos?: string[]; gap?: boolean }
   | { id: number; kind: "status"; text: string }
   | { id: number; kind: "dots" }
   | { id: number; kind: "choices"; q: RoastQuestion; picked: string | null };
@@ -318,11 +318,11 @@ function Chat({
   const remove = (id: number) => setMsgs((list) => list.filter((m) => m.id !== id));
 
   const say = useCallback(
-    (text: string, photos?: string[]) =>
+    (text: string, photos?: string[], gap?: boolean) =>
       new Promise<void>((resolve) => {
         const id = nextId.current;
         typedWaiters.current.set(id, resolve);
-        push({ kind: "ai", text, photos });
+        push(gap ? { kind: "ai", text, photos, gap } : { kind: "ai", text, photos });
       }),
     [push],
   );
@@ -374,7 +374,9 @@ function Chat({
           await sleep(500);
         } else if (step.t === "think") await think(700 + Math.random() * 700);
         else if (step.t === "say") {
-          await say(step.text, step.photos);
+          // 섹션 사이 혼잣말은 앞 이야기와 이어지는 말로 읽히지 않게 한 박자 쉬고 띄워서 보여 준다.
+          if (step.gap) await sleep(reducedMotion() ? 150 : 1400);
+          await say(step.text, step.photos, step.gap);
           await sleep(350 + Math.random() * 500);
         } else {
           const q = script.questions[step.q];
@@ -407,7 +409,7 @@ function Chat({
       {noAi && <p className="roast-status">{copy.NO_AI_LEFT}</p>}
       {msgs.map((m) =>
         m.kind === "ai" ? (
-          <div key={m.id} className="roast-ai">
+          <div key={m.id} className="roast-ai" data-gap={m.gap ? "true" : undefined}>
             <Typed text={m.text} onDone={() => onTyped(m.id)} />
             <Photos ids={m.photos} photoOf={photoOf} />
           </div>

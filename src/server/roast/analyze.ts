@@ -2,12 +2,12 @@ import "server-only";
 import { SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { findColorFamily } from "@/lib/constants/colors";
 import type { FitKind, FitLevel } from "@/lib/constants/body";
-import { FOUR_SEASONS, wearsInSeason } from "@/lib/constants/seasons";
+import { FOUR_SEASONS, SEASON_NAME, wearsInSeason } from "@/lib/constants/seasons";
 import { computeBodyFit, type BodyProfile } from "@/lib/fit/body-fit";
 import { priceInKrw } from "@/lib/format/price";
 import type { CategoryId, Garment, Season } from "@/lib/types/domain";
-import { brandGroups, brandLabels, findBrand, isTrendBrand, MUSINSA_POPULAR, type BrandGroup, type BrandInfo } from "./brands";
-import { FAMILY_IDS, productFamilies, type FamilyId } from "./keywords";
+import { brandGroups, brandLabels, findBrand, GROUP_WORD, isTrendBrand, MUSINSA_POPULAR, type BrandGroup, type BrandInfo } from "./brands";
+import { FAMILY_IDS, familyName, productFamilies, type FamilyId } from "./keywords";
 
 /**
  * AI 옷장 분석의 계산(계획서 5장). 화면 문구는 넣지 않고 패턴(id·강도·흥미도·근거 값·관련 옷)만 만든다.
@@ -72,7 +72,8 @@ export interface Analysis {
   clothes: Item[];
   patterns: Pattern[];
   /** 튀는 옷(있으면) */
-  oddOne: { item: Item; traits: string[] } | null;
+  /** reason: 고른 이유(드문 특성을 실제 값으로, 예: "레드 색, 셔츠라는 종류") */
+  oddOne: { item: Item; traits: string[]; reason: string } | null;
   /** 구매금액 상위 브랜드(목록에 있는 브랜드만) */
   topSpendBrands: { label: string; amount: number; count: number; ids: string[] }[];
   /** 가진 브랜드(브랜드 자료 이름). 퀴즈는 이 중 문제가 있는 브랜드로 낸다. */
@@ -484,6 +485,24 @@ function fitted0(clothes: Item[]) {
 }
 
 /** 옷장 안에서 같은 값인 옷이 12% 이하인 특성이 2개 이상이면 튀는 옷(계획서 5-4). */
+/** 튀는 옷을 고른 이유: 드문 특성을 실제 값으로 적는다. */
+function oddReason(i: Item, traits: string[], famCount: Map<FamilyId, number>, n: number): string {
+  const c = (w: string) => w.charCodeAt(w.length - 1) - 0xac00;
+  const rara = (w: string) => `${w}${c(w) >= 0 && c(w) < 11172 && c(w) % 28 ? "이라는" : "라는"}`;
+  const part: Record<string, () => string | null> = {
+    color: () => (i.color ? `${i.color} 색` : null),
+    sub: () => (i.subName ? `${rara(i.subName)} 종류` : null),
+    group: () => (i.groups[0] ? `${rara(GROUP_WORD[i.groups[0]])} 브랜드 결` : null),
+    fit: () => (i.fit ? `${FIT_WORD[i.fit.level]} 핏` : null),
+    season: () => (i.seasons.length ? `${i.seasons.map((x) => SEASON_NAME[x]).join("·")}에만 입는 계절` : null),
+    family: () => {
+      const f = i.families.find((x) => (famCount.get(x) ?? 0) / n <= 0.12);
+      return f ? `${familyName(f)} 디자인` : null;
+    },
+  };
+  return traits.map((t) => part[t]?.()).filter(Boolean).join(", ");
+}
+
 function findOddOne(clothes: Item[], achromaticShare: number): Analysis["oddOne"] {
   if (clothes.length < 8) return null;
   const n = clothes.length;
@@ -512,7 +531,7 @@ function findOddOne(clothes: Item[], achromaticShare: number): Analysis["oddOne"
     if (traits.length < 2) continue;
     const score = traits.length + (achromaticShare >= 0.6 && i.color && !i.achromatic ? 1 : 0) + (i.hasPhoto ? 0.1 : 0);
     if (score > bestScore) {
-      best = { item: i, traits };
+      best = { item: i, traits, reason: oddReason(i, traits, famCount, n) };
       bestScore = score;
     }
   }

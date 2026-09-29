@@ -22,6 +22,11 @@
   overflow-wrap: anywhere;
 }
 
+/* 섹션 사이 혼잣말: 앞 이야기와 떨어뜨린다 */
+.roast .roast-ai[data-gap="true"] {
+  margin-top: 28px;
+}
+
 .roast .roast-status {
   font-size: 13px;
   color: var(--n-600);
