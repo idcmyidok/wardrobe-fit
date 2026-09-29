@@ -4,7 +4,9 @@ import { analyze } from "./analyze";
 import { BRANDS, brandGroups, findBrand, isTrendBrand } from "./brands";
 import { buildScript, composeResult } from "./compose";
 import { productFamilies } from "./keywords";
-import { QUIZ } from "./quiz";
+import { QUESTIONS, Q_TEXT } from "./questions";
+import { QUIZ, QUIZ_TEXT } from "./quiz";
+import { applyTextEdits, checkText, flattenTexts } from "./texts";
 import { fill, josa, MissingVar } from "./text";
 
 describe("브랜드 이름 맞추기", () => {
@@ -42,11 +44,17 @@ describe("브랜드 그룹", () => {
       expect(isTrendBrand(b!), n).toBe(true);
     }
   });
-  it("퀴즈 브랜드는 모두 자료에 있다", () => {
-    const names = new Set(BRANDS.map((b) => b.name));
+  it("퀴즈 브랜드는 모두 자료에 있는 명품·디자이너·일본 데님이고, 문구와 정답 번호가 맞다", () => {
+    const byName = new Map(BRANDS.map((b) => [b.name, b]));
     for (const q of QUIZ) {
-      expect(names.has(q.brand), q.brand).toBe(true);
-      expect(q.options).toContain(q.answer);
+      const b = byName.get(q.brand);
+      expect(b, q.brand).toBeDefined();
+      expect(brandGroups(b!).some((x) => x === "luxury" || x === "designer" || x === "jp_denim"), q.brand).toBe(true);
+      const t = QUIZ_TEXT[q.id];
+      expect(t, q.id).toBeDefined();
+      expect(t.options).toHaveLength(4);
+      expect(new Set(t.options).size).toBe(4);
+      expect(t.options[q.answer], q.id).toBeDefined();
     }
   });
 });
@@ -121,9 +129,41 @@ describe("분석과 결과", () => {
     expect(p1.script).toEqual(p2.script);
     expect(p1.script.questions.length).toBeGreaterThan(0);
     expect(p1.script.questions.length).toBeLessThanOrEqual(3);
-    const answers = Object.fromEntries(p1.script.questions.map((q) => [q.id, q.options[0].id]));
-    const r = composeResult(a, p1, answers, "세현", 42);
+    const r = composeResult(a, "세현", 42);
     expect(r.headline).not.toMatch(/[{}]/);
     expect(r.paragraphs.map((x) => x.text).join(" ")).not.toMatch(/[{}]/);
+  });
+});
+
+describe("질문 문구", () => {
+  it("질문마다 문구가 있고, 선택지마다 반응이 있다", () => {
+    for (const q of QUESTIONS) {
+      const t = Q_TEXT[q.id];
+      expect(t, q.id).toBeDefined();
+      for (const id of q.options) {
+        expect(t.options[id], `${q.id}.${id}`).toBeTruthy();
+        if (q.id !== "max_budget") expect(t.react[id]?.length, `${q.id}.${id}`).toBeGreaterThan(0);
+      }
+    }
+  });
+});
+
+describe("관리자 문장 수정", () => {
+  it("모든 문장에 위치(key)가 있다", () => {
+    const keys = flattenTexts().map((e) => e.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys).toContain("lines.black_bias.say.0");
+    expect(keys).toContain("quiz.cdg-meaning.options.0");
+  });
+  it("그 문장에 없는 자리는 막는다", () => {
+    expect(checkText("lines.black_bias.say.0", "검정이 {n}벌, {pct}%")).toBeNull();
+    expect(checkText("lines.black_bias.say.0", "검정이 {amountWon}")).toMatch(/자리/);
+    expect(checkText("lines.nope.say.0", "x")).toMatch(/없는/);
+    expect(checkText("lines.black_bias.say.0", " ")).toMatch(/비워/);
+  });
+  it("고친 문장이 분석에 쓰인다", () => {
+    const T = applyTextEdits({ "common.THINKING.0": "헐 대박.", "lines.black_bias.say.0": "{bad}" });
+    expect(T.common.THINKING[0]).toBe("헐 대박.");
+    expect(T.lines.black_bias.say[0]).not.toBe("{bad}");
   });
 });

@@ -94,7 +94,7 @@ export function RoastView({ initialResult }: { initialResult: RoastResult | null
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-text pb-4">
         <div className="flex flex-col gap-1">
           <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700 uppercase">Wardrobe roast</span>
-          <h1 className="text-title">AI 옷장 분석</h1>
+          <h1 className="text-title">내 옷장 훈수</h1>
         </div>
         {signedIn && <UsageNote kind="roast" />}
       </div>
@@ -170,11 +170,26 @@ function Dots() {
 
 function Photos({ ids, photoOf }: { ids?: string[]; photoOf: (id: string) => string | null }) {
   const urls = (ids ?? []).map(photoOf).filter((u): u is string => Boolean(u));
+  const drag = useRef<{ x: number; left: number } | null>(null);
   if (!urls.length) return null;
+  // 4장 이상이면 한 줄로 늘어놓고 옆으로 넘겨 본다(터치는 스크롤, 마우스는 끌기).
+  const strip = urls.length > 3;
   return (
-    <div className="roast-photos mt-2">
+    <div
+      className={strip ? "roast-photos roast-photos-strip mt-2" : "roast-photos mt-2"}
+      onPointerDown={(e) => {
+        if (!strip || e.pointerType !== "mouse") return;
+        drag.current = { x: e.clientX, left: e.currentTarget.scrollLeft };
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        if (drag.current) e.currentTarget.scrollLeft = drag.current.left - (e.clientX - drag.current.x);
+      }}
+      onPointerUp={() => (drag.current = null)}
+      onPointerCancel={() => (drag.current = null)}
+    >
       {urls.map((u) => (
-        <img key={u} src={u} alt="" className="roast-photo" loading="lazy" />
+        <img key={u} src={u} alt="" className="roast-photo" loading="lazy" draggable={false} />
       ))}
     </div>
   );

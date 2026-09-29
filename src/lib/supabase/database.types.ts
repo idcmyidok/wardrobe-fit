@@ -512,6 +512,27 @@ export type Database = {
         }
         Relationships: []
       }
+      roast_text_edits: {
+        Row: {
+          body: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       roast_results: {
         Row: {
           ai_used: boolean

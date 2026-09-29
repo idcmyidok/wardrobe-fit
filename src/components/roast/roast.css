@@ -1,5 +1,5 @@
 /*
- * AI 옷장 분석(/roast) 전용 스타일. 모든 규칙을 .roast 안에만 걸어 다른 화면에 영향이 없게 한다.
+ * 내 옷장 훈수(/roast) 전용 스타일. 모든 규칙을 .roast 안에만 걸어 다른 화면에 영향이 없게 한다.
  * 글꼴은 D2Coding(이 경로의 layout에서만 불러옴), 없는 글자는 Pretendard.
  */
 .roast .roast-mono {
@@ -84,6 +84,19 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+.roast .roast-photos-strip {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  padding-bottom: 6px;
+  cursor: grab;
+  user-select: none;
+}
+.roast .roast-photos-strip .roast-photo {
+  flex: none;
+  scroll-snap-align: start;
 }
 .roast .roast-photo {
   width: 72px;

@@ -4,9 +4,10 @@ import { GARMENT_IMAGE_BUCKET } from "@/lib/images/upload-garment-image";
 import type { RoastGarmentRef, RoastResult } from "@/lib/roast/types";
 import type { Database } from "@/lib/supabase/database.types";
 import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
+import { applyTextEdits } from "./texts";
 
 /**
- * 가장 최근 AI 옷장 분석 결과(사용자당 1개). 없거나 표가 아직 없으면(마이그레이션 20 전) null.
+ * 가장 최근 내 옷장 훈수 결과(사용자당 1개). 없거나 표가 아직 없으면(마이그레이션 20 전) null.
  */
 export async function getLatestRoast(): Promise<RoastResult | null> {
   const supabase = await createSupabaseServerClient();
@@ -36,4 +37,20 @@ export async function signGarments(
     for (const item of data ?? []) if (item.path && item.signedUrl && !item.error) urls.set(item.path, item.signedUrl);
   }
   return Object.fromEntries(Object.entries(garments).map(([id, g]) => [id, { ...g, imageUrl: g.imagePath ? (urls.get(g.imagePath) ?? null) : null }]));
+}
+
+/** 관리자가 고친 문장(key → 문장). 표가 없거나(마이그레이션 20 전) 읽지 못하면 빈 값. */
+export async function getRoastTextEdits(supabase: SupabaseClient<Database> | null): Promise<Record<string, string>> {
+  if (!supabase) return {};
+  const { data, error } = await supabase.from("roast_text_edits").select("key, body");
+  if (error) {
+    console.error("[roast] text edits", error.code, error.message);
+    return {};
+  }
+  return Object.fromEntries(data.map((r) => [r.key, r.body]));
+}
+
+/** 분석에 쓸 문장(기본 문장 + 관리자가 고친 문장) */
+export async function getRoastTexts(supabase: SupabaseClient<Database> | null) {
+  return applyTextEdits(await getRoastTextEdits(supabase));
 }

@@ -185,6 +185,18 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
   if (sub && subList.length >= 4 && subList.length / N >= 0.2)
     add("subcategory_bias", ramp(subList.length / N, 0.2, 0.45), 0.7, { sub: subList[0].subName ?? "옷", n: subList.length, pct: pct(subList.length, N) }, subList);
 
+  // 모자·신발 -------------------------------------------------------------------
+  const shoes = items.filter((i) => i.cat === "shoes");
+  const hats = items.filter((i) => i.cat === "hat");
+  if (shoes.length >= 8) add("shoes_many", ramp(shoes.length, 8, 20), 0.7, { n: shoes.length }, shoes);
+  if (hats.length >= 5) add("hats_many", ramp(hats.length, 5, 12), 0.7, { n: hats.length }, hats);
+  const [, shoeSubList] = top(countBy(shoes, (i) => i.sub)) ?? [null, []];
+  if (shoes.length >= 5 && shoeSubList.length >= 4 && shoeSubList.length / shoes.length >= 0.6)
+    add("shoe_sub_bias", ramp(shoeSubList.length / shoes.length, 0.6, 1), 0.65, { sub: shoeSubList[0].subName ?? "신발", n: shoeSubList.length, total: shoes.length }, shoeSubList);
+  const [, hatSubList] = top(countBy(hats, (i) => i.sub)) ?? [null, []];
+  if (hats.length >= 4 && hatSubList.length >= 3 && hatSubList.length / hats.length >= 0.6)
+    add("hat_sub_bias", ramp(hatSubList.length / hats.length, 0.6, 1), 0.6, { sub: hatSubList[0].subName ?? "모자", n: hatSubList.length, total: hats.length }, hatSubList);
+
   // 컬러 ---------------------------------------------------------------------
   const colored = items.filter((i) => i.color);
   const C = colored.length;
@@ -271,11 +283,6 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
       else if (tag && tagShare >= 0.6) add("same_tag", ramp(tagShare, 0.6, 0.9), 0.8, { brands: brandCount, tag, pct: Math.round(tagShare * 100) }, tagList.map((x) => x.i));
     }
 
-    const logo = known.filter((i) => i.brand!.tags.includes("로고플레이"));
-    const quiet = known.filter((i) => i.brand!.tags.some((t) => t === "조용한 럭셔리" || t === "미니멀") && !i.brand!.tags.includes("로고플레이"));
-    if (logo.length >= 3 && quiet.length >= 3 && logo.length / K >= 0.15 && quiet.length / K >= 0.15)
-      add("contradiction_logo_quiet", 0.7, 0.9, { logo: logo.length, quiet: quiet.length, logoBrand: labelOf(logo), quietBrand: labelOf(quiet) }, [...logo, ...quiet]);
-
     const dated = known.filter((i) => i.brand!.founded != null);
     const old = dated.filter((i) => now.getFullYear() - i.brand!.founded! >= 50);
     if (dated.length >= 5 && old.length / dated.length >= 0.6) {
@@ -298,7 +305,7 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     }, comboList);
   }
 
-  const famCounts = FAMILY_IDS.map((id) => ({ id, list: items.filter((i) => i.families.includes(id)) })).sort((a, b) => b.list.length - a.list.length);
+  const famCounts = FAMILY_IDS.map((id) => ({ id, list: clothes.filter((i) => i.families.includes(id)) })).sort((a, b) => b.list.length - a.list.length);
   const fam = famCounts[0];
   if (fam && fam.list.length >= 3) add("family_repeat", ramp(fam.list.length, 3, 8), 0.8, { family: fam.id, n: fam.list.length }, fam.list);
 
@@ -374,12 +381,23 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     if (over && over.spend - over.count >= 0.15)
       add("category_spend", ramp(over.spend - over.count, 0.15, 0.4), 0.6, { cat: over.c, spendPct: Math.round(over.spend * 100), countPct: Math.round(over.count * 100) }, over.list);
 
+    const subSpend = [...countBy(priced, (i) => i.sub)]
+      .map(([, list]) => ({ list, amount: list.reduce((a, i) => a + i.price!, 0) }))
+      .sort((a, b) => b.amount - a.amount)[0];
+    if (subSpend && subSpend.list.length >= 3 && subSpend.amount >= 500_000 && subSpend.amount / total >= 0.25)
+      add("subcategory_spend", ramp(subSpend.amount / total, 0.25, 0.6), 0.75, {
+        sub: subSpend.list[0].subName ?? "옷",
+        n: subSpend.list.length,
+        amount: subSpend.amount,
+        pct: pct(subSpend.amount, total),
+      }, subSpend.list);
+
     const b1 = topSpendBrands[0];
     if (b1 && b1.amount / total >= 0.3) add("brand_spend", ramp(b1.amount / total, 0.3, 0.7), 0.75, { brand: b1.label, pct: pct(b1.amount, total), amount: b1.amount }, items.filter((i) => b1.ids.includes(i.id)));
 
     const sale = priced.filter((i) => i.brand && i.brand.price >= 6 && i.price! < 300_000);
     if (sale.length >= 2) add("sale_luxury", ramp(sale.length, 2, 5), 0.8, { n: sale.length, brand: labelOf(sale) }, sale);
-    const splurge = priced.filter((i) => i.brand && i.brand.price <= 2 && i.price! >= 200_000).sort((a, b) => b.price! - a.price!);
+    const splurge = priced.filter((i) => i.brand && i.brand.price <= 2 && i.price! >= 300_000).sort((a, b) => b.price! - a.price!);
     if (splurge.length) add("cheap_brand_splurge", 0.6, 0.8, { brand: splurge[0].brandLabel, price: splurge[0].price!, name: splurge[0].g.productName }, splurge.slice(0, 1));
   }
 

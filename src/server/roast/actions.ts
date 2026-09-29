@@ -18,7 +18,7 @@ import { buildAiInput, ROAST_AI_DAILY_LIMIT, writeWithAi } from "./ai";
 import { analyze, MIN_GARMENTS } from "./analyze";
 import { buildScript, composeResult } from "./compose";
 import { DISCLAIMER } from "./lines";
-import { signGarments } from "./queries";
+import { getRoastTexts, signGarments } from "./queries";
 
 /**
  * AI 옷장 분석 서버 액션.
@@ -91,7 +91,7 @@ export async function startRoast(input: { name: string | null; preview?: unknown
     const a = analyze(s.garments, body, usdRate);
     if (a.clothes.length < MIN_GARMENTS) return { ok: false, code: "too_few", count: a.clothes.length };
     const seed = Math.floor(Math.random() * 2 ** 31);
-    const { script } = buildScript(a, seed, name);
+    const { script } = buildScript(a, seed, name, await getRoastTexts(s.supabase));
     return { ok: true, script, aiLeft: await aiLeft(s) };
   } catch (e) {
     console.error("[roast] start", e instanceof Error ? e.message : e);
@@ -110,8 +110,9 @@ export async function finishRoast(input: { seed: number; name: string | null; an
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
     const a = analyze(s.garments, body, usdRate);
     if (a.clothes.length < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 10개 이상일 때 분석할 수 있습니다." };
-    const plan = buildScript(a, seed, name);
-    const composed = composeResult(a, plan, answers, name, seed);
+    const texts = await getRoastTexts(s.supabase);
+    const plan = buildScript(a, seed, name, texts);
+    const composed = composeResult(a, name, seed, texts);
 
     let written: Pick<RoastResult, "headline" | "paragraphs" | "closing"> = composed;
     let aiUsed = false;

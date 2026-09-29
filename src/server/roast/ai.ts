@@ -19,7 +19,7 @@ import { fill, MissingVar, type Vars } from "./text";
 export const ROAST_AI_DAILY_LIMIT = 3;
 export const ROAST_PROMPT_VERSION = "roast-v1";
 
-const SYSTEM = `당신은 옷 쇼핑몰 사이트의 "옷장분석팀 AI"입니다. 사용자의 옷장 분석 결과를 받아, 시니컬하고 건조한 말투로 짧은 글을 씁니다.
+const SYSTEM = `당신은 옷장 관리 사이트의 "옷장분석팀 AI"입니다. 사용자의 옷장 분석 결과를 받아, 시니컬하고 건조한 말투로 짧은 글을 씁니다.
 
 말투:
 - 재치 있고 약간 무심한, 관찰력이 날카로운 느낌. 들뜬 인터넷 밈 말투, 이모지, 느낌표 남발은 쓰지 않습니다.
@@ -35,14 +35,15 @@ const SYSTEM = `당신은 옷 쇼핑몰 사이트의 "옷장분석팀 AI"입니�
 
 쓸 것:
 - headline: 여러 특징을 한 문장으로 묶은 대표 헤드라인(80자 이하). "~옷장입니다."로 끝나면 좋습니다.
-- paragraphs: 본문 3~5문단. 문단마다 2~4문장. 중요한 패턴부터. 사용자의 답변은 설문처럼 나열하지 말고 관련 문단 안에서 자연스럽게 다시 꺼내 쓰세요.
-- closing: 건조한 마무리 2~4줄(각 한 문장).
+- paragraphs: 본문 2~3문단. 문단마다 2문장 안팎으로 짧게. 중요한 패턴부터. 조금 더 시니컬하게, 하지만 선은 지키세요.
+- 사용자의 답변은 되풀이하지 마세요. 질문과 답을 다시 요약하는 문장은 쓰지 않습니다. 답은 말투의 온도를 정하는 데만 참고하세요.
+- closing: 건조한 마무리 2~3줄(각 한 문장).
 - {name}이 입력에 있으면 글 전체에서 한두 번만 "{name}님"으로 부르세요.`;
 
 const schema = z.object({
   headline: z.string().min(5).max(200),
-  paragraphs: z.array(z.string().min(10).max(800)).min(2).max(6),
-  closing: z.array(z.string().min(2).max(200)).min(1).max(4),
+  paragraphs: z.array(z.string().min(10).max(500)).min(1).max(4),
+  closing: z.array(z.string().min(2).max(200)).min(1).max(3),
 });
 
 const jsonSchema = {
@@ -51,8 +52,8 @@ const jsonSchema = {
   required: ["headline", "paragraphs", "closing"],
   properties: {
     headline: { type: "string", description: "대표 헤드라인 한 문장" },
-    paragraphs: { type: "array", items: { type: "string" }, description: "본문 3~5문단" },
-    closing: { type: "array", items: { type: "string" }, description: "마무리 2~4줄" },
+    paragraphs: { type: "array", items: { type: "string" }, description: "본문 2~3문단" },
+    closing: { type: "array", items: { type: "string" }, description: "마무리 2~3줄" },
   },
 };
 
@@ -63,6 +64,10 @@ const DESCRIBE: Record<string, string> = {
   count_huge: "옷이 아주 많음({n}벌)",
   category_bias: "한 대분류({catName})가 절반 이상({n}벌, {pct}%)",
   subcategory_bias: "한 세부분류({sub})가 많음({n}벌, {pct}%)",
+  shoes_many: "신발이 많음({n}켤레)",
+  hats_many: "모자가 많음({n}개)",
+  shoe_sub_bias: "신발 {total}켤레 중 {sub}가 {n}켤레",
+  hat_sub_bias: "모자 {total}개 중 {sub}가 {n}개",
   black_bias: "검정 옷이 많음({n}벌, {pct}%)",
   achromatic_bias: "검정·회색·흰색이 대부분({n}벌, {pct}%). 색 있는 옷 {colorful}벌",
   chroma_bias: "한 유채색({color})이 많음({n}벌, {pct}%)",
@@ -80,7 +85,6 @@ const DESCRIBE: Record<string, string> = {
   trait_heritage: "역사가 긴 헤리티지 브랜드가 많음",
   trait_pricey: "고가 브랜드가 대부분",
   tag_bias: "브랜드 스타일이 한쪽({tag})에 쏠림({pct}%)",
-  contradiction_logo_quiet: "로고가 큰 브랜드({logoBrand}, {logo}벌)와 로고 없는 조용한 브랜드({quietBrand}, {quiet}벌)를 둘 다 많이 가짐",
   same_color: "브랜드는 {brands}개로 다양한데 색은 {pct}%가 무채색",
   same_fit: "브랜드는 {brands}개인데 핏은 {pct}%가 {fit}",
   same_tag: "브랜드는 {brands}개인데 스타일은 {pct}%가 {tag}",
@@ -96,6 +100,7 @@ const DESCRIBE: Record<string, string> = {
   avg_price: "한 벌 평균 구매가 {avgWon}(가격 적은 옷 {n}벌)",
   top_item: "가장 비싼 옷({brand} {name})이 {priceWon}, 가운데 가격의 {ratio}배",
   category_spend: "{catName}의 금액 비중({spendPct}%)이 벌 수 비중({countPct}%)보다 훨씬 큼",
+  subcategory_spend: "한 세부분류({sub})에만 {amountWon}을 씀(쓴 돈의 {pct}%, {n}벌)",
   brand_spend: "쓴 돈의 {pct}%({amountWon})가 {brand}",
   sale_luxury: "초고가 브랜드({brand} 등)를 30만 원 미만에 산 옷 {n}벌",
   cheap_brand_splurge: "보통 저렴한 브랜드({brand})의 {name}에 {priceWon}",
@@ -118,7 +123,7 @@ const GROUP_WORD: Record<BrandGroup, string> = {
 for (const g of BRAND_GROUPS) DESCRIBE[`group_${g}`] = `${GROUP_WORD[g]}가 많음({n}벌, {pct}%, 대표 {brand})`;
 
 /** 자리로 보내면 안 되는(개인정보·지어낼 수 있는) 값: 이름·브랜드·제품명·모든 숫자 */
-const SECRET_KEYS = new Set(["brand", "name", "logoBrand", "quietBrand", "oldest"]);
+const SECRET_KEYS = new Set(["brand", "name", "oldest"]);
 
 export interface AiInput {
   text: string;
@@ -159,7 +164,7 @@ export function buildAiInput(a: Analysis, plan: Plan, composed: Composed, answer
       return;
     }
     // 가짜 이름: 자리에 들어갈 실제 브랜드 대신 "브랜드A"라고 알려 준다.
-    const brandHints = ["brand", "logoBrand", "quietBrand", "oldest"]
+    const brandHints = ["brand", "oldest"]
       .filter((k) => typeof vars[k] === "string")
       .map((k) => `{${tag}_${k}}=${fake(String(vars[k]))}`);
     lines.push(`- ${tag}: ${desc}${brandHints.length ? ` (${brandHints.join(", ")})` : ""}`);
@@ -172,8 +177,9 @@ export function buildAiInput(a: Analysis, plan: Plan, composed: Composed, answer
       const opt = q.options.find((o) => o.id === answers[q.id]);
       if (!opt) return null;
       const quiz = q.id === "quiz" ? (answers[q.id] === q.answer ? " (정답을 맞힘)" : " (틀림)") : "";
-      // 브랜드 버리기 선택지·퀴즈 문장에는 실제 브랜드명이 들어 있어 보내지 않는다.
-      if (q.id === "drop_brand") return `- 질문 "다음 셋 중 한 브랜드를 전부 포기해야 한다면?" → ${fake(opt.label)}`;
+      // 옷 버리기·브랜드 고르기 선택지와 퀴즈 문장에는 실제 브랜드명이 들어 있어 보내지 않는다.
+      if (q.id === "drop_item") return `- 질문 "가장 비싼 옷 세 벌 중 하나를 버린다면?" → 골랐음`;
+      if (q.id === "brand_best") return `- 질문 "이 세 브랜드 중 어디가 제일 좋나요?" → ${fake(opt.label)}`;
       if (q.id === "quiz") return `- 가진 브랜드 관련 패션 퀴즈${quiz}`;
       return `- 질문 "${stripSecrets(q.text, values, a)}" → "${opt.label}"`;
     })

@@ -12,7 +12,7 @@ const NAV = [
   { href: "/wardrobe", label: "내 옷장" },
   { href: "/fit-check", label: "구매 판단기" },
   { href: "/analysis", label: "옷장 데이터" },
-  { href: "/roast", label: "AI 옷장 분석" },
+  { href: "/roast", label: "내 옷장 훈수" },
   ...(FEATURES.outfit ? [{ href: "/outfit", label: "오늘의 코디" }] : []),
   { href: "/body", label: "내 치수" },
 ];
