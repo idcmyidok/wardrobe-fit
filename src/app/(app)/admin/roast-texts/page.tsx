@@ -1,7 +1,7 @@
 import { RoastTextEditor, type EditorGroup } from "@/components/admin/roast-text-editor";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/server/admin/guard";
-import { fieldLabel, textGroups, VAR_LABEL } from "@/server/roast/meta";
+import { fieldLabel, textGroups, varLabel } from "@/server/roast/meta";
 import { getRoastTextEdits } from "@/server/roast/queries";
 import { Q_TEXT } from "@/server/roast/questions";
 import { allowedVars, flattenTexts, groupOf } from "@/server/roast/texts";
@@ -18,7 +18,7 @@ export default async function RoastTextsPage() {
     const vars = allowedVars(`${g.id}.x`);
     return {
       ...g,
-      vars: vars.map((v) => ({ key: v, label: VAR_LABEL[v] ?? v })),
+      vars: vars.map((v) => ({ key: v, label: varLabel(g.id, v) })),
       fields: entries
         .filter((e) => groupOf(e.key) === g.id)
         .map((e) => ({ key: e.key, label: fieldLabel(e.key, optionLabel), base: e.value, edited: edits[e.key] ?? null })),

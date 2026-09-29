@@ -788,7 +788,12 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
       text: quiz.question,
       options: r.shuffle(ids).map((id) => ({ id, label: quiz.options[Number(id)] })),
       answer: String(quiz.answer),
-      reactions: Object.fromEntries(ids.map((id) => [id, Number(id) === quiz.answer ? r.pick(quiz.correct) : r.pick(quiz.wrong)])),
+      reactions: Object.fromEntries(
+        ids.map((id) => {
+          const ok = Number(id) === quiz.answer;
+          return [id, `${r.pick(ok ? T.common.QUIZ_CORRECT : T.common.QUIZ_WRONG)} ${r.pick(ok ? quiz.correct : quiz.wrong)}`.trim()];
+        }),
+      ),
       photos: [],
     };
   }

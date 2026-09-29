@@ -1,4 +1,5 @@
 import "server-only";
+import { ROAST_COPY } from "@/lib/roast/copy";
 import { COMMON, LINE_TEXT } from "./lines";
 import { Q_TEXT } from "./questions";
 import { QUIZ_TEXT } from "./quiz";
@@ -10,7 +11,7 @@ import { varsOf } from "./text";
  * key는 문장 위치를 점으로 이은 것이다. 예: "lines.black_bias.say.0", "questions.odd_photo.react.mine.1", "quiz.cdg-meaning.options.2"
  */
 
-export const DEFAULT_TEXTS = { common: COMMON, lines: LINE_TEXT, questions: Q_TEXT, quiz: QUIZ_TEXT };
+export const DEFAULT_TEXTS = { screen: ROAST_COPY, common: COMMON, lines: LINE_TEXT, questions: Q_TEXT, quiz: QUIZ_TEXT };
 export type RoastTexts = typeof DEFAULT_TEXTS;
 
 export const ROAST_TEXT_MAX = 500;

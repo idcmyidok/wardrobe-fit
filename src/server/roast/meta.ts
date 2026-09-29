@@ -12,7 +12,7 @@ export const VAR_LABEL: Record<string, string> = {
   n: "개수", pct: "비율%", brand: "브랜드", brands: "브랜드 수", catName: "대분류", sub: "세부분류", color: "색", colorful: "유채색 벌 수",
   country: "나라", tag: "스타일", fit: "핏", fitPhrase: "핏(알 때만 '○○ 핏 ')", familyName: "제품군", year: "연도", month: "월",
   most: "많은 계절", mostN: "많은 계절 벌 수", least: "적은 계절", leastN: "적은 계절 벌 수", avgWon: "평균 금액", priceWon: "금액", amountWon: "금액",
-  ratio: "배수", name: "제품명(대화) 또는 호칭(인사)", oldest: "가장 오래된 브랜드", maxWon: "최고 구매가", traitText: "다른 점(색, 종류 등)",
+  ratio: "배수", name: "제품명", oldest: "가장 오래된 브랜드", maxWon: "최고 구매가", traitText: "다른 점(색, 종류 등)",
   spendPct: "금액 비중%", countPct: "벌 수 비중%", count: "벌 수", total: "전체 개수",
 };
 
@@ -138,7 +138,24 @@ export const REACT_NAME: Record<string, string> = {
   spend: "금액 1위 브랜드", count: "벌 수 1위 브랜드", recent: "최근 구매 1위 브랜드", spend2: "금액 2위 브랜드",
 };
 
+export const SCREEN_NAME: Record<string, string> = {
+  INTRO: "시작 멘트",
+  START_LABEL: "시작 버튼",
+  DECLINE_LABEL: "미루기 버튼",
+  DECLINE: "미루기를 눌렀을 때",
+  ASK_NAME: "이름 묻기",
+  NAME_HINT: "이름 입력칸 아래 안내",
+  TOO_FEW: "옷이 10벌보다 적을 때",
+  WRITING: "결과를 쓰는 중",
+  NO_AI_LEFT: "오늘 AI 글쓰기를 다 썼을 때",
+  DISCLAIMER: "결과 맨 아래 안내",
+  CHANGED: "옷장이 바뀌었을 때(결과 위)",
+  RETRY_LABEL: "다시 해보기 버튼",
+};
+
 export const COMMON_NAME: Record<string, string> = {
+  QUIZ_CORRECT: "퀴즈 맞혔을 때 앞말",
+  QUIZ_WRONG: "퀴즈 틀렸을 때 앞말",
   SECTION_STATUS: "상태 문구(섹션 시작)",
   SCAN_OPEN: "분석 시작",
   NAME_GREETING: "호칭 부르며 시작",
@@ -152,16 +169,23 @@ export const COMMON_NAME: Record<string, string> = {
   HEAD_SINGLE_PREFIX: "헤드라인을 패턴 하나로 만들 때 앞말",
 };
 
+/** 묶음마다 자리 이름을 달리 부를 때 */
+export function varLabel(group: string, key: string): string {
+  if (key === "name" && group === "common.NAME_GREETING") return "호칭";
+  return VAR_LABEL[key] ?? key;
+}
+
 /** 편집 화면의 묶음(패턴 하나, 질문 하나 등) */
 export interface TextGroupMeta {
   id: string;
-  kind: "common" | "lines" | "questions" | "quiz";
+  kind: "screen" | "common" | "lines" | "questions" | "quiz";
   title: string;
   when: string;
 }
 
 export function textGroups(): TextGroupMeta[] {
   const out: TextGroupMeta[] = [];
+  for (const [k, name] of Object.entries(SCREEN_NAME)) out.push({ id: `screen.${k}`, kind: "screen", title: name, when: "" });
   for (const [k, name] of Object.entries(COMMON_NAME)) out.push({ id: `common.${k}`, kind: "common", title: name, when: "" });
   for (const [id, sec] of Object.entries(LINE_SECTION))
     out.push({ id: `lines.${id}`, kind: "lines", title: `${id} (${SECTION_NAME[sec]})`, when: PATTERN_COND[id] ?? "" });
@@ -175,6 +199,7 @@ export function textGroups(): TextGroupMeta[] {
 export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string) => string | undefined): string {
   const p = key.split(".");
   const num = (s: string) => Number(s) + 1;
+  if (p[0] === "screen") return p[2] ? `${num(p[2])}` : "문장";
   if (p[0] === "common") return p[1] === "SECTION_STATUS" ? `${SECTION_NAME[p[2]] ?? p[2]} ${num(p[3])}` : `${num(p[2])}`;
   if (p[0] === "lines") {
     if (p[2] === "say") return `대화 ${num(p[3])}`;

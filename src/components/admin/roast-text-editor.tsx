@@ -16,7 +16,7 @@ export interface EditorField {
 
 export interface EditorGroup {
   id: string;
-  kind: "common" | "lines" | "questions" | "quiz";
+  kind: "screen" | "common" | "lines" | "questions" | "quiz";
   title: string;
   when: string;
   vars: { key: string; label: string }[];
@@ -28,7 +28,29 @@ const KINDS: { id: EditorGroup["kind"]; label: string }[] = [
   { id: "questions", label: "질문·반응" },
   { id: "quiz", label: "패션 퀴즈" },
   { id: "common", label: "공통 문구" },
+  { id: "screen", label: "화면·결과 안내" },
 ];
+
+type Vars = EditorGroup["vars"];
+
+/** 저장된 {n}, {brand|을}을 편집용 [개수], [브랜드|을]로 보여 준다. */
+function toDisplay(text: string, vars: Vars) {
+  return text.replace(/\{(\w+)(\|[^{}]+)?\}/g, (m, key: string, p = "") => {
+    const v = vars.find((x) => x.key === key);
+    return v ? `[${v.label}${p}]` : m;
+  });
+}
+
+/** 편집용 [개수]를 저장용 {n}으로 바꾼다. 모르는 이름이면 오류. */
+function fromDisplay(text: string, vars: Vars): { text: string } | { error: string } {
+  const unknown: string[] = [];
+  const out = text.replace(/\[([^\[\]|]+)(\|[^\[\]]+)?\]/g, (m, label: string, p = "") => {
+    const v = vars.find((x) => x.label === label.trim() || x.key === label.trim());
+    if (!v) unknown.push(m);
+    return v ? `{${v.key}${p}}` : m;
+  });
+  return unknown.length ? { error: `모르는 자리입니다: ${unknown.join(", ")}` } : { text: out };
+}
 
 const colLabel = "font-mono text-label font-medium tracking-[0.08em] text-neutral-700";
 
@@ -51,7 +73,7 @@ export function RoastTextEditor({ groups }: { groups: EditorGroup[] }) {
         g.kind === kind &&
         (!q ||
           `${g.title} ${g.when}`.toLowerCase().includes(q) ||
-          g.fields.some((f) => (edited[f.key] ?? f.base).toLowerCase().includes(q))),
+          g.fields.some((f) => toDisplay(edited[f.key] ?? f.base, g.vars).toLowerCase().includes(q))),
     );
   }, [groups, kind, query, edited]);
   const editedCount = Object.values(edited).filter((v) => v !== null).length;
@@ -72,7 +94,8 @@ export function RoastTextEditor({ groups }: { groups: EditorGroup[] }) {
         </Link>
         <h1 className="text-title">내 옷장 훈수 문장</h1>
         <p className="text-sm text-pretty text-neutral-700">
-          {"{ }"} 안의 자리는 실제 옷장 값으로 바뀝니다. {"{브랜드|을}"}처럼 조사를 붙이면 받침에 맞춰 을·를이 골라집니다. 한 칸에 여러
+          [개수], [브랜드]처럼 대괄호 안의 자리는 실제 옷장 값으로 바뀝니다. 새로 쓸 때도 같은 이름으로 [개수]처럼 쓰면 됩니다.
+          [브랜드|을]처럼 조사를 붙이면 받침에 맞춰 을·를이 골라집니다. 한 칸에 여러
           문장이 있으면 매번 그중 하나를 씁니다. 새 패턴·질문은 코드로만 추가할 수 있습니다. 고친 문장 {editedCount}개.
         </p>
       </div>
@@ -108,11 +131,11 @@ export function RoastTextEditor({ groups }: { groups: EditorGroup[] }) {
                 <div className="flex flex-col gap-4 pb-5">
                   {g.vars.length > 0 && (
                     <p className="text-sm text-neutral-700">
-                      쓸 수 있는 자리: {g.vars.map((v) => `{${v.key}} ${v.label}`).join(" · ")}
+                      쓸 수 있는 자리: {g.vars.map((v) => `[${v.label}]`).join(" ")}
                     </p>
                   )}
                   {g.fields.map((f) => (
-                    <Field key={f.key} field={f} edited={edited[f.key]} onSaved={(v) => setEdited((e) => ({ ...e, [f.key]: v }))} />
+                    <Field key={f.key} field={f} vars={g.vars} edited={edited[f.key]} onSaved={(v) => setEdited((e) => ({ ...e, [f.key]: v }))} />
                   ))}
                 </div>
               )}
@@ -125,8 +148,18 @@ export function RoastTextEditor({ groups }: { groups: EditorGroup[] }) {
   );
 }
 
-function Field({ field, edited, onSaved }: { field: EditorField; edited: string | null | undefined; onSaved: (v: string | null) => void }) {
-  const current = edited ?? field.base;
+function Field({
+  field,
+  vars,
+  edited,
+  onSaved,
+}: {
+  field: EditorField;
+  vars: Vars;
+  edited: string | null | undefined;
+  onSaved: (v: string | null) => void;
+}) {
+  const current = toDisplay(edited ?? field.base, vars);
   const [value, setValue] = useState(current);
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -136,9 +169,11 @@ function Field({ field, edited, onSaved }: { field: EditorField; edited: string 
   const save = () =>
     startTransition(async () => {
       setMessage(null);
-      const r = await saveRoastText(field.key, value);
+      const conv = fromDisplay(value.trim(), vars);
+      if ("error" in conv) return setMessage({ ok: false, text: conv.error });
+      const r = await saveRoastText(field.key, conv.text);
       if (r.ok) {
-        onSaved(value.trim() === field.base ? null : value.trim());
+        onSaved(conv.text === field.base ? null : conv.text);
         setMessage({ ok: true, text: "저장했습니다." });
       } else setMessage({ ok: false, text: r.error });
     });
@@ -148,7 +183,7 @@ function Field({ field, edited, onSaved }: { field: EditorField; edited: string 
       const r = await resetRoastText(field.key);
       if (r.ok) {
         onSaved(null);
-        setValue(field.base);
+        setValue(toDisplay(field.base, vars));
         setMessage({ ok: true, text: "원래 문장으로 돌렸습니다." });
       } else setMessage({ ok: false, text: r.error });
     });
@@ -166,7 +201,7 @@ function Field({ field, edited, onSaved }: { field: EditorField; edited: string 
         value={value}
         onChange={(e) => setValue(e.target.value)}
       />
-      {edited != null && <p className="text-sm text-neutral-700">원래 문장: {field.base}</p>}
+      {edited != null && <p className="text-sm text-neutral-700">원래 문장: {toDisplay(field.base, vars)}</p>}
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" disabled={pending || !dirty} onClick={save}>
           {pending ? "저장 중…" : "저장"}

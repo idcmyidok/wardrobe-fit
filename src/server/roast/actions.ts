@@ -17,7 +17,6 @@ import { getUsdRate } from "@/server/settings/queries";
 import { buildAiInput, ROAST_AI_DAILY_LIMIT, writeWithAi } from "./ai";
 import { analyze, MIN_GARMENTS } from "./analyze";
 import { buildScript, composeResult } from "./compose";
-import { DISCLAIMER } from "./lines";
 import { getRoastTexts, signGarments } from "./queries";
 
 /**
@@ -154,7 +153,7 @@ export async function finishRoast(input: { seed: number; name: string | null; an
       headline: written.headline,
       paragraphs: written.paragraphs,
       closing: written.closing,
-      disclaimer: DISCLAIMER,
+      disclaimer: texts.screen.DISCLAIMER,
       garments,
       answers: plan.asked
         .filter((q) => answers[q.id])

@@ -1,24 +1,11 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- 비공개 저장소의 임시 주소라 next/image 최적화를 쓰지 않는다(다른 화면과 같음). */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { UsageNote } from "@/components/usage/usage-note";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { buttonClassName } from "@/components/ui/button";
-import {
-  ASK_NAME,
-  CHANGED,
-  DECLINE,
-  DECLINE_LABEL,
-  INTRO,
-  MIN_CLOTHES,
-  NAME_HINT,
-  NO_AI_LEFT,
-  RETRY_LABEL,
-  START_LABEL,
-  tooFew,
-  WRITING,
-} from "@/lib/roast/copy";
+import { MIN_CLOTHES, ROAST_COPY, tooFew, type RoastCopy } from "@/lib/roast/copy";
 import { wardrobeHash } from "@/lib/roast/hash";
 import type { RoastQuestion, RoastResult, RoastScript } from "@/lib/roast/types";
 import { notifyUsageChanged } from "@/lib/usage";
@@ -44,6 +31,9 @@ type NewMsg = DistOmit<Msg, "id">;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+/** 화면 문구(관리자가 고친 문장 포함). */
+const CopyContext = createContext<RoastCopy>(ROAST_COPY);
+
 function readPreview(): RoastResult | null {
   try {
     const raw = window.localStorage.getItem(PREVIEW_KEY);
@@ -62,7 +52,7 @@ function writePreview(r: RoastResult) {
 const koreanDate = (iso: string) =>
   new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric" }).format(new Date(iso));
 
-export function RoastView({ initialResult }: { initialResult: RoastResult | null }) {
+export function RoastView({ initialResult, copy = ROAST_COPY }: { initialResult: RoastResult | null; copy?: RoastCopy }) {
   const { garments, signedIn } = useWardrobe();
   const clothes = garments.filter((g) => g.categoryId !== "hat" && g.categoryId !== "shoes").length;
   const [result, setResult] = useState<RoastResult | null>(initialResult);
@@ -90,45 +80,47 @@ export function RoastView({ initialResult }: { initialResult: RoastResult | null
   );
 
   return (
-    <main className="mx-auto max-w-200 px-[clamp(16px,3vw,32px)] pt-6 pb-20">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-text pb-4">
-        <div className="flex flex-col gap-1">
-          <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700 uppercase">Wardrobe roast</span>
-          <h1 className="text-title">내 옷장 훈수</h1>
+    <CopyContext.Provider value={copy}>
+      <main className="mx-auto max-w-200 px-[clamp(16px,3vw,32px)] pt-6 pb-20">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-text pb-4">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700 uppercase">Wardrobe roast</span>
+            <h1 className="text-title">내 옷장 훈수</h1>
+          </div>
+          {signedIn && <UsageNote kind="roast" />}
         </div>
-        {signedIn && <UsageNote kind="roast" />}
-      </div>
 
-      {mode === "result" && result ? (
-        <ResultView
-          result={result}
-          changed={wardrobeHash(garments) !== result.wardrobeHash}
-          photoOf={photoOf}
-          onRetry={() => setMode("name")}
-        />
-      ) : mode === "chat" ? (
-        <Chat
-          name={name}
-          preview={signedIn ? undefined : garments}
-          photoOf={photoOf}
-          onDone={(r) => {
-            if (!signedIn) writePreview(r);
-            else notifyUsageChanged();
-            setResult(r);
-            setMode("result");
-          }}
-        />
-      ) : (
-        <Intro
-          clothes={clothes}
-          skipIntro={mode === "name"}
-          onStart={(n) => {
-            setName(n);
-            setMode("chat");
-          }}
-        />
-      )}
-    </main>
+        {mode === "result" && result ? (
+          <ResultView
+            result={result}
+            changed={wardrobeHash(garments) !== result.wardrobeHash}
+            photoOf={photoOf}
+            onRetry={() => setMode("name")}
+          />
+        ) : mode === "chat" ? (
+          <Chat
+            name={name}
+            preview={signedIn ? undefined : garments}
+            photoOf={photoOf}
+            onDone={(r) => {
+              if (!signedIn) writePreview(r);
+              else notifyUsageChanged();
+              setResult(r);
+              setMode("result");
+            }}
+          />
+        ) : (
+          <Intro
+            clothes={clothes}
+            skipIntro={mode === "name"}
+            onStart={(n) => {
+              setName(n);
+              setMode("chat");
+            }}
+          />
+        )}
+      </main>
+    </CopyContext.Provider>
   );
 }
 
@@ -196,6 +188,7 @@ function Photos({ ids, photoOf }: { ids?: string[]; photoOf: (id: string) => str
 }
 
 function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: boolean; onStart: (name: string | null) => void }) {
+  const copy = useContext(CopyContext);
   const [typed, setTyped] = useState(skipIntro);
   const [declined, setDeclined] = useState<string | null>(null);
   const [asking, setAsking] = useState(skipIntro);
@@ -204,21 +197,21 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
 
   return (
     <div className="roast-mono roast-log mt-8" aria-live="polite">
-      <p className="roast-ai">{skipIntro ? INTRO : <Typed text={INTRO} onDone={() => setTyped(true)} />}</p>
-      {typed && !enough && <p className="roast-ai">{tooFew(clothes)}</p>}
+      <p className="roast-ai">{skipIntro ? copy.INTRO : <Typed text={copy.INTRO} onDone={() => setTyped(true)} />}</p>
+      {typed && !enough && <p className="roast-ai">{tooFew(copy, clothes)}</p>}
       {typed && enough && !asking && (
         <>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="roast-choice" onClick={() => setAsking(true)}>
-              {START_LABEL}
+              {copy.START_LABEL}
             </button>
             <button
               type="button"
               className="roast-choice"
-              onClick={() => setDeclined(DECLINE[Math.floor(Math.random() * DECLINE.length)])}
+              onClick={() => setDeclined(copy.DECLINE[Math.floor(Math.random() * copy.DECLINE.length)])}
               disabled={Boolean(declined)}
             >
-              {DECLINE_LABEL}
+              {copy.DECLINE_LABEL}
             </button>
           </div>
           {declined && (
@@ -237,7 +230,7 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
           }}
         >
           <p className="roast-ai">
-            <Typed text={ASK_NAME} />
+            <Typed text={copy.ASK_NAME} />
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -253,7 +246,7 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
               시작하기
             </button>
           </div>
-          <span className="text-sm text-neutral-700">{NAME_HINT}</span>
+          <span className="text-sm text-neutral-700">{copy.NAME_HINT}</span>
         </form>
       )}
     </div>
@@ -271,6 +264,7 @@ function Chat({
   photoOf: (id: string) => string | null;
   onDone: (r: RoastResult) => void;
 }) {
+  const copy = useContext(CopyContext);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [noAi, setNoAi] = useState(false);
@@ -317,12 +311,12 @@ function Chat({
       await think(900);
       const start = await startRoast({ name, preview });
       if (!start.ok) {
-        setError(start.code === "too_few" ? tooFew(start.count) : start.message);
+        setError(start.code === "too_few" ? tooFew(copy, start.count) : start.message);
         return;
       }
       if (start.aiLeft === 0) setNoAi(true);
       const answers = await play(start.script);
-      push({ kind: "status", text: WRITING });
+      push({ kind: "status", text: copy.WRITING });
       const dots = push({ kind: "dots" });
       const done = await finishRoast({ seed: start.script.seed, name, answers, preview });
       remove(dots);
@@ -363,7 +357,7 @@ function Chat({
       }
       return answers;
     }
-  }, [name, preview, onDone, push, say, think]);
+  }, [name, preview, onDone, push, say, think, copy]);
 
   const onTyped = useCallback((id: number) => {
     typedWaiters.current.get(id)?.();
@@ -372,7 +366,7 @@ function Chat({
 
   return (
     <div className="roast-mono roast-log mt-8" aria-live="polite">
-      {noAi && <p className="roast-status">{NO_AI_LEFT}</p>}
+      {noAi && <p className="roast-status">{copy.NO_AI_LEFT}</p>}
       {msgs.map((m) =>
         m.kind === "ai" ? (
           <div key={m.id} className="roast-ai">
@@ -430,14 +424,15 @@ function ResultView({
   photoOf: (id: string) => string | null;
   onRetry: () => void;
 }) {
+  const copy = useContext(CopyContext);
   const date = useMemo(() => koreanDate(result.createdAt), [result.createdAt]);
   return (
     <article className="roast-mono roast-result mt-8 flex flex-col gap-6">
       {changed && (
         <div className="flex flex-wrap items-center justify-between gap-3 border border-text bg-surface px-4 py-3">
-          <span className="text-body">{CHANGED}</span>
+          <span className="text-body">{copy.CHANGED}</span>
           <button type="button" className={buttonClassName({ size: "sm" })} onClick={onRetry}>
-            {RETRY_LABEL}
+            {copy.RETRY_LABEL}
           </button>
         </div>
       )}
@@ -462,7 +457,7 @@ function ResultView({
       <p className="text-sm text-neutral-700">{result.disclaimer}</p>
       <div>
         <button type="button" className={buttonClassName({ variant: "primary", size: "lg" })} onClick={onRetry}>
-          {RETRY_LABEL}
+          {copy.RETRY_LABEL}
         </button>
       </div>
     </article>
