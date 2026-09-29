@@ -3,6 +3,7 @@ import { MEASUREMENT_KEYS, type MeasurementKey } from "@/lib/constants/measureme
 import { isFitLevel } from "@/lib/constants/body";
 import { SHOE_FIT_LEVELS, shoeFitOrNull, type ShoeFitLevel } from "@/lib/constants/shoe-fit";
 import type { CategoryId, Garment } from "@/lib/types/domain";
+import { isCurrency } from "@/lib/format/price";
 import type { GarmentInput } from "./schema";
 
 export type GarmentRow = Database["public"]["Tables"]["garments"]["Row"];
@@ -10,7 +11,7 @@ type GarmentWrite = Database["public"]["Tables"]["garments"]["Update"];
 
 /** 목록·상세에 필요한 열만 읽는다. */
 export const GARMENT_COLUMNS =
-  "id, category_id, subcategory_id, brand, product_name, size_label, color_name, seasons, purchased_on, purchase_price, product_url, image_path, thumb_path, m_length, m_shoulder, m_chest, m_sleeve, m_waist, m_hip, m_thigh, m_rise, m_leg_opening, m_head, m_depth, m_brim, shoe_fit_length, shoe_fit_width, shoe_fit_instep, user_fit, fit_review, created_at";
+  "id, category_id, subcategory_id, brand, product_name, size_label, color_name, seasons, purchased_on, purchase_price, currency, product_url, image_path, thumb_path, m_length, m_shoulder, m_chest, m_sleeve, m_waist, m_hip, m_thigh, m_rise, m_leg_opening, m_head, m_depth, m_brim, shoe_fit_length, shoe_fit_width, shoe_fit_instep, user_fit, fit_review, held, fit_check_id, created_at";
 
 export type GarmentListRow = Pick<
   GarmentRow,
@@ -24,6 +25,7 @@ export type GarmentListRow = Pick<
   | "seasons"
   | "purchased_on"
   | "purchase_price"
+  | "currency"
   | "product_url"
   | "image_path"
   | "thumb_path"
@@ -44,6 +46,8 @@ export type GarmentListRow = Pick<
   | "shoe_fit_instep"
   | "user_fit"
   | "fit_review"
+  | "held"
+  | "fit_check_id"
   | "created_at"
 >;
 
@@ -82,6 +86,7 @@ export function rowToGarment(row: GarmentListRow, urls: { imageUrl: string | nul
     seasons: row.seasons,
     purchasedOn: row.purchased_on,
     purchasePrice: row.purchase_price,
+    currency: isCurrency(row.currency) ? row.currency : "KRW",
     productUrl: row.product_url,
     imageUrl: urls.imageUrl,
     thumbUrl: urls.thumbUrl,
@@ -92,6 +97,8 @@ export function rowToGarment(row: GarmentListRow, urls: { imageUrl: string | nul
         ? shoeFitOrNull({ length: level(row.shoe_fit_length), width: level(row.shoe_fit_width), instep: level(row.shoe_fit_instep) })
         : null,
     userFit: isFitLevel(row.user_fit) ? row.user_fit : null,
+    held: row.held,
+    fitCheckId: row.fit_check_id,
   };
 }
 
@@ -109,6 +116,8 @@ export function inputToRow(input: GarmentInput): GarmentWrite {
     seasons: input.seasons,
     purchased_on: input.purchasedOn,
     purchase_price: input.purchasePrice,
+    currency: input.currency,
+    held: input.held,
     product_url: input.productUrl,
     m_length: m.length ?? null,
     m_shoulder: m.shoulder ?? null,

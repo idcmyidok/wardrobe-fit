@@ -7,6 +7,7 @@ import { GARMENT_IMAGE_BUCKET, uploadGarmentImages } from "@/lib/images/upload-g
 import { goToSignIn, stashDraft } from "@/lib/session-expiry";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { SupabasePublicEnv } from "@/lib/supabase/config";
+import { DEFAULT_USD_KRW } from "@/lib/format/price";
 import type { Garment } from "@/lib/types/domain";
 import {
   createGarment,
@@ -26,6 +27,7 @@ import {
  */
 
 export type GarmentDraft = Omit<Garment, "id">;
+export type PendingDraft = GarmentDraft & { heldId?: string };
 
 /** 사진 변경: File이면 새 사진, null이면 제거, undefined면 그대로 */
 export type ImageChange = File | null | undefined;
@@ -39,7 +41,14 @@ interface Toast {
 }
 
 interface WardrobeStore {
+  /** 옷장 옷(구매 보류 옷 제외). 분석·구매 판단 비교·코디가 쓴다. */
   garments: Garment[];
+  /** 구매 보류 옷(아직 안 산 옷). 구매 판단기 아래 목록에만 보인다. */
+  heldGarments: Garment[];
+  /** 옷장 옷과 보류 옷 모두(옷 정보 열기용) */
+  allGarments: Garment[];
+  /** 1달러 = N원(관리자 설정). 달러 가격 정렬·합계에 쓴다. */
+  usdRate: number;
   /** 로그인해 DB에 저장하는 상태인지(false면 예시 데이터 미리보기) */
   signedIn: boolean;
   /** sourceImportId: 링크 분석으로 등록할 때 그 분석 기록 id */
@@ -62,9 +71,12 @@ interface WardrobeStore {
   toast: Toast | null;
   showToast: (message: string, undo?: () => void) => void;
 
-  /** AI 구매 판단 결과에서 "구매했어요"를 누르면 새 옷 추가 검토 폼으로 넘기는 값 */
-  pendingDraft: GarmentDraft | null;
-  setPendingDraft: (draft: GarmentDraft | null) => void;
+  /**
+   * AI 구매 판단 결과에서 "구매했어요"를 누르면 새 옷 추가 검토 폼으로 넘기는 값.
+   * heldId가 있으면 구매 보류 옷을 옷장으로 옮기는 중이다(저장하면 그 행을 옷장 옷으로 바꾼다).
+   */
+  pendingDraft: PendingDraft | null;
+  setPendingDraft: (draft: PendingDraft | null) => void;
 }
 
 const Ctx = createContext<WardrobeStore | null>(null);
@@ -89,6 +101,9 @@ const toInput = (g: GarmentDraft) => ({
   seasons: g.seasons,
   purchasedOn: g.purchasedOn,
   purchasePrice: g.purchasePrice,
+  currency: g.currency ?? "KRW",
+  held: g.held ?? false,
+  fitCheckId: g.fitCheckId ?? null,
   productUrl: g.productUrl,
   measurements: g.measurements,
   fitReview: g.fitReview,
@@ -124,7 +139,10 @@ export function WardrobeProvider({
   initialGarments,
   userId,
   supabaseEnv = null,
+  usdRate = DEFAULT_USD_KRW,
 }: {
+  /** 1달러 = N원(관리자 설정) */
+  usdRate?: number;
   children: React.ReactNode;
   initialGarments: Garment[];
   /** 로그인한 사용자 id. null이면 미리보기 모드 */
@@ -132,7 +150,9 @@ export function WardrobeProvider({
   /** 서버가 실행 중에 읽은 Supabase 공개 설정(URL, anon key) */
   supabaseEnv?: SupabasePublicEnv | null;
 }) {
-  const [garments, setGarments] = useState<Garment[]>(initialGarments);
+  const [allGarments, setGarments] = useState<Garment[]>(initialGarments);
+  const garments = useMemo(() => allGarments.filter((g) => !g.held), [allGarments]);
+  const heldGarments = useMemo(() => allGarments.filter((g) => g.held), [allGarments]);
   const router = useRouter();
   // 이 화면에서 Drawer를 열며 쌓은 기록. 닫을 때 그 기록을 되돌려(history.back) 뒤로가기와 같게 만든다.
   const pushedItem = useRef<string | null>(null);
@@ -169,7 +189,7 @@ export function WardrobeProvider({
 
   const garmentHref = useCallback((id: string) => (isNarrowScreen() ? `/wardrobe/${id}` : `/wardrobe?item=${id}`), []);
   const [toast, setToast] = useState<Toast | null>(null);
-  const [pendingDraft, setPendingDraft] = useState<GarmentDraft | null>(null);
+  const [pendingDraft, setPendingDraft] = useState<PendingDraft | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const showToast = useCallback((message: string, undo?: () => void) => {
@@ -230,7 +250,7 @@ export function WardrobeProvider({
 
   const updateGarment = useCallback(
     async (id: string, patch: Partial<GarmentDraft>, image?: ImageChange): Promise<SaveResult> => {
-      const current = garments.find((g) => g.id === id);
+      const current = allGarments.find((g) => g.id === id);
       if (!current) return { ok: false, error: "옷을 찾을 수 없습니다." };
       const next = { ...current, ...patch };
 
@@ -246,14 +266,14 @@ export function WardrobeProvider({
       replace(withImage.garment);
       return withImage;
     },
-    [garments, userId, replace, applyImage],
+    [allGarments, userId, replace, applyImage],
   );
 
   const removeGarment = useCallback(
     async (id: string) => {
-      const index = garments.findIndex((g) => g.id === id);
+      const index = allGarments.findIndex((g) => g.id === id);
       if (index === -1) return false;
-      const removed = garments[index];
+      const removed = allGarments[index];
       if (userId) {
         const result = await call(() => deleteGarment(id));
         if (!result.ok) {
@@ -282,14 +302,14 @@ export function WardrobeProvider({
       });
       return true;
     },
-    [garments, userId, showToast, closeDrawer],
+    [allGarments, userId, showToast, closeDrawer],
   );
 
   const removeGarments = useCallback(
     async (ids: string[]) => {
       const wanted = new Set(ids);
       // 되살릴 때 원래 자리로 돌려놓으려고 목록에서의 위치를 기억해 둔다.
-      const removed = garments.map((g, index) => ({ g, index })).filter(({ g }) => wanted.has(g.id));
+      const removed = allGarments.map((g, index) => ({ g, index })).filter(({ g }) => wanted.has(g.id));
       if (!removed.length) return false;
       let doneIds = removed.map(({ g }) => g.id);
       if (userId) {
@@ -326,12 +346,15 @@ export function WardrobeProvider({
       });
       return true;
     },
-    [garments, userId, showToast, closeDrawer],
+    [allGarments, userId, showToast, closeDrawer],
   );
 
   const value = useMemo<WardrobeStore>(
     () => ({
       garments,
+      heldGarments,
+      allGarments,
+      usdRate,
       signedIn: Boolean(userId),
       addGarment,
       updateGarment,
@@ -345,7 +368,7 @@ export function WardrobeProvider({
       pendingDraft,
       setPendingDraft,
     }),
-    [garments, userId, addGarment, updateGarment, removeGarment, removeGarments, openDrawer, closeDrawer, garmentHref, toast, showToast, pendingDraft],
+    [garments, heldGarments, allGarments, usdRate, userId, addGarment, updateGarment, removeGarment, removeGarments, openDrawer, closeDrawer, garmentHref, toast, showToast, pendingDraft],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

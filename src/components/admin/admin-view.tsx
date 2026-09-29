@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { IMPORT_FAILURE, type ImportFailureCode } from "@/lib/import/messages";
 import type { AdminOverview, AdminOverviewError } from "@/server/admin/queries";
+import { UsdRateForm } from "./usd-rate-form";
 import { UserActions } from "./user-actions";
 
 const section = "flex flex-col gap-4 border-b border-text py-8";
@@ -27,7 +28,7 @@ function failureLabel(code: string) {
 }
 
 /** overview가 null이면 서버에 service role 키가 없어 전체 데이터를 읽을 수 없는 상태다. */
-export function AdminView({ overview, myId }: { overview: AdminOverview | AdminOverviewError | null; myId: string }) {
+export function AdminView({ overview, myId, usdRate }: { overview: AdminOverview | AdminOverviewError | null; myId: string; usdRate: number }) {
   return (
     <main className="mx-auto max-w-320 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
       <div className="flex flex-col gap-1 border-b border-text pb-4">
@@ -53,6 +54,13 @@ export function AdminView({ overview, myId }: { overview: AdminOverview | AdminO
           <Users overview={overview} myId={myId} />
         </>
       )}
+
+      <section className={section} aria-labelledby="admin-settings">
+        <h2 id="admin-settings" className="text-body font-semibold">
+          달러 환율
+        </h2>
+        <UsdRateForm current={usdRate} />
+      </section>
     </main>
   );
 }

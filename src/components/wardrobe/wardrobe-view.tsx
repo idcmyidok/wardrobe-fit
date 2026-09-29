@@ -34,7 +34,7 @@ const EMPTY_STEPS = [
 ];
 
 export function WardrobeView() {
-  const { garments, openDrawer, removeGarments } = useWardrobe();
+  const { garments, openDrawer, removeGarments, usdRate } = useWardrobe();
   const drawerId = useOpenGarmentId();
   const params = useSearchParams();
   // 필터·검색·정렬·페이지는 모두 URL에 둔다. 정렬과 페이지는 대분류 표마다 따로(기본은 최근 구매순, 1쪽).
@@ -113,7 +113,7 @@ export function WardrobeView() {
   const filtered = isFiltered(filters) && !empty;
   const groups = CATEGORIES.filter((c) => filters.categories.includes(c.id))
     .map((category) => {
-      const all = sortGarments(items.filter((item) => item.categoryId === category.id), sorts[category.id]);
+      const all = sortGarments(items.filter((item) => item.categoryId === category.id), sorts[category.id], usdRate);
       const page = clampPage(pages[category.id], all.length);
       return { ...category, total: all.length, page, items: all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) };
     })

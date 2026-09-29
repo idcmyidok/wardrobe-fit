@@ -56,11 +56,15 @@ export const garmentInputSchema = z
       .refine((v) => v == null || (/^\d{4}-\d{2}-\d{2}$/.test(v) && isValidDate(v)), "구매 날짜를 확인해 주세요."),
     purchasePrice: z
       .number({ error: "구매가는 숫자로 입력해 주세요." })
-      .int("구매가는 원 단위 정수로 입력해 주세요.")
+      .int("가격을 확인해 주세요.")
       .min(0, "구매가는 0원 이상이어야 합니다.")
       .max(100_000_000, "구매가를 확인해 주세요.")
       .nullish()
       .transform((v) => v ?? null),
+    /** 원(KRW) 또는 달러(USD). 달러면 purchasePrice는 센트 */
+    currency: z.enum(["KRW", "USD"]).nullish().transform((v) => v ?? "KRW"),
+    /** 구매 보류 옷. 구매일·시즌·내 핏은 두지 않는다. */
+    held: z.boolean().nullish().transform((v) => v ?? false),
     productUrl: optionalText(2048, "상품 링크").refine((v) => {
       if (v == null) return true;
       try {
@@ -81,6 +85,8 @@ export const garmentInputSchema = z
     fitReview: optionalText(2000, "착용 후기"),
     /** 링크 분석으로 등록할 때 그 분석 기록(product_imports) id. 등록할 때만 쓴다. */
     sourceImportId: z.uuid().nullish().transform((v) => v ?? null),
+    /** 구매 판단기에서 담을 때 그 판단 기록(fit_checks) id. 등록할 때만 쓴다. */
+    fitCheckId: z.uuid().nullish().transform((v) => v ?? null),
   })
   .superRefine((v, ctx) => {
     if (v.subcategoryId && !SUBCATEGORIES.some((s) => s.id === v.subcategoryId && s.categoryId === v.categoryId)) {
@@ -95,8 +101,11 @@ export const garmentInputSchema = z
     const measurements: Measurements = {};
     for (const key of MEASUREMENT_KEYS[v.categoryId]) measurements[key] = v.measurements[key] ?? null;
     const shoeFit = v.categoryId === "shoes" ? shoeFitOrNull(v.shoeFit) : null;
-    const userFit = ["outer", "top", "bottom"].includes(v.categoryId) ? v.userFit : null;
-    return { ...v, measurements, shoeFit, userFit, seasons: normalizeSeasons(v.seasons) };
+    const userFit = !v.held && ["outer", "top", "bottom"].includes(v.categoryId) ? v.userFit : null;
+    // 보류 옷에는 구매일·시즌을 두지 않는다(DB check와 같다).
+    const seasons = v.held ? [] : normalizeSeasons(v.seasons);
+    const purchasedOn = v.held ? null : v.purchasedOn;
+    return { ...v, measurements, shoeFit, userFit, seasons, purchasedOn };
   });
 
 export type GarmentInput = z.output<typeof garmentInputSchema>;

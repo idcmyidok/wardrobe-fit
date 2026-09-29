@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
+import { priceInKrw } from "@/lib/format/price";
 import { cn } from "@/lib/cn";
 import {
   brandSummary,
@@ -31,7 +32,12 @@ const sectionTitle = "text-body font-semibold";
 const colLabel = "font-mono text-label font-medium tracking-[0.08em] text-neutral-700";
 
 export function AnalysisView() {
-  const { garments } = useWardrobe();
+  const { garments: owned, usdRate } = useWardrobe();
+  // 달러로 기록한 옷은 환율로 원으로 바꿔 금액에 함께 넣는다.
+  const garments = useMemo(
+    () => owned.map((g) => (g.currency === "USD" ? { ...g, purchasePrice: priceInKrw(g.purchasePrice, g.currency, usdRate), currency: "KRW" as const } : g)),
+    [owned, usdRate],
+  );
   const [brandTab, setBrandTab] = useState<CategoryTab>("all");
   const [colorTab, setColorTab] = useState<CategoryTab>("all");
 

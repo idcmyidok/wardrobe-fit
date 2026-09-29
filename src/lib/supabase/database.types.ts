@@ -54,6 +54,27 @@ export type Database = {
         }
         Relationships: []
       }
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: number
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: number
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: number
+        }
+        Relationships: []
+      }
       body_profiles: {
         Row: {
           chest_cm: number | null
@@ -271,7 +292,9 @@ export type Database = {
           created_at: string
           currency: string
           deleted_at: string | null
+          fit_check_id: string | null
           fit_review: string | null
+          held: boolean
           id: string
           image_path: string | null
           m_brim: number | null
@@ -311,7 +334,9 @@ export type Database = {
           created_at?: string
           currency?: string
           deleted_at?: string | null
+          fit_check_id?: string | null
           fit_review?: string | null
+          held?: boolean
           id?: string
           image_path?: string | null
           m_brim?: number | null
@@ -351,7 +376,9 @@ export type Database = {
           created_at?: string
           currency?: string
           deleted_at?: string | null
+          fit_check_id?: string | null
           fit_review?: string | null
+          held?: boolean
           id?: string
           image_path?: string | null
           m_brim?: number | null
