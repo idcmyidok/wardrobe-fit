@@ -371,7 +371,7 @@ export function FitResultView({
             </h2>
             <span className="text-sm text-neutral-700">내 치수와 이 사이즈 실측의 여유분으로 계산 · 기록에는 남기지 않습니다</span>
           </div>
-          <BodyFitPanel garment={bodyGarment} />
+          <BodyFitPanel garment={bodyGarment} silhouette />
         </section>
       )}
 
