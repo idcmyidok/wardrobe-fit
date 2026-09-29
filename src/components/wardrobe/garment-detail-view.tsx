@@ -8,9 +8,9 @@ import { useWardrobe } from "./wardrobe-store";
 
 /** /wardrobe/[id]: 옷 정보 본문을 페이지로 보여준다. 옷 목록은 (app) layout이 이미 불러와 있다. */
 export function GarmentDetailView({ id }: { id: string }) {
-  const { garments } = useWardrobe();
+  const { allGarments } = useWardrobe();
   const router = useRouter();
-  const garment = garments.find((g) => g.id === id);
+  const garment = allGarments.find((g) => g.id === id);
 
   if (!garment) {
     return (
@@ -23,5 +23,5 @@ export function GarmentDetailView({ id }: { id: string }) {
       </main>
     );
   }
-  return <GarmentDetail key={garment.id} garment={garment} variant="page" onClose={() => router.push("/wardrobe")} />;
+  return <GarmentDetail key={garment.id} garment={garment} variant="page" onClose={() => router.push(garment.held ? "/fit-check" : "/wardrobe")} />;
 }

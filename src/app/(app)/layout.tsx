@@ -15,6 +15,8 @@ import { getReleaseNoteEdits } from "@/server/release-notes/actions";
 import { listMyGarments } from "@/server/garments/queries";
 import { getMyBodyProfile } from "@/server/body/queries";
 import { BodyProvider } from "@/components/body/body-store";
+import { getUsdRate } from "@/server/settings/queries";
+import { DEFAULT_USD_KRW } from "@/lib/format/price";
 
 /**
  * 로그인 후 화면 공통 레이아웃. 옷 정보 Drawer와 알림은 어느 화면에서든 열리도록 여기에 둔다.
@@ -70,9 +72,11 @@ async function WardrobeData({
   releaseNoteEdits: ReleaseNoteEdits;
   children: React.ReactNode;
 }) {
-  const [garments, body] = userId ? await Promise.all([listMyGarments(), getMyBodyProfile()]) : [MOCK_GARMENTS, null];
+  const [garments, body, usdRate] = userId
+    ? await Promise.all([listMyGarments(), getMyBodyProfile(), getUsdRate()])
+    : [MOCK_GARMENTS, null, DEFAULT_USD_KRW];
   return (
-    <WardrobeProvider initialGarments={garments} userId={userId} supabaseEnv={userId ? getSupabaseEnv() : null}>
+    <WardrobeProvider initialGarments={garments} userId={userId} supabaseEnv={userId ? getSupabaseEnv() : null} usdRate={usdRate}>
       {/* 내 치수: 예상 핏을 화면에서 계산하려고 옷 목록과 함께 읽는다. */}
       <BodyProvider initialProfile={body} signedIn={Boolean(userId)}>
         <AppHeader email={email} admin={admin} releaseNoteEdits={releaseNoteEdits} />

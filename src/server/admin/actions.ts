@@ -5,6 +5,8 @@ import { z } from "zod";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { deleteAccountAndData } from "@/server/account/delete";
 import { logAdminAction } from "./audit";
+import { encryptBodyValues } from "@/server/body/crypto";
+import { clearLegacyColumns, legacyValues } from "@/server/body/queries";
 import { getAdminUser } from "./guard";
 
 /**
@@ -76,4 +78,65 @@ export async function deleteUserAccount(targetId: string): Promise<AdminActionRe
   await logAdminAction(db, adminId, "delete_user", id);
   revalidatePath("/admin");
   return { ok: true };
+}
+
+const usdRateSchema = z.number().gt(0).lt(100000);
+
+/** 달러 환율(1달러 = N원) 바꾸기. 달러로 기록한 옷의 가격 정렬·합계가 이 값으로 계산된다(app_settings, 마이그레이션 18). */
+export async function setUsdRate(value: unknown): Promise<AdminActionResult> {
+  const admin = await getAdminUser();
+  if (!admin) return fail("관리자만 할 수 있습니다.");
+  const parsed = usdRateSchema.safeParse(value);
+  if (!parsed.success) return fail("환율은 0보다 큰 숫자로 입력해 주세요.");
+  const db = createSupabaseAdminClient();
+  if (!db) return fail("서버에 SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다.");
+  const rate = Math.round(parsed.data * 100) / 100;
+  const { error } = await db
+    .from("app_settings")
+    .upsert({ key: "usd_krw", value: rate, updated_by: admin.id, updated_at: new Date().toISOString() }, { onConflict: "key" });
+  if (error) {
+    console.error("[admin] usd rate", error.code ?? error.message);
+    return fail("환율을 저장하지 못했습니다.");
+  }
+  await logAdminAction(db, admin.id, "set_usd_rate");
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * 암호화 전에 평문으로 저장된 신체치수를 모두 암호화 칸(values_enc)으로 옮기고 평문 칸을 비운다(1.2.6, 한 번만).
+ * 끝나면 마이그레이션 19로 평문 칸을 지운다. 관리자가 치수 값을 보는 일은 없다(서버 안에서만 옮긴다).
+ */
+export async function encryptLegacyBodyProfiles(): Promise<AdminActionResult & { converted?: number }> {
+  const admin = await getAdminUser();
+  if (!admin) return fail("관리자만 할 수 있습니다.");
+  const db = createSupabaseAdminClient();
+  if (!db) return fail("서버에 SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다.");
+  const { data: rows, error } = await db.from("body_profiles").select("*").is("values_enc", null);
+  if (error) {
+    console.error("[admin] body legacy read", error.code ?? error.message);
+    return fail("내 치수 기록을 읽지 못했습니다.");
+  }
+  let converted = 0;
+  for (const row of rows) {
+    let valuesEnc: string;
+    try {
+      valuesEnc = encryptBodyValues(legacyValues(row));
+    } catch {
+      return fail("서버에 BODY_ENCRYPTION_KEY가 설정되지 않았습니다.");
+    }
+    const { error: updateError } = await db
+      .from("body_profiles")
+      .update({ values_enc: valuesEnc, ...clearLegacyColumns(row) })
+      .eq("user_id", row.user_id)
+      .is("values_enc", null);
+    if (updateError) {
+      console.error("[admin] body encrypt", updateError.code ?? updateError.message);
+      return fail(`${converted}건을 바꾼 뒤 멈췄습니다. 다시 눌러 주세요.`);
+    }
+    converted++;
+  }
+  await logAdminAction(db, admin.id, "encrypt_body");
+  revalidatePath("/admin");
+  return { ok: true, converted };
 }

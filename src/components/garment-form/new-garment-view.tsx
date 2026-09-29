@@ -8,6 +8,8 @@ import { DateLabel } from "./date-label";
 import { ImagePicker } from "./image-picker";
 import { PageImageGrid } from "./page-image-grid";
 import { UnitInput } from "@/components/ui/input";
+import { PriceInput } from "@/components/ui/price-input";
+import { parsePriceInput, priceInputText, type Currency } from "@/lib/format/price";
 import { CATEGORIES, SUBCATEGORIES } from "@/lib/constants/categories";
 import { ALL_MEASUREMENT_KEYS, measurementFields } from "@/lib/constants/measurements";
 import { EMPTY_SHOE_FIT, shoeFitOrNull, type ShoeFit } from "@/lib/constants/shoe-fit";
@@ -33,6 +35,7 @@ interface FormState {
   productName: string;
   seasons: Season[];
   price: string;
+  currency: Currency;
   url: string;
   date: string;
   size: string;
@@ -58,6 +61,7 @@ const EMPTY_FORM: FormState = {
   productName: "",
   seasons: [],
   price: "",
+  currency: "KRW",
   url: "",
   date: "",
   size: "",
@@ -77,7 +81,8 @@ const importedForm = (url: string, p: Imported["product"]): FormState => {
     subcategoryId: p.subcategoryId?.value ?? "",
     brand: p.brand?.value ?? "",
     productName: p.productName?.value ?? "",
-    price: p.price ? String(p.price.value) : "",
+    price: p.price ? priceInputText(p.price.value, p.priceCurrency ?? "KRW") : "",
+    currency: p.priceCurrency ?? "KRW",
     color: p.colorCandidate?.value ?? "",
     size,
     m: chartMeasurements(p, size),
@@ -91,7 +96,7 @@ function chartMeasurements(p: Imported["product"] | undefined, size: string): Re
   return row ? Object.fromEntries(Object.entries(row.measurements).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])) : {};
 }
 
-/** AI 구매 판단 결과에서 넘어온 값(구매했어요)을 검토 폼 값으로 바꾼다. */
+/** AI 구매 판단 결과·구매 보류 옷에서 넘어온 값(구매했어요)을 검토 폼 값으로 바꾼다. */
 const draftToForm = (d: GarmentDraft): FormState => ({
   ...EMPTY_FORM,
   categoryId: d.categoryId,
@@ -99,6 +104,12 @@ const draftToForm = (d: GarmentDraft): FormState => ({
   brand: d.brand,
   productName: d.productName,
   size: d.sizeLabel ?? "",
+  color: d.colorName ?? "",
+  price: priceInputText(d.purchasePrice, d.currency ?? "KRW"),
+  currency: d.currency ?? "KRW",
+  date: d.purchasedOn ?? "",
+  seasons: d.seasons,
+  review: d.fitReview ?? "",
   url: d.productUrl ?? "",
   m: Object.fromEntries(Object.entries(d.measurements).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])),
   shoeFit: d.shoeFit ?? EMPTY_SHOE_FIT,
@@ -109,7 +120,14 @@ const draftToForm = (d: GarmentDraft): FormState => ({
 export function NewGarmentView() {
   const router = useRouter();
   const params = useSearchParams();
-  const { addGarment, garmentHref, showToast, pendingDraft, setPendingDraft } = useWardrobe();
+  const { addGarment, updateGarment, allGarments, garmentHref, showToast, pendingDraft, setPendingDraft } = useWardrobe();
+  // 구매 보류 옷 추가(?held=1): 구매일·시즌·내 핏 없이 "가격"만 받는다.
+  const [held] = useState(() => params.get("held") === "1" || Boolean(pendingDraft?.held && !pendingDraft.heldId));
+  // 구매 보류 옷을 옷장으로 옮기는 중이면 그 옷 id. 저장하면 새로 만들지 않고 그 옷을 옷장 옷으로 바꾼다(사진 그대로).
+  const [movingId] = useState(() => pendingDraft?.heldId ?? null);
+  const moving = movingId ? allGarments.find((g) => g.id === movingId) : undefined;
+  // 구매 판단기에서 넘어온 판단 기록 id(판단 결과 보기 링크)
+  const [fitCheckId] = useState(() => pendingDraft?.fitCheckId ?? null);
 
   const [phase, setPhase] = useState<Phase>(() => (pendingDraft ? "review" : params.get("mode") === "manual" ? "manual" : "url"));
   const [url, setUrl] = useState("");
@@ -241,27 +259,33 @@ export function NewGarmentView() {
     Object.entries(form.m).forEach(([k, v]) => {
       if (v !== "" && !isNaN(Number(v))) measurements[k as keyof Measurements] = Number(v);
     });
-    const price = form.price.replace(/\D/g, "");
     setSaving(true);
     setError(null);
     setFieldErrors({});
-    const result = await addGarment({
+    const draft = {
       categoryId: form.categoryId,
       subcategoryId: form.subcategoryId || null,
       brand: form.brand.trim(),
       productName: form.productName.trim(),
       sizeLabel: form.size || null,
       colorName: form.color || null,
-      seasons: form.seasons,
-      purchasedOn: form.date || null,
-      purchasePrice: price ? Number(price) : null,
+      seasons: held ? [] : form.seasons,
+      purchasedOn: held ? null : form.date || null,
+      purchasePrice: parsePriceInput(form.price, form.currency),
+      currency: form.currency,
       productUrl: form.url || null,
       imageUrl: null,
       measurements,
       fitReview: form.review || null,
       shoeFit: form.categoryId === "shoes" ? shoeFitOrNull(form.shoeFit) : null,
-      userFit: isClothes(form.categoryId) ? form.userFit : null,
-    }, image === undefined && isReview && chosenUrl ? await importImageFile(chosenUrl) : image, imported?.importId ?? null);
+      userFit: !held && isClothes(form.categoryId) ? form.userFit : null,
+      held,
+      fitCheckId,
+    };
+    const pickedImage = image === undefined && isReview && chosenUrl ? await importImageFile(chosenUrl) : image;
+    const result = movingId
+      ? await updateGarment(movingId, { ...draft, imageUrl: moving?.imageUrl ?? null, thumbUrl: moving?.thumbUrl ?? null, held: false }, pickedImage)
+      : await addGarment(draft, pickedImage, imported?.importId ?? null);
     setSaving(false);
     if (!result.ok) {
       const fields = result.fieldErrors ?? {};
@@ -271,7 +295,12 @@ export function NewGarmentView() {
       if (first) document.getElementById(FIELD_IDS[first] ?? "")?.focus();
       return;
     }
-    showToast(result.warning ?? "옷장에 등록했습니다");
+    if (held) {
+      showToast(result.warning ?? "구매 보류 옷에 추가했습니다");
+      router.push("/fit-check#held");
+      return;
+    }
+    showToast(result.warning ?? (movingId ? "옷장으로 옮겼습니다" : "옷장에 등록했습니다"));
     router.push(garmentHref(result.garment.id));
   };
 
@@ -281,7 +310,9 @@ export function NewGarmentView() {
       ? "제품명은 꼭 입력해야 합니다."
       : isReview && !form.size
         ? "구매한 사이즈를 선택하세요."
-        : "등록 전까지 저장되지 않습니다.";
+        : held
+          ? "추가 전까지 저장되지 않습니다."
+          : "등록 전까지 저장되지 않습니다.";
 
   const failDomain = failure?.domain ?? url.match(/\/\/([^/]+)/)?.[1] ?? "";
   const failText = importFailure(failure?.errorCode);
@@ -291,12 +322,12 @@ export function NewGarmentView() {
 
   return (
     <main className="mx-auto max-w-280 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
-      <Link href="/wardrobe" className="btn btn-ghost mb-2 text-sm">
-        ← 내 옷장
+      <Link href={held ? "/fit-check#held" : "/wardrobe"} className="btn btn-ghost mb-2 text-sm">
+        {held ? "← AI 구매 판단기" : "← 내 옷장"}
       </Link>
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-text pb-4">
-        <h1 className="text-title">새 옷 추가</h1>
-        <div className="seg" role="radiogroup" aria-label="추가 방법">
+        <h1 className="text-title">{held ? "구매 보류 옷 추가" : movingId ? "옷장으로 옮기기" : "새 옷 추가"}</h1>
+        {movingId ? null : <div className="seg" role="radiogroup" aria-label="추가 방법">
           <label className="seg-opt px-4 py-2 text-base">
             <input type="radio" name="addmode" checked={phase !== "manual"} onChange={() => { cancelRequest(); setPhase("url"); }} />
             상품 링크로 추가
@@ -305,7 +336,7 @@ export function NewGarmentView() {
             <input type="radio" name="addmode" checked={phase === "manual"} onChange={() => startManual()} />
             직접 입력
           </label>
-        </div>
+        </div>}
       </div>
 
       {(phase === "url" || phase === "analyzing" || phase === "failed") && (
@@ -333,15 +364,19 @@ export function NewGarmentView() {
             상품 페이지 주소를 붙여 넣으면 제품명·가격·사진·사이즈표를 읽어 옵니다. 읽지 못한 항목은 직접 채우면 됩니다.
           </div>
           <UsageNote kind="import" />
-          <Link href="/wardrobe/import-orders" className="btn btn-secondary mt-8 min-h-11 self-start">
-            무신사 주문내역으로 여러 벌 한꺼번에 추가
-          </Link>
-          <p className="max-w-140 text-sm text-neutral-700 text-pretty">
-            무신사 로그인 정보나 개인정보는 수집하지 않아요. 붙여 넣은 주문내역
-            원문은 서버로 보내거나 저장하지 않고, 이 기기에서 옷 정보만
-            골라내요. 옷 정보를 찾을 때는 주문 한 건마다 브랜드와 상품명만
-            쓰고, 가격·주문일·주문번호는 보내지 않아요.
-          </p>
+          {!held && (
+            <>
+              <Link href="/wardrobe/import-orders" className="btn btn-secondary mt-8 min-h-11 self-start">
+                무신사 주문내역으로 여러 벌 한꺼번에 추가
+              </Link>
+              <p className="max-w-140 text-sm text-neutral-700 text-pretty">
+                무신사 로그인 정보나 개인정보는 수집하지 않아요. 붙여 넣은 주문내역
+                원문은 서버로 보내거나 저장하지 않고, 이 기기에서 옷 정보만
+                골라내요. 옷 정보를 찾을 때는 주문 한 건마다 브랜드와 상품명만
+                쓰고, 가격·주문일·주문번호는 보내지 않아요.
+              </p>
+            </>
+          )}
 
           {phase === "analyzing" && (
             <div className="mt-4 border-t border-text" aria-live="polite">
@@ -412,7 +447,7 @@ export function NewGarmentView() {
           {isReview && (
             <div className="flex flex-col gap-0.5 border-b border-neutral-300 py-4">
               <span className="text-base">
-                {partial ? "읽지 못한 칸은 직접 채워 주세요." : "구매한 사이즈와 컬러를 고른 뒤 등록하세요."}
+                {partial ? "읽지 못한 칸은 직접 채워 주세요." : movingId ? "구매일·시즌·실제 구매가를 넣고 등록하세요." : held ? "고민 중인 사이즈와 컬러를 고른 뒤 추가하세요." : "구매한 사이즈와 컬러를 고른 뒤 등록하세요."}
               </span>
               {notices.length > 0 && (
                 <ul className="mt-1 list-disc pl-5 text-sm text-neutral-700">
@@ -427,7 +462,7 @@ export function NewGarmentView() {
           <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-6 border-b border-text py-7">
             <div className="flex max-w-60 flex-col gap-2">
               <ImagePicker
-                currentUrl={chosenUrl ?? null}
+                currentUrl={chosenUrl ?? moving?.imageUrl ?? null}
                 value={image}
                 onChange={setImage}
                 placeholder="사진 끌어다 놓기"
@@ -493,22 +528,32 @@ export function NewGarmentView() {
                   <input id="f-name" className="input" aria-invalid={Boolean(fieldErrors.productName)} aria-describedby={fieldErrors.productName ? "e-productName" : undefined} value={form.productName} onChange={(e) => update("productName", e.target.value)} />
                   <FieldError id="e-productName" message={fieldErrors.productName} />
                 </div>
+                {!held && (
+                  <div className="field">
+                    <DateLabel htmlFor="f-date" label="구매 날짜" filled={Boolean(form.date)} onClear={() => update("date", "")} />
+                    <input id="f-date" type="date" className="input font-mono tabular-nums" aria-invalid={Boolean(fieldErrors.purchasedOn)} aria-describedby={fieldErrors.purchasedOn ? "e-purchasedOn" : undefined} value={form.date} onChange={(e) => update("date", e.target.value)} />
+                    <FieldError id="e-purchasedOn" message={fieldErrors.purchasedOn} />
+                  </div>
+                )}
                 <div className="field">
-                  <DateLabel htmlFor="f-date" label="구매 날짜" filled={Boolean(form.date)} onClear={() => update("date", "")} />
-                  <input id="f-date" type="date" className="input font-mono tabular-nums" aria-invalid={Boolean(fieldErrors.purchasedOn)} aria-describedby={fieldErrors.purchasedOn ? "e-purchasedOn" : undefined} value={form.date} onChange={(e) => update("date", e.target.value)} />
-                  <FieldError id="e-purchasedOn" message={fieldErrors.purchasedOn} />
-                </div>
-                <div className="field">
-                  <label htmlFor="f-price">구매가</label>
-                  <UnitInput id="f-price" unit="원" inputMode="numeric" aria-invalid={Boolean(fieldErrors.purchasePrice)} aria-describedby={[fieldErrors.purchasePrice && "e-purchasePrice", product?.price && "h-price"].filter(Boolean).join(" ") || undefined} value={form.price} onChange={(e) => update("price", e.target.value)} />
+                  <label htmlFor="f-price">{held ? "가격" : "구매가"}</label>
+                  <PriceInput
+                    id="f-price"
+                    value={form.price}
+                    currency={form.currency}
+                    onChange={(v) => update("price", v)}
+                    onCurrencyChange={(c) => update("currency", c)}
+                    aria-invalid={Boolean(fieldErrors.purchasePrice)}
+                    aria-describedby={[fieldErrors.purchasePrice && "e-purchasePrice", product?.price && !held && "h-price"].filter(Boolean).join(" ") || undefined}
+                  />
                   <FieldError id="e-purchasePrice" message={fieldErrors.purchasePrice} />
-                  {product?.price && (
+                  {product?.price && !held && (
                     <span id="h-price" className="whitespace-nowrap text-xs text-neutral-700">
                       쇼핑몰 현재 판매가예요. 실제 산 가격으로 고쳐 주세요.
                     </span>
                   )}
                 </div>
-                <div className="field col-span-full">
+                {!held && <div className="field col-span-full">
                   <label>시즌</label>
                   <div className="seg self-start">
                     {SEASONS.map((s) => (
@@ -524,7 +569,7 @@ export function NewGarmentView() {
                       </label>
                     ))}
                   </div>
-                </div>
+                </div>}
                 <div className="field col-span-full">
                   <label htmlFor="f-url">상품 링크</label>
                   <input id="f-url" className="input text-neutral-800" placeholder="선택 입력" aria-invalid={Boolean(fieldErrors.productUrl)} aria-describedby={fieldErrors.productUrl ? "e-productUrl" : undefined} value={form.url} onChange={(e) => update("url", e.target.value)} />
@@ -536,7 +581,7 @@ export function NewGarmentView() {
 
           <section className="flex flex-col gap-4 border-b border-text py-7">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-lg">구매한 옵션</h2>
+              <h2 className="text-lg">{held ? "고민 중인 옵션" : "구매한 옵션"}</h2>
               <span className="text-sm text-neutral-700">사이즈를 고르면 사이즈표의 실측이 아래에 채워집니다. 맞는 사이즈가 없으면 직접 입력하세요</span>
             </div>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-6">
@@ -640,7 +685,7 @@ export function NewGarmentView() {
             </section>
           )}
 
-          {isClothes(form.categoryId) && (
+          {isClothes(form.categoryId) && !held && (
             <section className="flex flex-col gap-4 border-b border-text py-7">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 id="f-user-fit" className="text-lg">
@@ -660,18 +705,18 @@ export function NewGarmentView() {
 
           <section className="flex flex-col gap-3 py-7">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-lg">착용 후기</h2>
-              <span className="text-sm text-neutral-700">선택 입력 · 입어본 뒤에 써도 됩니다</span>
+              <h2 className="text-lg">{held ? "메모" : "착용 후기"}</h2>
+              <span className="text-sm text-neutral-700">{held ? "선택 입력 · 고민하는 이유나 비교할 점" : "선택 입력 · 입어본 뒤에 써도 됩니다"}</span>
             </div>
             <textarea
               className="input text-body leading-relaxed"
               rows={4}
-              aria-label="착용 후기"
+              aria-label={held ? "메모" : "착용 후기"}
               placeholder={form.categoryId === "shoes" ? "예: 발볼이 조금 좁아서 다음엔 반 치수 크게 사고 싶다." : "예: 어깨와 가슴은 마음에 드는데 총장이 조금 길다."}
               value={form.review}
               onChange={(e) => update("review", e.target.value)}
             />
-            <span className="text-sm text-neutral-700">AI 구매 판단기가 이 후기를 원문 그대로 근거로 인용합니다.</span>
+            {!held && <span className="text-sm text-neutral-700">AI 구매 판단기가 이 후기를 원문 그대로 근거로 인용합니다.</span>}
           </section>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-text pt-4">
@@ -679,11 +724,11 @@ export function NewGarmentView() {
               {hint}
             </span>
             <div className="flex gap-2">
-              <Link href="/wardrobe" className="btn btn-secondary min-h-10">
+              <Link href={held || movingId ? "/fit-check#held" : "/wardrobe"} className="btn btn-secondary min-h-10">
                 취소
               </Link>
               <button type="button" className="btn btn-primary min-h-10 min-w-30" disabled={saving} onClick={register}>
-                {saving ? "등록 중…" : "등록"}
+                {saving ? "저장 중…" : held ? "보류 목록에 추가" : "등록"}
               </button>
             </div>
           </div>

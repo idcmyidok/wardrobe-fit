@@ -97,6 +97,7 @@ export async function createGarment(input: unknown): Promise<GarmentActionResult
       category_id: parsed.data.categoryId,
       product_name: parsed.data.productName,
       source_import_id: parsed.data.sourceImportId,
+      fit_check_id: parsed.data.fitCheckId,
       user_id: s.userId,
     })
     .select("id")

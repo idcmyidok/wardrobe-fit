@@ -61,7 +61,7 @@ export type ImportWarningCode =
   | "range_value_averaged"
   | "invalid_measurement_dropped"
   | "size_chart_unmapped_columns"
-  | "price_currency_not_krw"
+  | "price_currency_not_krw"  // 원·달러가 아닌 통화
   | "parser_failed";
 
 export interface ImportWarning {
@@ -94,8 +94,10 @@ export interface NormalizedProduct {
   categoryId: Extracted<CategoryId> | null;
   subcategoryId: Extracted<string> | null;
   imageUrls: string[];
-  /** KRW 정수 */
+  /** 원이면 원, 달러면 센트 정수(priceCurrency). 그 밖의 통화는 비워 둔다. */
   price: Extracted<number> | null;
+  /** 가격 통화. 예전 분석 결과에는 없다(원). */
+  priceCurrency?: "KRW" | "USD";
   colorOptions: string[];
   colorCandidate: Extracted<string> | null;
   sizeOptions: string[];

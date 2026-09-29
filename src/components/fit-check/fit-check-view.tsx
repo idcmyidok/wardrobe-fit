@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { UnitInput } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
@@ -21,6 +21,7 @@ import { notifyUsageChanged } from "@/lib/usage";
 import type { CategoryId, Measurements } from "@/lib/types/domain";
 import { UsageNote } from "@/components/usage/usage-note";
 import { FitResultView, type ResultAiStatus } from "./fit-result-view";
+import { HeldSection } from "@/components/held/held-section";
 import { VersusView } from "./versus-view";
 
 /**
@@ -46,6 +47,8 @@ interface Result {
   interpretation: FitInterpretation | null;
   aiStatus: ResultAiStatus;
   createdAt: string;
+  /** 저장된 판단 기록 id */
+  fitCheckId?: string | null;
 }
 
 const firstSub = (categoryId: CategoryId) => SUBCATEGORIES.find((s) => s.categoryId === categoryId)!.id;
@@ -209,7 +212,7 @@ export function FitCheckView() {
       else setError(FIT_ERROR_TEXT[r.error]);
       return;
     }
-    setResult((prev) => prev && { ...prev, interpretation: r.done.interpretation, aiStatus: r.done.aiStatus });
+    setResult((prev) => prev && { ...prev, interpretation: r.done.interpretation, aiStatus: r.done.aiStatus, fitCheckId: r.done.saved ? r.done.id : null });
     if (r.done.saved) window.history.replaceState(null, "", `/fit-check/${r.done.id}`);
   };
 
@@ -218,6 +221,8 @@ export function FitCheckView() {
       <FitResultView
         {...result}
         productUrl={manual ? null : (imported?.sourceUrl ?? null)}
+        importId={manual ? null : (imported?.importId ?? null)}
+        price={!manual && product?.price ? { value: product.price.value, currency: product.priceCurrency ?? "KRW" } : null}
         onBack={() => {
           request.current?.abort();
           setBusy(false);
@@ -561,6 +566,11 @@ export function FitCheckView() {
       )}
       </>
       )}
+
+      {/* 구매 보류 옷(옷장과 별개). ?item=을 읽으므로 Suspense 안에 둔다. */}
+      <Suspense>
+        <HeldSection />
+      </Suspense>
     </main>
   );
 }

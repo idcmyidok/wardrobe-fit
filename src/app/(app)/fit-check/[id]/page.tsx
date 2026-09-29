@@ -15,7 +15,7 @@ export default async function FitCheckResultPage({ params }: { params: Promise<{
   if (!supabase) notFound();
   const { data } = await supabase
     .from("fit_checks")
-    .select("candidate, computed, interpretation, ai_model, error_code, created_at")
+    .select("candidate, computed, interpretation, ai_model, error_code, created_at, import_id")
     .eq("id", id)
     .maybeSingle();
   const candidate = fitCandidateSchema.safeParse(data?.candidate);
@@ -33,5 +33,28 @@ export default async function FitCheckResultPage({ params }: { params: Promise<{
         ? "limited"
         : "disabled";
 
-  return <FitResultView candidate={candidate.data} computed={computed} interpretation={interpretation} aiStatus={aiStatus} createdAt={data.created_at} />;
+  // 링크로 판단한 옷이면 그 분석 기록에서 링크·판매가를 읽는다(구매 보류 옷에 담을 때 쓴다).
+  let productUrl: string | null = null;
+  let price: { value: number; currency: "KRW" | "USD" } | null = null;
+  if (data.import_id) {
+    const { data: imp } = await supabase.from("product_imports").select("source_url, result").eq("id", data.import_id).maybeSingle();
+    const product = imp?.result as { price?: { value?: unknown } | null; priceCurrency?: unknown } | null | undefined;
+    productUrl = imp?.source_url ?? null;
+    const value = product?.price?.value;
+    if (typeof value === "number") price = { value, currency: product?.priceCurrency === "USD" ? "USD" : "KRW" };
+  }
+
+  return (
+    <FitResultView
+      candidate={candidate.data}
+      computed={computed}
+      interpretation={interpretation}
+      aiStatus={aiStatus}
+      createdAt={data.created_at}
+      fitCheckId={id}
+      importId={data.import_id}
+      productUrl={productUrl}
+      price={price}
+    />
+  );
 }

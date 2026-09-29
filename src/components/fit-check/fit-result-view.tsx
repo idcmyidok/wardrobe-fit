@@ -13,6 +13,8 @@ import { SHOE_FIT_FIELDS, shoeFitText } from "@/lib/constants/shoe-fit";
 import { idealFrom, shoeSizeMm } from "@/lib/fit/shoes";
 import type { AiStatus, ComparableSnapshot, Confidence, DimensionResult, DimensionTag, FitComputed, FitInterpretation, SizeReport } from "@/lib/fit/types";
 import { formatDate } from "@/lib/format/date";
+import type { Currency } from "@/lib/format/price";
+import { useAddHeld } from "@/components/held/use-add-held";
 
 /**
  * 구매 판단 결과(PROJECT_SPEC.md 5.5 Step 4). 표의 숫자와 판정은 서버 계산값을 그대로 쓰고,
@@ -158,7 +160,16 @@ export function FitResultView({
   onBack,
   onRetry,
   embedded = false,
+  fitCheckId = null,
+  importId = null,
+  price = null,
 }: {
+  /** 저장된 판단 기록 id(보류 옷의 "판단 결과 보기") */
+  fitCheckId?: string | null;
+  /** 링크 분석 기록 id(보류 옷 사진) */
+  importId?: string | null;
+  /** 쇼핑몰 판매가(보류 옷의 "가격") */
+  price?: { value: number; currency: Currency } | null;
   candidate: FitCandidate;
   computed: FitComputed;
   interpretation: FitInterpretation | null;
@@ -171,6 +182,7 @@ export function FitResultView({
   embedded?: boolean;
 }) {
   const { garments, openDrawer, setPendingDraft } = useWardrobe();
+  const { addHeld, isHeld, busyKey } = useAddHeld();
   const router = useRouter();
   const [sizeLabel, setSizeLabel] = useState(computed.sizes[0]?.sizeLabel ?? "");
   const size = computed.sizes.find((s) => s.sizeLabel === sizeLabel) ?? computed.sizes[0];
@@ -221,6 +233,19 @@ export function FitResultView({
     () => ({ categoryId: candidate.categoryId, subcategoryId: candidate.subcategoryId, productName: candidate.productName, measurements: size.measurements }),
     [candidate.categoryId, candidate.subcategoryId, candidate.productName, size.measurements],
   );
+
+  const heldDraft = {
+    categoryId: candidate.categoryId,
+    subcategoryId: candidate.subcategoryId,
+    brand: candidate.brand ?? "",
+    productName: candidate.productName ?? "",
+    sizeLabel: size.sizeLabel,
+    productUrl,
+    measurements: size.measurements,
+    purchasePrice: price?.value ?? null,
+    currency: price?.currency ?? "KRW",
+    fitCheckId,
+  } as const;
 
   const Wrapper = embedded ? "div" : "main";
   return (
@@ -483,11 +508,20 @@ export function FitResultView({
               measurements: size.measurements,
               fitReview: null,
               shoeFit: null,
+              fitCheckId,
             });
             router.push("/wardrobe/new");
           }}
         >
           이 {noun}{noun === "모자" ? "를" : "을"} 구매했어요 — 옷장에 추가
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary min-h-11"
+          disabled={Boolean(busyKey) || isHeld(heldDraft)}
+          onClick={() => addHeld("result", heldDraft, importId)}
+        >
+          {busyKey ? "담는 중…" : isHeld(heldDraft) ? "구매 보류 옷에 있어요" : "구매 보류 옷에 추가"}
         </button>
         {embedded ? null : onBack ? (
           <button type="button" className="btn btn-secondary min-h-11" onClick={onBack}>
@@ -498,7 +532,7 @@ export function FitResultView({
             다른 옷 판단하기
           </Link>
         )}
-        <span className="text-sm text-neutral-700">구매가, 구매일, 링크는 AI에 보내지 않습니다.</span>
+        <span className="w-full text-sm text-neutral-700">구매가, 구매일, 링크는 AI에 보내지 않습니다.</span>
       </div>
     </Wrapper>
   );

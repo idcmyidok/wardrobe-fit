@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 
-export type AdminAuditAction = "view_admin" | "ban_user" | "unban_user" | "delete_user" | "grant_tester" | "revoke_tester";
+export type AdminAuditAction = "view_admin" | "ban_user" | "unban_user" | "delete_user" | "grant_tester" | "revoke_tester" | "set_usd_rate" | "encrypt_body";
 
 /**
  * 관리자 작업을 admin_audit_logs에 남긴다(마이그레이션 9). 기록이 실패해도 관리 작업은 막지 않고 로그만 남긴다
