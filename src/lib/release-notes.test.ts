@@ -18,6 +18,12 @@ describe("업데이트 노트", () => {
   it("신규 기능은 제목과 설명이 모두 있다", () => {
     for (const n of RELEASE_NOTES) for (const f of n.features) expect(f.title && f.description).toBeTruthy();
   });
+  it("최초 작성 시각(HH:mm)이 있다. 기록이 없는 1.0.0·1.1.0만 예외", () => {
+    for (const n of RELEASE_NOTES) {
+      if (["1.0.0", "1.1.0"].includes(n.version)) continue;
+      expect(n.time, n.version).toMatch(/^([01]\d|2[0-3]):[0-5]\d$/);
+    }
+  });
   it("버전은 겹치지 않고 날짜 형식이 맞다", () => {
     const versions = RELEASE_NOTES.map((n) => n.version);
     expect(new Set(versions).size).toBe(versions.length);
