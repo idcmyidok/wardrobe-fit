@@ -7,11 +7,11 @@ import { SiteFooter } from "@/components/legal/site-footer";
 import { GarmentDrawer } from "@/components/wardrobe/garment-drawer";
 import { WardrobeProvider, WardrobeToast } from "@/components/wardrobe/wardrobe-store";
 import { MOCK_GARMENTS } from "@/lib/mock/garments";
-import type { ReleaseNoteEdits } from "@/lib/release-notes";
+import type { ReleaseNoteEdits, ReleaseNoteImages } from "@/lib/release-notes";
 import { getSupabaseEnv, isAuthConfigured } from "@/lib/supabase/config";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { isAdmin } from "@/server/admin/guard";
-import { getReleaseNoteEdits } from "@/server/release-notes/actions";
+import { getReleaseNoteEdits, getReleaseNoteImages } from "@/server/release-notes/actions";
 import { listMyGarments } from "@/server/garments/queries";
 import { getMyBodyProfile } from "@/server/body/queries";
 import { BodyProvider } from "@/components/body/body-store";
@@ -32,7 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (configured && !user) redirect("/auth/signout");
   const email = user?.email ?? null;
   // 업데이트 노트 수정본도 여기서 먼저 읽어, 창을 열자마자 수정본이 나오게 한다(원래 노트가 잠깐 보이지 않게).
-  const [admin, releaseNoteEdits] = await Promise.all([user ? isAdmin(user.id) : false, user ? getReleaseNoteEdits() : {}]);
+  const [admin, releaseNoteEdits, releaseNoteImages] = await Promise.all([user ? isAdmin(user.id) : false, user ? getReleaseNoteEdits() : {}, user ? getReleaseNoteImages() : {}]);
 
   return (
     // 내용이 짧아도 법적 고지가 화면 맨 아래에 오도록 세로로 채운다.
@@ -43,12 +43,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Suspense
         fallback={
           <>
-            <AppHeader email={email} admin={admin} releaseNoteEdits={releaseNoteEdits} />
+            <AppHeader email={email} admin={admin} releaseNoteEdits={releaseNoteEdits} releaseNoteImages={releaseNoteImages} />
             <WardrobeSkeleton />
           </>
         }
       >
-        <WardrobeData userId={user?.id ?? null} email={email} admin={admin} releaseNoteEdits={releaseNoteEdits}>
+        <WardrobeData userId={user?.id ?? null} email={email} admin={admin} releaseNoteEdits={releaseNoteEdits} releaseNoteImages={releaseNoteImages}>
           {children}
         </WardrobeData>
       </Suspense>
@@ -64,12 +64,14 @@ async function WardrobeData({
   email,
   admin,
   releaseNoteEdits,
+  releaseNoteImages,
   children,
 }: {
   userId: string | null;
   email: string | null;
   admin: boolean;
   releaseNoteEdits: ReleaseNoteEdits;
+  releaseNoteImages: ReleaseNoteImages;
   children: React.ReactNode;
 }) {
   const [garments, body, usdRate] = userId
@@ -79,7 +81,7 @@ async function WardrobeData({
     <WardrobeProvider initialGarments={garments} userId={userId} supabaseEnv={userId ? getSupabaseEnv() : null} usdRate={usdRate}>
       {/* 내 치수: 예상 핏을 화면에서 계산하려고 옷 목록과 함께 읽는다. */}
       <BodyProvider initialProfile={body} signedIn={Boolean(userId)}>
-        <AppHeader email={email} admin={admin} releaseNoteEdits={releaseNoteEdits} />
+        <AppHeader email={email} admin={admin} releaseNoteEdits={releaseNoteEdits} releaseNoteImages={releaseNoteImages} />
         {children}
         {/* 주소의 ?item=을 읽는다 */}
         <Suspense>

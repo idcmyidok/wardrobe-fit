@@ -12,6 +12,7 @@ import type { FitCandidate } from "@/lib/fit/compute";
 import { SHOE_FIT_FIELDS, shoeFitText } from "@/lib/constants/shoe-fit";
 import { idealFrom, shoeSizeMm } from "@/lib/fit/shoes";
 import type { AiStatus, ComparableSnapshot, Confidence, DimensionResult, DimensionTag, FitComputed, FitInterpretation, SizeReport } from "@/lib/fit/types";
+import { importImageUrl } from "@/lib/import/client";
 import { formatDate } from "@/lib/format/date";
 import type { Currency } from "@/lib/format/price";
 import { useAddHeld } from "@/components/held/use-add-held";
@@ -371,7 +372,7 @@ export function FitResultView({
             </h2>
             <span className="text-sm text-neutral-700">내 치수와 이 사이즈 실측의 여유분으로 계산 · 기록에는 남기지 않습니다</span>
           </div>
-          <BodyFitPanel garment={bodyGarment} />
+          <BodyFitPanel garment={bodyGarment} imageUrl={importId ? importImageUrl(importId, 0) : null} />
         </section>
       )}
 

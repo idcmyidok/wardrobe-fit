@@ -1,6 +1,6 @@
 import { AdminView } from "@/components/admin/admin-view";
 import { requireAdmin } from "@/server/admin/guard";
-import { getAdminOverview, getBodyEncryptionStatus } from "@/server/admin/queries";
+import { getAdminOverview } from "@/server/admin/queries";
 import { getUsdRate } from "@/server/settings/queries";
 
 export const metadata = { title: "관리자 · Wardrobe Fit", robots: { index: false } };
@@ -10,6 +10,6 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const me = await requireAdmin();
   const requested = Number((await searchParams).page);
   const page = Number.isInteger(requested) && requested > 0 ? requested : 1;
-  const [overview, usdRate, bodyEncryption] = await Promise.all([getAdminOverview(me.id, page), getUsdRate(), getBodyEncryptionStatus()]);
-  return <AdminView overview={overview} myId={me.id} usdRate={usdRate} bodyEncryption={bodyEncryption} />;
+  const [overview, usdRate] = await Promise.all([getAdminOverview(me.id, page), getUsdRate()]);
+  return <AdminView overview={overview} myId={me.id} usdRate={usdRate} />;
 }

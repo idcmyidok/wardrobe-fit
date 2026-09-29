@@ -9,6 +9,7 @@ import { LENGTH_GROUP_NAME, LENGTH_LEVELS, LENGTH_LEVEL_NAME, bandLabel, compute
 import { useBody, useBodyFit } from "./body-store";
 import { BodyFitCompare } from "./body-fit-compare";
 import { FIT_COLOR, FitMeter } from "./fit-meter";
+import { LengthSilhouette } from "./length-silhouette";
 
 const MEASURE_NAME = { chest: "가슴", shoulder: "어깨", waist: "허리", hip: "엉덩이", thigh: "허벅지" } as const;
 
@@ -23,16 +24,19 @@ export function BodyFitPanel({
   userFit = null,
   showScores = true,
   collapseReasons = false,
+  imageUrl = null,
 }: {
   garment: BodyFitGarment;
   userFit?: FitLevel | null;
   showScores?: boolean;
   collapseReasons?: boolean;
+  /** 있으면 총장 길이감 아래에 사람 실루엣 위에 옷 사진을 얹은 그림을 보여 준다 */
+  imageUrl?: string | null;
 }) {
   return (
     <div className="flex flex-col gap-5">
       <BodyFitMain garment={garment} userFit={userFit} showScores={showScores} collapseReasons={collapseReasons} />
-      <LengthFitSection garment={garment} collapseReasons={collapseReasons} />
+      <LengthFitSection garment={garment} collapseReasons={collapseReasons} imageUrl={imageUrl} />
     </div>
   );
 }
@@ -175,7 +179,7 @@ function BodyFitDetails({
 }
 
 /** 총장 길이감(키 기준). 핏과 따로 본다. 상의·아우터 중 셔츠·블레이저·코트·롱패딩은 보지 않는다. */
-function LengthFitSection({ garment, collapseReasons }: { garment: BodyFitGarment; collapseReasons: boolean }) {
+function LengthFitSection({ garment, collapseReasons, imageUrl }: { garment: BodyFitGarment; collapseReasons: boolean; imageUrl: string | null }) {
   const { profile } = useBody();
   if (!profile) return null;
   const r = computeLengthFit(garment, profile.values.height, profile.overrides.length);
@@ -216,6 +220,7 @@ function LengthFitSection({ garment, collapseReasons }: { garment: BodyFitGarmen
               </div>
             ))}
           </div>
+          {imageUrl && <LengthSilhouette imageUrl={imageUrl} length={r.length} height={r.height} />}
           <Reasons collapse={collapseReasons} label="길이감 기준 보기">
             <p className="text-sm text-pretty text-neutral-800">
               {LENGTH_GROUP_NAME[r.group]} 총장을 키 {r.height}cm 기준으로 봤어요:{" "}
