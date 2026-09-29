@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { BODY_LABELS, WEARABLE_LEVELS, fitLevelName, type FitLevel } from "@/lib/constants/body";
 import { cn } from "@/lib/cn";
 import { SILHOUETTE_NAME, bodyFitReasons, fitGroupKind, fitGroupName, fitGroupOf, type BodyFitGarment, type BodyFitResult } from "@/lib/fit/body-fit";
+import { LENGTH_GROUP_NAME, LENGTH_LEVELS, LENGTH_LEVEL_NAME, bandLabel, computeLengthFit, lengthLevelLabel } from "@/lib/fit/length-fit";
 import { useBody, useBodyFit } from "./body-store";
 import { BodyFitCompare } from "./body-fit-compare";
 import { FIT_COLOR, FitMeter } from "./fit-meter";
@@ -13,8 +15,29 @@ const MEASURE_NAME = { chest: "가슴", shoulder: "어깨", waist: "허리", hip
 /**
  * 내 치수 기준 예상 핏(옷 정보·구매 판단 공용): 6칸 미터기, 네 가지 핏 점수, 안 맞는 치수. 총장·소매는 보지 않는다(옷장 옷과의 길이 비교는 구매 판단 표에서).
  * userFit: 옷에 내가 표기한 핏. 있으면 미터기는 내 표기를 보여 주고, 예상과 다르면 둘 다 보여 준다.
+ * collapseReasons: 판단 근거(부위별 비교·길이감 설명)를 접어 두고 눌러서 펼친다(옷 정보 화면).
+ * 아래에 총장 길이감(키 기준)을 따로 보여 준다.
  */
-export function BodyFitPanel({ garment, userFit = null, showScores = true }: { garment: BodyFitGarment; userFit?: FitLevel | null; showScores?: boolean }) {
+export function BodyFitPanel({
+  garment,
+  userFit = null,
+  showScores = true,
+  collapseReasons = false,
+}: {
+  garment: BodyFitGarment;
+  userFit?: FitLevel | null;
+  showScores?: boolean;
+  collapseReasons?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      <BodyFitMain garment={garment} userFit={userFit} showScores={showScores} collapseReasons={collapseReasons} />
+      <LengthFitSection garment={garment} collapseReasons={collapseReasons} />
+    </div>
+  );
+}
+
+function BodyFitMain({ garment, userFit, showScores, collapseReasons }: { garment: BodyFitGarment; userFit: FitLevel | null; showScores: boolean; collapseReasons: boolean }) {
   const { profile } = useBody();
   const result = useBodyFit(garment);
   const groupId = fitGroupOf(garment.categoryId, garment.subcategoryId);
@@ -52,10 +75,37 @@ export function BodyFitPanel({ garment, userFit = null, showScores = true }: { g
     );
   }
 
-  return <BodyFitDetails result={result} userFit={userFit} showScores={showScores} />;
+  return <BodyFitDetails result={result} userFit={userFit} showScores={showScores} collapseReasons={collapseReasons} />;
 }
 
-function BodyFitDetails({ result: r, userFit, showScores }: { result: Extract<BodyFitResult, { status: "ok" }>; userFit: FitLevel | null; showScores: boolean }) {
+/** 접어 둘 수 있는 판단 근거. collapse가 false면 그대로 보여 준다. */
+function Reasons({ collapse, label, children }: { collapse: boolean; label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  if (!collapse) return <>{children}</>;
+  return (
+    <div className="flex flex-col gap-3">
+      <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="inline-flex w-fit cursor-pointer items-center gap-1 text-sm text-neutral-800 hover:text-text">
+        {label}
+        <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("transition-transform", open && "rotate-180")}>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {open && children}
+    </div>
+  );
+}
+
+function BodyFitDetails({
+  result: r,
+  userFit,
+  showScores,
+  collapseReasons,
+}: {
+  result: Extract<BodyFitResult, { status: "ok" }>;
+  userFit: FitLevel | null;
+  showScores: boolean;
+  collapseReasons: boolean;
+}) {
   const name = (l: FitLevel) => fitLevelName(l, r.kind);
   const differs = userFit != null && userFit !== r.level;
   const facts = [
@@ -104,7 +154,9 @@ function BodyFitDetails({ result: r, userFit, showScores }: { result: Extract<Bo
         </div>
       )}
 
-      <BodyFitCompare dimensions={r.dimensions} reasons={bodyFitReasons(r)} kind={r.kind} />
+      <Reasons collapse={collapseReasons} label="판단 근거 보기">
+        <BodyFitCompare dimensions={r.dimensions} reasons={bodyFitReasons(r)} kind={r.kind} />
+      </Reasons>
 
       {(r.issues.length > 0 || r.stretch) && (
         <ul className="flex flex-col gap-1 text-sm">
@@ -119,5 +171,60 @@ function BodyFitDetails({ result: r, userFit, showScores }: { result: Extract<Bo
       )}
       {r.issues.length === 0 && <p className="text-sm text-neutral-700">내 치수와 크게 어긋나는 곳이 없어요.</p>}
     </div>
+  );
+}
+
+/** 총장 길이감(키 기준). 핏과 따로 본다. 상의·아우터 중 셔츠·블레이저·코트·롱패딩은 보지 않는다. */
+function LengthFitSection({ garment, collapseReasons }: { garment: BodyFitGarment; collapseReasons: boolean }) {
+  const { profile } = useBody();
+  if (!profile) return null;
+  const r = computeLengthFit(garment, profile.values.height, profile.overrides.length);
+  if (r.status === "unsupported") return null;
+  return (
+    <section className="flex flex-col gap-2 border-t border-neutral-300 pt-4" data-testid="length-fit" aria-label="길이감">
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="text-sm text-neutral-700">길이감</span>
+        {r.status === "ok" ? (
+          <>
+            <span className="text-lg font-semibold">{lengthLevelLabel(r)}</span>
+            <span className="text-sm text-neutral-700">
+              총장 {r.length}cm · 키 {r.height}cm 기준 {LENGTH_LEVEL_NAME.regular} {bandLabel(r.bands.regular)}cm
+            </span>
+          </>
+        ) : (
+          <span className="text-sm text-neutral-700">
+            {r.missingHeight ? (
+              <>
+                <Link href="/body" className="underline underline-offset-2 hover:text-accent-700">
+                  내 치수
+                </Link>
+                에 키를 입력하면 총장이 내 키에 비해 짧은지 긴지 볼 수 있어요.
+              </>
+            ) : (
+              "총장 실측이 없어 길이감을 보지 않았어요."
+            )}
+          </span>
+        )}
+      </div>
+      {r.status === "ok" && (
+        <>
+          <div className="grid grid-cols-5 gap-0.5" aria-hidden>
+            {LENGTH_LEVELS.map((l) => (
+              <div key={l} className="flex flex-col items-center gap-1">
+                <div className={cn("h-2 w-full", l === r.level ? "bg-text" : "bg-neutral-200")} />
+                <span className={cn("text-2xs", l === r.level ? "font-semibold text-text" : "text-neutral-600")}>{LENGTH_LEVEL_NAME[l]}</span>
+              </div>
+            ))}
+          </div>
+          <Reasons collapse={collapseReasons} label="길이감 기준 보기">
+            <p className="text-sm text-pretty text-neutral-800">
+              {LENGTH_GROUP_NAME[r.group]} 총장을 키 {r.height}cm 기준으로 봤어요:{" "}
+              {LENGTH_LEVELS.map((l) => `${LENGTH_LEVEL_NAME[l]} ${bandLabel(r.bands[l])}`).join(", ")}cm.
+              {r.edited ? " 내가 고친 총장 추천 기준이에요." : ""} 길이감은 핏 판정과 따로 봐요.
+            </p>
+          </Reasons>
+        </>
+      )}
+    </section>
   );
 }

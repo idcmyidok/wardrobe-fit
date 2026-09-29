@@ -1,6 +1,7 @@
 import { WEARABLE_LEVELS, fitLevelName, type BodyKey, type FitKind, type FitLevel, type WearableLevel } from "@/lib/constants/body";
 import { formatNum } from "@/lib/constants/measurements";
 import type { CategoryId, Measurements } from "@/lib/types/domain";
+import type { LengthOverrides } from "./length-fit";
 
 /**
  * 내 치수로 옷의 예상 핏을 계산하는 규칙 엔진(AI 없음).
@@ -35,7 +36,10 @@ export type FitGroupId =
   | "shorts";
 
 /** 사용자가 고친 추천 치수(옷 실측 기준: 가슴·허리·엉덩이·허벅지는 단면, 어깨는 그대로). 허리는 핏 단계와 무관해 regular 칸에 둔다. */
-export type FitOverrides = Partial<Record<FitGroupId, Partial<Record<WearableLevel, Partial<Record<RecKey, Band>>>>>>;
+export type FitOverrides = Partial<Record<FitGroupId, Partial<Record<WearableLevel, Partial<Record<RecKey, Band>>>>>> & {
+  /** 총장 추천 표에서 고친 값(길이감, length-fit.ts) */
+  length?: LengthOverrides;
+};
 
 export interface BodyProfile {
   values: Partial<Record<BodyKey, number>>;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BODY_FIELDS, BODY_KEYS, WEARABLE_LEVELS, type BodyKey } from "@/lib/constants/body";
 import { FIT_GROUPS, type FitGroupId, type FitOverrides, type RecKey } from "@/lib/fit/body-fit";
+import { LENGTH_GROUPS, LENGTH_LEVELS, type LengthGroup } from "@/lib/fit/length-fit";
 
 /** 내 치수 입력 검증. 범위는 DB check(migration 14)와 같다. 모두 선택 입력. */
 const bodyValue = (key: BodyKey) => {
@@ -31,8 +32,12 @@ const band = z
   .tuple([z.number().gt(0).lt(200), z.number().gt(0).lt(200)])
   .transform(([a, b]) => [Math.round(Math.min(a, b) * 10) / 10, Math.round(Math.max(a, b) * 10) / 10] as [number, number]);
 
-/** 사용자가 고친 추천 치수 */
-export const overridesSchema = z.partialRecord(
-  z.enum(GROUP_IDS),
-  z.partialRecord(z.enum(WEARABLE_LEVELS), z.partialRecord(z.enum([...REC_KEYS, ...LEGACY_REC_KEYS]), band)),
-) as unknown as z.ZodType<FitOverrides>;
+const groupOverrides = z.partialRecord(z.enum(WEARABLE_LEVELS), z.partialRecord(z.enum([...REC_KEYS, ...LEGACY_REC_KEYS]), band));
+/** 총장 추천 표에서 고친 값(이너·아우터 × 5단계) */
+const lengthOverrides = z.partialRecord(z.enum(LENGTH_GROUPS as [LengthGroup, ...LengthGroup[]]), z.partialRecord(z.enum(LENGTH_LEVELS), band));
+
+/** 사용자가 고친 추천 치수(핏 묶음별 + 총장) */
+export const overridesSchema = z.object({
+  ...(Object.fromEntries(GROUP_IDS.map((id) => [id, groupOverrides.optional()])) as Record<FitGroupId, z.ZodOptional<typeof groupOverrides>>),
+  length: lengthOverrides.optional(),
+}) as unknown as z.ZodType<FitOverrides>;
