@@ -4,7 +4,7 @@ import { CATEGORY_NAME } from "@/lib/constants/categories";
 import type { CategoryId } from "@/lib/types/domain";
 import { AiError, type AiProvider } from "@/server/ai/provider";
 import type { Analysis, Pattern } from "./analyze";
-import { BRAND_GROUPS, type BrandGroup } from "./brands";
+import { BRAND_GROUPS, GROUP_WORD, type BrandGroup } from "./brands";
 import type { Composed, Plan } from "./compose";
 import { varsOf } from "./compose";
 import { fill, MissingVar, type Vars } from "./text";
@@ -111,19 +111,6 @@ const DESCRIBE: Record<string, string> = {
   odd_one: "혼자 튀는 옷: {brand} {name}({traitText}이 다른 옷들과 다름)",
 };
 
-const GROUP_WORD: Record<BrandGroup, string> = {
-  luxury: "명품",
-  designer: "디자이너 브랜드",
-  contemporary: "컨템포러리 브랜드",
-  premium_casual: "프리미엄 캐주얼",
-  specialist: "한 제품 전문 브랜드",
-  jp_denim: "일본 데님·워크웨어",
-  heritage: "헤리티지 브랜드",
-  street: "스트릿 브랜드",
-  sports: "스포츠 브랜드",
-  outdoor: "아웃도어 브랜드",
-  mass: "SPA·대중 브랜드",
-};
 for (const g of BRAND_GROUPS) DESCRIBE[`group_${g}`] = `${GROUP_WORD[g]}가 많음({n}벌, {pct}%, 대표 {brand})`;
 
 /** 자리로 보내면 안 되는(개인정보·지어낼 수 있는) 값: 이름·브랜드·제품명·모든 숫자 */

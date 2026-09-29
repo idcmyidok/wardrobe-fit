@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Garment } from "@/lib/types/domain";
 import { analyze } from "./analyze";
-import { BRANDS, brandGroups, findBrand, isTrendBrand } from "./brands";
-import { buildScript, composeResult } from "./compose";
+import { BRANDS, brandGroups, brandLabels, findBrand, isTrendBrand, MUSINSA_POPULAR } from "./brands";
+import { buildScript, composeResult, outfitCounts } from "./compose";
 import { productFamilies } from "./keywords";
 import { QUESTIONS, Q_TEXT } from "./questions";
 import { QUIZ } from "./quiz";
@@ -28,6 +28,18 @@ describe("브랜드 이름 맞추기", () => {
   it("목록에 없는 브랜드는 null(분석에서 뺀다)", () => {
     expect(findBrand("우리동네 작은 공방")).toBeNull();
     expect(findBrand("")).toBeNull();
+  });
+});
+
+describe("무신사 인기 태그", () => {
+  it("인기 순위 브랜드에만 붙고 유명 글로벌 브랜드는 뺀다", () => {
+    for (const b of ["Matin Kim", "마뗑킴", "무신사 스탠다드 키즈", "thisisneverthat", "MLB"]) expect(brandLabels(b)).toContain(MUSINSA_POPULAR);
+    for (const b of ["Nike", "adidas", "The North Face", "New Balance", "Arc'teryx", "UNIQLO"]) expect(brandLabels(b)).not.toContain(MUSINSA_POPULAR);
+  });
+  it("태그만 있는 브랜드는 분석 자료에 넣지 않는다", () => {
+    expect(brandLabels("레더리")).toContain(MUSINSA_POPULAR);
+    expect(findBrand("Leathery")).toBeNull();
+    expect(BRANDS.every((b) => typeof b.price === "number")).toBe(true);
   });
 });
 
@@ -113,6 +125,25 @@ describe("분석과 결과", () => {
   const now = new Date("2026-09-29T12:00:00+09:00");
   const a = analyze(wardrobe, null, 1360, now);
 
+  it("코디 조합 수: 상의×하의×신발 × (1+아우터) × (1+모자)", () => {
+    const mixed = analyze(
+      [
+        ...Array.from({ length: 3 }, (_, i) => g(i, { categoryId: "top" })),
+        ...Array.from({ length: 2 }, (_, i) => g(10 + i, { categoryId: "bottom" })),
+        ...Array.from({ length: 2 }, (_, i) => g(20 + i, { categoryId: "shoes" })),
+        g(30, { categoryId: "outer" }),
+        ...Array.from({ length: 2 }, (_, i) => g(40 + i, { categoryId: "hat" })),
+      ],
+      null,
+      1360,
+      now,
+    );
+    // 기본 12 + 아우터만 12 + 모자만 24 + 둘 다 24 = 72
+    expect(outfitCounts(mixed)).toMatchObject({ base: 12, combos: 72 });
+    const noShoes = analyze(wardrobe.filter((x) => x.categoryId !== "shoes"), null, 1360, now);
+    expect(outfitCounts(noShoes).combos).toBe(0);
+    expect(composeResult(noShoes, null, 1).outfit).toMatch(/0가지/);
+  });
   it("보류 옷은 빼고, 모자·신발을 뺀 옷을 센다", () => {
     expect(a.clothes).toHaveLength(13);
   });
