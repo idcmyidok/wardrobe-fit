@@ -323,7 +323,7 @@ export function NewGarmentView() {
   return (
     <main className="mx-auto max-w-280 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
       <Link href={held ? "/fit-check#held" : "/wardrobe"} className="btn btn-ghost mb-2 text-sm">
-        {held ? "← AI 구매 판단기" : "← 내 옷장"}
+        {held ? "← 구매 판단기" : "← 내 옷장"}
       </Link>
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-text pb-4">
         <h1 className="text-title">{held ? "구매 보류 옷 추가" : movingId ? "옷장으로 옮기기" : "새 옷 추가"}</h1>
@@ -716,7 +716,7 @@ export function NewGarmentView() {
               value={form.review}
               onChange={(e) => update("review", e.target.value)}
             />
-            {!held && <span className="text-sm text-neutral-700">AI 구매 판단기가 이 후기를 원문 그대로 근거로 인용합니다.</span>}
+            {!held && <span className="text-sm text-neutral-700">구매 판단기가 이 후기를 원문 그대로 근거로 인용합니다.</span>}
           </section>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-text pt-4">

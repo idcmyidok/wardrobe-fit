@@ -20,6 +20,8 @@ export interface Usage {
   imports: UsageCounter;
   fits: UsageCounter;
   ai: UsageCounter;
+  /** AI 옷장 분석(/roast)의 AI 글쓰기. 다 쓰면 AI 없이 템플릿 결과로 계속 쓸 수 있다. */
+  roast: UsageCounter;
 }
 
 export const USAGE_WINDOW_MS = 24 * 60 * 60 * 1000;

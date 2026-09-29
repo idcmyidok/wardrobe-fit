@@ -5,9 +5,9 @@ import { resetHint, USAGE_CHANGED_EVENT, type Usage, type UsageCounter } from "@
 
 /**
  * 하루(최근 24시간) 한도와 지금까지 쓴 횟수, 다시 쓸 수 있게 되는 때. 로그인하지 않은 미리보기에서는 보이지 않는다.
- * kind="import": 링크 분석, kind="fit": 링크 분석 + 구매 판단 + AI 요약. 관리자·테스터 계정은 "한도 없음"만 보인다.
+ * kind="import": 링크 분석, kind="fit": 링크 분석 + 구매 판단 + AI 요약, kind="roast": 내 옷장 훈수. 관리자·테스터 계정은 "한도 없음"만 보인다.
  */
-export function UsageNote({ kind, className }: { kind: "import" | "fit"; className?: string }) {
+export function UsageNote({ kind, className }: { kind: "import" | "fit" | "roast"; className?: string }) {
   const [usage, setUsage] = useState<Usage | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
@@ -55,7 +55,8 @@ export function UsageNote({ kind, className }: { kind: "import" | "fit"; classNa
   return (
     <p className={base}>
       <span>오늘 사용량(24시간 기준)</span>
-      {line("링크 분석", usage.imports)}
+      {kind !== "roast" && line("링크 분석", usage.imports)}
+      {kind === "roast" && usage.roast && line("내 옷장 훈수", usage.roast)}
       {kind === "fit" && line("구매 판단", usage.fits)}
       {kind === "fit" && line("AI 요약", usage.ai)}
     </p>
