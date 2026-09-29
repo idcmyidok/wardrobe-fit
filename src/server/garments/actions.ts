@@ -155,6 +155,60 @@ async function setDeleted(id: unknown, deleted: boolean, current?: Session): Pro
   return { ok: true, data: { id: gid.data } };
 }
 
+const garmentIdsSchema = z.array(garmentIdSchema).min(1).max(2000);
+const ID_CHUNK = 100;
+
+/**
+ * 여러 벌을 한 번에 삭제(soft). 옷장의 "선택 삭제하기"에서 쓴다. 이미 지워진 옷은 건너뛰고,
+ * 실제로 지운 id만 돌려준다(실행 취소는 restoreGarments로 그 id들만 되살린다).
+ */
+export async function deleteGarments(ids: unknown): Promise<GarmentActionResult<{ ids: string[] }>> {
+  return setManyDeleted(ids, true);
+}
+
+export async function restoreGarments(ids: unknown): Promise<GarmentActionResult<Garment[]>> {
+  const s = await session();
+  if (!s) return signedOut();
+  const result = await setManyDeleted(ids, false, s);
+  if (!result.ok) return result;
+  const rows = [];
+  for (let i = 0; i < result.data.ids.length; i += ID_CHUNK) {
+    const { data, error } = await s.supabase
+      .from("garments")
+      .select(GARMENT_COLUMNS)
+      .in("id", result.data.ids.slice(i, i + ID_CHUNK))
+      .eq("user_id", s.userId)
+      .is("deleted_at", null);
+    if (error) return dbError(error);
+    rows.push(...data);
+  }
+  return { ok: true, data: await withImageUrls(s.supabase, rows) };
+}
+
+async function setManyDeleted(ids: unknown, deleted: boolean, current?: Session): Promise<GarmentActionResult<{ ids: string[] }>> {
+  const s = current ?? (await session());
+  if (!s) return signedOut();
+  const parsed = garmentIdsSchema.safeParse(ids);
+  if (!parsed.success) return { ok: false, error: MESSAGES.notFound };
+
+  const all = [...new Set(parsed.data)];
+  const deletedAt = deleted ? new Date().toISOString() : null;
+  const done: string[] = [];
+  // 주소 길이가 너무 길어지지 않게 나눠서 보낸다.
+  for (let i = 0; i < all.length; i += ID_CHUNK) {
+    const query = s.supabase
+      .from("garments")
+      .update({ deleted_at: deletedAt })
+      .in("id", all.slice(i, i + ID_CHUNK))
+      .eq("user_id", s.userId);
+    const { data, error } = await (deleted ? query.is("deleted_at", null) : query.not("deleted_at", "is", null)).select("id");
+    if (error) return dbError(error);
+    done.push(...data.map((row) => row.id));
+  }
+  if (!done.length) return { ok: false, error: MESSAGES.notFound };
+  return { ok: true, data: { ids: done } };
+}
+
 const imagePathsSchema = z
   .object({ imagePath: z.string().max(512), thumbPath: z.string().max(512) })
   .nullable();
