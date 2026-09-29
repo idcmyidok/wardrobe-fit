@@ -2,10 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { deleteUserAccount, setUserBanned, type AdminActionResult } from "@/server/admin/actions";
+import { deleteUserAccount, setUserBanned, setUserTester, type AdminActionResult } from "@/server/admin/actions";
 
-/** 사용자 한 줄의 정지·삭제 버튼. 삭제는 되돌릴 수 없어서 한 번 더 누르게 한다. */
-export function UserActions({ userId, email, banned }: { userId: string; email: string; banned: boolean }) {
+/** 사용자 한 줄의 테스터 지정·정지·삭제 버튼. 삭제는 되돌릴 수 없어서 한 번 더 누르게 한다. */
+export function UserActions({ userId, email, banned, tester }: { userId: string; email: string; banned: boolean; tester: boolean }) {
   const [pending, startTransition] = useTransition();
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +38,14 @@ export function UserActions({ userId, email, banned }: { userId: string; email: 
           </>
         ) : (
           <>
+            <Button
+              size="sm"
+              disabled={pending}
+              aria-label={`${email} ${tester ? "테스터 해제" : "테스터 지정"}`}
+              onClick={() => run(() => setUserTester(userId, !tester))}
+            >
+              {tester ? "테스터 해제" : "테스터 지정"}
+            </Button>
             <Button
               size="sm"
               disabled={pending}

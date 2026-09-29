@@ -6,13 +6,13 @@ import { selectComparables } from "@/lib/fit/select-comparables";
 import type { AiStatus, FitComputed, FitInterpretation } from "@/lib/fit/types";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { buildFitInput, inputHash, interpretFit } from "@/server/ai/fit-interpreter";
-import { hasAdminRow } from "@/server/admin/is-admin";
+import { getQuotaExemption } from "@/server/admin/is-admin";
 import { AiError, getAiProvider } from "@/server/ai/provider";
 import { GARMENT_COLUMNS, rowToGarment } from "@/server/garments/mapper";
 
 /**
  * 구매 판단 1건(PROJECT_SPEC.md 15장). 규칙 계산 결과를 먼저 보내고, AI가 켜져 있으면 요약을 붙인 뒤 저장한다.
- * - 판단은 사용자당 24시간에 20번, 그중 AI 호출은 10번(FIT_AI_DAILY_LIMIT)까지. 관리자는 제한 없음.
+ * - 판단은 사용자당 24시간에 20번, 그중 AI 호출은 10번(FIT_AI_DAILY_LIMIT)까지. 관리자·테스터는 제한 없음.
  * - 같은 입력의 AI 요약은 7일 동안 다시 쓴다(AI를 다시 부르지 않음).
  * - fit_checks는 insert만 한다(마이그레이션 6에서 사용자 update/delete를 막아 제한을 초기화할 수 없다).
  */
@@ -39,7 +39,7 @@ export function aiDailyLimit() {
 }
 
 export async function runFitCheck(supabase: Client, userId: string, req: FitRequest, send: (e: FitStreamEvent) => void) {
-  const unlimited = await hasAdminRow(supabase, userId);
+  const unlimited = Boolean(await getQuotaExemption(supabase, userId));
   if (!unlimited) {
     const { count } = await supabase
       .from("fit_checks")

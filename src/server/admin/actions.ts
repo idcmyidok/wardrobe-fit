@@ -8,7 +8,7 @@ import { logAdminAction } from "./audit";
 import { getAdminUser } from "./guard";
 
 /**
- * 관리자 사용자 관리. 모든 action이 관리자 여부를 다시 확인한다(화면의 버튼은 보호가 아니다).
+ * 관리자 사용자 관리(정지·삭제·테스터 지정). 모든 action이 관리자 여부를 다시 확인한다(화면의 버튼은 보호가 아니다).
  * 자기 자신과 다른 관리자는 정지·삭제할 수 없다. 관리자를 빼려면 SQL Editor에서 admins 행을 먼저 지운다.
  */
 
@@ -45,6 +45,23 @@ export async function setUserBanned(targetId: string, banned: boolean): Promise<
     return fail(banned ? "정지하지 못했습니다." : "정지를 풀지 못했습니다.");
   }
   await logAdminAction(ready.db, ready.adminId, banned ? "ban_user" : "unban_user", ready.targetId);
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+/** 테스터 지정·해제. 테스터는 관리자처럼 링크 분석·구매 판단 하루 한도를 받지 않는다(testers, 마이그레이션 17). */
+export async function setUserTester(targetId: string, tester: boolean): Promise<AdminActionResult> {
+  const ready = await prepare(targetId);
+  if ("error" in ready) return ready.error!;
+  const { db, adminId, targetId: id } = ready;
+  const { error } = tester
+    ? await db.from("testers").upsert({ user_id: id, granted_by: adminId }, { onConflict: "user_id", ignoreDuplicates: true })
+    : await db.from("testers").delete().eq("user_id", id);
+  if (error) {
+    console.error("[admin] tester", error.code ?? error.message);
+    return fail(tester ? "테스터로 지정하지 못했습니다." : "테스터 지정을 해제하지 못했습니다.");
+  }
+  await logAdminAction(db, adminId, tester ? "grant_tester" : "revoke_tester", id);
   revalidatePath("/admin");
   return { ok: true };
 }
