@@ -37,6 +37,8 @@ export interface AdminUserRow {
   confirmed: boolean;
   banned: boolean;
   isAdmin: boolean;
+  /** 관리자가 지정한 테스터(한도 없음). */
+  isTester: boolean;
   garments: number;
   fitChecks: number;
   imports: number;
@@ -79,11 +81,13 @@ async function readOverview(adminId: string, page: number): Promise<AdminOvervie
   if (!db) return null;
   // 사용자 목록(이메일 등)을 여는 것도 개인정보 열람이므로 기록한다.
   await logAdminAction(db, adminId, "view_admin");
-  const [stats, failures, list, admins] = await Promise.all([
+  const [stats, failures, list, admins, testers] = await Promise.all([
     db.rpc("admin_stats"),
     db.rpc("admin_import_failures"),
     db.auth.admin.listUsers({ page, perPage: ADMIN_USERS_PER_PAGE }),
     db.from("admins").select("user_id"),
+    // 마이그레이션 17을 적용하기 전에는 테이블이 없으므로 실패해도 빈 목록으로 본다.
+    db.from("testers").select("user_id"),
   ]);
   const error = stats.error ?? failures.error ?? list.error ?? admins.error;
   if (error) throw new Error(`관리자 통계를 불러오지 못했습니다: ${error.message}`);
@@ -96,6 +100,7 @@ async function readOverview(adminId: string, page: number): Promise<AdminOvervie
 
   const countMap = new Map((counts ?? []).map((c) => [c.user_id, c]));
   const adminIds = new Set((admins.data ?? []).map((a) => a.user_id));
+  const testerIds = new Set((testers.data ?? []).map((t) => t.user_id));
   const total = "total" in list.data ? list.data.total : users.length;
 
   return {
@@ -116,6 +121,7 @@ async function readOverview(adminId: string, page: number): Promise<AdminOvervie
         confirmed: Boolean(u.email_confirmed_at),
         banned: isBanned(u),
         isAdmin: adminIds.has(u.id),
+        isTester: testerIds.has(u.id),
         garments: Number(c?.garments ?? 0),
         fitChecks: Number(c?.fit_checks ?? 0),
         imports: Number(c?.imports ?? 0),

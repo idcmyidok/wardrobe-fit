@@ -110,6 +110,13 @@ await db.query("insert into public.admins (user_id) values ($1)", [A]);
 check("관리자는 자기 관리자 행을 읽음", (await as(A, "select user_id from public.admins")).rows.length === 1);
 check("다른 사용자는 관리자 목록을 볼 수 없음", none(await as(B, "select user_id from public.admins")));
 check("관리자도 관리자 행을 지울 수 없음", Boolean((await as(A, "delete from public.admins")).error));
+// 테스터(마이그레이션 17): 스스로 지정·해제할 수 없고, 자기 행만 읽는다.
+check("사용자가 스스로 테스터 지정 불가", Boolean((await as(B, `insert into public.testers (user_id) values ('${B}')`)).error));
+await db.query("insert into public.testers (user_id, granted_by) values ($1, $2)", [B, A]);
+check("테스터는 자기 테스터 행을 읽음", (await as(B, "select user_id from public.testers")).rows.length === 1);
+check("다른 사용자는 테스터 목록을 볼 수 없음", none(await as(A, "select user_id from public.testers")));
+check("테스터도 테스터 행을 지울 수 없음", Boolean((await as(B, "delete from public.testers")).error));
+await db.query("delete from public.testers");
 check("관리자도 세션으로는 다른 사용자의 기록을 볼 수 없음(RLS 유지)", none(await as(A, "select id from public.fit_checks where id = $1", [fcId])));
 for (const fn of ["public.admin_stats()", "public.admin_import_failures()", `public.admin_user_counts(array['${A}']::uuid[])`]) {
   check(`로그인 사용자는 ${fn.split("(")[0]} 호출 불가`, Boolean((await as(A, `select * from ${fn}`)).error));

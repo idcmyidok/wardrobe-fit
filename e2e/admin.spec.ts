@@ -69,3 +69,32 @@ test("관리자는 통계를 보고 사용자를 정지·해제·삭제한다", 
   expect((await admin.auth.admin.getUserById(member.id)).data.user).toBeNull();
   expect((await admin.from("garments").select("id").eq("user_id", member.id)).data).toEqual([]);
 });
+
+test("관리자가 테스터로 지정하면 한도가 없어지고, 해제하면 돌아온다", async ({ page, browser, admin, makeUser }) => {
+  const boss = await makeUser("boss2");
+  const member = await makeUser("tester");
+  const { error } = await admin.from("admins").insert({ user_id: boss.id });
+  expect(error).toBeNull();
+
+  const memberContext = await browser.newContext();
+  const memberPage = await memberContext.newPage();
+  await login(memberPage, member);
+  await expect(memberPage).toHaveURL(/\/wardrobe$/);
+  const usage = async () => (await memberPage.request.get("/api/usage")).json();
+  expect((await usage()).unlimited).toBe(false);
+
+  await login(page, boss);
+  await expect(page).toHaveURL(/\/wardrobe$/);
+  await page.goto("/admin");
+  const row = page.locator(`tr[data-user-email="${member.email}"]`);
+  await row.getByRole("button", { name: `${member.email} 테스터 지정`, exact: true }).click();
+  await expect(row.getByText("테스터", { exact: true })).toBeVisible();
+  expect(await usage()).toMatchObject({ unlimited: true, unlimitedReason: "tester" });
+  await memberPage.goto("/settings");
+  await expect(memberPage.getByText("테스터 계정이라 사용 한도가 없습니다.")).toBeVisible();
+
+  await row.getByRole("button", { name: `${member.email} 테스터 해제`, exact: true }).click();
+  await expect(row.getByText("테스터", { exact: true })).toHaveCount(0);
+  expect(await usage()).toMatchObject({ unlimited: false, unlimitedReason: null });
+  await memberContext.close();
+});
