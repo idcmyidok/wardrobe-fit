@@ -336,6 +336,12 @@ export function NewGarmentView() {
           <Link href="/wardrobe/import-orders" className="btn btn-secondary mt-8 min-h-11 self-start">
             무신사 주문내역으로 여러 벌 한꺼번에 추가
           </Link>
+          <p className="max-w-140 text-sm text-neutral-700 text-pretty">
+            무신사 로그인 정보나 개인정보는 수집하지 않아요. 붙여 넣은 주문내역
+            원문은 서버로 보내거나 저장하지 않고, 이 기기에서 옷 정보만
+            골라내요. 옷 정보를 찾을 때는 주문 한 건마다 브랜드와 상품명만
+            쓰고, 가격·주문일·주문번호는 보내지 않아요.
+          </p>
 
           {phase === "analyzing" && (
             <div className="mt-4 border-t border-text" aria-live="polite">
