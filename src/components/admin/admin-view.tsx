@@ -79,6 +79,16 @@ export function AdminView({
         </h2>
         <BodyEncryption pending={bodyEncryption.pending} keySet={bodyEncryption.keySet} />
       </section>
+
+      <section className={section} aria-labelledby="admin-roast-texts">
+        <h2 id="admin-roast-texts" className="text-body font-semibold">
+          내 옷장 훈수 문장
+        </h2>
+        <p className="text-sm text-neutral-700">패턴별 멘트, 질문과 반응, 패션 퀴즈 문장을 모두 보고 고칠 수 있습니다.</p>
+        <Link href="/admin/roast-texts" className="w-fit text-base underline underline-offset-4">
+          문장 고치러 가기
+        </Link>
+      </section>
     </main>
   );
 }

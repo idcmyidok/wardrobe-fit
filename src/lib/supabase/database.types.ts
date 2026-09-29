@@ -512,6 +512,78 @@ export type Database = {
         }
         Relationships: []
       }
+      roast_text_edits: {
+        Row: {
+          body: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      roast_results: {
+        Row: {
+          ai_used: boolean
+          created_at: string
+          garment_count: number
+          name: string | null
+          result: Json
+          user_id: string
+          wardrobe_hash: string
+        }
+        Insert: {
+          ai_used?: boolean
+          created_at?: string
+          garment_count: number
+          name?: string | null
+          result: Json
+          user_id: string
+          wardrobe_hash: string
+        }
+        Update: {
+          ai_used?: boolean
+          created_at?: string
+          garment_count?: number
+          name?: string | null
+          result?: Json
+          user_id?: string
+          wardrobe_hash?: string
+        }
+        Relationships: []
+      }
+      roast_runs: {
+        Row: {
+          ai_used: boolean
+          created_at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          ai_used?: boolean
+          created_at?: string
+          id?: never
+          user_id: string
+        }
+        Update: {
+          ai_used?: boolean
+          created_at?: string
+          id?: never
+          user_id?: string
+        }
+        Relationships: []
+      }
       subcategories: {
         Row: {
           category_id: string

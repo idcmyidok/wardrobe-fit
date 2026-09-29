@@ -33,7 +33,7 @@ export function UsdRateForm({ current }: { current: number }) {
           {pending ? "저장 중…" : "저장"}
         </Button>
       </div>
-      <p className="text-sm text-neutral-700">달러로 기록한 옷의 가격 정렬, 원 환산 표시, 옷장 분석 금액에 쓰입니다. 자동으로 바뀌지 않습니다.</p>
+      <p className="text-sm text-neutral-700">달러로 기록한 옷의 가격 정렬, 원 환산 표시, 옷장 데이터 금액에 쓰입니다. 자동으로 바뀌지 않습니다.</p>
       {message && (
         <p role={message.ok ? "status" : "alert"} className={message.ok ? "text-sm text-neutral-700" : "text-sm text-negative"}>
           {message.text}

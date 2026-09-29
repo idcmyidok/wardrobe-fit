@@ -136,11 +136,11 @@ export function WardrobeView() {
         <div className="flex flex-wrap gap-2">
           {empty ? (
             <button type="button" className={buttonClassName({ variant: "secondary" })} disabled>
-              AI 구매 판단기
+              구매 판단기
             </button>
           ) : (
             <Link href="/fit-check" className={buttonClassName({ variant: "secondary" })}>
-              AI 구매 판단기
+              구매 판단기
             </Link>
           )}
           <Link href="/wardrobe/new" className={buttonClassName({ variant: "primary" })}>
@@ -155,7 +155,7 @@ export function WardrobeView() {
             <div className="font-mono text-xs font-medium tracking-[0.08em] text-accent-700">0벌</div>
             <h2 className="text-[28px]">아직 등록한 옷이 없습니다</h2>
             <p className="text-body text-pretty text-neutral-800">
-              자주 입는 옷부터 등록하세요. 비교할 옷이 있어야 AI 구매 판단기를 쓸 수 있습니다. 같은 종류의 옷이 3벌
+              자주 입는 옷부터 등록하세요. 비교할 옷이 있어야 구매 판단기를 쓸 수 있습니다. 같은 종류의 옷이 3벌
               이상이면 판단이 안정적입니다.
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
