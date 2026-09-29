@@ -25,6 +25,13 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "1.2.4",
+    date: "2026-09-29",
+    features: [],
+    changes: ["무신사 주문내역으로 옷을 추가할 때, 이미 옷장에 있는 옷(같은 상품·사이즈)은 자동으로 빼요. 원하면 체크해서 다시 추가할 수 있어요."],
+    fixes: [],
+  },
+  {
     version: "1.2.3",
     date: "2026-09-29",
     features: [

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { CATEGORIES, SUBCATEGORIES, SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { MEASUREMENT_KEYS, MEASUREMENT_LABELS, formatNum } from "@/lib/constants/measurements";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { importImageFile, importImageUrl } from "@/lib/import/client";
 import { MUSINSA_BOOKMARKLET } from "@/lib/import/musinsa-bookmarklet";
 import { guideDevice, type GuideDevice } from "@/lib/import/order-guide-device";
+import { findDuplicates, type ExistingGarment } from "@/lib/import/order-duplicates";
 import { notifyUsageChanged } from "@/lib/usage";
 import type { CategoryId, Measurements } from "@/lib/types/domain";
 import type { OrderItemResult } from "@/app/api/order-imports/item/route";
@@ -31,6 +32,8 @@ interface Item {
   part: string | null;
   status: Status;
   include: boolean;
+  /** 이미 옷장에 있는 옷인데 사용자가 그래도 추가하기로 했다 */
+  keepDup: boolean;
   categoryId: CategoryId | "";
   subcategoryId: string;
   productName: string;
@@ -46,6 +49,24 @@ interface Item {
   sizeRows: NonNullable<NormalizedProduct["sizeChart"]>["rows"];
   saved: "no" | "saving" | "yes" | "error";
   error?: string;
+}
+
+/** 옷장에 넣을 옷: 체크했고, 이미 옷장에 있는 옷이면 사용자가 그래도 추가하기로 한 것만 */
+const isWanted = (it: Item, duplicates: Map<string, string>) =>
+  it.include && Boolean(it.categoryId) && it.saved !== "yes" && (!duplicates.has(it.key) || it.keepDup);
+
+function duplicatesOf(items: Item[], existing: ExistingGarment[]) {
+  return findDuplicates(
+    items.map((it) => ({
+      key: it.key,
+      brand: it.brand,
+      productName: it.productName,
+      size: it.size,
+      color: it.color,
+      productUrl: it.productUrl ?? (it.order.goodsNo ? `https://www.musinsa.com/products/${it.order.goodsNo}` : null),
+    })),
+    existing,
+  );
 }
 
 /** 주문 사이에 쉬는 시간. 무신사에 요청이 몰리지 않게 한다. */
@@ -74,7 +95,9 @@ function chartMeasurements(rows: Item["sizeRows"], size: string, categoryId: Cat
 
 export function OrderImportView() {
   const router = useRouter();
-  const { addGarment, signedIn } = useWardrobe();
+  const { addGarment, signedIn, garments } = useWardrobe();
+  /** 가져오기를 시작한 때의 옷장. 가져온 옷이 등록되며 옷장이 바뀌어도 중복 판정은 이걸 기준으로 한다. */
+  const [existing, setExisting] = useState<ExistingGarment[]>([]);
   const stop = useRef(false);
   const [text, setText] = useState("");
   const [items, setItems] = useState<Item[] | null>(null);
@@ -101,6 +124,7 @@ export function OrderImportView() {
       part: g.part,
       status: "waiting",
       include: Boolean(g.categoryId),
+      keepDup: false,
       categoryId: g.categoryId ?? "",
       subcategoryId: g.subcategoryId ?? "",
       productName: g.order.name,
@@ -116,6 +140,7 @@ export function OrderImportView() {
       sizeRows: [],
       saved: "no",
     }));
+    setExisting(garments);
     setItems(next);
     setDropped([...parsed.droppedByCategory.map((o) => o.name)]);
     setNotice(null);
@@ -191,7 +216,7 @@ export function OrderImportView() {
   async function save() {
     if (!items) return;
     setPhase("saving");
-    const targets = items.filter((it) => it.include && it.categoryId && it.saved !== "yes");
+    const targets = items.filter((it) => isWanted(it, duplicates));
     let saved = 0;
     let failed = 0;
     for (const it of targets) {
@@ -232,16 +257,16 @@ export function OrderImportView() {
     }
   }
 
-  const counts = useMemo(() => {
-    const list = items ?? [];
-    return {
-      include: list.filter((it) => it.include && it.categoryId && it.saved !== "yes").length,
-      saved: list.filter((it) => it.saved === "yes").length,
-      failed: list.filter((it) => it.saved === "error").length,
-      found: list.filter((it) => it.status === "found").length,
-      withMeasure: list.filter((it) => Object.keys(it.measurements).length > 0).length,
-    };
-  }, [items]);
+  const list = items ?? [];
+  const duplicates = duplicatesOf(list, existing);
+  const counts = {
+    include: list.filter((it) => isWanted(it, duplicates)).length,
+    duplicate: list.filter((it) => duplicates.has(it.key) && !it.keepDup && it.saved !== "yes").length,
+    saved: list.filter((it) => it.saved === "yes").length,
+    failed: list.filter((it) => it.saved === "error").length,
+    found: list.filter((it) => it.status === "found").length,
+    withMeasure: list.filter((it) => Object.keys(it.measurements).length > 0).length,
+  };
 
   const busy = phase === "finding" || phase === "saving";
 
@@ -275,6 +300,7 @@ export function OrderImportView() {
           {!signedIn && <p className="text-sm text-neutral-700">로그인해야 쓸 수 있어요.</p>}
           <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-neutral-700">
             <li>지금은 무신사 주문내역만 가져올 수 있어요.</li>
+            <li>이미 옷장에 있는 옷(같은 상품·사이즈)은 자동으로 빼고, 원하면 체크해서 다시 추가할 수 있어요.</li>
             <li>상품 하나를 찾을 때마다 하루 링크 분석 횟수(100번)를 1번씩 써서, 한 번에 많이 쓰게 돼요.</li>
             <li>옷이 100벌을 넘으면 오늘 분석 횟수를 다 써서 일부는 찾지 못하거나 등록에 실패할 수 있어요.</li>
           </ul>
@@ -296,6 +322,7 @@ export function OrderImportView() {
             ) : (
               <span className="text-base">
                 옷 {items.length}벌 · 상품 찾음 {counts.found} · 실측 있음 {counts.withMeasure}
+                {counts.duplicate > 0 && ` · 이미 옷장에 있어 제외 ${counts.duplicate}`}
                 {counts.saved > 0 && ` · 등록 ${counts.saved}`}
                 {counts.failed > 0 && ` · 실패 ${counts.failed}`}
               </span>
@@ -305,7 +332,7 @@ export function OrderImportView() {
 
           <ul className="flex flex-col border-t border-neutral-300">
             {items.map((it) => (
-              <ItemRow key={it.key} item={it} disabled={busy || it.saved === "yes"} onChange={(change) => patch((k) => k === it.key, change)} />
+              <ItemRow key={it.key} item={it} duplicate={duplicates.has(it.key)} disabled={busy || it.saved === "yes"} onChange={(change) => patch((k) => k === it.key, change)} />
             ))}
           </ul>
 
@@ -505,7 +532,18 @@ function OrderGuide() {
   );
 }
 
-function ItemRow({ item: it, disabled, onChange }: { item: Item; disabled: boolean; onChange: (change: (it: Item) => Partial<Item>) => void }) {
+function ItemRow({
+  item: it,
+  duplicate,
+  disabled,
+  onChange,
+}: {
+  item: Item;
+  duplicate: boolean;
+  disabled: boolean;
+  onChange: (change: (it: Item) => Partial<Item>) => void;
+}) {
+  const checked = duplicate ? it.keepDup : it.include;
   const measured = it.categoryId
     ? MEASUREMENT_KEYS[it.categoryId].filter((k) => it.measurements[k] != null).map((k) => `${MEASUREMENT_LABELS[k]} ${formatNum(it.measurements[k]!)}`)
     : [];
@@ -519,14 +557,14 @@ function ItemRow({ item: it, disabled, onChange }: { item: Item; disabled: boole
   };
 
   return (
-    <li className={cn("flex gap-3 border-b border-neutral-300 py-3", !it.include && "opacity-60")}>
+    <li className={cn("flex gap-3 border-b border-neutral-300 py-3", !checked && "opacity-60")}>
       <input
         type="checkbox"
         className="mt-1 size-5 shrink-0"
         aria-label={`${it.productName} 등록`}
-        checked={it.include}
+        checked={checked}
         disabled={disabled || !it.categoryId}
-        onChange={(e) => onChange(() => ({ include: e.target.checked }))}
+        onChange={(e) => onChange(() => (duplicate ? { keepDup: e.target.checked, include: e.target.checked || it.include } : { include: e.target.checked }))}
       />
       <div className="size-20 shrink-0 overflow-hidden bg-neutral-100">
         {it.hasImage && it.importId && (
@@ -545,6 +583,9 @@ function ItemRow({ item: it, disabled, onChange }: { item: Item; disabled: boole
             <a href={it.productUrl} target="_blank" rel="noreferrer">
               무신사에서 보기
             </a>
+          )}
+          {duplicate && it.saved !== "yes" && (
+            <span className="text-accent-700">{it.keepDup ? "이미 옷장에 있어요 · 그래도 추가" : "이미 옷장에 있어요 · 추가하지 않아요"}</span>
           )}
           {it.saved === "yes" && <span className="text-text">등록됨</span>}
           {it.saved === "error" && <span className="text-accent-700">{it.error}</span>}
