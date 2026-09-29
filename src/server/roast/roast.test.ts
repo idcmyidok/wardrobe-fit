@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Garment } from "@/lib/types/domain";
 import { analyze } from "./analyze";
-import { BRANDS, brandGroups, findBrand, isTrendBrand } from "./brands";
+import { BRANDS, brandGroups, brandLabels, findBrand, isTrendBrand, MUSINSA_POPULAR } from "./brands";
 import { buildScript, composeResult } from "./compose";
 import { productFamilies } from "./keywords";
 import { QUESTIONS, Q_TEXT } from "./questions";
@@ -28,6 +28,18 @@ describe("브랜드 이름 맞추기", () => {
   it("목록에 없는 브랜드는 null(분석에서 뺀다)", () => {
     expect(findBrand("우리동네 작은 공방")).toBeNull();
     expect(findBrand("")).toBeNull();
+  });
+});
+
+describe("무신사 인기 태그", () => {
+  it("인기 순위 브랜드에만 붙고 유명 글로벌 브랜드는 뺀다", () => {
+    for (const b of ["Matin Kim", "마뗑킴", "무신사 스탠다드 키즈", "thisisneverthat", "MLB"]) expect(brandLabels(b)).toContain(MUSINSA_POPULAR);
+    for (const b of ["Nike", "adidas", "The North Face", "New Balance", "Arc'teryx", "UNIQLO"]) expect(brandLabels(b)).not.toContain(MUSINSA_POPULAR);
+  });
+  it("태그만 있는 브랜드는 분석 자료에 넣지 않는다", () => {
+    expect(brandLabels("레더리")).toContain(MUSINSA_POPULAR);
+    expect(findBrand("Leathery")).toBeNull();
+    expect(BRANDS.every((b) => typeof b.price === "number")).toBe(true);
   });
 });
 

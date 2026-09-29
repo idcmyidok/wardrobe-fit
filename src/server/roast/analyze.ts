@@ -6,7 +6,7 @@ import { FOUR_SEASONS, wearsInSeason } from "@/lib/constants/seasons";
 import { computeBodyFit, type BodyProfile } from "@/lib/fit/body-fit";
 import { priceInKrw } from "@/lib/format/price";
 import type { CategoryId, Garment, Season } from "@/lib/types/domain";
-import { brandGroups, findBrand, isTrendBrand, type BrandGroup, type BrandInfo } from "./brands";
+import { brandGroups, brandLabels, findBrand, isTrendBrand, MUSINSA_POPULAR, type BrandGroup, type BrandInfo } from "./brands";
 import { FAMILY_IDS, productFamilies, type FamilyId } from "./keywords";
 
 /**
@@ -338,10 +338,12 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
   const linked = items.filter((i) => i.shop);
   if (linked.length >= 5) {
     const musinsa = linked.filter((i) => i.shop === "무신사");
-    const krPopular = known.filter((i) => i.brand!.country === "한국" && i.brand!.pop >= 4);
-    const musinsaKr = musinsa.length >= 4 && musinsa.length / linked.length >= 0.5 && krPopular.length >= 4 && krPopular.length / Math.max(K, 1) >= 0.4;
+    // 한국 대중 브랜드이거나 무신사 인기 태그가 붙은 브랜드
+    const branded = items.filter((i) => i.brand || brandLabels(i.g.brand).length);
+    const krPopular = branded.filter((i) => (i.brand?.country === "한국" && i.brand.pop >= 4) || brandLabels(i.g.brand).includes(MUSINSA_POPULAR));
+    const musinsaKr = musinsa.length >= 4 && musinsa.length / linked.length >= 0.5 && krPopular.length >= 4 && krPopular.length / Math.max(branded.length, 1) >= 0.4;
     if (musinsaKr)
-      add("musinsa_kr", ramp(musinsa.length / linked.length, 0.5, 0.9), 0.9, { n: musinsa.length, pct: pct(musinsa.length, linked.length), krN: krPopular.length, krPct: pct(krPopular.length, K) }, [...new Set([...musinsa, ...krPopular])]);
+      add("musinsa_kr", ramp(musinsa.length / linked.length, 0.5, 0.9), 0.9, { n: musinsa.length, pct: pct(musinsa.length, linked.length), krN: krPopular.length, krPct: pct(krPopular.length, branded.length) }, [...new Set([...musinsa, ...krPopular])]);
     const [shop, shopList] = top(countBy(linked, (i) => i.shop)) ?? [null, []];
     if (shop && shopList.length >= 4 && shopList.length / linked.length >= 0.6 && !(musinsaKr && shop === "무신사"))
       add("shop_focus", ramp(shopList.length / linked.length, 0.6, 0.95), 0.7, { shop, n: shopList.length, pct: pct(shopList.length, linked.length) }, shopList);
