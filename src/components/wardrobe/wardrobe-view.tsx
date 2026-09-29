@@ -180,7 +180,7 @@ export function WardrobeView() {
       ) : (
         <>
           <WardrobeFilters value={filters} onChange={setFilters} options={options} />
-          <div className="flex flex-col items-end gap-2 pt-4">
+          <div className="flex items-center justify-end gap-2 pt-4">
             <div role="group" aria-label="보기 방식" className="flex">
               <div className="inline-flex border border-text">
                 {VIEW_OPTIONS.map((option) => (
