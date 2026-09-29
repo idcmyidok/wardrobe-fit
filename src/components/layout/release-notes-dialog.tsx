@@ -11,10 +11,12 @@ import {
   RELEASE_NOTE_BODY_MAX,
   type ReleaseFeature,
   type ReleaseNote,
+  splitFeatureLine,
   type NoteBlock,
   type ReleaseNoteEdits,
 } from "@/lib/release-notes";
 
+const FEATURES_TITLE = "신규 기능";
 const FIXES_TITLE = "수정사항";
 import { getReleaseNoteEdits, resetReleaseNoteEdit, saveReleaseNoteEdit } from "@/server/release-notes/actions";
 
@@ -185,7 +187,7 @@ function NoteItem({
             }}
           />
           <p className="text-xs text-neutral-700">
-            &quot;신규 기능&quot;·&quot;변경 내용&quot;·&quot;수정사항&quot;이나 &quot;# &quot;로 시작하는 줄은 소제목, &quot;- &quot;로 시작하는 줄은 목록이 됩니다.
+            &quot;신규 기능&quot;·&quot;변경 내용&quot;·&quot;수정사항&quot;이나 &quot;# &quot;로 시작하는 줄은 소제목, &quot;- &quot;로 시작하는 줄은 목록이 됩니다. 신규 기능 아래 &quot;- 제목: 설명&quot;은 굵은 제목과 설명으로 보여요.
           </p>
           {error && (
             <p role="alert" className="text-sm text-negative">
@@ -237,7 +239,9 @@ function EditedBody({ blocks }: { blocks: NoteBlock[] }) {
   return (
     <>
       {sections.map((sec, i) =>
-        sec.title === FIXES_TITLE ? (
+        sec.title === FEATURES_TITLE && sec.blocks.length && sec.blocks.every((b) => b.kind === "item") ? (
+          <FeatureSection key={i} items={sec.blocks.map((b) => splitFeatureLine(b.text))} />
+        ) : sec.title === FIXES_TITLE ? (
           <FixesDetails key={i} count={sec.blocks.filter((b) => b.kind === "item").length || sec.blocks.length}>
             <EditedLines blocks={sec.blocks} small />
           </FixesDetails>
@@ -264,9 +268,9 @@ function EditedLines({ blocks, small = false }: { blocks: NoteBlock[]; small?: b
   const size = small ? "text-sm text-neutral-800" : "text-base";
   return groups.map((g, i) =>
     g.list ? (
-      <ul key={i} className={cn("flex list-disc flex-col gap-1 pl-5", size)}>
+      <ul key={i} className={cn("flex flex-col gap-1", small ? size : `list-disc pl-5 ${size}`)}>
         {g.texts.map((t, j) => (
-          <li key={j}>{t}</li>
+          <li key={j}>{small ? `· ${t}` : t}</li>
         ))}
       </ul>
     ) : (
@@ -317,10 +321,10 @@ function FeatureSection({ items }: { items: ReleaseFeature[] }) {
     <section className="flex flex-col gap-2">
       <h4 className="font-mono text-xs font-medium tracking-[0.08em] text-neutral-700">신규 기능</h4>
       <ul className="flex flex-col gap-2.5">
-        {items.map((f) => (
-          <li key={f.title} className="flex flex-col gap-0.5 border-l-2 border-accent pl-3">
+        {items.map((f, i) => (
+          <li key={i} className="flex flex-col gap-0.5 border-l-2 border-accent pl-3">
             <span className="text-base font-semibold">{f.title}</span>
-            <span className="text-sm text-pretty text-neutral-800">{f.description}</span>
+            {f.description && <span className="text-sm text-pretty text-neutral-800">{f.description}</span>}
           </li>
         ))}
       </ul>

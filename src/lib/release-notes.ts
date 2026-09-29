@@ -206,3 +206,10 @@ export function parseNoteText(body: string): NoteBlock[] {
   }
   return blocks;
 }
+
+/** 신규 기능 줄 "제목: 설명"을 나눈다. ":"가 없으면 제목만 있는 것으로 본다. */
+export function splitFeatureLine(line: string): ReleaseFeature {
+  const at = line.indexOf(":");
+  if (at < 0) return { title: line.trim(), description: "" };
+  return { title: line.slice(0, at).trim(), description: line.slice(at + 1).trim() };
+}

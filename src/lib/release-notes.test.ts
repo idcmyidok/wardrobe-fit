@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import pkg from "../../package.json";
-import { CURRENT_VERSION, RELEASE_NOTES, groupByMajor, majorOf, noteToText, parseNoteText, type ReleaseNote } from "./release-notes";
+import { CURRENT_VERSION, RELEASE_NOTES, groupByMajor, majorOf, noteToText, parseNoteText, splitFeatureLine, type ReleaseNote } from "./release-notes";
 
 const note = (version: string): ReleaseNote => ({ version, date: "2026-09-28", features: [], changes: [], fixes: [] });
 
@@ -55,5 +55,12 @@ describe("업데이트 노트 수정 글", () => {
       { kind: "text", text: "그냥 문단" },
       { kind: "item", text: "점 목록" },
     ]);
+  });
+});
+
+describe("신규 기능 줄 나누기", () => {
+  it("첫 \":\"에서 제목과 설명으로 나눈다", () => {
+    expect(splitFeatureLine("내 치수: 신체치수를 저장: 추천")).toEqual({ title: "내 치수", description: "신체치수를 저장: 추천" });
+    expect(splitFeatureLine("제목만")).toEqual({ title: "제목만", description: "" });
   });
 });
