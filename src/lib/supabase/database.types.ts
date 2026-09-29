@@ -77,49 +77,34 @@ export type Database = {
       }
       body_profiles: {
         Row: {
-          chest_cm: number | null
           consent_version: string
           consented_at: string
           created_at: string
           fit_overrides: Json
-          height_cm: number | null
-          hip_cm: number | null
-          shoulder_cm: number | null
-          thigh_cm: number | null
           uncertain: string[]
           updated_at: string
           user_id: string
-          waist_cm: number | null
+          values_enc: string | null
         }
         Insert: {
-          chest_cm?: number | null
           consent_version: string
           consented_at?: string
           created_at?: string
           fit_overrides?: Json
-          height_cm?: number | null
-          hip_cm?: number | null
-          shoulder_cm?: number | null
-          thigh_cm?: number | null
           uncertain?: string[]
           updated_at?: string
           user_id?: string
-          waist_cm?: number | null
+          values_enc?: string | null
         }
         Update: {
-          chest_cm?: number | null
           consent_version?: string
           consented_at?: string
           created_at?: string
           fit_overrides?: Json
-          height_cm?: number | null
-          hip_cm?: number | null
-          shoulder_cm?: number | null
-          thigh_cm?: number | null
           uncertain?: string[]
           updated_at?: string
           user_id?: string
-          waist_cm?: number | null
+          values_enc?: string | null
         }
         Relationships: []
       }

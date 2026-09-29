@@ -1,4 +1,4 @@
--- 구매 보류 옷 + 달러 가격 + 환율 설정(1.2.6). develop에 올리기 "전에" 실행한다(새 코드가 이 칸들을 읽는다).
+-- 구매 보류 옷 + 달러 가격 + 환율 설정 + 신체치수 암호화 칸(1.2.6). develop에 올리기 "전에" 실행한다(새 코드가 이 칸들을 읽는다).
 -- 여러 번 실행해도 결과가 같다.
 
 -- 1) 구매 보류 옷: 옷장과 같은 garments 행에 held 표시를 둔다.
@@ -64,7 +64,12 @@ create policy "app_settings_select_all" on public.app_settings for select to aut
 
 insert into public.app_settings (key, value) values ('usd_krw', 1360) on conflict (key) do nothing;
 
--- 관리자 작업 기록에 환율 변경을 더한다.
+-- 관리자 작업 기록에 환율 변경·신체치수 암호화 변환을 더한다.
 alter table public.admin_audit_logs drop constraint if exists admin_audit_logs_action_check;
 alter table public.admin_audit_logs add constraint admin_audit_logs_action_check
-  check (action in ('view_admin', 'ban_user', 'unban_user', 'delete_user', 'grant_tester', 'revoke_tester', 'set_usd_rate'));
+  check (action in ('view_admin', 'ban_user', 'unban_user', 'delete_user', 'grant_tester', 'revoke_tester', 'set_usd_rate', 'encrypt_body'));
+
+-- 4) 신체치수 암호화: 서버가 BODY_ENCRYPTION_KEY로 암호화한 값(AES-256-GCM, "v1."로 시작)만 둔다.
+--    예전 평문 칸(height_cm 등)은 관리자 화면 "암호화로 바꾸기"로 옮긴 뒤 마이그레이션 19에서 지운다.
+alter table public.body_profiles add column if not exists values_enc text
+  check (values_enc is null or (values_enc like 'v1.%' and char_length(values_enc) <= 2000));

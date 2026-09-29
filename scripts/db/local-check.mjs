@@ -140,12 +140,13 @@ check("상한 함수는 비로그인이 호출 불가", Boolean((await as(null, 
 check("옷 상한 trigger 함수는 API로 호출 불가", Boolean((await as(A, "select public.enforce_garment_quota()")).error));
 
 // 내 치수(migration 14): 본인만 읽고 쓰고, 동의 버전 없이는 저장 불가
-check("A가 내 치수 저장", !(await as(A, "insert into public.body_profiles (height_cm, chest_cm, consent_version) values (175, 94, '2026-09-28')")).error);
-check("동의 버전 없이 내 치수 저장 불가", Boolean((await as(B, "insert into public.body_profiles (height_cm) values (170)")).error));
+check("A가 내 치수 저장(암호화 칸)", !(await as(A, "insert into public.body_profiles (values_enc, consent_version) values ('v1.abc', '2026-09-28')")).error);
+check("동의 버전 없이 내 치수 저장 불가", Boolean((await as(B, "insert into public.body_profiles (values_enc) values ('v1.abc')")).error));
 check("B는 A의 치수를 볼 수 없음", none(await as(B, "select user_id from public.body_profiles")));
-check("B가 A의 치수를 고칠 수 없음", none(await as(B, "update public.body_profiles set chest_cm = 90 where user_id = $1", [A])));
+check("B가 A의 치수를 고칠 수 없음", none(await as(B, "update public.body_profiles set values_enc = 'v1.x' where user_id = $1", [A])));
 check("비로그인은 치수를 볼 수 없음", (await as(null, "select user_id from public.body_profiles")).rows.length === 0);
-check("범위 밖 치수는 저장 불가", Boolean((await as(A, "update public.body_profiles set height_cm = 20")).error));
+check("암호화 형식이 아닌 값은 저장 불가", Boolean((await as(A, "update public.body_profiles set values_enc = '175'")).error));
+check("평문 치수·몸무게 열은 없음", Boolean((await as(A, "select height_cm from public.body_profiles")).error) && Boolean((await as(A, "select weight_kg from public.body_profiles")).error));
 check("팔길이·다리길이 열은 없음", Boolean((await as(A, "select arm_cm from public.body_profiles")).error) && Boolean((await as(A, "select leg_cm from public.body_profiles")).error));
 check("정확하지 않아요에 팔길이는 못 넣음", Boolean((await as(A, "update public.body_profiles set uncertain = array['arm']")).error));
 check("모자에는 내 핏 표기 불가", Boolean((await as(A, "insert into public.garments (category_id, product_name, user_fit) values ('hat', 'cap', 'regular')")).error));
