@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeLengthFit, lengthBands, lengthGroupOf, lengthLevelLabel } from "./length-fit";
+import { computeLengthFit, lengthBands, lengthGroupOf, lengthGroupOfFitGroup, lengthLevelLabel } from "./length-fit";
 
 const tee = (length: number) => ({ categoryId: "top" as const, subcategoryId: "top.short_tee", measurements: { length } });
 const jacket = (length: number) => ({ categoryId: "outer" as const, subcategoryId: "outer.blouson", measurements: { length } });
@@ -52,5 +52,12 @@ describe("총장 길이감", () => {
     const r = ok(computeLengthFit(tee(72.5), 177, edited));
     expect(r.level).toBe("regular");
     expect(r.edited).toBe(true);
+  });
+  it("추천 실측 탭마다 필요한 총장 기준만 붙는다", () => {
+    expect(lengthGroupOfFitGroup("short_tee")).toBe("inner");
+    expect(lengthGroupOfFitGroup("knit")).toBe("inner");
+    expect(lengthGroupOfFitGroup("light_outer")).toBe("outer");
+    expect(lengthGroupOfFitGroup("padding")).toBe("outer");
+    for (const id of ["shirt", "coat", "long_padding", "pants", "shorts"]) expect(lengthGroupOfFitGroup(id)).toBeNull();
   });
 });

@@ -32,6 +32,7 @@ export type FitGroupId =
   | "leather"
   | "coat"
   | "padding"
+  | "long_padding"
   | "pants"
   | "shorts";
 
@@ -78,6 +79,8 @@ export const FIT_GROUPS: GroupDef[] = [
   { id: "leather", name: "레더·무스탕", kind: "top", width: { chest: [4, 8, 14, 20, 28], shoulder: [-0.5, 1, 3, 6, 10] }, weight: { chest: 0.6, shoulder: 0.4 } },
   { id: "coat", name: "코트", kind: "top", width: { chest: [10, 16, 24, 32, 42], shoulder: [-0.5, 2, 4, 8, 14] }, weight: { chest: 0.65, shoulder: 0.35 } },
   { id: "padding", name: "패딩", kind: "top", width: { chest: [16, 24, 34, 44, 56], shoulder: [-0.5, 2, 5, 9, 14] }, weight: { chest: 0.75, shoulder: 0.25 } },
+  // 롱패딩: 품 기준은 패딩과 같고, 길이가 취향이라 총장 길이감은 보지 않는다.
+  { id: "long_padding", name: "롱패딩", kind: "top", width: { chest: [16, 24, 34, 44, 56], shoulder: [-0.5, 2, 5, 9, 14] }, weight: { chest: 0.75, shoulder: 0.25 } },
   { id: "pants", name: "긴 바지", kind: "bottom", width: { hip: [2, 6, 10, 16, 24], thigh: [2, 4, 8, 14, 22] }, weight: { thigh: 0.55, hip: 0.45 } },
   { id: "shorts", name: "반바지", kind: "bottom", width: { hip: [3, 6, 11, 17, 25], thigh: [3, 5, 9, 15, 23] }, weight: { thigh: 0.6, hip: 0.4 } },
 ];
@@ -124,7 +127,7 @@ const SUBCATEGORY_GROUP: Record<string, FitGroupId | null> = {
   "outer.winter_coat": "coat",
   "outer.light_padding": "padding",
   "outer.short_padding": "padding",
-  "outer.long_padding": "padding",
+  "outer.long_padding": "long_padding",
   "bottom.shorts": "shorts",
   "bottom.jumpsuit": null,
 };

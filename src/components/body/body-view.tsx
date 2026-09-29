@@ -21,7 +21,7 @@ import {
   type FitOverrides,
   type RecKey,
 } from "@/lib/fit/body-fit";
-import { LENGTH_GROUPS, LENGTH_GROUP_NAME, LENGTH_LEVELS, LENGTH_LEVEL_NAME, lengthBands, type LengthGroup, type LengthLevel, type LengthOverrides } from "@/lib/fit/length-fit";
+import { LENGTH_GROUP_NAME, LENGTH_LEVELS, LENGTH_LEVEL_NAME, lengthBands, lengthGroupOfFitGroup, type LengthGroup } from "@/lib/fit/length-fit";
 import { formatDate } from "@/lib/format/date";
 import { useBody } from "./body-store";
 import { FIT_COLOR } from "./fit-meter";
@@ -382,9 +382,14 @@ function Recommendations({
   const suggested = (level: WearableLevel, key: RecKey) => garmentRange(groupId, level, key, noOverrides);
   const isEdited = (level: WearableLevel, key: RecKey) =>
     isLevelFreeKey(key) ? WEARABLE_LEVELS.some((l) => overrides[groupId]?.[l]?.[key]) : Boolean(overrides[groupId]?.[level]?.[key]);
-  const groupEdited = Boolean(overrides[groupId] && Object.values(overrides[groupId]!).some((l) => l && Object.keys(l).length));
-  // 총장 추천(length)은 아래 따로 된 표에서 되돌린다.
-  const anyEdited = FIT_GROUPS.some((g) => overrides[g.id] && Object.values(overrides[g.id]!).some((l) => l && Object.keys(l).length));
+  // 총장: 이 탭에 맞는 기준(이너·아우터)만 옆에 보여 준다. 같은 기준을 쓰는 탭끼리 값을 같이 쓴다.
+  const height = profile.values.height;
+  const lengthGroup = lengthGroupOfFitGroup(groupId);
+  const lengthEdited = (lg: LengthGroup | null) => Boolean(lg && overrides.length?.[lg] && Object.keys(overrides.length[lg]!).length);
+  const fitEdited = (id: FitGroupId) => Boolean(overrides[id] && Object.values(overrides[id]!).some((l) => l && Object.keys(l).length));
+  const tabEdited = (id: FitGroupId) => fitEdited(id) || lengthEdited(lengthGroupOfFitGroup(id));
+  const groupEdited = tabEdited(groupId);
+  const anyEdited = FIT_GROUPS.some((g) => fitEdited(g.id)) || lengthEdited("inner") || lengthEdited("outer");
 
   const commit = async (next: FitOverrides, message: string) => {
     setBusy(true);
@@ -410,6 +415,10 @@ function Recommendations({
 
   const startEdit = () => {
     const d: Record<string, [string, string]> = {};
+    if (lengthGroup && height) {
+      const bands = lengthBands(lengthGroup, height, overrides.length);
+      for (const l of LENGTH_LEVELS) d[`len.${l}`] = [String(bands[l][0]), String(bands[l][1])];
+    }
     for (const level of WEARABLE_LEVELS)
       for (const key of keys) {
         const b = current(level, key);
@@ -442,6 +451,26 @@ function Recommendations({
           if (sug && Math.abs(sug[0] - band[0]) < 0.05 && Math.abs(sug[1] - band[1]) < 0.05) delete levelMap[key];
           else levelMap[key] = band;
         }
+      // 총장 칸
+      if (lengthGroup && height) {
+        const suggestedLength = lengthBands(lengthGroup, height);
+        const lengthMap: Partial<Record<(typeof LENGTH_LEVELS)[number], Band>> = {};
+        for (const l of LENGTH_LEVELS) {
+          const [a, b] = draft[`len.${l}`] ?? ["", ""];
+          const lo = Number(a);
+          const hi = Number(b);
+          if (a === "" || b === "" || isNaN(lo) || isNaN(hi) || lo <= 0 || hi <= 0) continue;
+          const band: Band = [Math.min(lo, hi), Math.max(lo, hi)];
+          const sug = suggestedLength[l];
+          if (Math.abs(sug[0] - band[0]) < 0.05 && Math.abs(sug[1] - band[1]) < 0.05) continue;
+          lengthMap[l] = band;
+        }
+        const length = { ...(o.length ?? {}) };
+        if (Object.keys(lengthMap).length) length[lengthGroup] = lengthMap;
+        else delete length[lengthGroup];
+        if (Object.keys(length).length) o.length = length;
+        else delete o.length;
+      }
     });
     if (await commit(next, "추천 치수를 저장했습니다")) setEditing(false);
   };
@@ -464,16 +493,15 @@ function Recommendations({
             className={cn("btn min-h-9 px-3 py-1.5 text-sm", g.id === groupId ? "btn-primary" : "btn-secondary")}
           >
             {g.name}
-            {overrides[g.id] && Object.values(overrides[g.id]!).some((l) => l && Object.keys(l).length) && <span aria-label="수정됨"> ·</span>}
+            {tabEdited(g.id) && <span aria-label="수정됨"> ·</span>}
           </button>
         ))}
       </div>
-      {/* 넓은 화면은 추천 실측 표 오른쪽에, 좁은 화면은 바로 아래에 총장 표를 둔다. */}
-      <div className="flex flex-wrap items-start gap-x-8 gap-y-7">
-      <div className="flex max-w-full flex-col gap-4">
-      <div className="overflow-x-auto">
+      {/* 총장이 필요한 탭은 넓은 화면에서 추천 실측 표 오른쪽(같은 높이), 좁은 화면에서 바로 아래에 총장 표를 둔다. */}
+      <div className="flex flex-wrap items-stretch gap-x-8 gap-y-4">
+      <div className="max-w-full overflow-x-auto">
         {/* 열 너비를 고정해 어느 옷 종류를 눌러도 칸이 같은 자리에 선다(하의는 오른쪽에 한 열이 더 붙는다). */}
-        <table className="table w-auto table-fixed font-mono tabular-nums" data-testid="rec-table">
+        <table className="table h-full w-auto table-fixed font-mono tabular-nums" data-testid="rec-table">
           <colgroup>
             <col className="w-28" />
             {keys.map((k) => (
@@ -547,6 +575,65 @@ function Recommendations({
           </tbody>
         </table>
       </div>
+      {lengthGroup && (
+        <div className="max-w-full overflow-x-auto" data-testid="length-rec">
+          <table className="table h-full w-auto table-fixed font-mono tabular-nums">
+            <colgroup>
+              <col className="w-22" />
+              <col className="w-34" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>길이감</th>
+                <th className="text-right">총장({LENGTH_GROUP_NAME[lengthGroup]})</th>
+              </tr>
+            </thead>
+            <tbody>
+              {LENGTH_LEVELS.map((l, row) => {
+                if (!height)
+                  return row === 0 ? (
+                    <tr key={l}>
+                      <td className="font-sans font-semibold whitespace-nowrap">{LENGTH_LEVEL_NAME[l]}</td>
+                      <td rowSpan={LENGTH_LEVELS.length} className="text-right align-middle font-sans text-xs text-neutral-500">
+                        키 필요
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={l}>
+                      <td className="font-sans font-semibold whitespace-nowrap">{LENGTH_LEVEL_NAME[l]}</td>
+                    </tr>
+                  );
+                const band = lengthBands(lengthGroup, height, overrides.length)[l];
+                const edited = Boolean(overrides.length?.[lengthGroup]?.[l]);
+                if (editing) {
+                  const [a, z] = draft[`len.${l}`] ?? ["", ""];
+                  const set = (i: 0 | 1, v: string) => setDraft((d) => ({ ...d, [`len.${l}`]: i === 0 ? [v, z] : [a, v] }));
+                  const name = `${LENGTH_LEVEL_NAME[l]} 총장`;
+                  return (
+                    <tr key={l}>
+                      <td className="font-sans font-semibold whitespace-nowrap">{LENGTH_LEVEL_NAME[l]}</td>
+                      <td className="text-right">
+                        <span className="inline-flex items-center gap-1">
+                          <input className="input w-13 px-1 py-1 text-right text-sm" inputMode="decimal" aria-label={`${name} 최소`} value={a} onChange={(e) => set(0, e.target.value)} />
+                          –
+                          <input className="input w-13 px-1 py-1 text-right text-sm" inputMode="decimal" aria-label={`${name} 최대`} value={z} onChange={(e) => set(1, e.target.value)} />
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                }
+                return (
+                  <tr key={l}>
+                    <td className="font-sans font-semibold whitespace-nowrap">{LENGTH_LEVEL_NAME[l]}</td>
+                    <td className={cn("text-right whitespace-nowrap", edited && "font-semibold text-accent-800")}>{fmtBand(band)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         {editing ? (
           <>
@@ -572,6 +659,10 @@ function Recommendations({
                   commit(
                     without((o) => {
                       delete o[groupId];
+                      if (lengthGroup && o.length) {
+                        delete o.length[lengthGroup];
+                        if (!Object.keys(o.length).length) delete o.length;
+                      }
                     }),
                     `${group.name} 추천값으로 되돌렸습니다`,
                   )
@@ -581,7 +672,7 @@ function Recommendations({
               </button>
             )}
             {anyEdited && (
-              <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => commit(overrides.length ? { length: overrides.length } : {}, "모든 추천 치수를 되돌렸습니다")}>
+              <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => commit({}, "모든 추천 치수를 되돌렸습니다")}>
                 전체 되돌리기
               </button>
             )}
@@ -590,162 +681,9 @@ function Recommendations({
       </div>
       <p className="text-xs text-neutral-700">
         고친 값은 이 옷 종류의 예상 핏 판정에도 그대로 쓰입니다.
+        {lengthGroup &&
+          ` 총장은 키${height ? ` ${height}cm` : ""} 기준 길이감이고, ${LENGTH_GROUP_NAME[lengthGroup]} 탭끼리 같은 값을 씁니다(셔츠·코트·롱패딩·하의는 보지 않아요).`}
       </p>
-      </div>
-      <LengthRecommendations profile={profile} onSave={onSave} />
-      </div>
     </section>
-  );
-}
-
-/**
- * 총장 추천 표(키 기준, 이너·아우터 × 크롭~오버핏). 칸을 고치면 옷 정보·구매 판단의 길이감에도 그대로 쓰인다.
- * 셔츠·블레이저·코트·롱패딩과 하의는 길이감을 보지 않는다.
- */
-function LengthRecommendations({
-  profile,
-  onSave,
-}: {
-  profile: BodyProfile;
-  onSave: (o: FitOverrides) => Promise<{ ok: true } | { ok: false; error: string }>;
-}) {
-  const { showToast } = useWardrobe();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<Record<string, [string, string]>>({});
-  const [busy, setBusy] = useState(false);
-  const height = profile.values.height;
-  const edited = profile.overrides.length ?? {};
-  const key = (g: LengthGroup, l: LengthLevel) => `${g}.${l}`;
-  const isEdited = (g: LengthGroup, l: LengthLevel) => Boolean(edited[g]?.[l]);
-  const anyEdited = LENGTH_GROUPS.some((g) => LENGTH_LEVELS.some((l) => isEdited(g, l)));
-
-  const commit = async (length: LengthOverrides, message: string) => {
-    setBusy(true);
-    const next: FitOverrides = { ...profile.overrides };
-    if (Object.keys(length).length) next.length = length;
-    else delete next.length;
-    const r = await onSave(next);
-    setBusy(false);
-    showToast(r.ok ? message : r.error);
-    return r.ok;
-  };
-
-  const startEdit = () => {
-    if (!height) return;
-    const d: Record<string, [string, string]> = {};
-    for (const g of LENGTH_GROUPS) {
-      const bands = lengthBands(g, height, edited);
-      for (const l of LENGTH_LEVELS) d[key(g, l)] = [String(bands[l][0]), String(bands[l][1])];
-    }
-    setDraft(d);
-    setEditing(true);
-  };
-
-  const saveEdit = async () => {
-    if (!height) return;
-    const next: LengthOverrides = {};
-    for (const g of LENGTH_GROUPS) {
-      const suggested = lengthBands(g, height);
-      for (const l of LENGTH_LEVELS) {
-        const [a, b] = draft[key(g, l)] ?? ["", ""];
-        const lo = Number(a);
-        const hi = Number(b);
-        if (a === "" || b === "" || isNaN(lo) || isNaN(hi) || lo <= 0 || hi <= 0) continue;
-        const band: Band = [Math.min(lo, hi), Math.max(lo, hi)];
-        // 추천값과 같으면 고친 것으로 남기지 않는다.
-        if (Math.abs(suggested[l][0] - band[0]) < 0.05 && Math.abs(suggested[l][1] - band[1]) < 0.05) continue;
-        (next[g] ??= {})[l] = band;
-      }
-    }
-    if (await commit(next, "총장 추천을 저장했습니다")) setEditing(false);
-  };
-
-  return (
-    <div className="flex max-w-full flex-col gap-4" data-testid="length-rec" aria-label="총장 추천">
-      <div className="flex flex-col gap-0.5">
-        <h3 className="text-body font-semibold">총장</h3>
-        <span className="text-xs text-neutral-700">{height ? `키 ${height}cm 기준 · ` : ""}셔츠·블레이저·코트·롱패딩·하의는 제외</span>
-      </div>
-      {!height ? (
-        <p className="max-w-60 text-sm text-neutral-700">키를 입력하면 이너·아우터 총장 추천을 볼 수 있어요.</p>
-      ) : (
-        <>
-          <div className="overflow-x-auto">
-            <table className="table w-auto table-fixed font-mono tabular-nums">
-              <colgroup>
-                <col className="w-20" />
-                {LENGTH_GROUPS.map((g) => (
-                  <col key={g} className="w-28" />
-                ))}
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>길이감</th>
-                  {LENGTH_GROUPS.map((g) => (
-                    <th key={g} className="text-right">
-                      {LENGTH_GROUP_NAME[g]}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {LENGTH_LEVELS.map((l) => (
-                  <tr key={l}>
-                    <td className="font-sans font-semibold whitespace-nowrap">{LENGTH_LEVEL_NAME[l]}</td>
-                    {LENGTH_GROUPS.map((g) => {
-                      if (editing) {
-                        const [a, z] = draft[key(g, l)] ?? ["", ""];
-                        const set = (i: 0 | 1, v: string) => setDraft((d) => ({ ...d, [key(g, l)]: i === 0 ? [v, z] : [a, v] }));
-                        const name = `${LENGTH_GROUP_NAME[g]} ${LENGTH_LEVEL_NAME[l]} 총장`;
-                        return (
-                          <td key={g} className="text-right">
-                            <span className="inline-flex items-center gap-1">
-                              <input className="input w-12 px-1 py-1 text-right text-sm" inputMode="decimal" aria-label={`${name} 최소`} value={a} onChange={(e) => set(0, e.target.value)} />
-                              –
-                              <input className="input w-12 px-1 py-1 text-right text-sm" inputMode="decimal" aria-label={`${name} 최대`} value={z} onChange={(e) => set(1, e.target.value)} />
-                            </span>
-                          </td>
-                        );
-                      }
-                      return (
-                        <td key={g} className={cn("text-right whitespace-nowrap", isEdited(g, l) && "font-semibold text-accent-800")}>
-                          {fmtBand(lengthBands(g, height, edited)[l])}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {editing ? (
-              <>
-                <button type="button" className="btn btn-primary" disabled={busy} onClick={saveEdit}>
-                  {busy ? "저장 중…" : "수정 저장"}
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={() => setEditing(false)}>
-                  취소
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" className="btn btn-secondary" onClick={startEdit}>
-                  총장 수정
-                </button>
-                {anyEdited && (
-                  <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => commit({}, "총장 추천을 되돌렸습니다")}>
-                    되돌리기
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-          <p className="max-w-72 text-xs text-neutral-700">
-            {editing ? "칸을 비우면 추천값으로 돌아갑니다. " : ""}굵은 칸은 내가 고친 값이고, 옷 정보와 구매 판단의 길이감에도 그대로 쓰입니다.
-          </p>
-        </>
-      )}
-    </div>
   );
 }

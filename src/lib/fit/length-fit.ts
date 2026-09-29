@@ -51,6 +51,17 @@ export function lengthGroupOf(categoryId: CategoryId, subcategoryId: string | nu
   return null;
 }
 
+/** 추천 실측 탭(핏 묶음) → 총장 기준. 셔츠·코트·하의 탭에는 총장 칸이 없다(패딩 탭은 숏패딩 기준). */
+const FIT_GROUP_LENGTH: Record<string, LengthGroup> = {
+  short_tee: "inner",
+  long_tee: "inner",
+  knit: "inner",
+  light_outer: "outer",
+  leather: "outer",
+  padding: "outer",
+};
+export const lengthGroupOfFitGroup = (fitGroupId: string): LengthGroup | null => FIT_GROUP_LENGTH[fitGroupId] ?? null;
+
 const half = (v: number) => Math.round(v * 2) / 2;
 
 /** 내 키 기준 단계별 추천 총장(0.5cm 단위). 고친 값이 있으면 그 값. */
