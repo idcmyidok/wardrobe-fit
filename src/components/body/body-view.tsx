@@ -102,7 +102,7 @@ export function BodyView() {
   };
 
   return (
-    <main className="mx-auto max-w-240 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
+    <main className="mx-auto max-w-280 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-text pb-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-title">내 치수</h1>
@@ -125,11 +125,37 @@ export function BodyView() {
               잘 맞는 옷으로 채우기
             </button>
           ) : (
-            <button type="button" className="btn btn-secondary text-sm" aria-expanded={false} aria-controls="body-form" onClick={() => setFormOpen(true)}>
-              수정하기
-            </button>
+            <div className="flex flex-col items-end gap-1.5">
+              <button type="button" className="btn btn-secondary text-sm" aria-expanded={false} aria-controls="body-form" onClick={() => setFormOpen(true)}>
+                수정하기
+              </button>
+              {profile && !confirmDelete && (
+                <button
+                  type="button"
+                  className="cursor-pointer text-xs text-neutral-700 underline underline-offset-2 hover:text-accent-800"
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  내 치수 삭제
+                </button>
+              )}
+            </div>
           )}
         </div>
+        {confirmDelete && profile && (
+          <div role="alert" className="flex flex-col gap-2 border-l-2 border-negative pl-3">
+            <p className="text-sm text-neutral-800">
+              입력한 신체치수, 고친 추천 치수, 동의 기록을 모두 지웁니다(동의 철회). 옷장과 다른 기록은 그대로 남습니다.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn btn-danger" onClick={onDelete}>
+                삭제
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setConfirmDelete(false)}>
+                취소
+              </button>
+            </div>
+          </div>
+        )}
         {!formOpen && profile && <BodySummary profile={profile} />}
         {formOpen && (
         <div id="body-form" className="flex flex-col gap-5">
@@ -218,30 +244,6 @@ export function BodyView() {
       </section>
 
       {profile && <Recommendations profile={profile} onSave={saveOverrides} />}
-      {profile && <LengthRecommendations profile={profile} onSave={saveOverrides} />}
-
-      {profile && (
-        <section className="flex flex-col gap-3 py-7">
-          <h2 className="text-lg">내 치수 삭제</h2>
-          <p className="text-base text-neutral-800">
-            입력한 신체치수, 고친 추천 치수, 동의 기록을 모두 지웁니다(동의 철회). 옷장과 다른 기록은 그대로 남습니다.
-          </p>
-          {confirmDelete ? (
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn btn-danger" onClick={onDelete}>
-                삭제
-              </button>
-              <button type="button" className="btn btn-secondary" onClick={() => setConfirmDelete(false)}>
-                취소
-              </button>
-            </div>
-          ) : (
-            <button type="button" className="btn btn-secondary w-fit" onClick={() => setConfirmDelete(true)}>
-              내 치수 삭제
-            </button>
-          )}
-        </section>
-      )}
     </main>
   );
 }
@@ -466,6 +468,9 @@ function Recommendations({
           </button>
         ))}
       </div>
+      {/* 넓은 화면은 추천 실측 표 오른쪽에, 좁은 화면은 바로 아래에 총장 표를 둔다. */}
+      <div className="flex flex-wrap items-start gap-x-8 gap-y-7">
+      <div className="flex max-w-full flex-col gap-4">
       <div className="overflow-x-auto">
         {/* 열 너비를 고정해 어느 옷 종류를 눌러도 칸이 같은 자리에 선다(하의는 오른쪽에 한 열이 더 붙는다). */}
         <table className="table w-auto table-fixed font-mono tabular-nums" data-testid="rec-table">
@@ -586,6 +591,9 @@ function Recommendations({
       <p className="text-xs text-neutral-700">
         고친 값은 이 옷 종류의 예상 핏 판정에도 그대로 쓰입니다.
       </p>
+      </div>
+      <LengthRecommendations profile={profile} onSave={onSave} />
+      </div>
     </section>
   );
 }
@@ -653,63 +661,60 @@ function LengthRecommendations({
   };
 
   return (
-    <section className="flex flex-col gap-4 border-b border-text py-7" data-testid="length-rec">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg">총장 추천</h2>
-        <span className="text-sm text-neutral-700">cm · 키 기준 · 셔츠·블레이저·코트·롱패딩·하의는 제외</span>
+    <div className="flex max-w-full flex-col gap-4" data-testid="length-rec" aria-label="총장 추천">
+      <div className="flex flex-col gap-0.5">
+        <h3 className="text-body font-semibold">총장</h3>
+        <span className="text-xs text-neutral-700">{height ? `키 ${height}cm 기준 · ` : ""}셔츠·블레이저·코트·롱패딩·하의는 제외</span>
       </div>
       {!height ? (
-        <p className="text-sm text-neutral-700">키를 입력하면 이너·아우터 총장 추천을 볼 수 있어요.</p>
+        <p className="max-w-60 text-sm text-neutral-700">키를 입력하면 이너·아우터 총장 추천을 볼 수 있어요.</p>
       ) : (
         <>
           <div className="overflow-x-auto">
             <table className="table w-auto table-fixed font-mono tabular-nums">
               <colgroup>
-                <col className="w-24" />
-                {LENGTH_LEVELS.map((l) => (
-                  <col key={l} className="w-36" />
+                <col className="w-20" />
+                {LENGTH_GROUPS.map((g) => (
+                  <col key={g} className="w-28" />
                 ))}
               </colgroup>
               <thead>
                 <tr>
-                  <th>종류</th>
-                  {LENGTH_LEVELS.map((l) => (
-                    <th key={l} className="text-right">
-                      {LENGTH_LEVEL_NAME[l]}
+                  <th>길이감</th>
+                  {LENGTH_GROUPS.map((g) => (
+                    <th key={g} className="text-right">
+                      {LENGTH_GROUP_NAME[g]}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {LENGTH_GROUPS.map((g) => {
-                  const bands = lengthBands(g, height, edited);
-                  return (
-                    <tr key={g}>
-                      <td className="font-sans font-semibold whitespace-nowrap">{LENGTH_GROUP_NAME[g]}</td>
-                      {LENGTH_LEVELS.map((l) => {
-                        if (editing) {
-                          const [a, z] = draft[key(g, l)] ?? ["", ""];
-                          const set = (i: 0 | 1, v: string) => setDraft((d) => ({ ...d, [key(g, l)]: i === 0 ? [v, z] : [a, v] }));
-                          const name = `${LENGTH_GROUP_NAME[g]} ${LENGTH_LEVEL_NAME[l]} 총장`;
-                          return (
-                            <td key={l} className="text-right">
-                              <span className="inline-flex items-center gap-1">
-                                <input className="input w-13 px-1 py-1 text-right text-sm" inputMode="decimal" aria-label={`${name} 최소`} value={a} onChange={(e) => set(0, e.target.value)} />
-                                –
-                                <input className="input w-13 px-1 py-1 text-right text-sm" inputMode="decimal" aria-label={`${name} 최대`} value={z} onChange={(e) => set(1, e.target.value)} />
-                              </span>
-                            </td>
-                          );
-                        }
+                {LENGTH_LEVELS.map((l) => (
+                  <tr key={l}>
+                    <td className="font-sans font-semibold whitespace-nowrap">{LENGTH_LEVEL_NAME[l]}</td>
+                    {LENGTH_GROUPS.map((g) => {
+                      if (editing) {
+                        const [a, z] = draft[key(g, l)] ?? ["", ""];
+                        const set = (i: 0 | 1, v: string) => setDraft((d) => ({ ...d, [key(g, l)]: i === 0 ? [v, z] : [a, v] }));
+                        const name = `${LENGTH_GROUP_NAME[g]} ${LENGTH_LEVEL_NAME[l]} 총장`;
                         return (
-                          <td key={l} className={cn("text-right whitespace-nowrap", isEdited(g, l) && "font-semibold text-accent-800")}>
-                            {fmtBand(bands[l])}
+                          <td key={g} className="text-right">
+                            <span className="inline-flex items-center gap-1">
+                              <input className="input w-12 px-1 py-1 text-right text-sm" inputMode="decimal" aria-label={`${name} 최소`} value={a} onChange={(e) => set(0, e.target.value)} />
+                              –
+                              <input className="input w-12 px-1 py-1 text-right text-sm" inputMode="decimal" aria-label={`${name} 최대`} value={z} onChange={(e) => set(1, e.target.value)} />
+                            </span>
                           </td>
                         );
-                      })}
-                    </tr>
-                  );
-                })}
+                      }
+                      return (
+                        <td key={g} className={cn("text-right whitespace-nowrap", isEdited(g, l) && "font-semibold text-accent-800")}>
+                          {fmtBand(lengthBands(g, height, edited)[l])}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -722,12 +727,11 @@ function LengthRecommendations({
                 <button type="button" className="btn btn-secondary" onClick={() => setEditing(false)}>
                   취소
                 </button>
-                <span className="text-xs text-neutral-700">칸을 비우면 추천값으로 돌아갑니다.</span>
               </>
             ) : (
               <>
                 <button type="button" className="btn btn-secondary" onClick={startEdit}>
-                  총장 추천 수정
+                  총장 수정
                 </button>
                 {anyEdited && (
                   <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => commit({}, "총장 추천을 되돌렸습니다")}>
@@ -737,11 +741,11 @@ function LengthRecommendations({
               </>
             )}
           </div>
-          <p className="text-xs text-neutral-700">
-            키 {height}cm 기준으로 계산했어요. 굵게 표시된 칸은 내가 고친 값이고, 옷 정보와 구매 판단의 길이감에도 그대로 쓰입니다.
+          <p className="max-w-72 text-xs text-neutral-700">
+            {editing ? "칸을 비우면 추천값으로 돌아갑니다. " : ""}굵은 칸은 내가 고친 값이고, 옷 정보와 구매 판단의 길이감에도 그대로 쓰입니다.
           </p>
         </>
       )}
-    </section>
+    </div>
   );
 }
