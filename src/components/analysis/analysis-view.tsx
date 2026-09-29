@@ -57,7 +57,7 @@ export function AnalysisView() {
           <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700 uppercase">
             Wardrobe report · 2026.09.27
           </span>
-          <h1 className="text-title">옷장 분석</h1>
+          <h1 className="text-title">옷장 데이터</h1>
         </div>
         <span className="text-sm text-neutral-700">{garments.length}벌 기준 · 구매가·구매일이 있는 옷만 금액에 포함</span>
       </div>

@@ -1,0 +1,455 @@
+"use client";
+
+/* eslint-disable @next/next/no-img-element -- 비공개 저장소의 임시 주소라 next/image 최적화를 쓰지 않는다(다른 화면과 같음). */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { UsageNote } from "@/components/usage/usage-note";
+import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
+import { buttonClassName } from "@/components/ui/button";
+import {
+  ASK_NAME,
+  CHANGED,
+  DECLINE,
+  DECLINE_LABEL,
+  INTRO,
+  MIN_CLOTHES,
+  NAME_HINT,
+  NO_AI_LEFT,
+  RETRY_LABEL,
+  START_LABEL,
+  tooFew,
+  WRITING,
+} from "@/lib/roast/copy";
+import { wardrobeHash } from "@/lib/roast/hash";
+import type { RoastQuestion, RoastResult, RoastScript } from "@/lib/roast/types";
+import { notifyUsageChanged } from "@/lib/usage";
+import { finishRoast, startRoast } from "@/server/roast/actions";
+import "./roast.css";
+
+/**
+ * AI 옷장 분석(계획서 3장). 서버가 만든 대화 순서를 한 글자씩 차례로 재생하고, 질문에 답을 받은 뒤 결과 글을 받는다.
+ * 진행 상태는 저장하지 않는다(나가면 처음부터). 결과는 로그인하면 서버에, 미리보기 모드면 브라우저에 가장 최근 1개만 둔다.
+ */
+
+const PREVIEW_KEY = "wardrobe-fit:roast-result";
+const TYPE_MS = 26;
+
+type Msg =
+  | { id: number; kind: "ai"; text: string; photos?: string[] }
+  | { id: number; kind: "status"; text: string }
+  | { id: number; kind: "dots" }
+  | { id: number; kind: "choices"; q: RoastQuestion; picked: string | null };
+
+type DistOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+type NewMsg = DistOmit<Msg, "id">;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+function readPreview(): RoastResult | null {
+  try {
+    const raw = window.localStorage.getItem(PREVIEW_KEY);
+    return raw ? (JSON.parse(raw) as RoastResult) : null;
+  } catch {
+    return null;
+  }
+}
+function writePreview(r: RoastResult) {
+  try {
+    window.localStorage.setItem(PREVIEW_KEY, JSON.stringify(r));
+  } catch {}
+}
+
+/** 2026년 9월 29일(한국 시간) */
+const koreanDate = (iso: string) =>
+  new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric" }).format(new Date(iso));
+
+export function RoastView({ initialResult }: { initialResult: RoastResult | null }) {
+  const { garments, signedIn } = useWardrobe();
+  const clothes = garments.filter((g) => g.categoryId !== "hat" && g.categoryId !== "shoes").length;
+  const [result, setResult] = useState<RoastResult | null>(initialResult);
+  const [mode, setMode] = useState<"result" | "intro" | "name" | "chat">(initialResult ? "result" : "intro");
+  // 이름은 이번 결과에만 쓰고 다음 분석 때 미리 채우지 않는다.
+  const [name, setName] = useState<string | null>(null);
+
+  // 미리보기 모드: 결과는 브라우저 저장소에 있다.
+  useEffect(() => {
+    if (signedIn || initialResult) return;
+    const saved = readPreview();
+    if (saved) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage는 hydration 뒤에만 읽을 수 있다
+      setResult(saved);
+      setMode("result");
+    }
+  }, [signedIn, initialResult]);
+
+  const photoOf = useCallback(
+    (id: string) => {
+      const g = garments.find((x) => x.id === id);
+      return result?.garments[id]?.imageUrl ?? g?.thumbUrl ?? g?.imageUrl ?? null;
+    },
+    [garments, result],
+  );
+
+  return (
+    <main className="mx-auto max-w-200 px-[clamp(16px,3vw,32px)] pt-6 pb-20">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-text pb-4">
+        <div className="flex flex-col gap-1">
+          <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700 uppercase">Wardrobe roast</span>
+          <h1 className="text-title">AI 옷장 분석</h1>
+        </div>
+        {signedIn && <UsageNote kind="roast" />}
+      </div>
+
+      {mode === "result" && result ? (
+        <ResultView
+          result={result}
+          changed={wardrobeHash(garments) !== result.wardrobeHash}
+          photoOf={photoOf}
+          onRetry={() => setMode("name")}
+        />
+      ) : mode === "chat" ? (
+        <Chat
+          name={name}
+          preview={signedIn ? undefined : garments}
+          photoOf={photoOf}
+          onDone={(r) => {
+            if (!signedIn) writePreview(r);
+            else notifyUsageChanged();
+            setResult(r);
+            setMode("result");
+          }}
+        />
+      ) : (
+        <Intro
+          clothes={clothes}
+          skipIntro={mode === "name"}
+          onStart={(n) => {
+            setName(n);
+            setMode("chat");
+          }}
+        />
+      )}
+    </main>
+  );
+}
+
+/** 한 글자씩 출력. 움직임 줄이기 설정이면 바로 전부 보인다. */
+function Typed({ text, onDone }: { text: string; onDone?: () => void }) {
+  const [n, setN] = useState(0);
+  const done = useRef(false);
+  useEffect(() => {
+    if (n >= text.length) {
+      if (!done.current) {
+        done.current = true;
+        onDone?.();
+      }
+      return;
+    }
+    // 문장 부호 뒤에서 잠깐 멈춘다.
+    const ch = text[n - 1];
+    const instant = reducedMotion();
+    const t = setTimeout(() => setN((x) => (instant ? text.length : x + 1)), instant ? 0 : /[.?!,]/.test(ch ?? "") ? TYPE_MS * 8 : TYPE_MS);
+    return () => clearTimeout(t);
+  }, [n, text, onDone]);
+  return (
+    <>
+      {text.slice(0, n)}
+      {n < text.length && <span className="roast-cursor" aria-hidden />}
+    </>
+  );
+}
+
+function Dots() {
+  return (
+    <span className="roast-dots" role="status" aria-label="생각하는 중">
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
+
+function Photos({ ids, photoOf }: { ids?: string[]; photoOf: (id: string) => string | null }) {
+  const urls = (ids ?? []).map(photoOf).filter((u): u is string => Boolean(u));
+  if (!urls.length) return null;
+  return (
+    <div className="roast-photos mt-2">
+      {urls.map((u) => (
+        <img key={u} src={u} alt="" className="roast-photo" loading="lazy" />
+      ))}
+    </div>
+  );
+}
+
+function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: boolean; onStart: (name: string | null) => void }) {
+  const [typed, setTyped] = useState(skipIntro);
+  const [declined, setDeclined] = useState<string | null>(null);
+  const [asking, setAsking] = useState(skipIntro);
+  const [name, setName] = useState("");
+  const enough = clothes >= MIN_CLOTHES;
+
+  return (
+    <div className="roast-mono roast-log mt-8" aria-live="polite">
+      <p className="roast-ai">{skipIntro ? INTRO : <Typed text={INTRO} onDone={() => setTyped(true)} />}</p>
+      {typed && !enough && <p className="roast-ai">{tooFew(clothes)}</p>}
+      {typed && enough && !asking && (
+        <>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="roast-choice" onClick={() => setAsking(true)}>
+              {START_LABEL}
+            </button>
+            <button
+              type="button"
+              className="roast-choice"
+              onClick={() => setDeclined(DECLINE[Math.floor(Math.random() * DECLINE.length)])}
+              disabled={Boolean(declined)}
+            >
+              {DECLINE_LABEL}
+            </button>
+          </div>
+          {declined && (
+            <p className="roast-ai">
+              <Typed key={declined} text={declined} />
+            </p>
+          )}
+        </>
+      )}
+      {asking && (
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onStart(name.trim() || null);
+          }}
+        >
+          <p className="roast-ai">
+            <Typed text={ASK_NAME} />
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value.slice(0, 20))}
+              maxLength={20}
+              autoComplete="off"
+              aria-label="부를 이름"
+              placeholder="예: 세현"
+              className="min-h-12 w-56 max-w-full border border-text bg-surface px-3 text-body"
+            />
+            <button type="submit" className={buttonClassName({ variant: "primary", size: "lg" })}>
+              시작하기
+            </button>
+          </div>
+          <span className="text-sm text-neutral-700">{NAME_HINT}</span>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function Chat({
+  name,
+  preview,
+  photoOf,
+  onDone,
+}: {
+  name: string | null;
+  preview: unknown;
+  photoOf: (id: string) => string | null;
+  onDone: (r: RoastResult) => void;
+}) {
+  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [noAi, setNoAi] = useState(false);
+  const endRef = useRef<HTMLDivElement>(null);
+  const nextId = useRef(0);
+  const typedWaiters = useRef(new Map<number, () => void>());
+  const choiceWaiter = useRef<((id: string) => void) | null>(null);
+  const started = useRef(false);
+
+  const push = useCallback((m: NewMsg) => {
+    const id = nextId.current++;
+    setMsgs((list) => [...list, { ...m, id } as Msg]);
+    return id;
+  }, []);
+  const remove = (id: number) => setMsgs((list) => list.filter((m) => m.id !== id));
+
+  const say = useCallback(
+    (text: string, photos?: string[]) =>
+      new Promise<void>((resolve) => {
+        const id = nextId.current;
+        typedWaiters.current.set(id, resolve);
+        push({ kind: "ai", text, photos });
+      }),
+    [push],
+  );
+  const think = useCallback(
+    async (ms: number) => {
+      const id = push({ kind: "dots" });
+      await sleep(reducedMotion() ? 150 : ms);
+      remove(id);
+    },
+    [push],
+  );
+
+  // 새 메시지·타이핑이 늘어날 때마다 맨 아래로
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "end", behavior: reducedMotion() ? "auto" : "smooth" });
+  });
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    void (async () => {
+      await think(900);
+      const start = await startRoast({ name, preview });
+      if (!start.ok) {
+        setError(start.code === "too_few" ? tooFew(start.count) : start.message);
+        return;
+      }
+      if (start.aiLeft === 0) setNoAi(true);
+      const answers = await play(start.script);
+      push({ kind: "status", text: WRITING });
+      const dots = push({ kind: "dots" });
+      const done = await finishRoast({ seed: start.script.seed, name, answers, preview });
+      remove(dots);
+      if (!done.ok) {
+        setError(done.message);
+        return;
+      }
+      await sleep(400);
+      onDone(done.result);
+    })();
+
+    async function play(script: RoastScript): Promise<Record<string, string>> {
+      const answers: Record<string, string> = {};
+      for (const step of script.steps) {
+        if (step.t === "status") {
+          push({ kind: "status", text: step.text });
+          await sleep(500);
+        } else if (step.t === "think") await think(700 + Math.random() * 700);
+        else if (step.t === "say") {
+          await say(step.text, step.photos);
+          await sleep(350 + Math.random() * 500);
+        } else {
+          const q = script.questions[step.q];
+          for (const l of q.lead) {
+            await say(l);
+            await sleep(450);
+          }
+          await say(q.text, q.photos);
+          const picked = await new Promise<string>((resolve) => {
+            choiceWaiter.current = resolve;
+            push({ kind: "choices", q, picked: null });
+          });
+          answers[q.id] = picked;
+          await think(600);
+          await say(q.reactions[picked] ?? "");
+          await sleep(600);
+        }
+      }
+      return answers;
+    }
+  }, [name, preview, onDone, push, say, think]);
+
+  const onTyped = useCallback((id: number) => {
+    typedWaiters.current.get(id)?.();
+    typedWaiters.current.delete(id);
+  }, []);
+
+  return (
+    <div className="roast-mono roast-log mt-8" aria-live="polite">
+      {noAi && <p className="roast-status">{NO_AI_LEFT}</p>}
+      {msgs.map((m) =>
+        m.kind === "ai" ? (
+          <div key={m.id} className="roast-ai">
+            <Typed text={m.text} onDone={() => onTyped(m.id)} />
+            <Photos ids={m.photos} photoOf={photoOf} />
+          </div>
+        ) : m.kind === "status" ? (
+          <p key={m.id} className="roast-status">
+            {m.text}
+          </p>
+        ) : m.kind === "dots" ? (
+          <div key={m.id}>
+            <Dots />
+          </div>
+        ) : (
+          <div key={m.id} className="flex flex-col gap-2 sm:max-w-120">
+            {m.q.options.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                className="roast-choice"
+                disabled={m.picked !== null}
+                data-picked={m.picked === o.id}
+                onClick={() => {
+                  setMsgs((list) => list.map((x) => (x.id === m.id ? { ...x, picked: o.id } : x)));
+                  choiceWaiter.current?.(o.id);
+                  choiceWaiter.current = null;
+                }}
+              >
+                {o.photoId && photoOf(o.photoId) && <img src={photoOf(o.photoId)!} alt="" />}
+                {o.label}
+              </button>
+            ))}
+          </div>
+        ),
+      )}
+      {error && (
+        <p className="roast-ai" role="alert">
+          {error}
+        </p>
+      )}
+      <div ref={endRef} />
+    </div>
+  );
+}
+
+function ResultView({
+  result,
+  changed,
+  photoOf,
+  onRetry,
+}: {
+  result: RoastResult;
+  changed: boolean;
+  photoOf: (id: string) => string | null;
+  onRetry: () => void;
+}) {
+  const date = useMemo(() => koreanDate(result.createdAt), [result.createdAt]);
+  return (
+    <article className="roast-mono roast-result mt-8 flex flex-col gap-6">
+      {changed && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border border-text bg-surface px-4 py-3">
+          <span className="text-body">{CHANGED}</span>
+          <button type="button" className={buttonClassName({ size: "sm" })} onClick={onRetry}>
+            {RETRY_LABEL}
+          </button>
+        </div>
+      )}
+      <header className="flex flex-col gap-2">
+        {result.name && <span className="text-md">{result.name}님의 옷장</span>}
+        <span className="text-sm text-neutral-700">
+          {date} · 옷 {result.garmentCount}벌 기준
+        </span>
+        <h2 className="roast-headline">{result.headline}</h2>
+      </header>
+      {result.paragraphs.map((p, i) => (
+        <section key={i} className="flex flex-col gap-2">
+          <p>{p.text}</p>
+          <Photos ids={p.photos} photoOf={photoOf} />
+        </section>
+      ))}
+      <div className="flex flex-col gap-1 border-t border-divider pt-5">
+        {result.closing.map((c, i) => (
+          <p key={i}>{c}</p>
+        ))}
+      </div>
+      <p className="text-sm text-neutral-700">{result.disclaimer}</p>
+      <div>
+        <button type="button" className={buttonClassName({ variant: "primary", size: "lg" })} onClick={onRetry}>
+          {RETRY_LABEL}
+        </button>
+      </div>
+    </article>
+  );
+}

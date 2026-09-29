@@ -29,13 +29,7 @@ export const SECTION_STATUS: Record<Section, string[]> = {
   odd: ["하나 눈에 걸리는 게 있습니다.", "잠깐, 이상한 게 하나 보입니다."],
 };
 
-/** 시작 화면·분석 도입 */
-export const INTRO =
-  "안녕하세요. Wardrobe Fit의 전문 옷장분석팀 AI 입니다. 저장된 옷장 정보를 바탕으로, 당신의 옷 취향이 얼마나 끔찍한지 알아보겠습니다.";
-export const DECLINE = ["현명한 판단일지도 모르겠습니다.", "그것도 선택입니다. 옷장은 도망가지 않습니다.", "알겠습니다. 저는 여기서 기다리겠습니다."];
-export const ASK_NAME = "시작하기 전에, 뭐라고 부르면 될까요?";
-export const NAME_HINT = "이름은 입력하지 않아도 됩니다.";
-export const TOO_FEW = "모자·신발을 제외한 옷이 10개 이상일 때 분석할 수 있습니다. (지금 {n}개)";
+export { DISCLAIMER } from "@/lib/roast/copy";
 
 export const SCAN_OPEN = [
   "옷장을 열었습니다. 모자·신발을 빼고 {n}벌입니다.",
@@ -50,8 +44,6 @@ export const FEW_PATTERNS = [
   "딱히 트집 잡을 게 많지 않네요. 저도 조금 당황스럽습니다.",
 ];
 export const WRAP_UP = ["대충 파악이 끝났습니다. 정리해 보겠습니다.", "여기까지입니다. 정리하겠습니다.", "충분히 봤습니다. 결과를 쓰겠습니다."];
-export const WRITING = "결과를 쓰는 중입니다.";
-export const DISCLAIMER = "AI가 작성한 글이라 부정확할 수 있고, 일부러 비꼬는 말투로 썼으니 가볍게 봐 주세요.";
 
 /** 결과 끝의 건조한 마무리. 2~4줄 고른다. */
 export const CLOSING = [

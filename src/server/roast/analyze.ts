@@ -429,7 +429,10 @@ function findOddOne(clothes: Item[], achromaticShare: number): Analysis["oddOne"
     if (i.families.some((f) => (famCount.get(f) ?? 0) / n <= 0.12)) traits.push("family");
     if (traits.length < 2) continue;
     const score = traits.length + (achromaticShare >= 0.6 && i.color && !i.achromatic ? 1 : 0) + (i.hasPhoto ? 0.1 : 0);
-    if (score > bestScore) (best = { item: i, traits }), (bestScore = score);
+    if (score > bestScore) {
+      best = { item: i, traits };
+      bestScore = score;
+    }
   }
   return best;
 }

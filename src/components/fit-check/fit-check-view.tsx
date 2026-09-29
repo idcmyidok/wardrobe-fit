@@ -269,7 +269,7 @@ export function FitCheckView() {
         ← 내 옷장
       </Link>
       <div className="flex flex-col gap-1.5 border-b border-text pb-4">
-        <h1 className="text-title">AI 구매 판단기</h1>
+        <h1 className="text-title">구매 판단기</h1>
         <p className="text-body text-neutral-800">사려는 옷의 링크와 고민 중인 사이즈를 넣으면, 옷장에 기록한 옷과 치수별로 비교합니다.</p>
         <UsageNote kind="fit" />
       </div>

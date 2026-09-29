@@ -98,7 +98,9 @@ export function buildScript(a: Analysis, seed: number, name: string | null): Pla
   const steps: RoastStep[] = [];
   const say = (text: string, photos?: string[]) => steps.push(photos?.length ? { t: "say", text, photos } : { t: "say", text });
 
-  if (name) say(fill(r.pick(NAME_GREETING), { name }));
+  // 이름은 가끔만 부른다: 인사에서 부르거나, 대화 중에 한 번.
+  const greet = Boolean(name) && r.next() < 0.5;
+  if (greet) say(fill(r.pick(NAME_GREETING), { name: name! }));
   say(fill(r.pick(SCAN_OPEN), { n: a.clothes.length }));
 
   // 질문이 들어갈 자리: 관련 패턴 바로 뒤, 없으면 그 섹션 끝
@@ -112,7 +114,7 @@ export function buildScript(a: Analysis, seed: number, name: string | null): Pla
     steps.push({ t: "ask", q: i });
   };
 
-  let nameUsed = false;
+  let nameUsed = greet;
   for (const sec of SECTION_ORDER) {
     const inSec = convo.filter((p) => LINES[p.id].section === sec);
     const secQuestions = asked.map((q, i) => ({ q, i })).filter(({ q, i }) => !placed.has(i) && QUESTION_SECTION[q.id] === sec);
@@ -177,6 +179,8 @@ export function composeResult(a: Analysis, plan: Plan, answers: Record<string, s
   used.forEach((p, idx) => {
     let text = tryFill(r, LINES[p.id].para, varsOf(p));
     if (!text) return;
+    // 첫 문단은 "그리고"로 시작하지 않게 한다(튀는 옷 문단).
+    if (idx === 0) text = text.replace(/^그리고 /, "");
     if (idx === 0 && name) text = `${name}님, ${text}`;
     for (const rc of recallFor(p)) {
       text += ` ${rc}`;

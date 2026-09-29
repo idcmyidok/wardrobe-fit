@@ -41,7 +41,6 @@ export interface QuestionDef {
 }
 
 const pat = (a: Analysis, id: string) => a.patterns.find((p) => p.id === id);
-const patStartsWith = (a: Analysis, prefix: string) => a.patterns.filter((p) => p.id.startsWith(prefix));
 const has = (a: Analysis, id: string) => Boolean(pat(a, id));
 const photoIds = (a: Analysis, ids: string[]) => ids.filter((id) => a.items.find((i) => i.id === id)?.hasPhoto);
 const o = (id: string, label: string): QOption => ({ id, label });
@@ -891,11 +890,17 @@ export interface AskedQuestion {
 
 /** 브랜드 버리기 선택지 반응 */
 const DROP_REACT = {
-  most: "의외네요. 그래도 여기에는 이 브랜드가 {count}벌이나 있는데요.",
+  most: "의외네요. 가장 돈을 많이 쓴 브랜드인데요.",
+  mostMany: "의외네요. 그래도 여기에는 이 브랜드가 {count}벌이나 있는데요.",
   least: "가장 피해가 적은 쪽을 정확하게 골랐습니다.",
   mid: "과감하네요. 이걸 빼면 옷장 분위기가 꽤 많이 달라질 텐데요.",
 };
-const DROP_RECALL = "세 브랜드 중 하나를 버리라고 했더니 {brand|을} 골랐습니다. 이 옷장에 {count}벌이 있는 브랜드인데도요.";
+const DROP_RECALL = {
+  most: "세 브랜드 중 하나를 버리라고 했더니 {brand|을} 골랐습니다. 가장 돈을 많이 쓴 브랜드인데도요.",
+  mostMany: "세 브랜드 중 하나를 버리라고 했더니 {brand|을} 골랐습니다. 이 옷장에 {count}벌이나 있는 브랜드인데도요.",
+  mid: "세 브랜드 중 하나를 버리라고 했더니 {brand|을} 골랐습니다. 과감한 선택이었습니다.",
+  least: "세 브랜드 중 하나를 버리라고 했더니 {brand|을} 골랐습니다. 피해가 가장 적은 쪽을 정확히 골랐습니다.",
+};
 
 /** 옷장 벌 수 맞히기 선택지: 정답 구간 하나와 아래·위 구간 */
 function countRanges(n: number) {
@@ -964,9 +969,9 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
     const reactions: Record<string, string> = {};
     const recalls: Record<string, string> = {};
     top3.forEach((b, i) => {
-      const kind = i === 0 ? "most" : i === top3.length - 1 ? "least" : "mid";
+      const kind: keyof typeof DROP_RECALL = i === 0 ? (b.count >= 3 ? "mostMany" : "most") : i === top3.length - 1 ? "least" : "mid";
       reactions[b.label] = fill(DROP_REACT[kind], { count: b.count });
-      recalls[b.label] = fill(DROP_RECALL, { brand: b.label, count: b.count });
+      recalls[b.label] = fill(DROP_RECALL[kind], { brand: b.label, count: b.count });
     });
     return { id: q.id, lead: q.lead, text: q.text, options: r.shuffle(options), reactions, recalls, photos: [] };
   }

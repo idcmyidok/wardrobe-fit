@@ -256,7 +256,7 @@ export function FitResultView({
         </button>
       ) : (
         <Link href="/fit-check" className="btn btn-ghost mb-2 text-sm">
-          ← AI 구매 판단기
+          ← 구매 판단기
         </Link>
       )}
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-text pb-4">

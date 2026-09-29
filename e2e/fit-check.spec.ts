@@ -182,7 +182,7 @@ test("다른 사용자의 판단 결과는 열 수 없고, 본인 기록도 지�
     if (res.request().resourceType() === "script") scripts.push(await res.text().catch(() => ""));
   });
   await login(page, b, "/fit-check");
-  await expect(page.getByRole("heading", { name: "AI 구매 판단기" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "구매 판단기" })).toBeVisible();
   await page.goto(`/fit-check/${fc!.id}`);
   await expect(page.getByText("페이지를 찾을 수 없습니다")).toBeVisible();
 
