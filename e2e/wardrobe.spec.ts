@@ -96,3 +96,37 @@ test("모바일: 기본은 간략 목록, 자세하게로 표 보기, 누르면 
   expect(overflow).toBeLessThanOrEqual(0);
   await context.close();
 });
+
+test("옷 삭제: 간략하게로 바뀌고 체크한 옷만 한꺼번에 삭제, 실행 취소로 되살림", async ({ page, admin, makeUser, seedGarments }) => {
+  const user = await makeUser("bulk-delete");
+  const ids = await seedGarments(user, [
+    { category_id: "outer", brand: "COS", product_name: "울 코트" },
+    { category_id: "top", brand: "Uniqlo", product_name: "크루넥 티" },
+    { category_id: "bottom", brand: "Levi's", product_name: "501 데님" },
+  ]);
+  await login(page, user);
+  await expect(page.locator("table:visible").first()).toBeVisible();
+
+  await page.getByRole("button", { name: "옷 삭제" }).click();
+  await expect(page.locator("table:visible")).toHaveCount(0);
+  const submit = page.getByRole("button", { name: /^선택 삭제하기/ });
+  await expect(submit).toBeDisabled();
+  await page.getByRole("checkbox", { name: "COS 울 코트 선택" }).check();
+  await page.getByRole("checkbox", { name: "Levi's 501 데님 선택" }).check();
+  await expect(submit).toBeEnabled();
+  await expect(submit).toHaveText("선택 삭제하기 (2)");
+  await submit.click();
+  await page.getByRole("alertdialog", { name: "2벌을 삭제할까요?" }).getByRole("button", { name: "삭제" }).click();
+  await expect(page.getByText("2벌을 삭제했습니다")).toBeVisible();
+  // 삭제가 끝나면 원래 보기로 돌아온다.
+  await expect(submit).toHaveCount(0);
+  await expect(page.locator("table:visible").getByText("크루넥 티")).toBeVisible();
+  await expect(page.getByText("울 코트")).toHaveCount(0);
+  const { data: rows } = await admin.from("garments").select("id, deleted_at").in("id", ids);
+  expect(rows?.filter((r) => r.deleted_at).map((r) => r.id).sort()).toEqual([ids[0], ids[2]].sort());
+
+  await page.getByRole("button", { name: "실행 취소" }).click();
+  await expect(page.locator("table:visible").getByText("울 코트")).toBeVisible();
+  const { data: back } = await admin.from("garments").select("deleted_at").in("id", ids);
+  expect(back?.every((r) => r.deleted_at === null)).toBe(true);
+});

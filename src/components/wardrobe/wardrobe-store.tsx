@@ -11,7 +11,9 @@ import type { Garment } from "@/lib/types/domain";
 import {
   createGarment,
   deleteGarment,
+  deleteGarments,
   restoreGarment,
+  restoreGarments,
   setGarmentImage,
   updateGarment as updateGarmentAction,
   type GarmentActionResult,
@@ -45,6 +47,8 @@ interface WardrobeStore {
   updateGarment: (id: string, patch: Partial<GarmentDraft>, image?: ImageChange) => Promise<SaveResult>;
   /** 성공하면 true. 실패하면 알림을 띄우고 false */
   removeGarment: (id: string) => Promise<boolean>;
+  /** 여러 벌 삭제(옷장의 선택 삭제). 성공하면 true, 실패하면 알림을 띄우고 false */
+  removeGarments: (ids: string[]) => Promise<boolean>;
 
   /**
    * 옷 정보 열기. 넓은 화면은 지금 주소에 ?item={id}를 붙여 Drawer로 열고(뒤로가기로 닫힘),
@@ -281,6 +285,50 @@ export function WardrobeProvider({
     [garments, userId, showToast, closeDrawer],
   );
 
+  const removeGarments = useCallback(
+    async (ids: string[]) => {
+      const wanted = new Set(ids);
+      // 되살릴 때 원래 자리로 돌려놓으려고 목록에서의 위치를 기억해 둔다.
+      const removed = garments.map((g, index) => ({ g, index })).filter(({ g }) => wanted.has(g.id));
+      if (!removed.length) return false;
+      let doneIds = removed.map(({ g }) => g.id);
+      if (userId) {
+        const result = await call(() => deleteGarments(doneIds));
+        if (!result.ok) {
+          showToast(result.error);
+          return false;
+        }
+        doneIds = result.data.ids;
+      }
+      const done = new Set(doneIds);
+      setGarments((list) => list.filter((g) => !done.has(g.id)));
+      const open = new URLSearchParams(window.location.search).get("item");
+      if (open && done.has(open)) closeDrawer();
+      showToast(`${done.size}벌을 삭제했습니다`, async () => {
+        setToast(null);
+        let restored = new Map(removed.filter(({ g }) => done.has(g.id)).map(({ g }) => [g.id, g]));
+        if (userId) {
+          const result = await call(() => restoreGarments(doneIds));
+          if (!result.ok) {
+            showToast(result.error);
+            return;
+          }
+          restored = new Map(result.data.map((g) => [g.id, g]));
+        }
+        setGarments((list) => {
+          const next = list.filter((g) => !restored.has(g.id));
+          for (const { g, index } of removed) {
+            const back = restored.get(g.id);
+            if (back) next.splice(Math.min(index, next.length), 0, back);
+          }
+          return next;
+        });
+      });
+      return true;
+    },
+    [garments, userId, showToast, closeDrawer],
+  );
+
   const value = useMemo<WardrobeStore>(
     () => ({
       garments,
@@ -288,6 +336,7 @@ export function WardrobeProvider({
       addGarment,
       updateGarment,
       removeGarment,
+      removeGarments,
       openDrawer,
       closeDrawer,
       garmentHref,
@@ -296,7 +345,7 @@ export function WardrobeProvider({
       pendingDraft,
       setPendingDraft,
     }),
-    [garments, userId, addGarment, updateGarment, removeGarment, openDrawer, closeDrawer, garmentHref, toast, showToast, pendingDraft],
+    [garments, userId, addGarment, updateGarment, removeGarment, removeGarments, openDrawer, closeDrawer, garmentHref, toast, showToast, pendingDraft],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

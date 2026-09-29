@@ -25,7 +25,7 @@ import {
 } from "./filter-state";
 import { WardrobeFilters } from "./wardrobe-filters";
 import { useOpenGarmentId, useWardrobe } from "./wardrobe-store";
-import { WardrobeTable, type WardrobeViewMode } from "./wardrobe-table";
+import { WardrobeTable, type GarmentSelection, type WardrobeViewMode } from "./wardrobe-table";
 
 const EMPTY_STEPS = [
   { title: "링크 붙여넣기", description: "상품 페이지에서 브랜드, 사이즈표, 컬러를 읽습니다." },
@@ -34,7 +34,7 @@ const EMPTY_STEPS = [
 ];
 
 export function WardrobeView() {
-  const { garments, openDrawer } = useWardrobe();
+  const { garments, openDrawer, removeGarments } = useWardrobe();
   const drawerId = useOpenGarmentId();
   const params = useSearchParams();
   // 필터·검색·정렬·페이지는 모두 URL에 둔다. 정렬과 페이지는 대분류 표마다 따로(기본은 최근 구매순, 1쪽).
@@ -52,7 +52,43 @@ export function WardrobeView() {
   // 간략하게/자세하게. 고르기 전에는 모바일은 간략(목록), PC는 자세히(표). 고른 값은 이 기기에 기억한다.
   const chosenView = useSyncExternalStore(subscribeView, readSavedView, () => null);
   const desktop = useSyncExternalStore(subscribeDesktop, isDesktop, () => true);
-  const view = chosenView ?? (desktop ? "detail" : "simple");
+  // 옷 삭제 모드: 간략하게 목록에 체크박스를 띄우고, 오른쪽 아래 "선택 삭제하기"로 한꺼번에 지운다.
+  // 보기 방식은 이 모드 동안만 간략하게로 바꾸고 저장된 선택은 건드리지 않는다.
+  const [deleting, setDeleting] = useState(false);
+  const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set());
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const view = deleting ? "simple" : (chosenView ?? (desktop ? "detail" : "simple"));
+  // 지워졌거나 사라진 옷은 세지 않는다.
+  const checkedIds = useMemo(() => garments.filter((g) => checked.has(g.id)).map((g) => g.id), [garments, checked]);
+  const selection = useMemo<GarmentSelection | undefined>(
+    () =>
+      deleting
+        ? {
+            selected: checked,
+            onToggle: (id) =>
+              setChecked((prev) => {
+                const next = new Set(prev);
+                if (next.has(id)) next.delete(id);
+                else next.add(id);
+                return next;
+              }),
+          }
+        : undefined,
+    [deleting, checked],
+  );
+  const exitDeleting = () => {
+    setDeleting(false);
+    setChecked(new Set());
+    setConfirmDelete(false);
+  };
+  const removeChecked = async () => {
+    setRemoving(true);
+    const ok = await removeGarments(checkedIds);
+    setRemoving(false);
+    setConfirmDelete(false);
+    if (ok) exitDeleting();
+  };
   // 서버에 다시 묻지 않고 주소만 바꾼다. 검색어 입력처럼 잦은 변경은 기록을 쌓지 않는다(replace).
   const navigate = useCallback((next: WardrobeState, mode: "push" | "replace" = "push") => {
     const search = new URLSearchParams(toWardrobeSearch(next));
@@ -97,7 +133,22 @@ export function WardrobeView() {
             </span>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {!empty && (
+            <button
+              type="button"
+              aria-pressed={deleting}
+              onClick={() => (deleting ? exitDeleting() : setDeleting(true))}
+              className={cn(
+                "btn btn-ghost",
+                deleting
+                  ? "text-neutral-700"
+                  : "text-negative decoration-negative hover:text-negative hover:decoration-negative",
+              )}
+            >
+              {deleting ? "삭제 취소" : "옷 삭제"}
+            </button>
+          )}
           {empty ? (
             <button type="button" className={buttonClassName({ variant: "secondary" })} disabled>
               AI 구매 판단기
@@ -151,9 +202,10 @@ export function WardrobeView() {
                   key={option.id}
                   type="button"
                   aria-pressed={view === option.id}
+                  disabled={deleting}
                   onClick={() => saveView(option.id)}
                   className={cn(
-                    "min-h-9 cursor-pointer px-3 text-sm",
+                    "min-h-9 cursor-pointer px-3 text-sm disabled:cursor-not-allowed",
                     view === option.id ? "bg-text text-bg" : "text-neutral-700 hover:bg-neutral-100 hover:text-text",
                   )}
                 >
@@ -210,7 +262,8 @@ export function WardrobeView() {
                     }
                     selectedId={drawerId}
                     onOpen={openDrawer}
-                    view={chosenView ?? undefined}
+                    view={deleting ? "simple" : (chosenView ?? undefined)}
+                    selection={selection}
                   />
                   {group.total > PAGE_SIZE && (
                     <Pagination
@@ -245,9 +298,59 @@ export function WardrobeView() {
 
           <div className="mt-6 flex justify-between border-t border-text py-3 font-mono text-sm text-neutral-700 tabular-nums">
             <span>{filtered ? `${items.length} / ${garments.length}벌` : `${garments.length}벌`}</span>
-            <span>행을 누르면 상세가 열립니다</span>
+            <span>{deleting ? "지울 옷을 골라 주세요" : "행을 누르면 상세가 열립니다"}</span>
           </div>
+          {/* 고정 버튼이 마지막 행을 가리지 않게 */}
+          {deleting && <div aria-hidden className="h-20" />}
         </>
+      )}
+
+      {deleting && (
+        <div className="fixed right-[clamp(16px,3vw,32px)] bottom-6 z-40 flex items-center gap-2">
+          <button type="button" className="btn btn-secondary bg-bg" onClick={exitDeleting}>
+            취소
+          </button>
+          <button
+            type="button"
+            disabled={checkedIds.length === 0}
+            onClick={() => setConfirmDelete(true)}
+            className={cn(
+              "btn min-h-11 px-5 font-semibold",
+              checkedIds.length === 0
+                ? "bg-neutral-300 text-neutral-600 disabled:opacity-100"
+                : "btn-danger shadow-[0_4px_14px_color-mix(in_srgb,var(--negative)_35%,transparent)]",
+            )}
+          >
+            선택 삭제하기{checkedIds.length > 0 && ` (${checkedIds.length})`}
+          </button>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[color-mix(in_srgb,var(--n-900)_50%,transparent)] p-4">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="bulk-delete-title"
+            onKeyDown={(e) => e.key === "Escape" && setConfirmDelete(false)}
+            className="flex w-[min(440px,100%)] flex-col gap-3 rounded-lg border border-text bg-bg p-4"
+          >
+            <div id="bulk-delete-title" className="text-lg font-semibold">
+              {checkedIds.length}벌을 삭제할까요?
+            </div>
+            <div className="text-base text-neutral-800">
+              고른 옷의 실측과 착용 후기가 함께 삭제됩니다. 5초 안에는 실행 취소할 수 있습니다.
+            </div>
+            <div className="mt-2 flex justify-end gap-2">
+              <button type="button" className="btn btn-secondary" autoFocus onClick={() => setConfirmDelete(false)}>
+                취소
+              </button>
+              <button type="button" className="btn btn-danger" disabled={removing} onClick={removeChecked}>
+                {removing ? "삭제 중…" : "삭제"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

@@ -25,6 +25,19 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "1.3.0",
+    date: "2026-09-29",
+    features: [
+      {
+        title: "옷장에서 여러 벌 한꺼번에 삭제",
+        description:
+          "내 옷장의 \"옷 삭제\"를 누르면 간략하게 목록에 체크박스가 생겨요. 지울 옷을 고르고 오른쪽 아래 \"선택 삭제하기\"를 누르면 한 번에 삭제되고, 5초 안에는 실행 취소할 수 있어요.",
+      },
+    ],
+    changes: [],
+    fixes: [],
+  },
+  {
     version: "1.2.2",
     date: "2026-09-29",
     features: [],

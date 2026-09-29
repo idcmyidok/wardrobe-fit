@@ -15,6 +15,11 @@ import { FitMeter } from "@/components/body/fit-meter";
 /** 옷장 목록 보기: simple은 사진·요약 목록, detail은 실측까지 보이는 표. */
 export type WardrobeViewMode = "simple" | "detail";
 
+export interface GarmentSelection {
+  selected: ReadonlySet<string>;
+  onToggle: (id: string) => void;
+}
+
 const cell = "border-r border-neutral-300 px-2 py-2 text-center align-middle";
 const head = "border-r border-b border-r-neutral-300 border-b-text bg-surface font-mono text-[10.5px] font-medium tracking-[0.06em] text-neutral-700";
 const mono = "font-mono tabular-nums whitespace-nowrap";
@@ -32,9 +37,12 @@ export function WardrobeTable({
   selectedId,
   onOpen,
   view,
+  selection,
 }: {
   /** simple: 간략 목록, detail: 표. 정하지 않으면 모바일은 목록, PC는 표. */
   view?: WardrobeViewMode;
+  /** 삭제할 옷 고르기. 있으면 간략 목록에 체크박스가 생기고, 행을 누르면 옷 정보 대신 체크가 바뀐다. */
+  selection?: GarmentSelection;
   categoryId: CategoryId;
   items: Garment[];
   sort: ColumnSort;
@@ -55,6 +63,7 @@ export function WardrobeTable({
         items={items}
         selectedId={selectedId}
         onOpen={onOpen}
+        selection={selection}
         className={view === "simple" ? undefined : view === "detail" ? "hidden" : "md:hidden"}
       />
       <div className={cn("overflow-x-auto overscroll-x-contain", view === "simple" ? "hidden" : view === "detail" ? undefined : "hidden md:block")}>
@@ -177,25 +186,26 @@ function MobileList({
   items,
   selectedId,
   onOpen,
+  selection,
   className,
 }: {
   items: Garment[];
   selectedId: string | null;
   onOpen: (id: string) => void;
+  selection?: GarmentSelection;
   className?: string;
 }) {
   return (
     <ul className={cn("border-t border-text", className)}>
-      {items.map((item) => (
-        <li key={item.id} className="border-b border-neutral-300">
-          <button
-            type="button"
-            onClick={() => onOpen(item.id)}
-            className={cn(
-              "grid min-h-16 w-full cursor-pointer grid-cols-[56px_minmax(0,1fr)] items-center gap-3 py-2 text-left",
-              selectedId === item.id && "bg-accent-100",
-            )}
-          >
+      {items.map((item) => {
+        const checked = selection?.selected.has(item.id) ?? false;
+        const row = cn(
+          "grid min-h-16 w-full cursor-pointer items-center gap-3 py-2 text-left",
+          selection ? "grid-cols-[20px_56px_minmax(0,1fr)] pl-1" : "grid-cols-[56px_minmax(0,1fr)]",
+          (selection ? checked : selectedId === item.id) && "bg-accent-100",
+        );
+        const body = (
+          <>
             <GarmentThumbnail item={item} className="h-17.5" fit="contain" />
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="truncate text-base">
@@ -213,9 +223,29 @@ function MobileList({
                   .join(" · ") || "—"}
               </span>
             </span>
-          </button>
-        </li>
-      ))}
+          </>
+        );
+        return (
+          <li key={item.id} className="border-b border-neutral-300">
+            {selection ? (
+              <label className={row}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => selection.onToggle(item.id)}
+                  aria-label={`${[item.brand, item.productName].filter(Boolean).join(" ")} 선택`}
+                  className="size-4.5 cursor-pointer accent-negative"
+                />
+                {body}
+              </label>
+            ) : (
+              <button type="button" onClick={() => onOpen(item.id)} className={row}>
+                {body}
+              </button>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
