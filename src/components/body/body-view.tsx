@@ -195,16 +195,14 @@ export function BodyView() {
                     <span id={`bh-${f.key}`} className="text-xs text-neutral-700">
                       {err ?? f.hint}
                     </span>
-                    {f.key !== "weight" && (
-                      <label className={cn("mt-0.5 inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs", unsure ? "text-accent-800" : "text-neutral-700")}>
-                        <input
-                          type="checkbox"
-                          checked={unsure}
-                          onChange={() => setUncertain((u) => (unsure ? u.filter((k) => k !== f.key) : [...u, f.key]))}
-                        />
-                        정확하지 않아요
-                      </label>
-                    )}
+                    <label className={cn("mt-0.5 inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs", unsure ? "text-accent-800" : "text-neutral-700")}>
+                      <input
+                        type="checkbox"
+                        checked={unsure}
+                        onChange={() => setUncertain((u) => (unsure ? u.filter((k) => k !== f.key) : [...u, f.key]))}
+                      />
+                      정확하지 않아요
+                    </label>
                   </div>
                 );
               })}
@@ -252,7 +250,7 @@ export function BodyView() {
 function ConsentCard({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   const rows: [string, string][] = [
     ["목적", "내 몸에 맞는 옷 사이즈 추천, 옷장·구매 판단의 예상 핏 계산"],
-    ["항목", "키, 몸무게, 어깨너비, 가슴·허리·엉덩이·허벅지 둘레, 팔·다리 길이 중 입력한 값"],
+    ["항목", "키, 어깨너비, 가슴·허리·엉덩이·허벅지 둘레 중 입력한 값"],
     ["보유 기간", "직접 삭제하거나 회원 탈퇴할 때까지"],
     ["거부할 권리", "동의하지 않아도 되며, 그 경우 내 치수 기반 추천만 쓸 수 없고 다른 기능은 그대로 이용할 수 있습니다."],
   ];

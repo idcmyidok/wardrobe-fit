@@ -13,7 +13,9 @@ import { SEASONS, SEASON_NAME, toggleSeason } from "@/lib/constants/seasons";
 import { EMPTY_SHOE_FIT, SHOE_FIT_FIELDS, shoeFitOrNull, shoeFitText, type ShoeFit } from "@/lib/constants/shoe-fit";
 import { formatDate } from "@/lib/format/date";
 import { DateLabel } from "@/components/garment-form/date-label";
-import { formatPrice } from "@/lib/format/price";
+import { formatPrice, krwHint, parsePriceInput, priceInputText, type Currency } from "@/lib/format/price";
+import { PriceInput } from "@/components/ui/price-input";
+import Link from "next/link";
 import type { CategoryId, Garment, Measurements, Season } from "@/lib/types/domain";
 import { useOpenGarmentId, useWardrobe, type ImageChange } from "./wardrobe-store";
 import { BodyFitPanel } from "@/components/body/body-fit-panel";
@@ -39,6 +41,7 @@ interface InfoDraft {
   colorName: string;
   purchasedOn: string;
   purchasePrice: string;
+  currency: Currency;
   productUrl: string;
   seasons: Season[];
   measurements: Record<string, string>;
@@ -54,7 +57,8 @@ const toDraft = (g: Garment): InfoDraft => ({
   sizeLabel: g.sizeLabel ?? "",
   colorName: g.colorName ?? "",
   purchasedOn: g.purchasedOn ?? "",
-  purchasePrice: g.purchasePrice == null ? "" : String(g.purchasePrice),
+  purchasePrice: priceInputText(g.purchasePrice, g.currency ?? "KRW"),
+  currency: g.currency ?? "KRW",
   productUrl: g.productUrl ?? "",
   seasons: g.seasons.slice(),
   measurements: Object.fromEntries(Object.entries(g.measurements).map(([k, v]) => [k, v == null ? "" : String(v)])),
@@ -70,9 +74,9 @@ const measureCols = (categoryId: CategoryId) => (measurementFields(categoryId).l
  * 주소의 ?item={id}로 열리고 닫힌다. useSearchParams를 쓰므로 Suspense 안에 둔다.
  */
 export function GarmentDrawer() {
-  const { garments, closeDrawer } = useWardrobe();
+  const { allGarments, closeDrawer } = useWardrobe();
   const id = useOpenGarmentId();
-  const garment = garments.find((g) => g.id === id);
+  const garment = allGarments.find((g) => g.id === id);
   if (!garment) return null;
   // key로 옷이 바뀔 때마다 편집 상태를 새로 시작한다.
   return <GarmentDetail key={garment.id} garment={garment} variant="drawer" onClose={closeDrawer} />;
@@ -90,7 +94,9 @@ export function GarmentDetail({
   variant: "drawer" | "page";
   onClose: () => void;
 }) {
-  const { updateGarment, removeGarment, showToast } = useWardrobe();
+  const { updateGarment, removeGarment, showToast, setPendingDraft, usdRate } = useWardrobe();
+  // 구매 보류 옷: 구매일·시즌·내 핏이 없고, "구매했어요 → 옷장으로"로 옷장에 옮긴다.
+  const held = Boolean(g.held);
   const router = useRouter();
   const [info, setInfo] = useState<InfoDraft | null>(null);
   const [reviewDraft, setReviewDraft] = useState<string | null>(null);
@@ -121,7 +127,6 @@ export function GarmentDetail({
       const v = info.measurements[key];
       measurements[key] = v == null || v === "" || isNaN(Number(v)) ? null : Number(v);
     }
-    const price = info.purchasePrice.replace(/\D/g, "");
     setSaving(true);
     setError(null);
     const result = await updateGarment(g.id, {
@@ -131,10 +136,11 @@ export function GarmentDetail({
       productName: info.productName.trim(),
       sizeLabel: info.sizeLabel || null,
       colorName: info.colorName || null,
-      purchasedOn: info.purchasedOn || null,
-      purchasePrice: price ? Number(price) : null,
+      purchasedOn: held ? null : info.purchasedOn || null,
+      purchasePrice: parsePriceInput(info.purchasePrice, info.currency),
+      currency: info.currency,
       productUrl: info.productUrl || null,
-      seasons: info.seasons,
+      seasons: held ? [] : info.seasons,
       measurements,
       fitReview: info.fitReview.trim() || null,
       shoeFit: info.categoryId === "shoes" ? shoeFitOrNull(info.shoeFit) : null,
@@ -159,7 +165,7 @@ export function GarmentDetail({
       return;
     }
     setReviewDraft(null);
-    showToast("착용 후기를 저장했습니다");
+    showToast(held ? "메모를 저장했습니다" : "착용 후기를 저장했습니다");
   };
 
   const saveUserFit = async (userFit: FitLevel | null) => {
@@ -170,11 +176,39 @@ export function GarmentDetail({
     showToast(result.ok ? (userFit ? "내 핏을 표기했습니다" : "내 핏 표기를 지웠습니다") : result.error);
   };
 
+  /** 구매 보류 옷 → 옷장: 내용을 채운 옷장 추가 화면에서 구매일·시즌·실제 구매가를 넣고 저장하면 옷장 옷이 된다. */
+  const moveToWardrobe = () => {
+    const { id, ...rest } = g;
+    setPendingDraft({ ...rest, held: false, heldId: id });
+    router.push("/wardrobe/new");
+  };
+
   const productHref = safeHttpUrl(g.productUrl);
+  const hint = krwHint(g.purchasePrice, g.currency, usdRate);
+  const priceText = (
+    <>
+      {formatPrice(g.purchasePrice, g.currency)}
+      {hint && <span className="ml-1.5 text-xs text-neutral-700">{hint}</span>}
+    </>
+  );
   const details: [string, ReactNode][] = [
-    ["시즌", g.seasons.map((s) => SEASON_NAME[s]).join(" · ") || "—"],
-    ["구매일", formatDate(g.purchasedOn)],
-    ["구매가", formatPrice(g.purchasePrice)],
+    ...(held
+      ? ([["가격", priceText]] as [string, ReactNode][])
+      : ([
+          ["시즌", g.seasons.map((s) => SEASON_NAME[s]).join(" · ") || "—"],
+          ["구매일", formatDate(g.purchasedOn)],
+          ["구매가", priceText],
+        ] as [string, ReactNode][])),
+    ...(g.fitCheckId
+      ? ([
+          [
+            "구매 판단",
+            <Link key="fc" href={`/fit-check/${g.fitCheckId}`} className="underline underline-offset-2 hover:text-accent-700">
+              판단 결과 보기
+            </Link>,
+          ],
+        ] as [string, ReactNode][])
+      : []),
     [
       "상품 링크",
       productHref ? (
@@ -193,14 +227,14 @@ export function GarmentDetail({
           <div className={cn("flex items-start justify-between border-b border-text bg-bg px-6 py-3", variant === "drawer" && "sticky top-0 z-1")}>
             <div className="flex items-baseline gap-2.5">
               <span id="drawer-title" className="text-body font-semibold">
-                옷 정보
+                {held ? "구매 보류 옷" : "옷 정보"}
               </span>
               <span className="text-sm text-neutral-700">
                 {CATEGORY_NAME[g.categoryId]} / {g.subcategoryId ? SUBCATEGORY_NAME[g.subcategoryId] : "—"}
               </span>
             </div>
             <div className="flex flex-col items-end gap-1.5">
-              <button type="button" className="btn btn-icon" aria-label={variant === "drawer" ? "닫기" : "내 옷장으로"} onClick={onClose}>
+              <button type="button" className="btn btn-icon" aria-label={variant === "drawer" ? "닫기" : held ? "구매 판단기로" : "내 옷장으로"} onClick={onClose}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M18 6 6 18M6 6l12 12" />
                 </svg>
@@ -285,7 +319,7 @@ export function GarmentDetail({
                     <SectionTitle aside={<span className="text-xs text-neutral-700">내 치수 기준</span>}>핏</SectionTitle>
                     <div className="flex flex-col gap-4 pt-1">
                       <BodyFitPanel garment={g} userFit={g.userFit ?? null} collapseReasons />
-                      <div className="flex flex-col gap-2">
+                      {!held && <div className="flex flex-col gap-2">
                         <span id={`uf-${g.id}`} className="text-xs text-neutral-700">
                           내 핏 표기 · 입어 보고 고르면 예상 핏 대신 보이고, 다시 누르면 지워져 예상 핏으로 돌아갑니다
                         </span>
@@ -296,13 +330,13 @@ export function GarmentDetail({
                           disabled={saving}
                           onChange={saveUserFit}
                         />
-                      </div>
+                      </div>}
                     </div>
                   </section>
                 )}
               </>
             ) : (
-              <InfoEditor info={info} setField={setField} imageUrl={g.imageUrl} image={image} setImage={setImage} />
+              <InfoEditor info={info} setField={setField} imageUrl={g.imageUrl} image={image} setImage={setImage} held={held} />
             )}
 
             <section>
@@ -310,19 +344,19 @@ export function GarmentDetail({
                 aside={
                   reviewDraft == null && !info ? (
                     <button type="button" className="btn btn-ghost text-sm" onClick={() => setReviewDraft(g.fitReview ?? "")}>
-                      {g.fitReview ? "후기 수정" : "후기 쓰기"}
+                      {held ? (g.fitReview ? "메모 수정" : "메모 쓰기") : g.fitReview ? "후기 수정" : "후기 쓰기"}
                     </button>
                   ) : undefined
                 }
               >
-                착용 후기
+                {held ? "메모" : "착용 후기"}
               </SectionTitle>
               {reviewDraft == null ? (
                 g.fitReview ? (
                   <p className="text-md leading-[1.7] text-pretty">{g.fitReview}</p>
                 ) : (
                   <p className="text-base text-neutral-700">
-                    아직 후기가 없습니다. 입어본 느낌을 한두 줄 남기면 구매 판단의 근거로 쓰입니다.
+                    {held ? "아직 메모가 없습니다. 고민하는 이유나 비교할 점을 남겨 두세요." : "아직 후기가 없습니다. 입어본 느낌을 한두 줄 남기면 구매 판단의 근거로 쓰입니다."}
                   </p>
                 )
               ) : (
@@ -330,7 +364,7 @@ export function GarmentDetail({
                   <textarea
                     className="input text-body leading-relaxed"
                     rows={4}
-                    aria-label="착용 후기"
+                    aria-label={held ? "메모" : "착용 후기"}
                     value={reviewDraft}
                     onChange={(e) => setReviewDraft(e.target.value)}
                   />
@@ -355,9 +389,15 @@ export function GarmentDetail({
           <div className="sticky bottom-0 flex gap-2 border-t border-text bg-bg px-6 py-3">
             {!info ? (
               <>
-                <button type="button" className="btn btn-secondary" onClick={() => router.push("/fit-check")}>
-                  이 옷 기준으로 판단
-                </button>
+                {held ? (
+                  <button type="button" className="btn btn-primary" onClick={moveToWardrobe}>
+                    구매했어요 → 옷장으로
+                  </button>
+                ) : (
+                  <button type="button" className="btn btn-secondary" onClick={() => router.push("/fit-check")}>
+                    이 옷 기준으로 판단
+                  </button>
+                )}
                 <button type="button" className="btn btn-danger ml-auto" onClick={() => setConfirmDelete(true)}>
                   삭제
                 </button>
@@ -392,7 +432,7 @@ export function GarmentDetail({
               이 옷을 삭제할까요?
             </div>
             <div className="text-base text-neutral-800">
-              {[g.brand, g.productName].filter(Boolean).join(" ")}의 실측과 착용 후기가 함께 삭제됩니다. 5초 안에는 실행 취소할 수 있습니다.
+              {[g.brand, g.productName].filter(Boolean).join(" ")}의 실측과 {held ? "메모" : "착용 후기"}가 함께 삭제됩니다. 5초 안에는 실행 취소할 수 있습니다.
             </div>
             <div className="mt-2 flex justify-end gap-2">
               <button type="button" className="btn btn-secondary" autoFocus onClick={() => setConfirmDelete(false)}>
@@ -403,7 +443,7 @@ export function GarmentDetail({
                 className="btn btn-danger"
                 onClick={async () => {
                   setConfirmDelete(false);
-                  if ((await removeGarment(g.id)) && variant === "page") router.replace("/wardrobe");
+                  if ((await removeGarment(g.id)) && variant === "page") router.replace(held ? "/fit-check" : "/wardrobe");
                 }}
               >
                 삭제
@@ -525,12 +565,15 @@ function InfoEditor({
   imageUrl,
   image,
   setImage,
+  held,
 }: {
   info: InfoDraft;
   setField: <K extends keyof InfoDraft>(key: K, value: InfoDraft[K]) => void;
   imageUrl: string | null;
   image: ImageChange;
   setImage: (value: ImageChange) => void;
+  /** 구매 보류 옷: 구매일·시즌 없이 "가격" */
+  held: boolean;
 }) {
   const text = (key: "brand" | "productName" | "sizeLabel" | "colorName" | "productUrl", label: string, span = false) => (
     <div className={span ? "field col-span-full" : "field"}>
@@ -579,15 +622,23 @@ function InfoEditor({
           {text("sizeLabel", "표기 사이즈")}
           {text("productName", "제품명", true)}
           {text("colorName", "컬러")}
-          <div className="field">
-            <DateLabel htmlFor="ie-date" label="구매일" filled={Boolean(info.purchasedOn)} onClear={() => setField("purchasedOn", "")} />
-            <input id="ie-date" type="date" className="input font-mono" value={info.purchasedOn} onChange={(e) => setField("purchasedOn", e.target.value)} />
+          {!held && (
+            <div className="field">
+              <DateLabel htmlFor="ie-date" label="구매일" filled={Boolean(info.purchasedOn)} onClear={() => setField("purchasedOn", "")} />
+              <input id="ie-date" type="date" className="input font-mono" value={info.purchasedOn} onChange={(e) => setField("purchasedOn", e.target.value)} />
+            </div>
+          )}
+          <div className={held ? "field col-span-full" : "field"}>
+            <label htmlFor="ie-price">{held ? "가격" : "구매가"}</label>
+            <PriceInput
+              id="ie-price"
+              value={info.purchasePrice}
+              currency={info.currency}
+              onChange={(v) => setField("purchasePrice", v)}
+              onCurrencyChange={(c) => setField("currency", c)}
+            />
           </div>
-          <div className="field">
-            <label htmlFor="ie-price">구매가</label>
-            <UnitInput id="ie-price" unit="원" inputMode="numeric" value={info.purchasePrice} onChange={(e) => setField("purchasePrice", e.target.value)} />
-          </div>
-          <div className="field col-span-full">
+          {!held && <div className="field col-span-full">
             <label>시즌</label>
             <div className="seg self-start">
               {SEASONS.map((s) => (
@@ -606,7 +657,7 @@ function InfoEditor({
                 </label>
               ))}
             </div>
-          </div>
+          </div>}
           {text("productUrl", "상품 링크", true)}
         </div>
       </section>
@@ -636,12 +687,12 @@ function InfoEditor({
         </section>
       )}
       <section className="flex flex-col gap-2.5">
-        <SectionTitle>착용 후기 수정</SectionTitle>
+        <SectionTitle>{held ? "메모 수정" : "착용 후기 수정"}</SectionTitle>
         <textarea
           className="input text-body leading-relaxed"
           rows={4}
-          aria-label="착용 후기"
-          placeholder="예: 어깨와 가슴은 마음에 드는데 총장이 조금 길다."
+          aria-label={held ? "메모" : "착용 후기"}
+          placeholder={held ? "예: 가격이 내려가면 살 생각. 비슷한 옷과 총장 비교해 보기." : "예: 어깨와 가슴은 마음에 드는데 총장이 조금 길다."}
           value={info.fitReview}
           onChange={(e) => setField("fitReview", e.target.value)}
         />

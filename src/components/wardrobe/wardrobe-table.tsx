@@ -5,7 +5,8 @@ import { SEASON_NAME } from "@/lib/constants/seasons";
 import { SHOE_FIT_FIELDS, shoeFitText } from "@/lib/constants/shoe-fit";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format/date";
-import { formatPrice } from "@/lib/format/price";
+import { formatPrice, krwHint } from "@/lib/format/price";
+import { useWardrobe } from "./wardrobe-store";
 import type { CategoryId, Garment } from "@/lib/types/domain";
 import type { ColumnSort, SortableColumn } from "./filter-state";
 import { GarmentThumbnail } from "./garment-thumbnail";
@@ -38,7 +39,10 @@ export function WardrobeTable({
   onOpen,
   view,
   selection,
+  held = false,
 }: {
+  /** 구매 보류 옷 표: 시즌·구매일 열이 없고 "구매가" 대신 "가격" */
+  held?: boolean;
   /** simple: 간략 목록, detail: 표. 정하지 않으면 모바일은 목록, PC는 표. */
   view?: WardrobeViewMode;
   /** 삭제할 옷 고르기. 있으면 간략 목록에 체크박스가 생기고, 행을 누르면 옷 정보 대신 체크가 바뀐다. */
@@ -82,9 +86,11 @@ export function WardrobeTable({
               </th>
               {sortHead("size", "사이즈", "w-15", true)}
               {sortHead("color", "컬러", "w-24")}
-              <th scope="col" className={cn(head, "w-26")}>
-                시즌
-              </th>
+              {!held && (
+                <th scope="col" className={cn(head, "w-26")}>
+                  시즌
+                </th>
+              )}
               {measurements.map((m) => sortHead(m.key, m.label, "bg-neutral-100", true))}
               {categoryId === "shoes" &&
                 SHOE_FIT_FIELDS.map((f) => (
@@ -97,8 +103,8 @@ export function WardrobeTable({
                   핏
                 </th>
               )}
-              {sortHead("purchasedOn", "구매일", "w-32")}
-              {sortHead("price", "구매가", "w-32")}
+              {!held && sortHead("purchasedOn", "구매일", "w-32")}
+              {sortHead("price", held ? "가격" : "구매가", "w-32")}
             </tr>
           </thead>
           <tbody>
@@ -141,9 +147,11 @@ export function WardrobeTable({
                       {item.colorName ?? "—"}
                     </span>
                   </td>
-                  <td className={cn(cell, "text-neutral-700")}>
-                    {item.seasons.length ? item.seasons.map((s) => SEASON_NAME[s]).join(" · ") : "—"}
-                  </td>
+                  {!held && (
+                    <td className={cn(cell, "text-neutral-700")}>
+                      {item.seasons.length ? item.seasons.map((s) => SEASON_NAME[s]).join(" · ") : "—"}
+                    </td>
+                  )}
                   {measurements.map((m) => (
                     <td key={m.key} className={cn(cell, mono, "bg-neutral-100/60 px-0 text-xs tracking-[-0.02em]")}>
                       {formatCm(item.measurements[m.key])}
@@ -160,8 +168,10 @@ export function WardrobeTable({
                       <FitCell item={item} />
                     </td>
                   )}
-                  <td className={cn(cell, mono, "text-neutral-700")}>{formatDate(item.purchasedOn)}</td>
-                  <td className={cn(cell, mono)}>{formatPrice(item.purchasePrice)}</td>
+                  {!held && <td className={cn(cell, mono, "text-neutral-700")}>{formatDate(item.purchasedOn)}</td>}
+                  <td className={cn(cell, mono)}>
+                    <PriceCell item={item} />
+                  </td>
                 </tr>
               );
             })}
@@ -169,6 +179,18 @@ export function WardrobeTable({
         </table>
       </div>
     </>
+  );
+}
+
+/** 가격 칸: 달러면 아래에 원 환산을 작게 */
+function PriceCell({ item }: { item: Garment }) {
+  const { usdRate } = useWardrobe();
+  const hint = krwHint(item.purchasePrice, item.currency, usdRate);
+  return (
+    <span className="inline-flex flex-col items-center leading-tight">
+      {formatPrice(item.purchasePrice, item.currency)}
+      {hint && <span className="text-2xs text-neutral-700">{hint}</span>}
+    </span>
   );
 }
 
@@ -217,7 +239,7 @@ function MobileList({
                   item.sizeLabel,
                   item.colorName,
                   item.purchasedOn && formatDate(item.purchasedOn),
-                  item.purchasePrice != null && formatPrice(item.purchasePrice),
+                  item.purchasePrice != null && formatPrice(item.purchasePrice, item.currency),
                 ]
                   .filter(Boolean)
                   .join(" · ") || "—"}

@@ -2,6 +2,7 @@ import { CATEGORIES } from "@/lib/constants/categories";
 import { MEASUREMENT_KEYS, type MeasurementKey } from "@/lib/constants/measurements";
 import { SEASONS, wearsInSeason } from "@/lib/constants/seasons";
 import type { CategoryId, Garment, Season } from "@/lib/types/domain";
+import { DEFAULT_USD_KRW, priceInKrw } from "@/lib/format/price";
 
 /** 표 헤더를 눌러 정렬할 수 있는 열. 이미지·세부분류·제품명·시즌은 정렬하지 않는다(시즌은 위 필터로 거른다). */
 export type SortableColumn = "brand" | "size" | "color" | "purchasedOn" | "price" | MeasurementKey;
@@ -79,7 +80,7 @@ export function sizeRank(label: string): number {
 }
 
 /** 정렬용 값 */
-function sortValue(g: Garment, key: SortableColumn): string | number | null {
+function sortValue(g: Garment, key: SortableColumn, usdRate: number): string | number | null {
   switch (key) {
     case "brand":
       return g.brand || null;
@@ -88,7 +89,8 @@ function sortValue(g: Garment, key: SortableColumn): string | number | null {
     case "purchasedOn":
       return g.purchasedOn;
     case "price":
-      return g.purchasePrice;
+      // 달러 가격은 원으로 바꿔 원 가격과 함께 정렬한다.
+      return priceInKrw(g.purchasePrice, g.currency, usdRate);
     case "size":
       return g.sizeLabel ? sizeRank(g.sizeLabel) : null;
     default:
@@ -110,11 +112,11 @@ export function applyFilters(items: Garment[], f: WardrobeFilters): Garment[] {
 }
 
 /** 표 하나를 정렬한 새 배열. 값이 없는 항목은 정렬 방향과 관계없이 뒤로 보낸다. */
-export function sortGarments(items: Garment[], { key, dir }: ColumnSort): Garment[] {
+export function sortGarments(items: Garment[], { key, dir }: ColumnSort, usdRate = DEFAULT_USD_KRW): Garment[] {
   const sign = dir === "asc" ? 1 : -1;
   return items.slice().sort((a, b) => {
-    const va = sortValue(a, key);
-    const vb = sortValue(b, key);
+    const va = sortValue(a, key, usdRate);
+    const vb = sortValue(b, key, usdRate);
     if (va == null && vb == null) return 0;
     if (va == null) return 1;
     if (vb == null) return -1;

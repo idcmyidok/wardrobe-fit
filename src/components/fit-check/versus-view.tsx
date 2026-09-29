@@ -17,6 +17,7 @@ import { selectComparables } from "@/lib/fit/select-comparables";
 import type { FitComputed, FitInterpretation } from "@/lib/fit/types";
 import { bodyScore, pickSize, rankVersus, versusSummary, wardrobeScore, type VersusEntry } from "@/lib/fit/versus";
 import { formatPrice } from "@/lib/format/price";
+import { useAddHeld, type HeldDraft } from "@/components/held/use-add-held";
 import { importImageUrl, streamImport, type ImportOutcome } from "@/lib/import/client";
 import { IMPORT_FAILURE } from "@/lib/import/messages";
 import { goToSignIn } from "@/lib/session-expiry";
@@ -56,6 +57,8 @@ interface AiResult {
   aiStatus: ResultAiStatus;
   createdAt: string;
   error: string | null;
+  /** 저장된 판단 기록 id */
+  fitCheckId?: string | null;
 }
 
 const CLOTHES = CATEGORIES.filter((c) => c.id === "outer" || c.id === "top" || c.id === "bottom");
@@ -72,6 +75,7 @@ const fmtBand = (b: Band) => (b[0] === b[1] ? formatNum(b[0]) : `${formatNum(b[0
 export function VersusView() {
   const { garments, signedIn } = useWardrobe();
   const { profile } = useBody();
+  const held = useAddHeld();
   const [urls, setUrls] = useState<string[]>(["", ""]);
   const [importing, setImporting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -216,7 +220,7 @@ export function VersusView() {
       setAi((a) => ({ ...a, [key]: a[key]?.computed ? { ...a[key], aiStatus: "failed" } : { ...base, error: FIT_ERROR_TEXT[r.error] } }));
       return;
     }
-    setAi((a) => ({ ...a, [key]: { ...a[key], interpretation: r.done.interpretation, aiStatus: r.done.aiStatus } }));
+    setAi((a) => ({ ...a, [key]: { ...a[key], interpretation: r.done.interpretation, aiStatus: r.done.aiStatus, fitCheckId: r.done.saved ? r.done.id : null } }));
   };
 
   // 비교가 뜨면 1위 옷만 먼저 AI 판단한다(판단 한도를 아끼려고).
@@ -307,6 +311,24 @@ export function VersusView() {
     </div>
   );
 
+  /** VS 표에서 바로 담는 보류 옷: 지금 고른 사이즈와 그 실측, 쇼핑몰 판매가 */
+  const heldDraftOf = (it: Item): HeldDraft => {
+    const size = sizeOf(it);
+    const row = it.rows.find((r) => r.sizeLabel === size);
+    return {
+      categoryId: it.categoryId,
+      subcategoryId: it.subcategoryId,
+      brand: it.product.brand?.value ?? "",
+      productName: it.product.productName?.value ?? it.domain ?? "",
+      sizeLabel: size ?? null,
+      productUrl: it.url,
+      measurements: row?.measurements ?? {},
+      purchasePrice: it.product.price?.value ?? null,
+      currency: it.product.priceCurrency ?? "KRW",
+      fitCheckId: ai[it.key]?.sizeLabel === size ? (ai[it.key]?.fitCheckId ?? null) : null,
+    };
+  };
+
   const summary = versusSummary(ranks, Object.fromEntries(entries.map((e) => [e.key, e.name])), target, kind);
   const activeTab = tab ?? top ?? items[0].key;
   const active = ai[activeTab];
@@ -352,7 +374,7 @@ export function VersusView() {
                 <span className={cn("tag", isTop ? "tag-accent font-semibold" : "invisible")}>추천</span>
                 <span className="text-sm font-semibold">{it.product.brand?.value ?? "—"}</span>
                 <span className="line-clamp-2 text-base leading-snug">{it.product.productName?.value ?? it.domain}</span>
-                <span className="font-mono text-sm tabular-nums">{it.product.price ? formatPrice(it.product.price.value) : "가격 정보 없음"}</span>
+                <span className="font-mono text-sm tabular-nums">{it.product.price ? formatPrice(it.product.price.value, it.product.priceCurrency ?? "KRW") : "가격 정보 없음"}</span>
               </div>
             );
           })}
@@ -520,6 +542,25 @@ export function VersusView() {
             ),
           )}
           {rec(null)}
+
+          {rowLabel("구매 보류", "고른 사이즈로 담아요")}
+          {items.map((it) => {
+            const d = heldDraftOf(it);
+            const already = held.isHeld(d);
+            return cell(
+              <button
+                type="button"
+                className="btn btn-secondary min-h-9 px-3 text-sm"
+                disabled={Boolean(held.busyKey) || already}
+                aria-label={`${name(it)} 구매 보류 옷에 추가`}
+                onClick={() => held.addHeld(it.key, d, it.importId)}
+              >
+                {held.busyKey === it.key ? "담는 중…" : already ? "보류 목록에 있어요" : "보류에 추가"}
+              </button>,
+              `held-${it.key}`,
+            );
+          })}
+          {rec(null)}
         </div>
       </div>
 
@@ -600,6 +641,9 @@ export function VersusView() {
             aiStatus={active.aiStatus}
             createdAt={active.createdAt}
             productUrl={activeItem?.url ?? null}
+            importId={activeItem?.importId ?? null}
+            price={activeItem?.product.price ? { value: activeItem.product.price.value, currency: activeItem.product.priceCurrency ?? "KRW" } : null}
+            fitCheckId={active.fitCheckId ?? null}
           />
         )}
       </section>

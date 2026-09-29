@@ -1,6 +1,7 @@
 import type { MeasurementKey } from "@/lib/constants/measurements";
 import type { FitLevel } from "@/lib/constants/body";
 import type { ShoeFit } from "@/lib/constants/shoe-fit";
+import type { Currency } from "@/lib/format/price";
 
 export type CategoryId = "outer" | "top" | "bottom" | "hat" | "shoes";
 /** 구매 판단(치수 비교)을 하는 대분류. 모자·신발은 옷장에만 저장한다. */
@@ -22,7 +23,10 @@ export interface Garment {
   colorName: string | null;
   seasons: Season[];
   purchasedOn: string | null; // YYYY-MM-DD
-  purchasePrice: number | null; // KRW 정수
+  /** 가격. 원이면 원, 달러면 센트 단위 정수. 보류 옷은 "가격"(판매가)으로 보여 준다. */
+  purchasePrice: number | null;
+  /** 가격 통화. 없으면 원 */
+  currency?: Currency;
   productUrl: string | null;
   /** 사진(약 1600px). 비공개 bucket의 signed URL이라 잠시 뒤 만료된다. */
   imageUrl: string | null;
@@ -34,6 +38,10 @@ export interface Garment {
   shoeFit: ShoeFit | null;
   /** 아우터·상의·하의만: 내가 표기한 핏. 없으면 화면이 내 치수로 예상 핏을 계산한다. */
   userFit?: FitLevel | null;
+  /** 구매 보류 옷(아직 안 산 옷). 옷장 목록·분석·구매 판단 비교에서 빠진다. */
+  held?: boolean;
+  /** 구매 판단기에서 담은 옷이면 그 판단 결과 id */
+  fitCheckId?: string | null;
 }
 
 /** 목록 화면용 별칭(기존 코드 호환) */

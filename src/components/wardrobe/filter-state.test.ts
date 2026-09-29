@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Garment } from "@/lib/types/domain";
 import { parseWardrobeParams, sizeRank } from "./filter-state";
 
 describe("sizeRank", () => {
@@ -21,5 +22,17 @@ describe("sizeRank", () => {
 describe("parseWardrobeParams", () => {
   it("시즌 정렬은 더 이상 받지 않는다", () => {
     expect(parseWardrobeParams(new URLSearchParams("sort_top=season.asc")).sorts.top).toEqual({ key: "purchasedOn", dir: "desc" });
+  });
+});
+
+describe("가격 정렬(달러 환산)", () => {
+  it("달러는 환율로 원으로 바꿔 함께 정렬한다", async () => {
+    const { sortGarments } = await import("./filter-state");
+    const g = (id: string, purchasePrice: number, currency: "KRW" | "USD"): Garment => ({
+      id, categoryId: "top", subcategoryId: null, brand: "", productName: id, sizeLabel: null, colorName: null, seasons: [], purchasedOn: null,
+      purchasePrice, currency, productUrl: null, imageUrl: null, measurements: {}, fitReview: null, shoeFit: null,
+    });
+    const sorted = sortGarments([g("a", 60000, "KRW"), g("b", 4999, "USD"), g("c", 70000, "KRW")], { key: "price", dir: "desc" }, 1360);
+    expect(sorted.map((x) => x.id)).toEqual(["c", "b", "a"]);
   });
 });

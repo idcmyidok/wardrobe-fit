@@ -56,7 +56,7 @@ export async function runFitCheck(supabase: Client, userId: string, req: FitRequ
     if (!imp) importId = null;
   }
 
-  const { data: rows, error } = await supabase.from("garments").select(GARMENT_COLUMNS).is("deleted_at", null).limit(2000);
+  const { data: rows, error } = await supabase.from("garments").select(GARMENT_COLUMNS).is("deleted_at", null).eq("held", false).limit(2000);
   if (error) return send({ type: "error", code: "unknown" });
   const garments = rows.map((r) => rowToGarment(r, { imageUrl: null, thumbUrl: null }));
 

@@ -1,10 +1,11 @@
 "use server";
 
-import { BODY_CONSENT_VERSION, BODY_KEYS } from "@/lib/constants/body";
+import { BODY_CONSENT_VERSION, BODY_KEYS, type BodyKey } from "@/lib/constants/body";
 import type { BodyProfile } from "@/lib/fit/body-fit";
 import type { Database } from "@/lib/supabase/database.types";
 import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
-import { BODY_COLUMN, rowToBody } from "./queries";
+import { clearLegacyColumns, rowToBody } from "./queries";
+import { encryptBodyValues } from "./crypto";
 import { bodyInputSchema, overridesSchema } from "./schema";
 
 /**
@@ -21,6 +22,7 @@ const MESSAGES = {
   consent: "신체정보 수집·이용에 동의해야 저장할 수 있습니다.",
   invalid: "입력값을 확인해 주세요.",
   failed: "저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+  locked: "지금은 내 치수를 저장할 수 없습니다. 잠시 후 다시 시도해 주세요.",
 };
 
 async function session() {
@@ -42,11 +44,19 @@ export async function saveBodyProfile(input: unknown): Promise<BodyActionResult>
     return { ok: false, error: Object.values(fieldErrors)[0] ?? MESSAGES.invalid, fieldErrors };
   }
   const { values, uncertain, consent } = parsed.data;
-  const row: Database["public"]["Tables"]["body_profiles"]["Update"] = { uncertain };
-  for (const k of BODY_KEYS) (row as Record<string, unknown>)[BODY_COLUMN[k]] = values[k];
+  // 치수는 서버에서 암호화해 한 칸(values_enc)에만 저장한다. 키가 없으면 평문으로 남기지 않고 저장을 멈춘다.
+  let valuesEnc: string;
+  try {
+    valuesEnc = encryptBodyValues(values);
+  } catch (e) {
+    console.error("[body] encrypt", e instanceof Error ? e.message : e);
+    return { ok: false, error: MESSAGES.locked };
+  }
 
-  const { data: existing, error: readError } = await s.supabase.from("body_profiles").select("user_id").maybeSingle();
+  const { data: existing, error: readError } = await s.supabase.from("body_profiles").select("*").maybeSingle();
   if (readError) return fail(readError.message);
+  // 예전 평문 칸이 남아 있으면 함께 비운다(마이그레이션 19 전).
+  const row = { uncertain, values_enc: valuesEnc, ...(existing ? clearLegacyColumns(existing) : {}) } as Database["public"]["Tables"]["body_profiles"]["Update"];
   if (!existing && !consent) return { ok: false, error: MESSAGES.consent, code: "consent_required" };
 
   const query = existing
@@ -56,7 +66,14 @@ export async function saveBodyProfile(input: unknown): Promise<BodyActionResult>
         .insert({ ...row, user_id: s.userId, consent_version: BODY_CONSENT_VERSION, consented_at: new Date().toISOString() });
   const { data, error } = await query.select("*").single();
   if (error) return fail(error.message, error.code);
-  return { ok: true, data: rowToBody(data) };
+  return { ok: true, data: { ...rowToBody(data), values: pickValues(values) } };
+}
+
+/** 저장한 값(빈 칸 제외). 방금 암호화한 값을 다시 풀지 않고 돌려준다. */
+function pickValues(values: Partial<Record<BodyKey, number | null>>): BodyProfile["values"] {
+  const out: BodyProfile["values"] = {};
+  for (const k of BODY_KEYS) if (values[k] != null) out[k] = values[k]!;
+  return out;
 }
 
 /** 추천 치수 표에서 고친 값 저장(전체를 한 번에 바꾼다. 되돌리기 = 그 칸을 빼고 저장). */
@@ -73,7 +90,12 @@ export async function saveFitOverrides(input: unknown): Promise<BodyActionResult
     .maybeSingle();
   if (error) return fail(error.message, error.code);
   if (!data) return { ok: false, error: MESSAGES.consent, code: "consent_required" };
-  return { ok: true, data: rowToBody(data) };
+  try {
+    return { ok: true, data: rowToBody(data) };
+  } catch (e) {
+    console.error("[body] decrypt", e instanceof Error ? e.message : e);
+    return { ok: false, error: MESSAGES.locked };
+  }
 }
 
 /** 내 치수와 동의 기록을 모두 지운다(동의 철회). */

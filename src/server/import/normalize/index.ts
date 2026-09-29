@@ -94,10 +94,15 @@ export function normalizeProduct(raw: RawProduct, sources: FieldSources, options
   const categorySource: ExtractedSource | undefined = category?.fromName ? "heuristic" : (sources.categoryHints ?? "heuristic");
 
   let price: Extracted<number> | null = null;
+  let priceCurrency: "KRW" | "USD" = "KRW";
   if (raw.price && Number.isFinite(raw.price.amount) && raw.price.amount > 0) {
     const currency = (raw.price.currency ?? "KRW").toUpperCase();
     if (currency === "KRW") price = extracted(Math.round(raw.price.amount), sources.price);
-    else warnings.push({ code: "price_currency_not_krw", message: `가격이 ${currency}로 적혀 있어 비워 두었습니다.` });
+    else if (currency === "USD") {
+      // 달러는 센트 정수로 둔다(옷장 가격과 같은 저장 방식).
+      price = extracted(Math.round(raw.price.amount * 100), sources.price);
+      priceCurrency = "USD";
+    } else warnings.push({ code: "price_currency_not_krw", message: `가격이 ${currency}로 적혀 있어 비워 두었습니다.` });
   }
 
   // 가져온 컬러도 한글 표기로 보여 준다("BLACK / M" → "블랙").
@@ -125,6 +130,7 @@ export function normalizeProduct(raw: RawProduct, sources: FieldSources, options
     subcategoryId: category ? extracted(category.subcategoryId, categorySource, category.fromName ? "low" : "medium") : null,
     imageUrls,
     price,
+    priceCurrency,
     colorOptions,
     colorCandidate,
     sizeOptions,
