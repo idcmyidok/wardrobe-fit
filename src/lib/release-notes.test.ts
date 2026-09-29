@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import pkg from "../../package.json";
-import { CURRENT_VERSION, RELEASE_NOTES, groupByMajor, majorOf, noteToText, parseNoteText, splitFeatureLine, type ReleaseNote } from "./release-notes";
+import { CURRENT_VERSION, RELEASE_NOTES, groupByMajor, majorOf, draftToContent, noteToDraft, parseEditBody, type ReleaseNote } from "./release-notes";
 
 const note = (version: string): ReleaseNote => ({ version, date: "2026-09-28", features: [], changes: [], fixes: [] });
 
@@ -28,39 +28,26 @@ describe("업데이트 노트", () => {
   });
 });
 
-describe("업데이트 노트 수정 글", () => {
+describe("업데이트 노트 수정", () => {
   const full: ReleaseNote = {
     version: "1.2.0",
     date: "2026-09-28",
-    features: [{ title: "새 기능", description: "설명" }],
+    features: [{ title: "새 기능", description: "설명: 자세히" }, { title: "제목만", description: "" }],
     changes: ["바뀐 점"],
-    fixes: ["고친 점"],
+    fixes: ["고친 점", "또 고친 점"],
   };
-  it("코드의 노트를 글로 옮기고 다시 읽으면 제목·목록이 된다", () => {
-    const text = noteToText(full);
-    expect(text).toBe("신규 기능\n- 새 기능: 설명\n\n변경 내용\n- 바뀐 점\n\n수정사항\n- 고친 점");
-    expect(parseNoteText(text)).toEqual([
-      { kind: "heading", text: "신규 기능" },
-      { kind: "item", text: "새 기능: 설명" },
-      { kind: "heading", text: "변경 내용" },
-      { kind: "item", text: "바뀐 점" },
-      { kind: "heading", text: "수정사항" },
-      { kind: "item", text: "고친 점" },
-    ]);
+  it("노트를 세 칸의 글로 옮기고 다시 읽으면 같다", () => {
+    const draft = noteToDraft(full);
+    expect(draft).toEqual({ features: "새 기능: 설명: 자세히\n제목만", changes: "바뀐 점", fixes: "고친 점\n또 고친 점" });
+    expect(draftToContent(draft)).toEqual({ features: full.features, changes: full.changes, fixes: full.fixes });
   });
-  it("빈 섹션은 쓰지 않고, 자유 문단과 # 제목도 읽는다", () => {
-    expect(noteToText(note("1.0.1"))).toBe("");
-    expect(parseNoteText("# 안내\n\n그냥 문단\n· 점 목록\r\n")).toEqual([
-      { kind: "heading", text: "안내" },
-      { kind: "text", text: "그냥 문단" },
-      { kind: "item", text: "점 목록" },
-    ]);
+  it("빈 줄과 앞의 - · 는 버린다", () => {
+    expect(draftToContent({ features: "", changes: "- 하나\n\n· 둘\r\n  ", fixes: "" })).toEqual({ features: [], changes: ["하나", "둘"], fixes: [] });
   });
-});
-
-describe("신규 기능 줄 나누기", () => {
-  it("첫 \":\"에서 제목과 설명으로 나눈다", () => {
-    expect(splitFeatureLine("내 치수: 신체치수를 저장: 추천")).toEqual({ title: "내 치수", description: "신체치수를 저장: 추천" });
-    expect(splitFeatureLine("제목만")).toEqual({ title: "제목만", description: "" });
+  it("저장된 글을 읽고, 모양이 틀리면 null", () => {
+    const content = { features: [], changes: ["a"], fixes: [] };
+    expect(parseEditBody(JSON.stringify(content))).toEqual(content);
+    expect(parseEditBody("그냥 글")).toBeNull();
+    expect(parseEditBody(JSON.stringify({ features: [{ title: 1 }], changes: [], fixes: [] }))).toBeNull();
   });
 });

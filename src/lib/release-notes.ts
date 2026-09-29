@@ -171,45 +171,57 @@ export function groupByMajor(notes: ReleaseNote[] = RELEASE_NOTES): { major: str
 }
 
 /**
- * 관리자가 화면에서 고친 노트(버전별 자유 글). DB(release_note_edits)에 있으면 코드의 노트 대신 보여 준다.
- * 글 규칙: "신규 기능"·"변경 내용"·"수정사항" 같은 제목 줄이나 "# "로 시작하는 줄은 소제목,
- * "- "(또는 "·", "•")로 시작하는 줄은 목록, 나머지는 문단. 빈 줄은 건너뛴다.
+ * 관리자가 화면에서 고친 노트. DB(release_note_edits.body)에 신규 기능·변경 내용·수정사항을 JSON으로 저장하고,
+ * 있으면 코드의 노트 대신 같은 모양으로 보여 준다. 버전과 날짜는 코드의 노트를 따른다.
  */
-export type ReleaseNoteEdits = Record<string, string>;
+export type ReleaseNoteContent = Pick<ReleaseNote, "features" | "changes" | "fixes">;
+export type ReleaseNoteEdits = Record<string, ReleaseNoteContent>;
+
+/** 수정 칸 세 개의 글. 한 줄이 한 항목이고, 신규 기능은 "제목: 설명"으로 쓴다. */
+export interface ReleaseNoteDraft {
+  features: string;
+  changes: string;
+  fixes: string;
+}
 
 export const RELEASE_NOTE_BODY_MAX = 20000;
 
-const SECTION_TITLES = ["신규 기능", "변경 내용", "수정사항"];
-
-/** 수정 창을 처음 열 때 채울 글. 코드의 노트를 위 글 규칙으로 옮긴다. */
-export function noteToText(note: ReleaseNote): string {
-  const sections: string[] = [];
-  if (note.features.length) sections.push(["신규 기능", ...note.features.map((f) => `- ${f.title}: ${f.description}`)].join("\n"));
-  if (note.changes.length) sections.push(["변경 내용", ...note.changes.map((c) => `- ${c}`)].join("\n"));
-  if (note.fixes.length) sections.push(["수정사항", ...note.fixes.map((f) => `- ${f}`)].join("\n"));
-  return sections.join("\n\n");
+export function noteToDraft(note: ReleaseNoteContent): ReleaseNoteDraft {
+  return {
+    features: note.features.map((f) => (f.description ? `${f.title}: ${f.description}` : f.title)).join("\n"),
+    changes: note.changes.join("\n"),
+    fixes: note.fixes.join("\n"),
+  };
 }
 
-export type NoteBlock = { kind: "heading" | "item" | "text"; text: string };
-
-export function parseNoteText(body: string): NoteBlock[] {
-  const blocks: NoteBlock[] = [];
-  for (const raw of body.split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line) continue;
-    const heading = /^#+\s*(.+)$/.exec(line);
-    const item = /^[-·•]\s*(.+)$/.exec(line);
-    if (heading) blocks.push({ kind: "heading", text: heading[1] });
-    else if (SECTION_TITLES.includes(line)) blocks.push({ kind: "heading", text: line });
-    else if (item) blocks.push({ kind: "item", text: item[1] });
-    else blocks.push({ kind: "text", text: line });
-  }
-  return blocks;
-}
+/** 줄마다 앞의 "-", "·", "•"와 빈칸을 떼고, 빈 줄은 버린다. */
+const lines = (text: string) =>
+  text
+    .split(/\r?\n/)
+    .map((l) => l.trim().replace(/^[-·•]\s*/, "").trim())
+    .filter(Boolean);
 
 /** 신규 기능 줄 "제목: 설명"을 나눈다. ":"가 없으면 제목만 있는 것으로 본다. */
 export function splitFeatureLine(line: string): ReleaseFeature {
   const at = line.indexOf(":");
   if (at < 0) return { title: line.trim(), description: "" };
   return { title: line.slice(0, at).trim(), description: line.slice(at + 1).trim() };
+}
+
+export function draftToContent(draft: ReleaseNoteDraft): ReleaseNoteContent {
+  return { features: lines(draft.features).map(splitFeatureLine), changes: lines(draft.changes), fixes: lines(draft.fixes) };
+}
+
+/** DB에 저장된 글을 읽는다. 모양이 맞지 않으면 null(코드의 노트를 보여 준다). */
+export function parseEditBody(body: string): ReleaseNoteContent | null {
+  try {
+    const v = JSON.parse(body) as Partial<ReleaseNoteContent>;
+    const strs = (a: unknown): a is string[] => Array.isArray(a) && a.every((x) => typeof x === "string");
+    const feats = (a: unknown): a is ReleaseFeature[] =>
+      Array.isArray(a) && a.every((x) => x && typeof x.title === "string" && typeof x.description === "string");
+    if (!feats(v.features) || !strs(v.changes) || !strs(v.fixes)) return null;
+    return { features: v.features, changes: v.changes, fixes: v.fixes };
+  } catch {
+    return null;
+  }
 }

@@ -1,7 +1,13 @@
 "use server";
 
 import { z } from "zod";
-import { RELEASE_NOTE_BODY_MAX, RELEASE_NOTES, type ReleaseNoteEdits } from "@/lib/release-notes";
+import {
+  parseEditBody,
+  RELEASE_NOTE_BODY_MAX,
+  RELEASE_NOTES,
+  type ReleaseNoteContent,
+  type ReleaseNoteEdits,
+} from "@/lib/release-notes";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAdminUser } from "@/server/admin/guard";
 
@@ -14,7 +20,12 @@ import { getAdminUser } from "@/server/admin/guard";
 export type ReleaseNoteEditResult = { ok: true } | { ok: false; error: string };
 
 const versionSchema = z.string().refine((v) => RELEASE_NOTES.some((n) => n.version === v));
-const bodySchema = z.string().max(RELEASE_NOTE_BODY_MAX);
+const line = z.string().trim().min(1).max(1000);
+const contentSchema = z.object({
+  features: z.array(z.object({ title: line, description: z.string().trim().max(2000) })).max(50),
+  changes: z.array(line).max(100),
+  fixes: z.array(line).max(100),
+});
 
 export async function getReleaseNoteEdits(): Promise<ReleaseNoteEdits> {
   const supabase = await createSupabaseServerClient();
@@ -24,7 +35,12 @@ export async function getReleaseNoteEdits(): Promise<ReleaseNoteEdits> {
     console.error("[release-notes] read", error.message);
     return {};
   }
-  return Object.fromEntries(data.map((row) => [row.version, row.body]));
+  const edits: ReleaseNoteEdits = {};
+  for (const row of data) {
+    const content = parseEditBody(row.body);
+    if (content) edits[row.version] = content;
+  }
+  return edits;
 }
 
 type Supabase = NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>;
@@ -41,15 +57,16 @@ async function prepare(
   return { supabase, adminId: admin.id, version: parsed.data };
 }
 
-/** 글 전체를 저장한다(덮어쓰기). */
-export async function saveReleaseNoteEdit(version: string, body: string): Promise<ReleaseNoteEditResult> {
+/** 신규 기능·변경 내용·수정사항을 통째로 저장한다(덮어쓰기). */
+export async function saveReleaseNoteEdit(version: string, content: ReleaseNoteContent): Promise<ReleaseNoteEditResult> {
   const ready = await prepare(version);
   if (ready.error !== undefined) return { ok: false, error: ready.error };
-  const parsed = bodySchema.safeParse(body);
-  if (!parsed.success) return { ok: false, error: `${RELEASE_NOTE_BODY_MAX.toLocaleString()}자까지 쓸 수 있습니다.` };
+  const parsed = contentSchema.safeParse(content);
+  const body = parsed.success ? JSON.stringify(parsed.data) : "";
+  if (!parsed.success || body.length > RELEASE_NOTE_BODY_MAX) return { ok: false, error: "내용이 너무 길거나 형식이 맞지 않습니다." };
   const { error } = await ready.supabase
     .from("release_note_edits")
-    .upsert({ version: ready.version, body: parsed.data, updated_by: ready.adminId, updated_at: new Date().toISOString() });
+    .upsert({ version: ready.version, body, updated_by: ready.adminId, updated_at: new Date().toISOString() });
   if (error) {
     console.error("[release-notes] save", error.message);
     return { ok: false, error: "저장하지 못했습니다. 잠시 후 다시 시도해 주세요." };
