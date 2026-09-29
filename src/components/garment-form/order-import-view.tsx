@@ -446,8 +446,16 @@ function OrderGuide() {
               </li>
             )}
             <li>
-              {safari ? "사파리" : "크롬"}로 musinsa.com에 로그인해 마이페이지의
-              주문내역을 열어요. {PERIOD_TIP}
+              {safari ? "사파리" : "크롬"}로{" "}
+              <a
+                href="https://www.musinsa.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold underline underline-offset-2"
+              >
+                musinsa.com
+              </a>
+              에 로그인해 마이페이지의 주문내역을 열어요. {PERIOD_TIP}
             </li>
             <li>
               {safari ? (
