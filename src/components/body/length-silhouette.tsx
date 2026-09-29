@@ -4,7 +4,10 @@
  * 실측이 있으면 그 값을, 없으면 키에 비례한 평균값을 쓴다. 소매 길이·핏은 그리지 않는 참고용 그림이다.
  */
 const NECK_FROM_TOP = 0.15; // 정수리에서 목 아래(총장을 재는 곳)까지, 키의 비율
-const CANVAS_WIDTH = 0.62; // 그림 가로 = 키의 비율
+/** 그림 칸은 키와 상관없이 같은 눈금(cm)이라, 키가 다르면 사람 크기도 다르게 보인다. */
+const CANVAS_H = 212;
+const GROUND_Y = 202; // 발이 닿는 바닥선(아래에 여백 10cm)
+const CANVAS_W = 128;
 const BODY_FILL = "#bdbdb6";
 const SHIRT_FILL = "#3d5a80";
 const SHIRT_LINE = "#2a4262";
@@ -23,8 +26,9 @@ export function LengthSilhouette({
   chest?: number | null;
 }) {
   const H = height;
-  const W = H * CANVAS_WIDTH;
+  const W = CANVAS_W;
   const cx = W / 2;
+  const top = GROUND_Y - H; // 키가 클수록 머리가 위로 올라가고, 작으면 머리 위가 비어 보인다
   const neckY = H * NECK_FROM_TOP;
   const shoulderY = H * 0.18;
   const bodyHalf = H * 0.125; // 몸 어깨 반폭
@@ -63,11 +67,12 @@ export function LengthSilhouette({
     <figure className="flex flex-col gap-1.5" data-testid="length-silhouette">
       <div
         className="relative w-full max-w-56 overflow-hidden border border-neutral-300"
-        style={{ aspectRatio: `${W} / ${H}`, background: "#f3f3f0" }}
+        style={{ aspectRatio: `${W} / ${CANVAS_H}`, background: "#f3f3f0" }}
         role="img"
         aria-label={`키 ${height}cm 남성 실루엣에 총장 ${length}cm 반팔을 입힌 그림`}
       >
-        <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 size-full" aria-hidden>
+        <svg viewBox={`0 0 ${W} ${CANVAS_H}`} className="absolute inset-0 size-full" aria-hidden>
+          <g transform={`translate(0 ${top})`}>
           <g fill={BODY_FILL}>
             <circle cx={cx} cy={H * 0.065} r={H * 0.055} />
             <rect x={cx - H * 0.02} y={H * 0.1} width={H * 0.04} height={H * 0.06} />
@@ -79,6 +84,7 @@ export function LengthSilhouette({
           </g>
           <path d={shirt} fill={SHIRT_FILL} stroke={SHIRT_LINE} strokeWidth={H * 0.004} strokeLinejoin="round" />
           {!cut && <line x1={cx + hemHalf + H * 0.01} x2={W} y1={bottomY} y2={bottomY} stroke="#111" strokeWidth={H * 0.004} strokeDasharray={`${H * 0.02} ${H * 0.012}`} />}
+          </g>
         </svg>
       </div>
       <figcaption className="max-w-56 text-xs text-pretty text-neutral-700">
