@@ -1,21 +1,54 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format/date";
-import { groupByMajor, type ReleaseFeature, type ReleaseNote } from "@/lib/release-notes";
+import {
+  draftToContent,
+  groupByMajor,
+  noteToDraft,
+  type ReleaseFeature,
+  type ReleaseNote,
+  type ReleaseNoteContent,
+  type ReleaseNoteDraft,
+  type ReleaseNoteEdits,
+} from "@/lib/release-notes";
+
+const FIXES_TITLE = "수정사항";
+import { getReleaseNoteEdits, resetReleaseNoteEdit, saveReleaseNoteEdit } from "@/server/release-notes/actions";
 
 /**
  * 업데이트 노트 창. 최신 버전이 맨 위, 아래는 스크롤해서 본다.
  * 첫째 자리 버전(1.x, 2.x)이 둘 이상이면 탭으로 나누고 최신 탭을 먼저 연다. Esc·배경·X로 닫는다.
+ * 관리자에게는 버전마다 "수정" 버튼이 보이고, 신규 기능·변경 내용·수정사항 칸을 고쳐 저장하면 코드의 노트 대신 보인다.
  */
-export function ReleaseNotesDialog({ onClose }: { onClose: () => void }) {
+export function ReleaseNotesDialog({ onClose, admin = false }: { onClose: () => void; admin?: boolean }) {
   const groups = groupByMajor();
   const [major, setMajor] = useState(groups[0]?.major ?? "");
   const notes = groups.find((g) => g.major === major)?.notes ?? [];
   const panel = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  // 고친 노트를 읽기 전에는 코드의 노트를 먼저 보여 준다.
+  const [edits, setEdits] = useState<ReleaseNoteEdits>({});
+
+  useEffect(() => {
+    let alive = true;
+    getReleaseNoteEdits()
+      .then((data) => alive && setEdits(data))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const applyEdit = (version: string, body: ReleaseNoteContent | null) =>
+    setEdits((prev) => {
+      const next = { ...prev };
+      if (body === null) delete next[version];
+      else next[version] = body;
+      return next;
+    });
 
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -74,7 +107,7 @@ export function ReleaseNotesDialog({ onClose }: { onClose: () => void }) {
 
         <div ref={scroller} className="flex flex-col overflow-y-auto overscroll-contain px-5" data-testid="release-notes">
           {notes.map((note) => (
-            <NoteItem key={note.version} note={note} />
+            <NoteItem key={note.version} note={note} edited={edits[note.version]} admin={admin} onSaved={applyEdit} />
           ))}
         </div>
       </div>
@@ -83,30 +116,181 @@ export function ReleaseNotesDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-function NoteItem({ note }: { note: ReleaseNote }) {
-  const empty = !note.features.length && !note.changes.length && !note.fixes.length;
+function NoteItem({
+  note,
+  edited,
+  admin,
+  onSaved,
+}: {
+  note: ReleaseNote;
+  edited: ReleaseNoteContent | undefined;
+  admin: boolean;
+  onSaved: (version: string, content: ReleaseNoteContent | null) => void;
+}) {
+  const [draft, setDraft] = useState<ReleaseNoteDraft | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const shown: ReleaseNote = edited ? { ...note, ...edited } : note;
+  const empty = !shown.features.length && !shown.changes.length && !shown.fixes.length;
+
+  const run = (action: () => Promise<{ ok: true } | { ok: false; error: string }>, content: ReleaseNoteContent | null) =>
+    startTransition(async () => {
+      setError(null);
+      const result = await action().catch(() => ({ ok: false as const, error: "저장하지 못했습니다. 잠시 후 다시 시도해 주세요." }));
+      if (!result.ok) return setError(result.error);
+      onSaved(note.version, content);
+      setDraft(null);
+    });
+
+  const save = () => {
+    if (!draft) return;
+    const content = draftToContent(draft);
+    run(() => saveReleaseNoteEdit(note.version, content), content);
+  };
+
   return (
     <article className="flex flex-col gap-4 border-b border-neutral-300 py-5 last:border-b-0">
       <header className="flex items-baseline justify-between gap-3">
         <h3 className="text-lg font-semibold">{note.version} 패치노트</h3>
-        <time dateTime={note.date} className="font-mono text-sm text-neutral-700 tabular-nums">
-          {formatDate(note.date)}
-        </time>
+        <div className="flex items-baseline gap-3">
+          <time dateTime={note.date} className="font-mono text-sm text-neutral-700 tabular-nums">
+            {formatDate(note.date)}
+          </time>
+          {admin && !draft && (
+            <button
+              type="button"
+              className="btn btn-secondary min-h-8 px-3 py-1 text-sm"
+              onClick={() => {
+                setError(null);
+                setDraft(noteToDraft(shown));
+              }}
+            >
+              수정
+            </button>
+          )}
+        </div>
       </header>
-      {empty && <p className="text-sm text-neutral-700">내용을 준비하고 있어요.</p>}
+      {draft ? (
+        <div
+          className="flex flex-col gap-3"
+          onKeyDown={(e) => {
+            // Esc는 창을 닫지 않고 수정만 취소한다.
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              setDraft(null);
+            }
+          }}
+        >
+          <DraftField
+            label="신규 기능"
+            hint="한 줄에 하나씩, 제목: 설명"
+            rows={6}
+            value={draft.features}
+            disabled={pending}
+            autoFocus
+            onChange={(features) => setDraft({ ...draft, features })}
+          />
+          <DraftField label="변경 내용" hint="한 줄에 하나씩" rows={5} value={draft.changes} disabled={pending} onChange={(changes) => setDraft({ ...draft, changes })} />
+          <DraftField label="수정사항" hint="한 줄에 하나씩" rows={5} value={draft.fixes} disabled={pending} onChange={(fixes) => setDraft({ ...draft, fixes })} />
+          {error && (
+            <p role="alert" className="text-sm text-negative">
+              {error}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className="btn btn-primary" disabled={pending} onClick={save}>
+              {pending ? "저장 중…" : "완료"}
+            </button>
+            <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => setDraft(null)}>
+              취소
+            </button>
+            {edited && (
+              <button
+                type="button"
+                className="btn btn-ghost ml-auto"
+                disabled={pending}
+                onClick={() => run(() => resetReleaseNoteEdit(note.version), null)}
+              >
+                원래 노트로 되돌리기
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          {empty && <p className="text-sm text-neutral-700">내용을 준비하고 있어요.</p>}
+          <CodeNoteBody note={shown} />
+        </>
+      )}
+    </article>
+  );
+}
+
+function DraftField({
+  label,
+  hint,
+  rows,
+  value,
+  disabled,
+  autoFocus,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  rows: number;
+  value: string;
+  disabled: boolean;
+  autoFocus?: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="flex items-baseline justify-between gap-2">
+        <span className="font-mono text-xs font-medium tracking-[0.08em] text-neutral-700">{label}</span>
+        <span className="text-xs text-neutral-600">{hint}</span>
+      </span>
+      <textarea
+        className="input text-sm leading-relaxed"
+        rows={rows}
+        value={value}
+        disabled={disabled}
+        autoFocus={autoFocus}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
+  );
+}
+
+/** 수정사항은 기본으로 접어 두고 눌러서 펼친다. */
+function FixesDetails({ count, children }: { count: number; children: React.ReactNode }) {
+  return (
+    <details className="group flex flex-col">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 font-mono text-xs font-medium tracking-[0.08em] text-neutral-700 [&::-webkit-details-marker]:hidden">
+        <svg aria-hidden width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open:rotate-90">
+          <path d="m9 6 6 6-6 6" />
+        </svg>
+        {FIXES_TITLE} {count > 0 && <span className="tabular-nums">{count}</span>}
+      </summary>
+      <div className="mt-1.5 flex flex-col gap-1">{children}</div>
+    </details>
+  );
+}
+
+function CodeNoteBody({ note }: { note: ReleaseNote }) {
+  return (
+    <>
       <FeatureSection items={note.features} />
       <NoteSection title="변경 내용" items={note.changes} />
       {note.fixes.length > 0 && (
-        <section className="flex flex-col gap-1.5">
-          <h4 className="font-mono text-xs font-medium tracking-[0.08em] text-neutral-700">수정사항</h4>
+        <FixesDetails count={note.fixes.length}>
           <ul className="flex flex-col gap-1 text-sm text-neutral-800">
             {note.fixes.map((fix) => (
               <li key={fix}>· {fix}</li>
             ))}
           </ul>
-        </section>
+        </FixesDetails>
       )}
-    </article>
+    </>
   );
 }
 
@@ -117,10 +301,10 @@ function FeatureSection({ items }: { items: ReleaseFeature[] }) {
     <section className="flex flex-col gap-2">
       <h4 className="font-mono text-xs font-medium tracking-[0.08em] text-neutral-700">신규 기능</h4>
       <ul className="flex flex-col gap-2.5">
-        {items.map((f) => (
-          <li key={f.title} className="flex flex-col gap-0.5 border-l-2 border-accent pl-3">
+        {items.map((f, i) => (
+          <li key={i} className="flex flex-col gap-0.5 border-l-2 border-accent pl-3">
             <span className="text-base font-semibold">{f.title}</span>
-            <span className="text-sm text-pretty text-neutral-800">{f.description}</span>
+            {f.description && <span className="text-sm text-pretty text-neutral-800">{f.description}</span>}
           </li>
         ))}
       </ul>
