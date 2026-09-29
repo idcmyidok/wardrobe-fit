@@ -2,49 +2,31 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useWardrobe, type GarmentDraft, type ImageChange } from "@/components/wardrobe/wardrobe-store";
-import { DateLabel } from "./date-label";
-import { ImagePicker } from "./image-picker";
-import { PageImageGrid } from "./page-image-grid";
-import { UnitInput } from "@/components/ui/input";
-import { PriceInput } from "@/components/ui/price-input";
-import { parsePriceInput, priceInputText, type Currency } from "@/lib/format/price";
-import { CATEGORIES, SUBCATEGORIES } from "@/lib/constants/categories";
-import { ALL_MEASUREMENT_KEYS, measurementFields } from "@/lib/constants/measurements";
-import { EMPTY_SHOE_FIT, shoeFitOrNull, type ShoeFit } from "@/lib/constants/shoe-fit";
-import { SEASONS, toggleSeason } from "@/lib/constants/seasons";
+import { useEffect, useRef, useState } from "react";
+import { useWardrobe, type ImageChange } from "@/components/wardrobe/wardrobe-store";
+import {
+  EMPTY_FORM,
+  FIELD_IDS,
+  GarmentFields,
+  draftToForm,
+  formToDraft,
+  importedForm,
+  itemView,
+  newItemState,
+  type Imported,
+  type ItemState,
+} from "./garment-fields";
 import { cn } from "@/lib/cn";
-import { importImageFile, importImageUrl, streamImport, type AnalyzeStage, type ImportOutcome } from "@/lib/import/client";
+import { importImageFile, streamImport, type AnalyzeStage, type ImportOutcome } from "@/lib/import/client";
 import { importFailure } from "@/lib/import/messages";
 import { takeStashedDraft } from "@/lib/session-expiry";
 import { notifyUsageChanged } from "@/lib/usage";
 import { UsageNote } from "@/components/usage/usage-note";
-import { ShoeFitPicker } from "./shoe-fit-picker";
-import { BodyFitPanel } from "@/components/body/body-fit-panel";
-import { UserFitPicker } from "@/components/body/user-fit-picker";
-import type { FitLevel } from "@/lib/constants/body";
-import type { CategoryId, Measurements, Season } from "@/lib/types/domain";
 
-type Phase = "url" | "analyzing" | "failed" | "review" | "manual";
+type Phase = "url" | "analyzing" | "failed" | "review" | "manual" | "multi";
 
-interface FormState {
-  categoryId: CategoryId;
-  subcategoryId: string;
-  brand: string;
-  productName: string;
-  seasons: Season[];
-  price: string;
-  currency: Currency;
-  url: string;
-  date: string;
-  size: string;
-  color: string;
-  review: string;
-  m: Record<string, string>;
-  shoeFit: ShoeFit;
-  userFit: FitLevel | null;
-}
+/** 한 번에 가져올 수 있는 링크 수 */
+const MAX_LINKS = 5;
 
 const ANALYZE_STEPS: { stage: AnalyzeStage; label: string }[] = [
   { stage: "fetching", label: "페이지 불러오는 중" },
@@ -52,71 +34,31 @@ const ANALYZE_STEPS: { stage: AnalyzeStage; label: string }[] = [
   { stage: "normalizing", label: "사이즈표·컬러 정리 중" },
 ];
 
-type Imported = ImportOutcome & { importId: string; product: NonNullable<ImportOutcome["product"]> };
-
-const EMPTY_FORM: FormState = {
-  categoryId: "outer",
-  subcategoryId: "",
-  brand: "",
-  productName: "",
-  seasons: [],
-  price: "",
-  currency: "KRW",
-  url: "",
-  date: "",
-  size: "",
-  color: "",
-  review: "",
-  m: {},
-  shoeFit: EMPTY_SHOE_FIT,
-  userFit: null,
-};
-
-/** 분석 결과 → 검토 폼. 사이즈·컬러는 옵션이 하나뿐일 때만 미리 고른다. */
-const importedForm = (url: string, p: Imported["product"]): FormState => {
-  const size = p.sizeOptions.length === 1 ? p.sizeOptions[0] : "";
-  return {
-    ...EMPTY_FORM,
-    categoryId: p.categoryId?.value ?? "outer",
-    subcategoryId: p.subcategoryId?.value ?? "",
-    brand: p.brand?.value ?? "",
-    productName: p.productName?.value ?? "",
-    price: p.price ? priceInputText(p.price.value, p.priceCurrency ?? "KRW") : "",
-    currency: p.priceCurrency ?? "KRW",
-    color: p.colorCandidate?.value ?? "",
-    size,
-    m: chartMeasurements(p, size),
-    url,
-  };
-};
-
-/** 사이즈표에서 고른 사이즈의 실측 */
-function chartMeasurements(p: Imported["product"] | undefined, size: string): Record<string, string> {
-  const row = p?.sizeChart?.rows.find((r) => r.sizeLabel === size);
-  return row ? Object.fromEntries(Object.entries(row.measurements).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])) : {};
+/** 붙여 넣은 글에서 링크만 뽑는다(공백·줄바꿈·쉼표로 구분, 같은 링크는 한 번만). */
+export function extractLinks(text: string): string[] {
+  const seen = new Set<string>();
+  return text
+    .split(/[\s,]+/)
+    .map((t) => t.trim())
+    .filter((t) => t && !seen.has(t) && seen.add(t));
 }
 
-/** AI 구매 판단 결과·구매 보류 옷에서 넘어온 값(구매했어요)을 검토 폼 값으로 바꾼다. */
-const draftToForm = (d: GarmentDraft): FormState => ({
-  ...EMPTY_FORM,
-  categoryId: d.categoryId,
-  subcategoryId: d.subcategoryId ?? "",
-  brand: d.brand,
-  productName: d.productName,
-  size: d.sizeLabel ?? "",
-  color: d.colorName ?? "",
-  price: priceInputText(d.purchasePrice, d.currency ?? "KRW"),
-  currency: d.currency ?? "KRW",
-  date: d.purchasedOn ?? "",
-  seasons: d.seasons,
-  review: d.fitReview ?? "",
-  url: d.productUrl ?? "",
-  m: Object.fromEntries(Object.entries(d.measurements).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])),
-  shoeFit: d.shoeFit ?? EMPTY_SHOE_FIT,
-  userFit: d.userFit ?? null,
-});
+/** 여러 링크 가져오기의 한 벌 */
+interface MultiItem {
+  key: number;
+  url: string;
+  status: "waiting" | "analyzing" | "ready" | "failed";
+  step: number;
+  imported: Imported | null;
+  failure: ImportOutcome | null;
+  state: ItemState;
+  fieldErrors: Record<string, string>;
+  error: string | null;
+}
 
-/** 새 옷 추가: 상품 링크 분석(분석 중 / 실패) → 검토 폼, 또는 직접 입력 폼 */
+const FAILED_OUTCOME = (url: string): ImportOutcome => ({ importId: null, status: "failed", reused: false, domain: null, sourceUrl: url, parserId: null, durationMs: 0, product: null, errorCode: "network_error", errorDetail: null });
+
+/** 새 옷 추가: 상품 링크 분석(분석 중 / 실패) → 검토 폼, 링크 여러 개(최대 5개) → 세로로 나열한 검토 폼, 또는 직접 입력 폼 */
 export function NewGarmentView() {
   const router = useRouter();
   const params = useSearchParams();
@@ -131,23 +73,20 @@ export function NewGarmentView() {
 
   const [phase, setPhase] = useState<Phase>(() => (pendingDraft ? "review" : params.get("mode") === "manual" ? "manual" : "url"));
   const [url, setUrl] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [step, setStep] = useState(0);
   const [showDetail, setShowDetail] = useState(false);
-  const [form, setForm] = useState<FormState>(() => (pendingDraft ? draftToForm(pendingDraft) : EMPTY_FORM));
+  const [item, setItem] = useState<ItemState>(() => newItemState(pendingDraft ? draftToForm(pendingDraft) : EMPTY_FORM));
   const [imported, setImported] = useState<Imported | null>(null);
   const [failure, setFailure] = useState<ImportOutcome | null>(null);
-  const [imageIndex, setImageIndex] = useState(0);
-  /** 받지 못했거나 아이콘처럼 작은 페이지 사진(목록에서 숨긴다) */
-  const [badImages, setBadImages] = useState<number[]>([]);
-  /** 찾은 사이즈 대신 사이즈를 직접 적는다(사이즈표를 잘못 읽었을 때). 나머지 가져온 값은 그대로 둔다. */
-  const [customSize, setCustomSize] = useState(false);
-  const [image, setImage] = useState<ImageChange>(undefined);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [startedAt, setStartedAt] = useState(0);
   const [now, setNow] = useState(0);
+  const [items, setItems] = useState<MultiItem[]>([]);
   const request = useRef<AbortController | null>(null);
+  const form = item.form;
 
   // 판단기에서 넘어온 값은 한 번만 쓴다.
   useEffect(() => {
@@ -159,13 +98,13 @@ export function NewGarmentView() {
     const stashed = takeStashedDraft();
     if (!stashed) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- sessionStorage는 hydration 뒤에만 읽을 수 있다
-    setForm(draftToForm(stashed));
+    setItem(newItemState(draftToForm(stashed)));
     setPhase("manual");
   }, []);
 
   // 분석 경과 시간(초)
   useEffect(() => {
-    if (phase !== "analyzing") return;
+    if (phase !== "analyzing" && phase !== "multi") return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [phase]);
@@ -178,12 +117,61 @@ export function NewGarmentView() {
   };
   useEffect(() => cancelRequest, []);
 
+  /** 링크 하나를 분석한다. 취소되면 null. */
+  const runOne = async (target: string, controller: AbortController, onStage: (stage: AnalyzeStage) => void): Promise<ImportOutcome | null> => {
+    let outcome: ImportOutcome;
+    try {
+      outcome = await streamImport(target, { signal: controller.signal, onStage });
+    } catch {
+      if (controller.signal.aborted) return null;
+      outcome = FAILED_OUTCOME(target);
+    }
+    if (controller.signal.aborted) return null;
+    notifyUsageChanged();
+    return outcome;
+  };
+
+  const patchItem = (key: number, patch: Partial<MultiItem> | ((m: MultiItem) => Partial<MultiItem>)) =>
+    setItems((list) => list.map((m) => (m.key === key ? { ...m, ...(typeof patch === "function" ? patch(m) : patch) } : m)));
+
+  const analyzeMany = async (links: string[]) => {
+    cancelRequest();
+    const controller = new AbortController();
+    request.current = controller;
+    setStartedAt(Date.now());
+    setNow(Date.now());
+    setItems(links.map((u, key) => ({ key, url: u, status: "waiting", step: 0, imported: null, failure: null, state: newItemState(EMPTY_FORM), fieldErrors: {}, error: null })));
+    setPhase("multi");
+    for (const [key, target] of links.entries()) {
+      patchItem(key, { status: "analyzing", step: 0 });
+      const outcome = await runOne(target, controller, (stage) => patchItem(key, { step: ANALYZE_STEPS.findIndex((s) => s.stage === stage) }));
+      if (!outcome) return;
+      if (outcome.status !== "failed" && outcome.product && outcome.importId) {
+        const result = outcome as Imported;
+        patchItem(key, { status: "ready", imported: result, state: newItemState(importedForm(target, result.product)) });
+      } else {
+        patchItem(key, { status: "failed", failure: outcome });
+      }
+    }
+    request.current = null;
+  };
+
   const analyze = async () => {
-    const target = url.trim();
-    if (!target) {
+    const links = extractLinks(url);
+    if (links.length === 0) {
       document.getElementById("new-url")?.focus();
       return;
     }
+    if (links.length > MAX_LINKS) {
+      setLinkError(`한 번에 ${MAX_LINKS}개까지 가져올 수 있어요. ${links.length - MAX_LINKS}개를 지워 주세요.`);
+      return;
+    }
+    setLinkError(null);
+    if (links.length > 1) {
+      await analyzeMany(links);
+      return;
+    }
+    const target = links[0];
     cancelRequest();
     const controller = new AbortController();
     request.current = controller;
@@ -193,27 +181,13 @@ export function NewGarmentView() {
     setStep(0);
     setShowDetail(false);
     setFailure(null);
-    let outcome: ImportOutcome;
-    try {
-      outcome = await streamImport(target, {
-        signal: controller.signal,
-        onStage: (stage) => setStep(ANALYZE_STEPS.findIndex((s) => s.stage === stage)),
-      });
-    } catch {
-      if (controller.signal.aborted) return;
-      outcome = { importId: null, status: "failed", reused: false, domain: null, sourceUrl: target, parserId: null, durationMs: 0, product: null, errorCode: "network_error", errorDetail: null };
-    }
-    if (controller.signal.aborted) return;
+    const outcome = await runOne(target, controller, (stage) => setStep(ANALYZE_STEPS.findIndex((s) => s.stage === stage)));
+    if (!outcome) return;
     request.current = null;
-    notifyUsageChanged();
     if (outcome.status !== "failed" && outcome.product && outcome.importId) {
       const result = outcome as Imported;
       setImported(result);
-      setForm(importedForm(target, result.product));
-      setImage(undefined);
-      setImageIndex(0);
-      setBadImages([]);
-      setCustomSize(false);
+      setItem(newItemState(importedForm(target, result.product)));
       setPhase("review");
     } else {
       setFailure(outcome);
@@ -225,28 +199,18 @@ export function NewGarmentView() {
   const startManual = (keepUrl = false) => {
     cancelRequest();
     const partial = keepUrl ? failure?.product : null;
-    setForm(partial ? importedForm(url.trim(), partial) : { ...EMPTY_FORM, url: keepUrl ? url.trim() : "" });
+    const link = extractLinks(url)[0] ?? "";
+    setItem(newItemState(partial ? importedForm(link, partial) : { ...EMPTY_FORM, url: keepUrl ? link : "" }));
     setImported(null);
-    setImage(undefined);
     setPhase("manual");
   };
 
   const isReview = phase === "review";
   const showForm = phase === "review" || phase === "manual";
-  const product = isReview ? imported?.product : undefined;
-  const sizeChoices = product ? (product.sizeOptions.length ? product.sizeOptions : (product.sizeChart?.rows.map((r) => r.sizeLabel) ?? [])) : [];
-  const colorChoices = product?.colorOptions ?? [];
-  const pageImages = product && imported ? product.imageUrls.map((_, i) => importImageUrl(imported.importId, i)) : [];
-  const shownImages = pageImages.map((src, i) => ({ src, i })).filter(({ i }) => !badImages.includes(i));
-  const dropImage = (i: number) => setBadImages((bad) => (bad.includes(i) ? bad : [...bad, i]));
-  // 고른 사진이 목록에서 빠졌으면 남은 첫 사진을 쓴다.
-  const chosen = shownImages.some(({ i }) => i === imageIndex) ? imageIndex : (shownImages[0]?.i ?? -1);
-  const chosenUrl = pageImages[chosen] as string | undefined;
+  const { product, chosenUrl } = itemView(item, isReview ? imported : null);
   const partial = imported?.status === "partial";
   // 옷장에서 쓰지 않는 열을 뺐다는 안내는 보이지 않는다(예전 분석 결과에 남아 있을 수 있다).
   const notices = product?.warnings.filter((w) => w.code !== "size_chart_unmapped_columns") ?? [];
-
-  const update = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
 
   const register = async () => {
     if (saving) return;
@@ -255,34 +219,11 @@ export function NewGarmentView() {
       document.getElementById("f-name")?.focus();
       return;
     }
-    const measurements: Measurements = {};
-    Object.entries(form.m).forEach(([k, v]) => {
-      if (v !== "" && !isNaN(Number(v))) measurements[k as keyof Measurements] = Number(v);
-    });
     setSaving(true);
     setError(null);
     setFieldErrors({});
-    const draft = {
-      categoryId: form.categoryId,
-      subcategoryId: form.subcategoryId || null,
-      brand: form.brand.trim(),
-      productName: form.productName.trim(),
-      sizeLabel: form.size || null,
-      colorName: form.color || null,
-      seasons: held ? [] : form.seasons,
-      purchasedOn: held ? null : form.date || null,
-      purchasePrice: parsePriceInput(form.price, form.currency),
-      currency: form.currency,
-      productUrl: form.url || null,
-      imageUrl: null,
-      measurements,
-      fitReview: form.review || null,
-      shoeFit: form.categoryId === "shoes" ? shoeFitOrNull(form.shoeFit) : null,
-      userFit: !held && isClothes(form.categoryId) ? form.userFit : null,
-      held,
-      fitCheckId,
-    };
-    const pickedImage = image === undefined && isReview && chosenUrl ? await importImageFile(chosenUrl) : image;
+    const draft = formToDraft(form, held, fitCheckId);
+    const pickedImage = item.image === undefined && isReview && chosenUrl ? await importImageFile(chosenUrl) : item.image;
     const result = movingId
       ? await updateGarment(movingId, { ...draft, imageUrl: moving?.imageUrl ?? null, thumbUrl: moving?.thumbUrl ?? null, held: false }, pickedImage)
       : await addGarment(draft, pickedImage, imported?.importId ?? null);
@@ -304,6 +245,51 @@ export function NewGarmentView() {
     router.push(garmentHref(result.garment.id));
   };
 
+  // ---- 여러 링크 ----
+  const busy = items.some((m) => m.status === "waiting" || m.status === "analyzing");
+  const readyItems = items.filter((m) => m.status === "ready");
+
+  /** 실패한 벌을 직접 입력 폼으로 바꾼다(읽은 값과 링크는 채워 둔다). */
+  const fillByHand = (m: MultiItem) => {
+    const partialProduct = m.failure?.product;
+    patchItem(m.key, { status: "ready", imported: null, state: newItemState(partialProduct ? importedForm(m.url, partialProduct) : { ...EMPTY_FORM, url: m.url }) });
+  };
+
+  const registerAll = async () => {
+    if (saving || busy || readyItems.length === 0) return;
+    const empty = readyItems.find((m) => !m.state.form.productName.trim());
+    if (empty) {
+      patchItem(empty.key, { error: "제품명은 꼭 입력해야 합니다." });
+      document.getElementById(`m${empty.key}-f-name`)?.focus();
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    let done = 0;
+    let lastWarning: string | undefined;
+    for (const m of readyItems) {
+      const draft = formToDraft(m.state.form, held, null);
+      const v = itemView(m.state, m.imported);
+      const picked: ImageChange = m.state.image === undefined && m.imported && v.chosenUrl ? await importImageFile(v.chosenUrl) : m.state.image;
+      const result = await addGarment(draft, picked, m.imported?.importId ?? null);
+      if (result.ok) {
+        done++;
+        lastWarning = result.warning ?? lastWarning;
+        setItems((list) => list.filter((x) => x.key !== m.key));
+      } else {
+        const fields = result.fieldErrors ?? {};
+        patchItem(m.key, { fieldErrors: fields, error: Object.keys(fields).some((k) => FIELD_IDS[k]) ? "표시한 칸을 확인해 주세요." : result.error });
+      }
+    }
+    setSaving(false);
+    if (done === readyItems.length) {
+      showToast(lastWarning ?? `${done}벌을 ${held ? "구매 보류 옷에 추가" : "옷장에 등록"}했습니다`);
+      router.push(held ? "/fit-check#held" : "/wardrobe");
+    } else {
+      setError(`${done}벌만 등록했습니다. 남은 옷의 안내를 확인하고 다시 눌러 주세요.`);
+    }
+  };
+
   const hint = error
     ? error
     : !form.productName.trim()
@@ -314,7 +300,7 @@ export function NewGarmentView() {
           ? "추가 전까지 저장되지 않습니다."
           : "등록 전까지 저장되지 않습니다.";
 
-  const failDomain = failure?.domain ?? url.match(/\/\/([^/]+)/)?.[1] ?? "";
+  const failDomain = failure?.domain ?? url.match(/\/\/([^/\s]+)/)?.[1] ?? "";
   const failText = importFailure(failure?.errorCode);
   const failDetail = failure
     ? [failure.errorCode, failure.errorDetail?.replace(`${failure.errorCode}: `, ""), `${(failure.durationMs / 1000).toFixed(1)}초`, failure.parserId && `parser: ${failure.parserId}`].filter(Boolean).join(" · ")
@@ -345,23 +331,32 @@ export function NewGarmentView() {
             <label htmlFor="new-url" className="text-sm">
               상품 URL
             </label>
-            <div className="flex gap-2">
-              <input
+            <div className="flex items-start gap-2">
+              <textarea
                 id="new-url"
                 className="input min-h-11 text-body"
-                type="url"
-                placeholder="https://"
+                rows={3}
+                placeholder={"https://\n링크를 여러 개 붙여 넣으면 한 번에 가져와요 (최대 5개, 줄바꿈으로 구분)"}
                 value={url}
                 disabled={phase === "analyzing"}
-                onChange={(e) => setUrl(e.target.value)}
+                aria-describedby={linkError ? "new-url-error" : undefined}
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  setLinkError(null);
+                }}
               />
               <button type="button" className="btn btn-primary min-h-11 min-w-26" disabled={phase === "analyzing"} onClick={analyze}>
                 {phase === "analyzing" ? "분석 중…" : "분석"}
               </button>
             </div>
+            {linkError && (
+              <span id="new-url-error" role="alert" className="text-sm text-accent-700">
+                {linkError}
+              </span>
+            )}
           </div>
           <div className="text-sm text-neutral-700">
-            상품 페이지 주소를 붙여 넣으면 제품명·가격·사진·사이즈표를 읽어 옵니다. 읽지 못한 항목은 직접 채우면 됩니다.
+            상품 페이지 주소를 붙여 넣으면 제품명·가격·사진·사이즈표를 읽어 옵니다. 링크는 한 번에 최대 {MAX_LINKS}개까지 넣을 수 있고, 읽지 못한 항목은 직접 채우면 됩니다.
           </div>
           <UsageNote kind="import" />
           {!held && (
@@ -442,6 +437,87 @@ export function NewGarmentView() {
         </section>
       )}
 
+      {phase === "multi" && (
+        <section className="flex flex-col py-6" aria-label="가져온 옷 목록">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-4">
+            <span className="text-base" aria-live="polite">
+              {busy ? `링크 ${items.length}개를 읽는 중입니다 · ${elapsed}초 경과` : "구매한 사이즈와 컬러를 고른 뒤 아래에서 한꺼번에 등록하세요."}
+            </span>
+            <button type="button" className="btn btn-secondary" onClick={() => { cancelRequest(); setItems([]); setPhase("url"); }}>
+              {busy ? "취소" : "링크 다시 넣기"}
+            </button>
+          </div>
+          {items.map((m, n) => (
+            <article key={m.key} className="flex flex-col gap-4 border-t border-text py-7" aria-label={`${n + 1}번째 옷`}>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="text-lg">
+                  <span className="font-mono tabular-nums">{n + 1}</span>. {m.status === "ready" && m.state.form.productName ? m.state.form.productName : "링크"}
+                </h2>
+                <button type="button" className="btn btn-ghost text-sm" onClick={() => setItems((list) => list.filter((x) => x.key !== m.key))}>
+                  이 옷 빼기
+                </button>
+              </div>
+              <span className="break-all text-xs text-neutral-700">{m.url}</span>
+              {(m.status === "waiting" || m.status === "analyzing") && (
+                <div className="text-sm text-neutral-700" aria-live="polite">
+                  {m.status === "waiting" ? "앞의 옷을 읽은 뒤 차례로 읽습니다." : `${ANALYZE_STEPS[Math.max(0, m.step)]?.label ?? "읽는 중"}…`}
+                </div>
+              )}
+              {m.status === "failed" && (
+                <div role="alert" className="flex flex-col gap-2.5 border border-accent p-5">
+                  <div className="flex items-center gap-2">
+                    <span className="tag tag-accent">분석 실패</span>
+                    <span className="text-sm text-neutral-700">{m.failure?.domain ?? ""}</span>
+                  </div>
+                  <div className="text-lg font-semibold">{importFailure(m.failure?.errorCode).title}</div>
+                  <p className="text-base text-pretty text-neutral-800">
+                    {importFailure(m.failure?.errorCode).body} {m.failure?.product ? "읽은 항목은 직접 입력 칸에 채워 둡니다." : ""}
+                  </p>
+                  <div>
+                    <button type="button" className="btn btn-primary" onClick={() => fillByHand(m)}>
+                      직접 입력으로 채우기
+                    </button>
+                  </div>
+                </div>
+              )}
+              {m.status === "ready" && (
+                <>
+                  {m.imported?.status === "partial" && <span className="text-base">읽지 못한 칸은 직접 채워 주세요.</span>}
+                  <div className="flex flex-col">
+                    <GarmentFields
+                      idp={`m${m.key}`}
+                      state={m.state}
+                      onChange={(fn) => patchItem(m.key, (cur) => ({ state: fn(cur.state), error: null }))}
+                      imported={m.imported}
+                      held={held}
+                      fieldErrors={m.fieldErrors}
+                    />
+                  </div>
+                  {m.error && (
+                    <span role="alert" className="text-sm text-accent-700">
+                      {m.error}
+                    </span>
+                  )}
+                </>
+              )}
+            </article>
+          ))}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-text pt-4">
+            <span role={error ? "alert" : undefined} className={cn("text-sm", error ? "text-accent-700" : "text-neutral-700")}>
+              {error ?? (held ? "추가 전까지 저장되지 않습니다." : "등록 전까지 저장되지 않습니다.")}
+            </span>
+            <div className="flex gap-2">
+              <Link href={held ? "/fit-check#held" : "/wardrobe"} className="btn btn-secondary min-h-10">
+                취소
+              </Link>
+              <button type="button" className="btn btn-primary min-h-10 min-w-30" disabled={saving || busy || readyItems.length === 0} onClick={registerAll}>
+                {saving ? "저장 중…" : `${readyItems.length}벌 ${held ? "보류 목록에 추가" : "옷장에 등록"}`}
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
       {showForm && (
         <>
           {isReview && (
@@ -459,265 +535,14 @@ export function NewGarmentView() {
             </div>
           )}
 
-          <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-6 border-b border-text py-7">
-            <div className="flex max-w-60 flex-col gap-2">
-              <ImagePicker
-                currentUrl={chosenUrl ?? moving?.imageUrl ?? null}
-                value={image}
-                onChange={setImage}
-                placeholder="사진 끌어다 놓기"
-              />
-              {shownImages.length > 0 && (
-                <p className="text-label text-neutral-700" aria-live="polite">
-                  {image === undefined && chosenUrl
-                    ? `페이지 사진 ${shownImages.findIndex(({ i }) => i === chosen) + 1}번을 옷 사진으로 씁니다`
-                    : image
-                      ? "직접 올린 사진을 씁니다"
-                      : "사진 없이 저장합니다"}
-                </p>
-              )}
-              <PageImageGrid
-                images={shownImages}
-                selected={image === undefined ? chosen : -1}
-                onSelect={(i) => {
-                  setImageIndex(i);
-                  setImage(undefined);
-                }}
-                onBroken={dropImage}
-              />
-            </div>
-
-            <div className="flex min-w-0 flex-col gap-4 sm:col-span-3">
-              <h2 className="text-lg">기본 정보</h2>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4">
-                <div className="field">
-                  <label htmlFor="f-cat">대분류</label>
-                  <select
-                    id="f-cat"
-                    className="input"
-                    value={form.categoryId}
-                    onChange={(e) => {
-                      setForm((f) => ({ ...f, categoryId: e.target.value as CategoryId, subcategoryId: "", m: {}, shoeFit: EMPTY_SHOE_FIT, userFit: null }));
-                    }}
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="f-sub">세부분류</label>
-                  <select id="f-sub" className="input" value={form.subcategoryId} onChange={(e) => update("subcategoryId", e.target.value)}>
-                    <option value="">선택</option>
-                    {SUBCATEGORIES.filter((s) => s.categoryId === form.categoryId).map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="f-brand">브랜드</label>
-                  <input id="f-brand" className="input" aria-invalid={Boolean(fieldErrors.brand)} aria-describedby={fieldErrors.brand ? "e-brand" : undefined} value={form.brand} onChange={(e) => update("brand", e.target.value)} />
-                  <FieldError id="e-brand" message={fieldErrors.brand} />
-                </div>
-                <div className="field sm:col-span-2">
-                  <label htmlFor="f-name">제품명</label>
-                  <input id="f-name" className="input" aria-invalid={Boolean(fieldErrors.productName)} aria-describedby={fieldErrors.productName ? "e-productName" : undefined} value={form.productName} onChange={(e) => update("productName", e.target.value)} />
-                  <FieldError id="e-productName" message={fieldErrors.productName} />
-                </div>
-                {!held && (
-                  <div className="field">
-                    <DateLabel htmlFor="f-date" label="구매 날짜" filled={Boolean(form.date)} onClear={() => update("date", "")} />
-                    <input id="f-date" type="date" className="input font-mono tabular-nums" aria-invalid={Boolean(fieldErrors.purchasedOn)} aria-describedby={fieldErrors.purchasedOn ? "e-purchasedOn" : undefined} value={form.date} onChange={(e) => update("date", e.target.value)} />
-                    <FieldError id="e-purchasedOn" message={fieldErrors.purchasedOn} />
-                  </div>
-                )}
-                <div className="field">
-                  <label htmlFor="f-price">{held ? "가격" : "구매가"}</label>
-                  <PriceInput
-                    id="f-price"
-                    value={form.price}
-                    currency={form.currency}
-                    onChange={(v) => update("price", v)}
-                    onCurrencyChange={(c) => update("currency", c)}
-                    aria-invalid={Boolean(fieldErrors.purchasePrice)}
-                    aria-describedby={[fieldErrors.purchasePrice && "e-purchasePrice", product?.price && !held && "h-price"].filter(Boolean).join(" ") || undefined}
-                  />
-                  <FieldError id="e-purchasePrice" message={fieldErrors.purchasePrice} />
-                  {product?.price && !held && (
-                    <span id="h-price" className="whitespace-nowrap text-xs text-neutral-700">
-                      쇼핑몰 현재 판매가예요. 실제 산 가격으로 고쳐 주세요.
-                    </span>
-                  )}
-                </div>
-                {!held && <div className="field col-span-full">
-                  <label>시즌</label>
-                  <div className="seg self-start">
-                    {SEASONS.map((s) => (
-                      <label key={s.id} className="seg-opt px-4 py-1.75">
-                        <input
-                          type="checkbox"
-                          checked={form.seasons.includes(s.id)}
-                          onChange={() =>
-                            update("seasons", toggleSeason(form.seasons, s.id))
-                          }
-                        />
-                        {s.name}
-                      </label>
-                    ))}
-                  </div>
-                </div>}
-                <div className="field col-span-full">
-                  <label htmlFor="f-url">상품 링크</label>
-                  <input id="f-url" className="input text-neutral-800" placeholder="선택 입력" aria-invalid={Boolean(fieldErrors.productUrl)} aria-describedby={fieldErrors.productUrl ? "e-productUrl" : undefined} value={form.url} onChange={(e) => update("url", e.target.value)} />
-                  <FieldError id="e-productUrl" message={fieldErrors.productUrl} />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="flex flex-col gap-4 border-b border-text py-7">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-lg">{held ? "고민 중인 옵션" : "구매한 옵션"}</h2>
-              <span className="text-sm text-neutral-700">사이즈를 고르면 사이즈표의 실측이 아래에 채워집니다. 맞는 사이즈가 없으면 직접 입력하세요</span>
-            </div>
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-6">
-              <div className="field">
-                <label htmlFor="f-size">사이즈</label>
-                {sizeChoices.length > 0 ? (
-                  <div className="seg flex-wrap self-start" role="radiogroup" aria-label="사이즈">
-                    {sizeChoices.map((s) => (
-                      <label key={s} className="seg-opt px-4.5 py-2 font-mono text-base tabular-nums">
-                        <input
-                          type="radio"
-                          name="fsize"
-                          checked={!customSize && form.size === s}
-                          onChange={() => {
-                            setCustomSize(false);
-                            setForm((f) => ({ ...f, size: s, m: { ...f.m, ...chartMeasurements(product, s) } }));
-                          }}
-                        />
-                        {s}
-                      </label>
-                    ))}
-                    <label className="seg-opt px-4 py-2 text-base text-accent-700 ring-1 ring-accent-300 ring-inset has-[input:checked]:bg-accent-700 has-[input:checked]:text-bg has-[input:checked]:ring-0">
-                      <input
-                        type="radio"
-                        name="fsize"
-                        checked={customSize}
-                        onChange={() => {
-                          setCustomSize(true);
-                          setForm((f) => ({ ...f, size: "" }));
-                          requestAnimationFrame(() => document.getElementById("f-size")?.focus());
-                        }}
-                      />
-                      직접 입력
-                    </label>
-                  </div>
-                ) : null}
-                {(sizeChoices.length === 0 || customSize) && (
-                  <input id="f-size" className="input max-w-50" placeholder="예: M, 48, 32" aria-invalid={Boolean(fieldErrors.sizeLabel)} aria-describedby={fieldErrors.sizeLabel ? "e-sizeLabel" : undefined} value={form.size} onChange={(e) => update("size", e.target.value)} />
-                )}
-                <FieldError id="e-sizeLabel" message={fieldErrors.sizeLabel} />
-              </div>
-              <div className="field">
-                <label htmlFor="f-color">컬러</label>
-                <div className="flex flex-wrap items-center gap-2">
-                  {colorChoices.length > 0 && (
-                    <div className="seg flex-wrap" role="radiogroup" aria-label="컬러 옵션">
-                      {colorChoices.map((c) => (
-                        <label key={c} className="seg-opt px-3.5 py-2 text-base">
-                          <input type="radio" name="fcolor" checked={form.color === c} onChange={() => update("color", c)} />
-                          {c}
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                  <input id="f-color" className="input max-w-45" placeholder="컬러명 직접 입력" aria-invalid={Boolean(fieldErrors.colorName)} aria-describedby={fieldErrors.colorName ? "e-colorName" : undefined} value={form.color} onChange={(e) => update("color", e.target.value)} />
-                  <FieldError id="e-colorName" message={fieldErrors.colorName} />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {form.categoryId === "shoes" ? (
-            <section className="flex flex-col gap-4 border-b border-text py-7">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-lg">착용감</h2>
-                <span className="text-sm text-neutral-700">선택 입력 · 신어 본 느낌을 남기면 다음 신발 사이즈를 고를 때 씁니다</span>
-              </div>
-              <ShoeFitPicker idPrefix="f-shoe" value={form.shoeFit} onChange={(v) => update("shoeFit", v)} />
-            </section>
-          ) : (
-            <section className="flex flex-col gap-4 border-b border-text py-7">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-lg">실측</h2>
-                <span className="text-sm text-neutral-700">
-                  {form.categoryId === "hat" ? "cm · 머리둘레는 둘레 그대로" : "cm · 단면 기준"} · 직접 잰 값이 있으면 덮어쓰세요
-                </span>
-              </div>
-              {isReview && product && !product.sizeChart && (
-                <p className="text-sm text-neutral-800">
-                  이 페이지에서 실측 정보를 찾지 못했습니다. 직접 잰 값이나 상품 페이지의 실측을 입력해 주세요.
-                </p>
-              )}
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
-                {measurementFields(form.categoryId).map((m) => (
-                  <div key={m.key} className="field">
-                    <label htmlFor={`f-m-${m.key}`}>{m.label}</label>
-                    <UnitInput
-                      id={`f-m-${m.key}`}
-                      unit="cm"
-                      inputMode="decimal"
-                      className="text-body"
-                      value={form.m[m.key] ?? ""}
-                      aria-invalid={Boolean(fieldErrors[`measurements.${m.key}`])}
-                      aria-describedby={fieldErrors[`measurements.${m.key}`] ? `e-m-${m.key}` : undefined}
-                      onChange={(e) => setForm((f) => ({ ...f, m: { ...f.m, [m.key]: e.target.value } }))}
-                    />
-                    <FieldError id={`e-m-${m.key}`} message={fieldErrors[`measurements.${m.key}`]} />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {isClothes(form.categoryId) && !held && (
-            <section className="flex flex-col gap-4 border-b border-text py-7">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 id="f-user-fit" className="text-lg">
-                  내 핏
-                </h2>
-                <span className="text-sm text-neutral-700">선택 입력 · 비워 두면 내 치수로 계산한 예상 핏을 보여 줍니다</span>
-              </div>
-              <UserFitPicker
-                labelledBy="f-user-fit"
-                kind={form.categoryId === "bottom" ? "bottom" : "top"}
-                value={form.userFit}
-                onChange={(v) => update("userFit", v)}
-              />
-              <FormBodyFit form={form} />
-            </section>
-          )}
-
-          <section className="flex flex-col gap-3 py-7">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-lg">{held ? "메모" : "착용 후기"}</h2>
-              <span className="text-sm text-neutral-700">{held ? "선택 입력 · 고민하는 이유나 비교할 점" : "선택 입력 · 입어본 뒤에 써도 됩니다"}</span>
-            </div>
-            <textarea
-              className="input text-body leading-relaxed"
-              rows={4}
-              aria-label={held ? "메모" : "착용 후기"}
-              placeholder={form.categoryId === "shoes" ? "예: 발볼이 조금 좁아서 다음엔 반 치수 크게 사고 싶다." : "예: 어깨와 가슴은 마음에 드는데 총장이 조금 길다."}
-              value={form.review}
-              onChange={(e) => update("review", e.target.value)}
-            />
-            {!held && <span className="text-sm text-neutral-700">구매 판단기가 이 후기를 원문 그대로 근거로 인용합니다.</span>}
-          </section>
+          <GarmentFields
+            state={item}
+            onChange={(fn) => setItem(fn)}
+            imported={isReview ? imported : null}
+            held={held}
+            fieldErrors={fieldErrors}
+            currentImageUrl={moving?.imageUrl}
+          />
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-text pt-4">
             <span role={error ? "alert" : undefined} className={cn("text-sm", error ? "text-accent-700" : "text-neutral-700")}>
@@ -735,39 +560,5 @@ export function NewGarmentView() {
         </>
       )}
     </main>
-  );
-}
-
-/** 서버 검증 오류 키 → 입력 칸 id(첫 오류 칸으로 포커스) */
-const FIELD_IDS: Record<string, string> = {
-  productName: "f-name",
-  brand: "f-brand",
-  purchasedOn: "f-date",
-  purchasePrice: "f-price",
-  productUrl: "f-url",
-  sizeLabel: "f-size",
-  colorName: "f-color",
-  subcategoryId: "f-sub",
-  ...Object.fromEntries(ALL_MEASUREMENT_KEYS.map((k) => [`measurements.${k}`, `f-m-${k}`])),
-};
-
-const isClothes = (c: CategoryId) => c === "outer" || c === "top" || c === "bottom";
-
-/** 폼에 입력한 실측으로 바로 계산한 예상 핏(점수는 옷 정보에서) */
-function FormBodyFit({ form }: { form: FormState }) {
-  const garment = useMemo(() => {
-    const measurements: Measurements = {};
-    for (const [k, v] of Object.entries(form.m)) if (v !== "" && !isNaN(Number(v))) measurements[k as keyof Measurements] = Number(v);
-    return { categoryId: form.categoryId, subcategoryId: form.subcategoryId || null, productName: form.productName, measurements };
-  }, [form.categoryId, form.subcategoryId, form.productName, form.m]);
-  return <BodyFitPanel garment={garment} userFit={form.userFit} showScores={false} />;
-}
-
-function FieldError({ id, message }: { id: string; message?: string }) {
-  if (!message) return null;
-  return (
-    <span id={id} className="text-xs text-accent-700">
-      {message}
-    </span>
   );
 }
