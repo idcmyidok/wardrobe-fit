@@ -20,6 +20,9 @@ export function WardrobeFilters({
   options: { brands: string[]; colors: string[] };
 }) {
   const set = <K extends keyof Filters>(key: K, v: Filters[K]) => onChange({ ...value, [key]: v });
+  // 세부분류·브랜드·시즌·컬러는 "필터" 버튼을 눌러야 보인다. 이미 하나라도 걸려 있으면 펼친 채로 시작한다.
+  const active = [value.subcategory, value.brand, value.season, value.color].filter(Boolean).length;
+  const [open, setOpen] = useState(active > 0);
   const subcategories = SUBCATEGORIES.filter((s) => value.categories.includes(s.categoryId));
 
   const toggleCategory = (id: CategoryId) => {
@@ -47,10 +50,41 @@ export function WardrobeFilters({
             </label>
           ))}
         </div>
-        <SearchBox value={value.q} onCommit={(q) => set("q", q)} />
+        {/* 검색창과 필터 버튼은 좁은 화면에서도 한 줄에 둔다. */}
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <SearchBox value={value.q} onCommit={(q) => set("q", q)} />
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls="wardrobe-more-filters"
+            onClick={() => setOpen((v) => !v)}
+            className={`btn btn-secondary shrink-0 gap-1 ${active ? "border-accent text-accent-700" : ""}`}
+          >
+            <svg
+              aria-hidden
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`transition-transform ${open ? "rotate-180" : ""}`}
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+            필터{active > 0 && ` ${active}`}
+          </button>
+        </div>
+        {isFiltered(value) && !open && (
+          <button type="button" className="btn btn-ghost text-sm" onClick={() => onChange(DEFAULT_FILTERS)}>
+            필터 초기화
+          </button>
+        )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div id="wardrobe-more-filters" hidden={!open} className="flex flex-wrap items-center gap-2">
         <FilterSelect
           label="세부분류"
           width="w-37.5"
@@ -130,7 +164,7 @@ function SearchBox({ value, onCommit }: { value: string; onCommit: (value: strin
 
   return (
     <input
-      className="input w-[min(100%,280px)]"
+      className="input min-w-0 flex-1 sm:w-70 sm:flex-none"
       type="search"
       aria-label="검색"
       placeholder="브랜드, 제품명 검색"
