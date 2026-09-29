@@ -2,15 +2,25 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CURRENT_VERSION } from "@/lib/release-notes";
+import { CURRENT_VERSION, type ReleaseNoteEdits } from "@/lib/release-notes";
 import { signOut } from "@/server/auth/actions";
 import { ReleaseNotesDialog } from "./release-notes-dialog";
 import { ThemeToggle } from "./theme-toggle";
 
 /** 사용자 메뉴. email이 null이면 미리보기 모드라 로그아웃 대신 첫 화면으로 돌아간다. */
-export function UserMenu({ email, admin = false }: { email: string | null; admin?: boolean }) {
+export function UserMenu({
+  email,
+  admin = false,
+  releaseNoteEdits = {},
+}: {
+  email: string | null;
+  admin?: boolean;
+  releaseNoteEdits?: ReleaseNoteEdits;
+}) {
   const [open, setOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  // 관리자가 저장·되돌린 결과가 창을 닫았다 열어도 남도록 여기서 들고 있는다.
+  const [edits, setEdits] = useState(releaseNoteEdits);
   const closeNotes = useCallback(() => setNotesOpen(false), []);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -87,7 +97,7 @@ export function UserMenu({ email, admin = false }: { email: string | null; admin
           )}
         </div>
       )}
-      {notesOpen && <ReleaseNotesDialog onClose={closeNotes} admin={admin} />}
+      {notesOpen && <ReleaseNotesDialog onClose={closeNotes} admin={admin} edits={edits} onEditsChange={setEdits} />}
     </div>
   );
 }

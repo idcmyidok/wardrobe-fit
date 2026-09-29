@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { FEATURES } from "@/lib/features";
+import type { ReleaseNoteEdits } from "@/lib/release-notes";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
@@ -16,7 +17,15 @@ const NAV = [
 ];
 
 /** email이 null이면 인증 서버가 없는 미리보기 모드다. admin이면 사용자 메뉴에 관리자 링크가 생긴다. */
-export function AppHeader({ email, admin = false }: { email: string | null; admin?: boolean }) {
+export function AppHeader({
+  email,
+  admin = false,
+  releaseNoteEdits = {},
+}: {
+  email: string | null;
+  admin?: boolean;
+  releaseNoteEdits?: ReleaseNoteEdits;
+}) {
   const pathname = usePathname();
   return (
     <header className="sticky top-0 z-30 border-b border-text bg-bg">
@@ -49,7 +58,7 @@ export function AppHeader({ email, admin = false }: { email: string | null; admi
           <div className="hidden sm:block">
             <ThemeToggle />
           </div>
-          <UserMenu email={email} admin={admin} />
+          <UserMenu email={email} admin={admin} releaseNoteEdits={releaseNoteEdits} />
         </div>
       </div>
     </header>
