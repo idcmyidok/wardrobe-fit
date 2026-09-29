@@ -16,39 +16,36 @@ import {
 } from "@/lib/release-notes";
 
 const FIXES_TITLE = "수정사항";
-import { getReleaseNoteEdits, resetReleaseNoteEdit, saveReleaseNoteEdit } from "@/server/release-notes/actions";
+import { resetReleaseNoteEdit, saveReleaseNoteEdit } from "@/server/release-notes/actions";
 
 /**
  * 업데이트 노트 창. 최신 버전이 맨 위, 아래는 스크롤해서 본다.
  * 첫째 자리 버전(1.x, 2.x)이 둘 이상이면 탭으로 나누고 최신 탭을 먼저 연다. Esc·배경·X로 닫는다.
  * 관리자에게는 버전마다 "수정" 버튼이 보이고, 신규 기능·변경 내용·수정사항 칸을 고쳐 저장하면 코드의 노트 대신 보인다.
  */
-export function ReleaseNotesDialog({ onClose, admin = false }: { onClose: () => void; admin?: boolean }) {
+export function ReleaseNotesDialog({
+  onClose,
+  admin = false,
+  edits,
+  onEditsChange,
+}: {
+  onClose: () => void;
+  admin?: boolean;
+  /** 서버가 미리 읽어 온 관리자 수정본. 처음 그릴 때부터 이걸로 보여 준다. */
+  edits: ReleaseNoteEdits;
+  onEditsChange: (edits: ReleaseNoteEdits) => void;
+}) {
   const groups = groupByMajor();
   const [major, setMajor] = useState(groups[0]?.major ?? "");
   const notes = groups.find((g) => g.major === major)?.notes ?? [];
   const panel = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
-  // 고친 노트를 읽기 전에는 코드의 노트를 먼저 보여 준다.
-  const [edits, setEdits] = useState<ReleaseNoteEdits>({});
-
-  useEffect(() => {
-    let alive = true;
-    getReleaseNoteEdits()
-      .then((data) => alive && setEdits(data))
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  const applyEdit = (version: string, body: ReleaseNoteContent | null) =>
-    setEdits((prev) => {
-      const next = { ...prev };
-      if (body === null) delete next[version];
-      else next[version] = body;
-      return next;
-    });
+  const applyEdit = (version: string, body: ReleaseNoteContent | null) => {
+    const next = { ...edits };
+    if (body === null) delete next[version];
+    else next[version] = body;
+    onEditsChange(next);
+  };
 
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
