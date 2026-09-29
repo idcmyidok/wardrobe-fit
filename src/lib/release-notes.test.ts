@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import pkg from "../../package.json";
-import { CURRENT_VERSION, RELEASE_NOTES, groupByMajor, majorOf, type ReleaseNote } from "./release-notes";
+import { CURRENT_VERSION, RELEASE_NOTES, groupByMajor, majorOf, draftToContent, noteToDraft, parseEditBody, type ReleaseNote } from "./release-notes";
 
 const note = (version: string): ReleaseNote => ({ version, date: "2026-09-28", features: [], changes: [], fixes: [] });
 
@@ -25,5 +25,29 @@ describe("업데이트 노트", () => {
       expect(n.version).toMatch(/^\d+\.\d+\.\d+$/);
       expect(n.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
+  });
+});
+
+describe("업데이트 노트 수정", () => {
+  const full: ReleaseNote = {
+    version: "1.2.0",
+    date: "2026-09-28",
+    features: [{ title: "새 기능", description: "설명: 자세히" }, { title: "제목만", description: "" }],
+    changes: ["바뀐 점"],
+    fixes: ["고친 점", "또 고친 점"],
+  };
+  it("노트를 세 칸의 글로 옮기고 다시 읽으면 같다", () => {
+    const draft = noteToDraft(full);
+    expect(draft).toEqual({ features: "새 기능: 설명: 자세히\n제목만", changes: "바뀐 점", fixes: "고친 점\n또 고친 점" });
+    expect(draftToContent(draft)).toEqual({ features: full.features, changes: full.changes, fixes: full.fixes });
+  });
+  it("빈 줄과 앞의 - · 는 버린다", () => {
+    expect(draftToContent({ features: "", changes: "- 하나\n\n· 둘\r\n  ", fixes: "" })).toEqual({ features: [], changes: ["하나", "둘"], fixes: [] });
+  });
+  it("저장된 글을 읽고, 모양이 틀리면 null", () => {
+    const content = { features: [], changes: ["a"], fixes: [] };
+    expect(parseEditBody(JSON.stringify(content))).toEqual(content);
+    expect(parseEditBody("그냥 글")).toBeNull();
+    expect(parseEditBody(JSON.stringify({ features: [{ title: 1 }], changes: [], fixes: [] }))).toBeNull();
   });
 });

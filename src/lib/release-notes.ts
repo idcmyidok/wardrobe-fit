@@ -25,6 +25,13 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "1.2.2",
+    date: "2026-09-29",
+    features: [],
+    changes: ["업데이트 노트의 수정사항은 접혀 있고, 눌러서 펼쳐 볼 수 있어요."],
+    fixes: [],
+  },
+  {
     version: "1.2.1",
     date: "2026-09-28",
     features: [],
@@ -161,4 +168,60 @@ export function groupByMajor(notes: ReleaseNote[] = RELEASE_NOTES): { major: str
     else groups.push({ major, notes: [note] });
   }
   return groups;
+}
+
+/**
+ * 관리자가 화면에서 고친 노트. DB(release_note_edits.body)에 신규 기능·변경 내용·수정사항을 JSON으로 저장하고,
+ * 있으면 코드의 노트 대신 같은 모양으로 보여 준다. 버전과 날짜는 코드의 노트를 따른다.
+ */
+export type ReleaseNoteContent = Pick<ReleaseNote, "features" | "changes" | "fixes">;
+export type ReleaseNoteEdits = Record<string, ReleaseNoteContent>;
+
+/** 수정 칸 세 개의 글. 한 줄이 한 항목이고, 신규 기능은 "제목: 설명"으로 쓴다. */
+export interface ReleaseNoteDraft {
+  features: string;
+  changes: string;
+  fixes: string;
+}
+
+export const RELEASE_NOTE_BODY_MAX = 20000;
+
+export function noteToDraft(note: ReleaseNoteContent): ReleaseNoteDraft {
+  return {
+    features: note.features.map((f) => (f.description ? `${f.title}: ${f.description}` : f.title)).join("\n"),
+    changes: note.changes.join("\n"),
+    fixes: note.fixes.join("\n"),
+  };
+}
+
+/** 줄마다 앞의 "-", "·", "•"와 빈칸을 떼고, 빈 줄은 버린다. */
+const lines = (text: string) =>
+  text
+    .split(/\r?\n/)
+    .map((l) => l.trim().replace(/^[-·•]\s*/, "").trim())
+    .filter(Boolean);
+
+/** 신규 기능 줄 "제목: 설명"을 나눈다. ":"가 없으면 제목만 있는 것으로 본다. */
+export function splitFeatureLine(line: string): ReleaseFeature {
+  const at = line.indexOf(":");
+  if (at < 0) return { title: line.trim(), description: "" };
+  return { title: line.slice(0, at).trim(), description: line.slice(at + 1).trim() };
+}
+
+export function draftToContent(draft: ReleaseNoteDraft): ReleaseNoteContent {
+  return { features: lines(draft.features).map(splitFeatureLine), changes: lines(draft.changes), fixes: lines(draft.fixes) };
+}
+
+/** DB에 저장된 글을 읽는다. 모양이 맞지 않으면 null(코드의 노트를 보여 준다). */
+export function parseEditBody(body: string): ReleaseNoteContent | null {
+  try {
+    const v = JSON.parse(body) as Partial<ReleaseNoteContent>;
+    const strs = (a: unknown): a is string[] => Array.isArray(a) && a.every((x) => typeof x === "string");
+    const feats = (a: unknown): a is ReleaseFeature[] =>
+      Array.isArray(a) && a.every((x) => x && typeof x.title === "string" && typeof x.description === "string");
+    if (!feats(v.features) || !strs(v.changes) || !strs(v.fixes)) return null;
+    return { features: v.features, changes: v.changes, fixes: v.fixes };
+  } catch {
+    return null;
+  }
 }
