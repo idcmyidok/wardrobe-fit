@@ -150,8 +150,9 @@ function NoteItem({
       <header className="flex items-baseline justify-between gap-3">
         <h3 className="text-lg font-semibold">{note.version} 패치노트</h3>
         <div className="flex items-baseline gap-3">
-          <time dateTime={note.date} className="font-mono text-sm text-neutral-700 tabular-nums">
+          <time dateTime={note.time ? `${note.date}T${note.time}+09:00` : note.date} className="font-mono text-sm text-neutral-700 tabular-nums">
             {formatDate(note.date)}
+            {note.time && ` ${note.time}`}
           </time>
           {admin && !draft && (
             <button
