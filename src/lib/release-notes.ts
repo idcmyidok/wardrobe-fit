@@ -8,6 +8,9 @@
  * - features: 새로 생긴 기능. 한 줄 제목(무엇이 생겼는지) + 자세한 설명
  * - changes: 바뀐 내용
  * - fixes: 고친 문제(소제목 없이 한 줄씩)
+ * - date·time: 노트를 처음 작성한 날짜와 시각(한국시간). 나중에 내용을 고쳐도 바꾸지 않는다.
+ *   새 노트를 넣을 때 `TZ=Asia/Seoul date +"%Y-%m-%d %H:%M"`로 확인해 둘 다 적는다.
+ * - 톤: 일반 사용자에게 말하듯 "~합니다" 체로, 어떤 버튼을 어디서 누르면 무엇이 보이는지 적고 개발 용어는 피한다.
  */
 export interface ReleaseFeature {
   title: string;
@@ -16,8 +19,10 @@ export interface ReleaseFeature {
 
 export interface ReleaseNote {
   version: string;
-  /** YYYY-MM-DD */
+  /** YYYY-MM-DD, 한국시간 */
   date: string;
+  /** HH:mm, 한국시간. 처음 작성한 시각(고쳐도 그대로). 기록이 없는 옛 노트(1.0.0·1.1.0)는 비어 있다. */
+  time?: string;
   features: ReleaseFeature[];
   changes: string[];
   fixes: string[];
@@ -27,6 +32,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: "1.2.4",
     date: "2026-09-29",
+    time: "13:17",
     features: [],
     changes: [
       "사파리의 북마크 만들기·편집·실행 안내를 최신 아이폰 화면에 맞게 고쳤어요. 북마크는 주소창 입력이 아니라 북마크 목록에서 눌러야 실행돼요.",
@@ -38,6 +44,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: "1.2.3",
     date: "2026-09-29",
+    time: "12:45",
     features: [
       {
         title: "언제 하나하나 지우고 앉아있어",
@@ -58,13 +65,15 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: "1.2.2",
     date: "2026-09-29",
+    time: "12:24",
     features: [],
     changes: ["업데이트 노트의 수정사항은 접혀 있고, 눌러서 펼쳐 볼 수 있어요."],
     fixes: [],
   },
   {
     version: "1.2.1",
-    date: "2026-09-28",
+    date: "2026-09-29",
+    time: "02:36",
     features: [],
     changes: [
       "주문내역으로 추가하는 화면에 지원 쇼핑몰과 하루 분석 횟수, 많은 옷을 한꺼번에 넣을 때의 안내를 넣었어요.",
@@ -76,7 +85,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   },
   {
     version: "1.2.0",
-    date: "2026-09-28",
+    date: "2026-09-29",
+    time: "02:04",
     features: [
       {
         title: "무신사 주문내역으로 여러 벌 추가",
