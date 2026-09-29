@@ -11,8 +11,11 @@ import {
   RELEASE_NOTE_BODY_MAX,
   type ReleaseFeature,
   type ReleaseNote,
+  type NoteBlock,
   type ReleaseNoteEdits,
 } from "@/lib/release-notes";
+
+const FIXES_TITLE = "수정사항";
 import { getReleaseNoteEdits, resetReleaseNoteEdit, saveReleaseNoteEdit } from "@/server/release-notes/actions";
 
 /**
@@ -223,34 +226,69 @@ function NoteItem({
   );
 }
 
-/** 관리자가 고친 글. 소제목·목록·문단을 코드 노트와 같은 모양으로 그린다. */
-function EditedBody({ blocks }: { blocks: ReturnType<typeof parseNoteText> }) {
-  const groups: { kind: "heading" | "item" | "text"; texts: string[] }[] = [];
+/** 관리자가 고친 글. 소제목마다 묶어 코드 노트와 같은 모양으로 그린다("수정사항"은 접어 둔다). */
+function EditedBody({ blocks }: { blocks: NoteBlock[] }) {
+  const sections: { title: string | null; blocks: NoteBlock[] }[] = [];
   for (const b of blocks) {
-    const last = groups.at(-1);
-    if (b.kind === "item" && last?.kind === "item") last.texts.push(b.text);
-    else groups.push({ kind: b.kind, texts: [b.text] });
+    if (b.kind === "heading") sections.push({ title: b.text, blocks: [] });
+    else if (sections.length) sections[sections.length - 1].blocks.push(b);
+    else sections.push({ title: null, blocks: [b] });
   }
   return (
-    <div className="flex flex-col gap-2">
-      {groups.map((g, i) =>
-        g.kind === "heading" ? (
-          <h4 key={i} className="mt-2 font-mono text-xs font-medium tracking-[0.08em] text-neutral-700 first:mt-0">
-            {g.texts[0]}
-          </h4>
-        ) : g.kind === "item" ? (
-          <ul key={i} className="flex list-disc flex-col gap-1 pl-5 text-base">
-            {g.texts.map((t, j) => (
-              <li key={j}>{t}</li>
-            ))}
-          </ul>
+    <>
+      {sections.map((sec, i) =>
+        sec.title === FIXES_TITLE ? (
+          <FixesDetails key={i} count={sec.blocks.filter((b) => b.kind === "item").length || sec.blocks.length}>
+            <EditedLines blocks={sec.blocks} small />
+          </FixesDetails>
         ) : (
-          <p key={i} className="text-base text-pretty">
-            {g.texts[0]}
-          </p>
+          <section key={i} className="flex flex-col gap-1.5">
+            {sec.title && <h4 className="font-mono text-xs font-medium tracking-[0.08em] text-neutral-700">{sec.title}</h4>}
+            <EditedLines blocks={sec.blocks} />
+          </section>
         ),
       )}
-    </div>
+    </>
+  );
+}
+
+/** 이어진 목록 줄은 한 목록으로, 나머지는 문단으로 */
+function EditedLines({ blocks, small = false }: { blocks: NoteBlock[]; small?: boolean }) {
+  const groups: { list: boolean; texts: string[] }[] = [];
+  for (const b of blocks) {
+    const last = groups.at(-1);
+    const list = b.kind === "item";
+    if (list && last?.list) last.texts.push(b.text);
+    else groups.push({ list, texts: [b.text] });
+  }
+  const size = small ? "text-sm text-neutral-800" : "text-base";
+  return groups.map((g, i) =>
+    g.list ? (
+      <ul key={i} className={cn("flex list-disc flex-col gap-1 pl-5", size)}>
+        {g.texts.map((t, j) => (
+          <li key={j}>{t}</li>
+        ))}
+      </ul>
+    ) : (
+      <p key={i} className={cn("text-pretty", size)}>
+        {g.texts[0]}
+      </p>
+    ),
+  );
+}
+
+/** 수정사항은 기본으로 접어 두고 눌러서 펼친다. */
+function FixesDetails({ count, children }: { count: number; children: React.ReactNode }) {
+  return (
+    <details className="group flex flex-col">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 font-mono text-xs font-medium tracking-[0.08em] text-neutral-700 [&::-webkit-details-marker]:hidden">
+        <svg aria-hidden width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open:rotate-90">
+          <path d="m9 6 6 6-6 6" />
+        </svg>
+        {FIXES_TITLE} {count > 0 && <span className="tabular-nums">{count}</span>}
+      </summary>
+      <div className="mt-1.5 flex flex-col gap-1">{children}</div>
+    </details>
   );
 }
 
@@ -260,14 +298,13 @@ function CodeNoteBody({ note }: { note: ReleaseNote }) {
       <FeatureSection items={note.features} />
       <NoteSection title="변경 내용" items={note.changes} />
       {note.fixes.length > 0 && (
-        <section className="flex flex-col gap-1.5">
-          <h4 className="font-mono text-xs font-medium tracking-[0.08em] text-neutral-700">수정사항</h4>
+        <FixesDetails count={note.fixes.length}>
           <ul className="flex flex-col gap-1 text-sm text-neutral-800">
             {note.fixes.map((fix) => (
               <li key={fix}>· {fix}</li>
             ))}
           </ul>
-        </section>
+        </FixesDetails>
       )}
     </>
   );

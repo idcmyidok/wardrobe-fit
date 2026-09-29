@@ -25,6 +25,13 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "1.2.2",
+    date: "2026-09-29",
+    features: [],
+    changes: ["업데이트 노트의 수정사항은 접혀 있고, 눌러서 펼쳐 볼 수 있어요."],
+    fixes: [],
+  },
+  {
     version: "1.2.1",
     date: "2026-09-28",
     features: [],
