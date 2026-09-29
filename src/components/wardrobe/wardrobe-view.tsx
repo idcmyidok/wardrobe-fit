@@ -133,22 +133,7 @@ export function WardrobeView() {
             </span>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {!empty && (
-            <button
-              type="button"
-              aria-pressed={deleting}
-              onClick={() => (deleting ? exitDeleting() : setDeleting(true))}
-              className={cn(
-                "btn btn-ghost",
-                deleting
-                  ? "text-neutral-700"
-                  : "text-negative decoration-negative hover:text-negative hover:decoration-negative",
-              )}
-            >
-              {deleting ? "삭제 취소" : "옷 삭제"}
-            </button>
-          )}
+        <div className="flex flex-wrap gap-2">
           {empty ? (
             <button type="button" className={buttonClassName({ variant: "secondary" })} disabled>
               AI 구매 판단기
@@ -195,24 +180,34 @@ export function WardrobeView() {
       ) : (
         <>
           <WardrobeFilters value={filters} onChange={setFilters} options={options} />
-          <div role="group" aria-label="보기 방식" className="flex justify-end pt-4">
-            <div className="inline-flex border border-text">
-              {VIEW_OPTIONS.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  aria-pressed={view === option.id}
-                  disabled={deleting}
-                  onClick={() => saveView(option.id)}
-                  className={cn(
-                    "min-h-9 cursor-pointer px-3 text-sm disabled:cursor-not-allowed",
-                    view === option.id ? "bg-text text-bg" : "text-neutral-700 hover:bg-neutral-100 hover:text-text",
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
+          <div className="flex flex-col items-end gap-2 pt-4">
+            <div role="group" aria-label="보기 방식" className="flex">
+              <div className="inline-flex border border-text">
+                {VIEW_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    aria-pressed={view === option.id}
+                    disabled={deleting}
+                    onClick={() => saveView(option.id)}
+                    className={cn(
+                      "min-h-9 cursor-pointer px-3 text-sm disabled:cursor-not-allowed",
+                      view === option.id ? "bg-text text-bg" : "text-neutral-700 hover:bg-neutral-100 hover:text-text",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
+            <button
+              type="button"
+              aria-pressed={deleting}
+              onClick={() => (deleting ? exitDeleting() : setDeleting(true))}
+              className={cn("btn min-h-9 px-3 text-sm", deleting ? "btn-secondary" : "btn-danger")}
+            >
+              {deleting ? "삭제 취소" : "옷 삭제"}
+            </button>
           </div>
 
           {groups.map((group) => {
