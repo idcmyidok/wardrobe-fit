@@ -343,11 +343,8 @@ export const Q_TEXT: Record<string, QuestionText> = {
       mid: ["가운데를 골랐네요. 가장 무난한 선택입니다. 이 옷장답게요.", "과감하지도, 쩨쩨하지도 않은 선택입니다."],
       least: ["셋 중 가장 싼 걸 골랐네요. 계산이 빠르십니다.", "피해가 가장 적은 쪽을 정확하게 골랐습니다. 그래도 {priceWon}입니다."],
     },
-    roast: {
-      most: ["비싼 옷 셋 중에서 제일 비싼 걸 버리겠다고 하셨습니다. 대범해 보이지만, 사실 그게 가장 후회되는 소비였다는 고백으로 들립니다.", "제일 비싼 옷을 망설임 없이 내놓는 과감함. 그렇게 쉽게 버릴 옷을 그 가격에 들였다는 사실이 이 옷장의 진짜 문제입니다."],
-      mid: ["비싼 옷 셋 중 가운데를 버리겠다고 하셨습니다. 과감하지도 쩨쩨하지도 않은 선택, 옷장처럼 대답도 무난함 그 자체였습니다.", "역시 가운데 옷입니다. 끝까지 극단을 피하는 그 안전주의가 옷장 곳곳에서도 똑같이 보인다는 게 재밌습니다."],
-      least: ["비싼 옷 셋 중 제일 싼 걸 버리겠다고 하셨습니다. 계산은 빨랐지만, 그 옷도 결코 싸지 않았다는 사실은 잊으신 것 같습니다.", "버리라고 해도 손해부터 계산하는 사람이군요. 피해가 가장 적은 옷을 내놓는 그 계산력으로 어쩌다 이런 가격대의 옷장을 갖게 됐는지 궁금합니다."],
-    },
+    // 강제로 고르게 한 질문이라 결과 글에는 이 답의 문장을 넣지 않는다.
+    roast: {},
   },
   brand_best: {
     lead: ["브랜드 셋을 골라 왔습니다."],
@@ -1312,8 +1309,8 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
     const kinds = ["most", "mid", "least"];
     const options = top3.map((i) => ({ id: i.id, label: `${i.brandLabel} ${i.g.productName}`.trim(), photoId: i.hasPhoto ? i.id : undefined, amount: amountLabel(i.price!) }));
     const reactions = Object.fromEntries(top3.map((i, k) => [i.id, f(r.pick(tx.react[kinds[k]]), { priceWon: won(i.price!) })]));
-    const roast = roastMap(top3.map((i, k) => [i.id, roastOf(kinds[k], { priceWon: won(i.price!) })]));
-    return { ...base, options: r.shuffle(options), reactions, roast, scoreKey: Object.fromEntries(top3.map((i, k) => [i.id, kinds[k]])) };
+    // 강제로 고르게 한 질문이라 결과 글에는 이 답의 문장을 넣지 않는다(즉석 반응만).
+    return { ...base, options: r.shuffle(options), reactions, roast: {}, scoreKey: Object.fromEntries(top3.map((i, k) => [i.id, kinds[k]])) };
   }
   if (q.id === "brand_best") {
     const trio = brandTrio(a);

@@ -178,7 +178,7 @@ export function buildReport(
   if (enough) {
     if (hype >= 3.6) add({ id: "hype", side: "high", strength: clamp((hype - 3.3) / 1.2), value: "하이프 높음", vars: {} });
     else if (hype <= 2.2) add({ id: "hype", side: "low", strength: clamp((2.5 - hype) / 1.2), value: "하이프 낮음", vars: {} });
-    if (pop >= 4.2) add({ id: "popularity", side: "high", strength: clamp((pop - 4) / 1) * 0.6, value: "메이저 중심", vars: { pct: pct(known.filter((i) => i.brand!.pop >= 4).length, K) } });
+    if (pop >= 4.2) add({ id: "popularity", side: "high", strength: clamp((pop - 4) / 1) * 0.6, value: "메이저 중심", vars: { pct: pct(known.filter((i) => i.brand!.pop >= 5).length, K) } });
     else if (pop <= 2.4) add({ id: "popularity", side: "low", strength: clamp((2.7 - pop) / 1.2) * 0.8, value: "마이너 탐색", vars: {} });
     const founded = known.map((i) => i.brand!.founded).filter((y): y is number => y != null);
     const midYear = median(founded);
@@ -423,15 +423,15 @@ export function buildReport(
   const bonus = answerDeltas.reduce((sum, x) => sum + x.delta, 0);
   const totalScore = Math.max(0, Math.min(100, Math.round(wardrobe.score + bonus)));
   // 관리자 점수 풀이: 같은 항목(나이 구간별 등)은 합치고 판단 기준은 이어 붙인다.
-  const merged = new Map<string, { delta: number; why: string[] }>();
+  const merged = new Map<string, { delta: number; why: string[]; items: string[] }>();
   for (const p of wardrobe.parts) {
-    const m = merged.get(p.id) ?? { delta: 0, why: [] };
-    merged.set(p.id, { delta: m.delta + p.delta, why: [...m.why, p.why] });
+    const m = merged.get(p.id) ?? { delta: 0, why: [], items: [] };
+    merged.set(p.id, { delta: m.delta + p.delta, why: [...m.why, p.why], items: [...new Set([...m.items, ...(p.items ?? [])])] });
   }
   const scoreDetail = {
     base: Number((deltas.rules as Partial<ScoreRules> | undefined)?.base ?? SCORE_RULES.base),
     items: [
-      ...[...merged.entries()].map(([id, m]) => ({ label: SCORE_PART_NAME[id] ?? id, why: m.why.join(" / "), delta: Math.round(m.delta * 10) / 10 })),
+      ...[...merged.entries()].map(([id, m]) => ({ label: SCORE_PART_NAME[id] ?? id, why: m.why.join(" / "), delta: Math.round(m.delta * 10) / 10, ...(m.items.length ? { garments: m.items } : {}) })),
       ...answerDeltas,
     ].filter((x) => x.delta),
     total: totalScore,

@@ -234,13 +234,23 @@ function Photos({
     return url ? [{ id, url }] : [];
   });
   const urls = shown.map((x) => x.url);
+  const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; left: number } | null>(null);
+  const [edge, setEdge] = useState({ start: true, end: false });
+  const update = () => {
+    const el = ref.current;
+    if (el) setEdge({ start: el.scrollLeft <= 2, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 });
+  };
+  useEffect(update, [urls.length]);
   if (!urls.length) return null;
-  // 3장 이상이면 한 줄로 늘어놓고 옆으로 넘겨 본다(터치는 스크롤, 마우스는 끌기).
+  // 3장 이상이면 한 줄로 늘어놓고 양옆 화살표로 넘겨 본다(스크롤바는 숨김, 터치는 스크롤, 마우스는 끌기).
   const strip = urls.length > 2;
-  return (
+  const move = (dir: 1 | -1) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.8, behavior: "smooth" });
+  const box = (
     <div
-      className={strip ? "roast-photos roast-photos-strip mt-2" : "roast-photos mt-2"}
+      ref={ref}
+      className={strip ? "roast-photos roast-photos-strip" : "roast-photos mt-2"}
+      onScroll={strip ? update : undefined}
       onPointerDown={(e) => {
         if (!strip || e.pointerType !== "mouse") return;
         drag.current = { x: e.clientX, left: e.currentTarget.scrollLeft };
@@ -273,6 +283,22 @@ function Photos({
           <Fragment key={url}>{img}</Fragment>
         );
       })}
+    </div>
+  );
+  if (!strip) return box;
+  return (
+    <div className="roast-row mt-2">
+      {!edge.start && (
+        <button type="button" className="roast-row-btn roast-row-prev" aria-label="이전 사진" onClick={() => move(-1)}>
+          ‹
+        </button>
+      )}
+      {box}
+      {!edge.end && (
+        <button type="button" className="roast-row-btn roast-row-next" aria-label="다음 사진" onClick={() => move(1)}>
+          ›
+        </button>
+      )}
     </div>
   );
 }
@@ -743,6 +769,11 @@ function ScoreDetail({ detail }: { detail: NonNullable<RoastReport["scoreDetail"
             <span>
               {x.label}
               {x.why && <span className="text-neutral-700"> ({x.why})</span>}
+              {x.garments && (
+                <span className="mt-0.5 block text-xs text-neutral-700" data-testid="roast-score-garments">
+                  반영된 옷 {x.garments.length}벌: {x.garments.join(", ")}
+                </span>
+              )}
             </span>
             <span className="tabular-nums">{sign(x.delta)}</span>
           </li>
