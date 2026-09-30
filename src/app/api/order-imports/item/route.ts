@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const goodsNo = given ?? (await searchMusinsa({ brand, name })).best?.goodsNo ?? null;
   if (!goodsNo) return Response.json({ goodsNo: null, via: null, outcome: null, verdict: null } satisfies OrderItemResult);
 
-  const outcome = await runImport(supabase, user.id, `https://www.musinsa.com/products/${goodsNo}`, "wardrobe", undefined, { photosOnly: true });
+  const outcome = await runImport(supabase, user.id, `https://www.musinsa.com/products/${goodsNo}`, "wardrobe", undefined, { photosOnly: true, kind: "order" });
   if (outcome.product) outcome.product = { ...outcome.product, diagnostics: undefined };
   const verdict = outcome.product ? garmentFromCategoryPath(outcome.product.categoryPath) : null;
   return Response.json({ goodsNo, via: given ? "bookmark" : "search", outcome, verdict } satisfies OrderItemResult);
