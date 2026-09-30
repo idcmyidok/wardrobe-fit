@@ -6,7 +6,7 @@ import { buildScript, composeResult, outfitCounts } from "./compose";
 import { productFamilies } from "./keywords";
 import { QUESTIONS, Q_TEXT } from "./questions";
 import { QUIZ } from "./quiz";
-import { applyTextEdits, checkUnit, fromRows, toRows, unitsOf } from "./texts";
+import { applyTextEdits, checkUnit, DEFAULT_TEXTS, fromRows, toRows, unitsOf } from "./texts";
 import { fill, josa, MissingVar } from "./text";
 import { joinBubbles, splitSentences } from "@/lib/roast/bubbles";
 
@@ -166,6 +166,13 @@ describe("분석과 결과", () => {
       expect(says).not.toMatch(/최근 한 달 사이에 5벌을 샀습니다|30일 안에 5벌/);
     }
     expect(seen).toBeGreaterThan(0);
+  });
+  it("섹션 사이 혼잣말과 추임새는 한 번의 분석에서 같은 문장이 두 번 나오지 않는다", () => {
+    for (let seed = 0; seed < 60; seed++) {
+      const texts = buildScript(a, seed, null).script.steps.filter((s) => s.t === "say").map((s) => s.text);
+      const extra = texts.filter((t) => DEFAULT_TEXTS.common.MID_REMARKS.includes(t) || DEFAULT_TEXTS.common.THINKING.includes(t));
+      expect(new Set(extra).size).toBe(extra.length);
+    }
   });
   it("같은 seed면 같은 대화와 결과", () => {
     const p1 = buildScript(a, 42, "세현");
