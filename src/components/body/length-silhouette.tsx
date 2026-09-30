@@ -2,7 +2,7 @@
  * 총장 길이감을 눈으로 대충 보는 그림. 입력한 키에 맞춘 평균 성인 남자 실루엣(횡단보도 사람 기호 느낌)에,
  * 같은 총장의 반팔 티셔츠를 반투명으로 겹쳐 그려 티셔츠 뒤로 몸이 비쳐 보이게 한다.
  * 좌표는 cm 기준(세로 1 unit = 실제 1cm)이고, 몸의 위치는 키에 대한 비율(MALE_BODY_RATIO)로,
- * 티셔츠 밑단은 목 옆 어깨점(HPS)에서 실제 총장(cm)만큼 아래로 계산한다. 어깨·가슴 실측이 없으면 레귤러핏 평균 폭을 쓴다.
+ * 티셔츠 밑단은 목 옆 어깨점(HPS)에서 실제 총장(cm)만큼 아래로 계산한다. 옷 폭은 어깨·가슴 실측과 상관없이 레귤러핏 평균 폭이다.
  */
 export const MALE_BODY_RATIO = {
   chinY: 0.125,
@@ -42,16 +42,16 @@ export function getMaleBody(height: number) {
 /** 옷깃이 몸 어깨선보다 살짝 위에 걸치도록 옷 전체를 올리는 정도(키 비율). 총장은 그대로라 밑단도 같이 올라간다. */
 const SHIRT_LIFT = 0.014;
 
-/** 표준 레귤러핏 반팔 티셔츠. 실측(어깨·가슴)이 있으면 그 값을 쓴다. */
-export function getTshirt(height: number, length: number, shoulder?: number | null, chest?: number | null) {
+/** 표준 레귤러핏 반팔 티셔츠. 옷의 어깨·가슴 실측은 쓰지 않고 총장만 반영한다. */
+export function getTshirt(height: number, length: number) {
   const body = getMaleBody(height);
   const topY = body.shoulderY - height * SHIRT_LIFT;
   const hemY = topY + length; // 옷 맨 위(목 옆 어깨점)에서 실제 총장만큼 아래
   return {
     topY,
     hemY,
-    shoulderWidth: shoulder ?? body.shoulderWidth * 1.08,
-    chestWidth: chest ?? body.chestWidth * 1.06,
+    shoulderWidth: body.shoulderWidth * 1.08,
+    chestWidth: body.chestWidth * 1.06,
     sleeveLength: height * 0.12,
     diffFromCrotch: hemY - body.crotchY,
   };
@@ -70,14 +70,11 @@ const pts = (list: [number, number][]) => list.map(([x, y]) => `${x.toFixed(2)},
 export function LengthSilhouette({
   length,
   height,
-  shoulder,
-  chest,
 }: {
   length: number;
   height: number;
-  /** 어깨너비(cm). 없으면 레귤러핏 평균 */
+  /** 호출부 호환용. 옷의 어깨·가슴 실측은 그림에 쓰지 않는다. */
   shoulder?: number | null;
-  /** 가슴단면(cm). 없으면 레귤러핏 평균 */
   chest?: number | null;
 }) {
   const H = height;
@@ -85,7 +82,7 @@ export function LengthSilhouette({
   const cx = W / 2;
   const top = GROUND_Y - H; // 키가 클수록 머리가 위로 올라가고, 작으면 머리 위가 비어 보인다
   const b = getMaleBody(H);
-  const t = getTshirt(H, length, shoulder, chest);
+  const t = getTshirt(H, length);
 
   // ---- 사람(정면). 어깨 > 가슴 > 허리 < 골반으로 폭이 변한다 ----
   const sw = b.shoulderWidth / 2;
@@ -128,9 +125,10 @@ export function LengthSilhouette({
   const chestHalf = t.chestWidth / 2;
   const tipY = t.topY + H * 0.022; // 어깨 끝(몸 어깨보다 살짝 위로 띄운다)
   const collar = H * 0.04;
-  const sleeveOut = shHalf + H * 0.03; // 소매 바깥 끝 x
+  // 실측 어깨가 가슴보다 좁아도 소매가 몸판 밖으로 충분히 벌어지게 한다
+  const sleeveOut = Math.max(shHalf + H * 0.03, chestHalf + H * 0.05); // 소매 바깥 끝 x
   const sleeveOutY = tipY + t.sleeveLength * 0.8;
-  const hemInX = chestHalf + H * 0.02; // 소매 끝단 안쪽 x
+  const hemInX = Math.max(chestHalf + H * 0.012, sleeveOut - H * 0.075); // 소매 끝단 안쪽 x
   const hemInY = sleeveOutY + H * 0.04;
   const armpitY = b.armpitY + H * 0.01;
   const hemY = t.hemY;
