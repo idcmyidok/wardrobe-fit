@@ -244,7 +244,6 @@ export function LengthSilhouette({
             {/* 티셔츠: 반투명이라 뒤의 몸이 비친다 */}
             <path d={shirt} fill={SHIRT_FILL} fillOpacity={0.62} stroke={SHIRT_LINE} strokeWidth={stroke} strokeLinejoin="round" />
             <path d={collarLine} fill="none" stroke={SHIRT_LINE} strokeWidth={stroke * 2} strokeLinecap="round" />
-            <line x1={cx + chestHalf + H * 0.015} x2={W - 19} y1={hemY} y2={hemY} stroke="#111" strokeWidth={stroke} strokeDasharray={`${H * 0.02} ${H * 0.012}`} />
           </g>
         </svg>
       </div>
