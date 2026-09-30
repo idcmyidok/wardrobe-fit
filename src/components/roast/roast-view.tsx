@@ -227,7 +227,8 @@ function Photos({ ids, photoOf }: { ids?: string[]; photoOf: (id: string) => str
 
 function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: boolean; onStart: (name: string | null) => void }) {
   const copy = useContext(CopyContext);
-  const [typed, setTyped] = useState(skipIntro);
+  // 다시 분석할 때도 소개 문구부터 타이핑한다.
+  const [typed, setTyped] = useState(false);
   const [declined, setDeclined] = useState<string | null>(null);
   const [asking, setAsking] = useState(skipIntro);
   const [name, setName] = useState("");
@@ -235,9 +236,13 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
 
   return (
     <div className="roast-mono roast-log mt-8" aria-live="polite">
-      <p className="roast-ai">{skipIntro ? copy.INTRO : <Typed text={copy.INTRO} onDone={() => setTyped(true)} />}</p>
+      <p className="roast-ai"><Typed text={copy.INTRO} onDone={() => setTyped(true)} /></p>
       {!skipIntro && copy.CREDIT && <p className="roast-credit">{copy.CREDIT}</p>}
-      {typed && !enough && <p className="roast-ai">{tooFew(copy, clothes)}</p>}
+      {typed && !enough && (
+        <p className="roast-ai">
+          <Typed text={tooFew(copy, clothes)} />
+        </p>
+      )}
       {typed && enough && !asking && (
         <>
           <div className="flex flex-wrap gap-2">
@@ -260,7 +265,7 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
           )}
         </>
       )}
-      {asking && (
+      {typed && asking && (
         <form
           className="flex flex-col gap-2"
           onSubmit={(e) => {
