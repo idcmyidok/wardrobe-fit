@@ -83,7 +83,6 @@ const ANSWER_TO: Record<string, string[]> = {
   old_trust: ["heritage"],
 };
 /** 결과에 넣는 질문 답은 세 개까지 */
-const MAX_ANSWERS = 3;
 
 export function buildReport(
   a: Analysis,
@@ -100,7 +99,8 @@ export function buildReport(
   const items = a.items;
   const clothes = a.clothes;
   const now = a.now.getTime();
-  const photosOf = (list: Item[]) => list.filter((i) => i.hasPhoto).map((i) => i.id).slice(0, 20);
+  const L = R.layout;
+  const photosOf = (list: Item[]) => list.filter((i) => i.hasPhoto).map((i) => i.id).slice(0, L.count.photos);
   const diags: Diag[] = [];
   const add = (d: Omit<Diag, "key" | "photos"> & { key?: string; photos?: string[] }) => diags.push({ key: d.id, photos: [], ...d });
 
@@ -265,7 +265,7 @@ export function buildReport(
   const rank = (d: Diag) => d.strength + (tails.has(d.id) ? 1 : 0);
   const strong = withText.filter((d) => d.strength >= 0.3).sort((x, y) => rank(y) - rank(x));
   const weak = withText.filter((d) => d.strength < 0.3).sort((x, y) => rank(y) - rank(x));
-  const picked = [...strong, ...weak].slice(0, Math.max(3, Math.min(5, strong.length)));
+  const picked = [...strong, ...weak].slice(0, Math.min(L.count.diag_max, Math.max(L.count.diag_min, strong.length)));
 
   // 컬러 한마디: 무채색 비율로 한 문장, 눈에 띄는 경우가 있으면 한 문장 더
   let colorPoint: RoastReport["points"][number] | null = null;
@@ -351,7 +351,7 @@ export function buildReport(
   let extra: string | null = null;
   let used = 0;
   for (const q of asked) {
-    if (used >= MAX_ANSWERS || !answers[q.id]) continue;
+    if (used >= L.count.answers || !answers[q.id]) continue;
     const target = (ANSWER_TO[q.id] ?? []).find((id) => targets.has(id) && !pointAnswers.has(id));
     if (target) {
       const line = answerLine(q, quoted);
@@ -369,25 +369,33 @@ export function buildReport(
     return answer ? { ...p, answer } : p;
   };
 
-  const points: RoastReport["points"] = picked.flatMap((d) => {
+  // 문단은 자리(slot)별로 모았다가 "결과 구성"의 순서대로 잇는다.
+  type Point = RoastReport["points"][number];
+  const slot: Record<string, Point[]> = {};
+  const put = (id: string, p: Point | null) => {
+    if (p) (slot[id] ??= []).push(p);
+  };
+  const diagPoints: Point[] = picked.flatMap((d) => {
     const text = tryFill(r, texts[d.key][d.side] ?? [], d.vars);
     if (!text) return [];
     const full = [text, tails.get(d.id)].filter(Boolean).join(" ");
-    return [withAnswer({ id: d.id, ...splitLead(full), ...(d.photos.length ? { photos: d.photos.slice(0, 20) } : {}) })];
+    return [withAnswer({ id: d.id, ...splitLead(full), ...(d.photos.length ? { photos: d.photos.slice(0, L.count.photos) } : {}) })];
   });
-  if (colorPoint) points.splice(Math.min(1, points.length), 0, withAnswer(colorPoint));
-  if (fitPoint) points.splice(Math.min(colorPoint ? 2 : 1, points.length), 0, withAnswer(fitPoint));
-  if (walletPoint) points.push(walletPoint);
+  put("diag_lead", diagPoints[0] ?? null);
+  for (const p of diagPoints.slice(1)) put("diag", p);
+  put("color", colorPoint && withAnswer(colorPoint));
+  put("fit", fitPoint && withAnswer(fitPoint));
+  put("wallet", walletPoint);
   // 숨은 원석(자료에 없는 브랜드), 빈티지·구제, 나이 한마디(점수와 별개로 한 문단씩)
   const unknownN = branded.filter((i) => i.brandKind === "unknown").length;
   if (unknownN >= 3 && unknownN / branded.length >= 0.3) {
     const t = tryFill(r, R.GEM, { pct: pct(unknownN, branded.length), n: unknownN });
-    if (t) points.push({ id: "gem", ...splitLead(t), photos: photosOf(branded.filter((i) => i.brandKind === "unknown")) });
+    if (t) put("gem", { id: "gem", ...splitLead(t), photos: photosOf(branded.filter((i) => i.brandKind === "unknown")) });
   }
   const vintage = items.filter((i) => i.brandKind === "vintage");
   if (vintage.length >= 3) {
     const t = tryFill(r, R.VINTAGE, { n: vintage.length });
-    if (t) points.push({ id: "vintage", ...splitLead(t), photos: photosOf(vintage) });
+    if (t) put("vintage", { id: "vintage", ...splitLead(t), photos: photosOf(vintage) });
   }
   const facts = picked.flatMap((d) => {
     const t = d.side === "high" ? texts[d.key].fact : texts[d.key].factLow;
@@ -410,7 +418,7 @@ export function buildReport(
   const totalScore = Math.max(0, Math.min(100, Math.round(wardrobe.score + bonus)));
   if (wardrobe.age) {
     const t = tryFill(r, (R.age as Record<string, string[]>)[wardrobe.age.kind] ?? [], { age: wardrobe.age.age, pct: wardrobe.age.pct });
-    if (t) points.push({ id: "age", ...splitLead(t) });
+    if (t) put("age", { id: "age", ...splitLead(t) });
   }
   const band = (totalScore >= 90 ? "b90" : `b${Math.floor(totalScore / 10) * 10}`) as keyof ReportTexts["HEADLINE"];
 
@@ -442,7 +450,7 @@ export function buildReport(
   if (enough && country && countryShare >= 0.4 && !inPoints.has("country") && !inPoints.has("country_kr"))
     dnaCand.push([true, country === "한국" ? D.country_kr : D.country, { country, pct: pct(countryList.length, K) }]);
   if (shop && linked.length >= 5 && shopList.length / linked.length >= 0.4 && !inPoints.has("shop")) dnaCand.push([true, D.shop, { shop, pct: pct(shopList.length, linked.length) }]);
-  const dna = dnaCand.flatMap(([, list, v]) => tryFill(r, list, v) ?? []).slice(0, 5);
+  const dna = dnaCand.flatMap(([, list, v]) => tryFill(r, list, v) ?? []).slice(0, L.count.dna_max);
 
   // 캐릭터(6): 조건이 맞는 것 중 뚜렷한 순서로 세 개. "> " 문장에 들어간다.
   const C = R.character as Record<string, { name: string; who: string }>;
@@ -480,6 +488,18 @@ export function buildReport(
       return nm && who ? [{ name: nm, who }] : [];
     });
 
+  // 마지막 문단: 따로 붙일 곳이 없는 질문 답, 없으면 가장 비싼 항목
+  const top = a.patterns.find((p) => p.id === "top_item");
+  if (extra) put("last", { id: "answer", ...splitLead(extra) });
+  else if (top) {
+    const t = tryFill(r, R.suspicious.top_item, { ...top.stats, priceWon: won(Number(top.stats.price)) });
+    if (t) put("last", { id: "top_item", ...splitLead(t), photos: top.garmentIds.filter((id) => items.find((i) => i.id === id)?.hasPhoto) });
+  }
+
+  const pointOrder = Object.entries(L.point_order).sort((x, y) => x[1] - y[1]).map(([k]) => k);
+  const pointShown = (k: string) => (L.point_show as Record<string, number>)[k] !== 0;
+  const points = pointOrder.filter(pointShown).flatMap((k) => slot[k] ?? []);
+
   // 첫 줄(총점 평가)과 "> " 문장들
   const owner = name ? `${name}님의` : "당신의";
   const headline = tryFill(r, R.HEADLINE[band], { owner, score: totalScore }) ?? `${owner} 옷장은 ${totalScore}점입니다.`;
@@ -494,7 +514,7 @@ export function buildReport(
   // 한 줄뿐이면 세 벌 이상일 때만 보여 준다.
   const lists: RoastReport["lists"] = [];
   const listOf = (title: string, rows: [string, Item[]][]) => {
-    const top = rows.filter(([, l]) => l.length >= 2).slice(0, 5);
+    const top = rows.filter(([, l]) => l.length >= 2).slice(0, L.count.list_rows);
     if (top.length >= 2 || top[0]?.[1].length >= 3) lists.push({ title, items: top.map(([k, l]) => `${k} ${l.length}벌`) });
   };
   listOf(r.pick(R.LIST_DUP), countBy(clothes.filter((i) => i.sub && i.color), (i) => `${i.color} ${i.subName ?? "옷"}`));
@@ -506,21 +526,25 @@ export function buildReport(
     text: r.pick(R.TOTAL[band]),
   };
 
-  // 마지막 문단: 따로 붙일 곳이 없는 질문 답, 없으면 가장 비싼 항목
-  const top = a.patterns.find((p) => p.id === "top_item");
-  if (extra) points.push({ id: "answer", ...splitLead(extra) });
-  else if (top) {
-    const t = tryFill(r, R.suspicious.top_item, { ...top.stats, priceWon: won(Number(top.stats.price)) });
-    if (t) points.push({ id: "top_item", ...splitLead(t), photos: top.garmentIds.filter((id) => items.find((i) => i.id === id)?.hasPhoto) });
-  }
-
   const notes: string[] = [];
   if (K && K < items.length) {
     const note = tryFill(r, R.BASIS_BRAND, { n: K });
     if (note) notes.push(note);
   }
 
-  return { headline, intro, lists, total, points, dnaLead: r.pick(R.DNA_LEAD), dna, notes };
+  const show = (k: string) => (L.show as Record<string, number>)[k] !== 0;
+  const order = Object.entries(L.order).sort((x, y) => x[1] - y[1]).map(([k]) => k);
+  return {
+    headline,
+    intro: show("intro") ? intro : [],
+    lists: show("lists") ? lists : [],
+    total,
+    points,
+    dnaLead: r.pick(R.DNA_LEAD),
+    dna: show("dna") ? dna : [],
+    notes: show("notes") ? notes : [],
+    order,
+  };
 }
 
 /** 첫 문장(굵게)과 나머지로 나눈다. */

@@ -10,6 +10,17 @@ import "server-only";
  */
 
 export const REPORT_TEXT = {
+  /**
+   * 결과 페이지 구성(관리자 "결과 구성" 탭). 첫 줄(점수 평가)은 항상 맨 위.
+   * order: 작은 숫자가 위. show: 1이면 보이고 0이면 뺀다. count: 개수.
+   */
+  layout: {
+    order: { intro: 1, lists: 2, total: 3, points: 4, dna: 5, notes: 6 },
+    show: { intro: 1, lists: 1, dna: 1, notes: 1 },
+    point_order: { diag_lead: 1, color: 2, fit: 3, diag: 4, wallet: 5, gem: 6, vintage: 7, age: 8, last: 9 },
+    point_show: { color: 1, fit: 1, wallet: 1, gem: 1, vintage: 1, age: 1, last: 1 },
+    count: { diag_min: 3, diag_max: 5, dna_max: 5, list_rows: 5, photos: 20, answers: 3 },
+  },
   /** 한 줄 정의: 총점 구간별(b90 = 90점 이상, b80 = 80~89점 …) */
   HEADLINE: {
     b90: ["{owner} 옷장은 새로 산 흰 양말만큼만 별로네요."],

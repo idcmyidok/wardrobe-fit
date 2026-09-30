@@ -191,10 +191,41 @@ export function varLabel(group: string, key: string): string {
 /** 편집 화면의 묶음(패턴 하나, 질문 하나 등). 퀴즈는 편집 화면이 따로 모은다. */
 export interface TextGroupMeta {
   id: string;
-  kind: "screen" | "common" | "lines" | "questions" | "report" | "score";
+  kind: "screen" | "common" | "lines" | "questions" | "report" | "score" | "layout";
   title: string;
   when: string;
 }
+
+/** 결과 구성 탭: 섹션·문단 이름과 내용이 무엇으로 정해지는지 */
+export const LAYOUT_SECTION: Record<string, { name: string; how: string }> = {
+  intro: { name: "\"> \" 소개 문장", how: "뚜렷한 진단 두 개와 캐릭터(조건이 맞는 것 중 뚜렷한 순서로 셋)로 자동으로 정해집니다." },
+  lists: { name: "목록 두 개", how: "많이 가진 옷(세부분류 + 색)과 많이 산 브랜드, 두 벌 이상인 것만. 제목은 고정 문구입니다." },
+  total: { name: "총점", how: "옷장 점수(점수 탭 기준) + 질문·퀴즈 답의 증감. 한마디는 총점 구간별 문장에서 고릅니다." },
+  points: { name: "진단 문단들", how: "아래 \"진단 문단 순서\"대로 이어집니다." },
+  dna: { name: "옷장 DNA", how: "스타일·포지션·국가·구매처 등 해당하는 것 중에서, 진단 문단에 이미 나온 주제는 빼고 고릅니다." },
+  notes: { name: "안내 문구", how: "브랜드 정보가 있는 옷 수 같은 기준 안내입니다." },
+};
+export const LAYOUT_POINT: Record<string, { name: string; how: string }> = {
+  diag_lead: { name: "첫 진단", how: "옷장 패턴 중 가장 뚜렷한 것 하나" },
+  color: { name: "컬러 한마디", how: "색을 적은 옷 5벌 이상(데님 제외)일 때 무채색 비율로" },
+  fit: { name: "핏 한마디", how: "핏을 아는 옷 5벌 이상일 때 주력 핏으로" },
+  diag: { name: "나머지 진단", how: "뚜렷한 순서로, 진단 문단 수만큼" },
+  wallet: { name: "지갑(비싼 옷 vs 싼 옷 브랜드)", how: "가격과 브랜드 정보가 있는 옷 8벌 이상" },
+  gem: { name: "숨은 원석", how: "브랜드 자료에 없는 브랜드가 30% 이상(3벌 이상)" },
+  vintage: { name: "빈티지·구제", how: "브랜드를 빈티지·구제로 적은 옷 3벌 이상" },
+  age: { name: "나이 한마디", how: "시작할 때 나이를 적었을 때" },
+  last: { name: "마지막 문단", how: "따로 붙일 곳이 없는 질문 답, 없으면 가장 비싼 옷" },
+};
+const LAYOUT_COUNT: Record<string, string> = {
+  diag_min: "진단 문단 최소 개수",
+  diag_max: "진단 문단 최대 개수",
+  dna_max: "옷장 DNA 문장 수",
+  list_rows: "목록 줄 수",
+  photos: "문단마다 사진 줄의 사진 수",
+  answers: "문단에 붙는 질문 답 수",
+};
+/** 결과 구성 탭에 같이 보여 주는 고정 문구(결과 페이지 탭과 같은 값) */
+const LAYOUT_FIXED = ["LIST_DUP", "LIST_BRAND", "TOTAL_LEAD", "INTRO_MORE", "DNA_LEAD", "BASIS_BRAND"];
 
 const SUSPICIOUS_NAME: Record<string, string> = {
   top_item: "다른 문단에 걸리는 게 없을 때: 가장 비싼 항목",
@@ -377,6 +408,12 @@ export function textGroups(): TextGroupMeta[] {
   for (const [k, name] of Object.entries(REPORT_NAME)) out.push({ id: `report.${k}`, kind: "report", title: name, when: "" });
   for (const [k, v] of Object.entries(REPORT_TEXT.diag)) out.push({ id: `report.diag.${k}`, kind: "report", title: `진단: ${v.title}`, when: k });
   for (const [k, v] of Object.entries(REPORT_TEXT.character)) out.push({ id: `report.character.${k}`, kind: "report", title: `캐릭터: ${v.name}`, when: k });
+  out.push({ id: "report.layout.order", kind: "layout", title: "섹션 순서", when: "작은 숫자가 위(1~20). 첫 줄(점수 평가)은 항상 맨 위입니다." });
+  out.push({ id: "report.layout.show", kind: "layout", title: "섹션 켜기·끄기", when: "1이면 보이고 0이면 뺍니다." });
+  out.push({ id: "report.layout.point_order", kind: "layout", title: "진단 문단 순서", when: "작은 숫자가 위(1~20). 조건이 안 맞는 문단은 저절로 빠집니다." });
+  out.push({ id: "report.layout.point_show", kind: "layout", title: "진단 문단 켜기·끄기", when: "1이면 보이고 0이면 뺍니다." });
+  out.push({ id: "report.layout.count", kind: "layout", title: "개수", when: "0~40" });
+  for (const k of LAYOUT_FIXED) out.push({ id: `report.${k}`, kind: "layout", title: `고정 문구: ${REPORT_NAME[k]}`, when: "결과 페이지 탭의 같은 문구와 함께 바뀝니다." });
   out.push({ id: "score.rules", kind: "score", title: "총 옷장 점수 기준", when: "기본 점수에서 더하고 빼는 기준(비율은 %, 금액은 만 원, 감점도 양수로)" });
   out.push({ id: "score.age", kind: "score", title: "나이에 맞는 옷", when: "옷을 산 때 나이 구간별 기준(비율은 %, 감점도 양수로)" });
   for (const qid of Object.keys(SCORE_DELTAS).filter((k) => k !== "rules" && k !== "age"))
@@ -406,6 +443,11 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
   }
   if (p[0] === "report") {
     const last = p[p.length - 1];
+    if (p[1] === "layout") {
+      if (p[2] === "order" || p[2] === "show") return LAYOUT_SECTION[last]?.name ?? last;
+      if (p[2] === "point_order" || p[2] === "point_show") return LAYOUT_POINT[last]?.name ?? last;
+      return LAYOUT_COUNT[last] ?? last;
+    }
     if (p[1] === "diag") {
       if (last === "title") return "이름(관리용)";
       if (last === "fact") return "\"> \" 첫 문장에 들어가는 짧은 말";

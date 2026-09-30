@@ -89,7 +89,7 @@ export function unitAt(key: string): { kind: UnitKind; base: UnitValue | undefin
 /** 문장이 속한 묶음(같은 패턴·질문·퀴즈·공통 항목). 예: "lines.black_bias" */
 export function groupOf(key: string): string {
   // 결과 페이지의 진단·점수·캐릭터는 항목마다 따로 묶는다(예: "report.diag.color").
-  if (/^report\.(diag|character)\./.test(key)) return key.split(".").slice(0, 3).join(".");
+  if (/^report\.(diag|character|layout)\./.test(key)) return key.split(".").slice(0, 3).join(".");
   return key.split(".").slice(0, 2).join(".");
 }
 
@@ -134,6 +134,13 @@ function minItems(key: string, base: UnitValue | undefined): number {
 export function checkUnit(key: string, value: unknown): { value: UnitValue } | { error: string } {
   const unit = unitAt(key);
   if (!unit) return { error: "없는 문장입니다." };
+  if (unit.kind === "number" && key.startsWith("report.layout.")) {
+    // 결과 구성: 순서 1~20, 켜기 0·1, 개수 0~40
+    const n = typeof value === "number" ? value : Number(value);
+    const [min, max] = /\.(show|point_show)\./.test(key) ? [0, 1] : /\.(order|point_order)\./.test(key) ? [1, 20] : [0, 40];
+    const hint = max === 1 ? "1(보임) 또는 0(뺌)으로 써 주세요." : `${min}부터 ${max}까지 정수로 써 주세요.`;
+    return Number.isInteger(n) && n >= min && n <= max ? { value: n } : { error: hint };
+  }
   if (unit.kind === "number" && (key.startsWith("score.rules.") || key.startsWith("score.age."))) {
     const n = typeof value === "number" ? value : Number(value);
     const max = key.endsWith("_year") ? 2100 : 100;

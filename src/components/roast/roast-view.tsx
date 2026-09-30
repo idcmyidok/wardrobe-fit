@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- 비공개 저장소의 임시 주소라 next/image 최적화를 쓰지 않는다(다른 화면과 같음). */
-import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { UsageNote } from "@/components/usage/usage-note";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { buttonClassName } from "@/components/ui/button";
@@ -657,56 +657,67 @@ function ResultView({
 }
 
 /** 결과 페이지: How Bad Is Your Spotify처럼 글 위주(총점 평가 → "> " 문장 → 목록 → 총점 → 진단 문단·사진 줄 → DNA) */
+const REPORT_ORDER = ["intro", "lists", "total", "points", "dna", "notes"];
+
 function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string) => string | null }) {
+  // 첫 줄은 항상 맨 위, 나머지는 관리자 "결과 구성"의 순서(예전 결과는 기본 순서)
+  const order = report.order?.length ? report.order : REPORT_ORDER;
+  const sections: Record<string, ReactNode> = {
+    intro: report.intro.length > 0 && (
+      <div className="flex flex-col gap-1">
+        {report.intro.map((t, i) => (
+          <p key={i}>
+            <span className="roast-prompt">&gt;</span>
+            {t}
+          </p>
+        ))}
+      </div>
+    ),
+    lists: report.lists.map((l) => (
+      <div key={l.title}>
+        <p>
+          <b>{l.title}</b>
+        </p>
+        <ul className="roast-list">
+          {l.items.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+      </div>
+    )),
+    total: (
+      <p>
+        <b>{report.total.lead}</b> {report.total.text}
+      </p>
+    ),
+    points: report.points.map((p) => (
+      <div key={p.id}>
+        <p>
+          <b>{p.lead}</b> {p.text}
+        </p>
+        {p.answer && <p className="roast-answer">{p.answer}</p>}
+        <PhotoRow ids={p.photos} photoOf={photoOf} />
+      </div>
+    )),
+    dna: report.dna.length > 0 && (
+      <p>
+        <b>{report.dnaLead}</b> {report.dna.join(" ")}
+      </p>
+    ),
+    notes: report.notes.map((n) => (
+      <p key={n} className="text-sm text-neutral-700">
+        {n}
+      </p>
+    )),
+  };
   return (
     <div className="roast-report">
       <h2 className="roast-headline">
         <span className="roast-prompt">&gt;</span>
         {report.headline}
       </h2>
-      {report.intro.length > 0 && (
-        <div className="flex flex-col gap-1">
-          {report.intro.map((t, i) => (
-            <p key={i}>
-              <span className="roast-prompt">&gt;</span>
-              {t}
-            </p>
-          ))}
-        </div>
-      )}
-      {report.lists.map((l) => (
-        <div key={l.title}>
-          <p>
-            <b>{l.title}</b>
-          </p>
-          <ul className="roast-list">
-            {l.items.map((t) => (
-              <li key={t}>{t}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
-      <p>
-        <b>{report.total.lead}</b> {report.total.text}
-      </p>
-      {report.points.map((p) => (
-        <div key={p.id}>
-          <p>
-            <b>{p.lead}</b> {p.text}
-          </p>
-          {p.answer && <p className="roast-answer">{p.answer}</p>}
-          <PhotoRow ids={p.photos} photoOf={photoOf} />
-        </div>
-      ))}
-      {report.dna.length > 0 && (
-        <p>
-          <b>{report.dnaLead}</b> {report.dna.join(" ")}
-        </p>
-      )}
-      {report.notes.map((n) => (
-        <p key={n} className="text-sm text-neutral-700">
-          {n}
-        </p>
+      {order.map((k) => (
+        <Fragment key={k}>{sections[k]}</Fragment>
       ))}
     </div>
   );

@@ -102,4 +102,12 @@ describe("옷장 점수(점수 계획서)", () => {
     expect(scoreWardrobe(big, { age: null }).parts.find((p) => p.id === "fit_big")?.delta).toBe(-2);
     expect(buildReport(trim, null, 1, REPORT_TEXT).points.map((p) => p.id)).toContain("fit");
   });
+
+  it("결과 구성: 섹션 순서와 문단 켜기·끄기를 따른다", () => {
+    const a = analyze(Array.from({ length: 10 }, (_, i) => g(i, { userFit: "slim" })), null, 1360, now);
+    const layout = { ...REPORT_TEXT.layout, order: { ...REPORT_TEXT.layout.order, dna: 0 }, point_show: { ...REPORT_TEXT.layout.point_show, fit: 0 } };
+    const r = buildReport(a, null, 1, { ...REPORT_TEXT, layout });
+    expect(r.order?.[0]).toBe("dna");
+    expect(r.points.map((p) => p.id)).not.toContain("fit");
+  });
 });

@@ -72,6 +72,8 @@ export interface RoastReport {
   dna: string[];
   /** 기준 안내(예: 브랜드 정보가 있는 옷 수) */
   notes: string[];
+  /** 첫 줄 아래 섹션 순서(관리자 "결과 구성"). 없으면 intro·lists·total·points·dna·notes */
+  order?: string[];
 }
 
 /** 결과에 복사해 두는 관련 옷 정보(옷을 지워도 문장은 남는다) */

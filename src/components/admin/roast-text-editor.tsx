@@ -21,7 +21,7 @@ export interface EditorUnit {
 
 export interface EditorGroup {
   id: string;
-  kind: "screen" | "common" | "lines" | "questions" | "report" | "score";
+  kind: "screen" | "common" | "lines" | "questions" | "report" | "score" | "layout";
   title: string;
   when: string;
   vars: { key: string; label: string }[];
@@ -54,6 +54,7 @@ const KINDS: { id: Kind; label: string }[] = [
   { id: "common", label: "공통 문구" },
   { id: "screen", label: "화면·결과 안내" },
   { id: "report", label: "결과 페이지" },
+  { id: "layout", label: "결과 구성" },
   { id: "score", label: "점수" },
 ];
 
@@ -92,7 +93,12 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
  * 문장 목록은 항목을 더하거나 뺄 수 있고, 퀴즈는 새로 만들거나 지울 수 있다.
  * {자리}는 그 묶음에서 쓸 수 있는 것만 받는다(서버에서 한 번 더 확인).
  */
-export function RoastTextEditor({ groups, quizzes, brands }: { groups: EditorGroup[]; quizzes: EditorQuiz[]; brands: string[] }) {
+export interface LayoutInfo {
+  sections: Record<string, { name: string; how: string }>;
+  points: Record<string, { name: string; how: string }>;
+}
+
+export function RoastTextEditor({ groups, quizzes, brands, layout }: { groups: EditorGroup[]; quizzes: EditorQuiz[]; brands: string[]; layout: LayoutInfo }) {
   const [kind, setKind] = useState<Kind>("lines");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -204,6 +210,8 @@ export function RoastTextEditor({ groups, quizzes, brands }: { groups: EditorGro
           </ul>
         </>
       ) : (
+        <>
+        {kind === "layout" && !q && <LayoutOverview layout={layout} groups={groups} edited={edited} />}
         <ul className="flex flex-col">
           {shown.map((g) => {
             const isOpen = open.has(g.id) || Boolean(q);
@@ -237,8 +245,48 @@ export function RoastTextEditor({ groups, quizzes, brands }: { groups: EditorGro
           })}
           {!shown.length && <li className="py-8 text-base text-neutral-700">찾는 문장이 없습니다.</li>}
         </ul>
+        </>
       )}
     </main>
+  );
+}
+
+/** 결과 페이지가 지금 설정으로 어떤 순서로 나오는지 한눈에 보여 준다(순서·켜기는 아래 칸에서 고친다). */
+function LayoutOverview({ layout, groups, edited }: { layout: LayoutInfo; groups: EditorGroup[]; edited: Record<string, EditorUnit["edited"]> }) {
+  const valueOf = (key: string) => {
+    for (const g of groups) for (const u of g.units) if (u.key === key) return Number(edited[key] ?? u.base);
+    return undefined;
+  };
+  const sorted = (names: Record<string, unknown>, orderKey: string) =>
+    Object.keys(names)
+      .map((k) => ({ k, n: valueOf(`report.layout.${orderKey}.${k}`) ?? 99 }))
+      .sort((a, b) => a.n - b.n)
+      .map((x) => x.k);
+  const on = (showKey: string, k: string) => valueOf(`report.layout.${showKey}.${k}`) !== 0;
+  return (
+    <section className="flex flex-col gap-2 border-b border-neutral-300 py-4" aria-label="지금 결과 페이지 구성">
+      <p className="text-base font-medium">지금 결과 페이지 구성</p>
+      <p className="text-sm text-neutral-700">내용 자체는 옷장 패턴과 질문 답으로 자동으로 정해집니다. 여기서는 순서·켜기·개수와 고정 문구만 고칩니다.</p>
+      <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm">
+        <li>
+          <b>첫 줄: 점수 구간 문장</b> <span className="text-neutral-700">총점이 속한 10점 구간의 문장(결과 페이지 탭)</span>
+        </li>
+        {sorted(layout.sections, "order").map((k) => (
+          <li key={k} className={on("show", k) ? "" : "text-neutral-500 line-through"}>
+            <b>{layout.sections[k].name}</b> <span className="text-neutral-700">{layout.sections[k].how}</span>
+            {k === "points" && (
+              <ol className="mt-1 flex list-[lower-alpha] flex-col gap-0.5 pl-5">
+                {sorted(layout.points, "point_order").map((p) => (
+                  <li key={p} className={on("point_show", p) ? "" : "text-neutral-500 line-through"}>
+                    {layout.points[p].name} <span className="text-neutral-700">· {layout.points[p].how}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 
@@ -285,7 +333,7 @@ function NumberField({ unit, edited, onSaved }: { unit: EditorUnit; edited: Edit
     <div className="flex flex-wrap items-center gap-2">
       <label className="flex min-w-48 items-center gap-2 text-sm">
         <span className="flex-1">{unit.label}</span>
-        <Input type="number" min={-20} max={20} step={1} className="w-20" value={value} onChange={(e) => setValue(e.target.value)} aria-label={`${unit.label} 점수`} />
+        <Input type="number" step={1} className="w-20" value={value} onChange={(e) => setValue(e.target.value)} aria-label={unit.key.startsWith("report.layout.") ? unit.label : `${unit.label} 점수`} />
       </label>
       {edited != null && <span className="text-sm text-neutral-700">고침(원래 {String(unit.base)})</span>}
       <Button size="sm" disabled={pending || value === current} onClick={save}>

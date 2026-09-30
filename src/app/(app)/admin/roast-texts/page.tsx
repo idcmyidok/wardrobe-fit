@@ -2,7 +2,7 @@ import { RoastTextEditor, type EditorGroup, type EditorQuiz } from "@/components
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/server/admin/guard";
 import { BRANDS } from "@/server/roast/brands";
-import { fieldLabel, textGroups, varLabel } from "@/server/roast/meta";
+import { fieldLabel, LAYOUT_POINT, LAYOUT_SECTION, textGroups, varLabel } from "@/server/roast/meta";
 import { getRoastTextEdits } from "@/server/roast/queries";
 import { Q_TEXT } from "@/server/roast/questions";
 import { allowedVars, applyTextEdits, CUSTOM_QUIZ_ID, DEFAULT_TEXTS, fromRows, groupOf, unitsOf } from "@/server/roast/texts";
@@ -35,5 +35,5 @@ export default async function RoastTextsPage() {
   ].map((q) => ({ ...q, edited: q.builtIn ? JSON.stringify(q.value) !== JSON.stringify(q.base) || q.deleted : true }));
   const brands = BRANDS.map((b) => b.name).sort((a, b) => a.localeCompare(b));
 
-  return <RoastTextEditor groups={groups} quizzes={quizzes} brands={brands} />;
+  return <RoastTextEditor groups={groups} quizzes={quizzes} brands={brands} layout={{ sections: LAYOUT_SECTION, points: LAYOUT_POINT }} />;
 }
