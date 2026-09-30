@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { Garment } from "@/lib/types/domain";
 import { analyze, BASIC_TEE_SKIP } from "./analyze";
 import { findBand } from "./bands";
-import { brandGroups, findBrand } from "./brands";
+import { brandGroups, findBrand, musinsaLikesCut } from "./brands";
 import { buildScript } from "./compose";
 import { QUIZ } from "./quiz";
+import { scoreWardrobe } from "./score";
 
 const now = new Date("2026-09-30T12:00:00+09:00");
 const g = (i: number, over: Partial<Garment> = {}): Garment =>
@@ -96,5 +97,36 @@ describe("새로 넣은 브랜드", () => {
     expect(findBrand("YEEZY GAP")?.name).toBe("Yeezy Gap");
     expect(findBrand("트래비스 스캇")?.name).toBe("Cactus Jack");
     expect(findBrand("INNIR")?.name).toBe("INNIR");
+  });
+});
+
+describe("구매 시기별 변화", () => {
+  const dated = (brand: string, date: string, n: number, from: number) => Array.from({ length: n }, (_, i) => g(from + i, { brand, purchasedOn: date }));
+  const find = (list: Garment[], id: string) => analyze(list, null, 1360, now).patterns.find((p) => p.id === id);
+  it("주 스타일이 바뀌고 새 스타일 비중이 30%p 이상 늘면 taste_shift", () => {
+    const p = find([...dated("Stüssy", "2025-03-10", 3, 0), ...dated("Lemaire", "2026-03-10", 3, 10)], "taste_shift");
+    expect(p?.stats).toMatchObject({ from: "2025년 상반기", to: "2026년 상반기" });
+  });
+  it("스타일은 같고 가격대만 달라지면 price_shift", () => {
+    const list = [...dated("UNIQLO", "2025-03-10", 3, 0), ...dated("COS", "2026-03-10", 3, 10)];
+    expect(find(list, "taste_shift")).toBeUndefined();
+    expect(find(list, "price_shift")?.stats.dir).toBe("올랐");
+  });
+  it("3벌 미만인 구간은 쓰지 않는다", () => {
+    expect(find([...dated("Stüssy", "2025-03-10", 2, 0), ...dated("Lemaire", "2026-03-10", 3, 10)], "taste_shift")).toBeUndefined();
+  });
+});
+
+describe("무신사 좋아요 상위 기준", () => {
+  it("상위 %를 0으로 하면 기준이 꺼진다", () => {
+    expect(musinsaLikesCut(0)).toBeNull();
+    expect(musinsaLikesCut(30)!).toBeGreaterThan(0);
+    expect(musinsaLikesCut(10)!).toBeGreaterThan(musinsaLikesCut(30)!);
+  });
+  it("좋아요 상위 브랜드가 많으면 무신사 쏠림 감점이 붙고, 기준을 끄면 안 붙는다", () => {
+    const w = Array.from({ length: 10 }, (_, i) => g(i, { brand: "Carhartt WIP" }));
+    const a = analyze(w, null, 1360, now);
+    expect(scoreWardrobe(a, { age: null }).parts.find((p) => p.id === "musinsa")).toBeDefined();
+    expect(scoreWardrobe(a, { age: null, rules: { musinsa_likes_top: 0 } }).parts.find((p) => p.id === "musinsa")).toBeUndefined();
   });
 });

@@ -136,6 +136,16 @@ export const SCORE_RULES = {
   musinsa_max: 9,
   /** 26세 이하에 산 옷은 무신사 인기 브랜드 쏠림에서 1/musinsa_young_div만 센다 */
   musinsa_young_div: 3,
+  /** 무신사 좋아요 상위 이 %에 드는 브랜드도 무신사풍으로 센다(0이면 끔) */
+  musinsa_likes_top: 30,
+  /** 구매 시기별 변화: 반기 구간에 이 벌 수 이상인 구간만 쓰고, 가장 오래된 구간과 최근 구간을 비교한다 */
+  shift_min_n: 3,
+  /** 주 스타일이 바뀌었다고 보는 비중 증가(%p) */
+  shift_style_pp: 30,
+  /** 가격대가 바뀌었다고 보는 평균 가격 레벨 차이(레벨은 1~6) */
+  shift_price: 1,
+  /** 변화가 있을 때 점수에 더할 값(기본 0: 문장만) */
+  shift_score: 0,
   trendy_pct: 50,
   trendy: 5,
   dup_each: 3,

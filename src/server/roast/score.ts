@@ -1,7 +1,8 @@
 import "server-only";
 import { FOUR_SEASONS, wearsInSeason } from "@/lib/constants/seasons";
 import { colorCounted, fitSummary, type Analysis, type Item } from "./analyze";
-import { brandLabels, MUSINSA_POPULAR } from "./brands";
+import { brandLabels, MUSINSA_POPULAR, musinsaLikesCut } from "./brands";
+import { detectTasteShift } from "./shift";
 import { AGE_BANDS, AGE_RULES, SCORE_RULES, type ScoreRules } from "./score-deltas";
 
 /**
@@ -38,7 +39,6 @@ export interface ScoreOptions {
   ageRules?: Record<string, Record<string, number>>;
 }
 
-const isMusinsa = (i: Item) => brandLabels(i.g.brand).includes(MUSINSA_POPULAR) && !i.groups.includes("mass");
 const isDesigner = (i: Item) => i.groups.some((g) => g === "designer" || g === "luxury" || g === "contemporary");
 const isStreet = (i: Item) => i.groups.includes("street") || (i.brand?.hype ?? 0) >= 4;
 const isMature = (i: Item) => i.groups.includes("contemporary") || (i.brand?.heritage ?? 0) >= 4 || (i.brand?.formal ?? 0) >= 3.5;
@@ -68,6 +68,10 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
   const upTo = (s: number, fullPct: number, max: number) => Math.min(max, (s * 100 * max) / Math.max(fullPct, 1));
   const over = (s: number, fromPct: number, per10: number, max: number) => Math.min(max, (Math.max(0, s * 100 - fromPct) / 10) * per10);
   const musinsaFactor = opts.musinsaLinkOnly ? 0.5 : 1;
+  // 무신사풍: 무신사 인기 태그, 또는 무신사 좋아요 상위 musinsa_likes_top%(좋아요 없는 브랜드는 미입점이라 뺀다). SPA·대중 브랜드는 제외.
+  const likesCut = musinsaLikesCut(R.musinsa_likes_top);
+  const isMusinsa = (i: Item) =>
+    !i.groups.includes("mass") && (brandLabels(i.g.brand).includes(MUSINSA_POPULAR) || (likesCut != null && (i.brand?.likes ?? 0) >= likesCut));
 
   const known = items.filter((i) => i.brand);
   const enough = known.length >= 5;
@@ -211,10 +215,14 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
     add(
       "musinsa",
       -over(m, R.musinsa_from, R.musinsa_per10, R.musinsa_max) * musinsaFactor,
-      `무신사 인기 브랜드 ${P(m)} (${R.musinsa_from}% 넘는 10%마다 −${R.musinsa_per10}, 최대 −${R.musinsa_max}${opts.age != null ? `, 26세 이하에 산 옷은 1/${R.musinsa_young_div}로 셈` : ""}${musinsaFactor < 1 ? ", 링크만 무신사라고 답해 절반" : ""})`,
+      `무신사풍 브랜드(인기 태그${likesCut != null ? `·좋아요 상위 ${R.musinsa_likes_top}%(${likesCut.toLocaleString()} 이상)` : ""}) ${P(m)} (${R.musinsa_from}% 넘는 10%마다 −${R.musinsa_per10}, 최대 −${R.musinsa_max}${opts.age != null ? `, 26세 이하에 산 옷은 1/${R.musinsa_young_div}로 셈` : ""}${musinsaFactor < 1 ? ", 링크만 무신사라고 답해 절반" : ""})`,
       musinsaList,
     );
   }
+  // 구매 시기별 변화: 기본 0점(문장만), 관리자가 shift_score를 올리면 변화가 있을 때 더한다
+  const shift = detectTasteShift(clothes, now, R);
+  if (shift && R.shift_score)
+    add("shift", R.shift_score, `${shift.fromLabel}(${shift.fromStyle}, 가격 레벨 ${shift.fromPrice.toFixed(1)}) → ${shift.toLabel}(${shift.toStyle}, ${shift.toPrice.toFixed(1)})로 ${shift.kind === "style" ? "주 스타일이 바뀜" : "가격대가 바뀜"}`, shift.list);
   const sameKind = [...groupBy(clothes.filter((i) => i.sub && i.color), (i) => `${i.sub}|${i.color}`).values()].filter((l) => l.length > 2);
   const sameProduct = [...groupBy(items, (i) => (i.g.productName ? `${i.brandLabel}|${i.g.productName}|${i.color ?? ""}`.toLowerCase() : null)).values()].filter((l) => l.length > 1);
   const copies = sameKind.reduce((n, l) => n + l.length - 2, 0) + sameProduct.reduce((n, l) => n + l.length - 1, 0);
