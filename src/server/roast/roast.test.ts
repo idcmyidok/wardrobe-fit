@@ -156,6 +156,17 @@ describe("분석과 결과", () => {
     expect(brand.stats.n).toBe(6);
     expect(a.patterns.find((p) => p.id === "recent_30")?.stats.n).toBe(5);
   });
+  it("질문이 같은 사실을 되풀이하면 패턴 문장은 대화에서 뺀다(최근 한 달 구매)", () => {
+    let seen = 0;
+    for (let seed = 0; seed < 60; seed++) {
+      const { script } = buildScript(a, seed, null);
+      if (!script.questions.some((q) => q.id === "recent_reason")) continue;
+      seen++;
+      const says = script.steps.filter((s) => s.t === "say").map((s) => s.text).join("\n");
+      expect(says).not.toMatch(/최근 한 달 사이에 5벌을 샀습니다|30일 안에 5벌/);
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
   it("같은 seed면 같은 대화와 결과", () => {
     const p1 = buildScript(a, 42, "세현");
     const p2 = buildScript(a, 42, "세현");

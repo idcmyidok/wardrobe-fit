@@ -80,6 +80,9 @@ export interface Plan {
   convo: Pattern[];
 }
 
+/** 질문 문장이 관련 패턴 문장과 같은 사실(숫자·달·금액)을 되풀이하는 질문. 이 질문을 하면 패턴 문장은 대화에서 뺀다. */
+const RESTATES = new Set(["recent_reason", "binge_month", "shoes_q", "shoe_sub_q", "hats_q", "hat_sub_q", "subcat_spend_q", "brand_spend_q", "hype_alarm"]);
+
 export function buildScript(a: Analysis, seed: number, name: string | null, T: RoastTexts = DEFAULT_TEXTS): Plan {
   const r = rng(seed);
   const C = T.common;
@@ -121,6 +124,11 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
     if (sections++ > 0 && r.next() < 0.3) steps.push({ t: "say", text: r.pick(C.MID_REMARKS), gap: true });
     steps.push({ t: "status", text: r.pick(C.SECTION_STATUS[sec]) });
     for (const p of inSec) {
+      // 질문이 같은 사실을 다시 말하면 패턴 문장은 빼고 질문만 한다.
+      if (questionFor(p).some(({ q }) => RESTATES.has(q.id))) {
+        for (const { i } of questionFor(p)) ask(i);
+        continue;
+      }
       let text = tryFill(r, T.lines[p.id].say, varsOf(p));
       if (!text) continue;
       // 이름은 가끔만 부른다.
