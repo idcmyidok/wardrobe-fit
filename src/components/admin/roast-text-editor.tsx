@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
+import { isBubbleKey, joinBubbles, splitSentences } from "@/lib/roast/bubbles";
 import { deleteRoastQuiz, resetRoastQuiz, resetRoastUnit, saveRoastQuiz, saveRoastUnit } from "@/server/roast/admin-actions";
 
 type Pair = [string, string];
@@ -304,7 +305,7 @@ function UnitField({
       {unit.kind === "text" ? (
         <textarea aria-label={unit.label} rows={rowsFor(value as string)} className={areaClass} value={value as string} onChange={(e) => setValue(e.target.value)} />
       ) : unit.kind === "list" ? (
-        <ListRows items={value as string[]} onChange={setValue} label={unit.label} />
+        <ListRows items={value as string[]} onChange={setValue} label={unit.label} bubbles={isBubbleKey(unit.key)} />
       ) : (
         <PairRows items={value as Pair[]} onChange={setValue} label={unit.label} />
       )}
@@ -333,9 +334,26 @@ function UnitField({
   );
 }
 
-function ListRows({ items, onChange, label, answer, onAnswer }: { items: string[]; onChange: (v: string[]) => void; label: string; answer?: number; onAnswer?: (i: number) => void }) {
+function ListRows({
+  items,
+  onChange,
+  label,
+  answer,
+  onAnswer,
+  bubbles,
+}: {
+  items: string[];
+  onChange: (v: string[]) => void;
+  label: string;
+  answer?: number;
+  onAnswer?: (i: number) => void;
+  /** 대화 말풍선 문장: 줄을 바꾼 곳마다 말풍선이 나뉜다. 나누기·합치기 버튼을 보여 준다. */
+  bubbles?: boolean;
+}) {
+  const setAt = (i: number, v: string) => onChange(items.map((x, k) => (k === i ? v : x)));
   return (
     <div className="flex flex-col gap-2">
+      {bubbles && <p className="text-sm text-neutral-700">줄을 바꾼 곳마다 말풍선이 따로 나옵니다.</p>}
       {items.map((s, i) => (
         <div key={i} className="flex items-start gap-2">
           {onAnswer ? (
@@ -351,8 +369,18 @@ function ListRows({ items, onChange, label, answer, onAnswer }: { items: string[
             rows={rowsFor(s)}
             className={areaClass}
             value={s}
-            onChange={(e) => onChange(items.map((x, k) => (k === i ? e.target.value : x)))}
+            onChange={(e) => setAt(i, e.target.value)}
           />
+          {bubbles &&
+            (s.includes("\n") ? (
+              <Button size="sm" variant="ghost" aria-label={`${label} ${i + 1} 한 말풍선으로 합치기`} onClick={() => setAt(i, joinBubbles(s))}>
+                합치기
+              </Button>
+            ) : (
+              <Button size="sm" variant="ghost" aria-label={`${label} ${i + 1} 문장마다 나누기`} disabled={splitSentences(s) === s} onClick={() => setAt(i, splitSentences(s))}>
+                나누기
+              </Button>
+            ))}
           <Button size="sm" variant="ghost" aria-label={`${label} ${i + 1} 빼기`} onClick={() => onChange(items.filter((_, k) => k !== i))}>
             빼기
           </Button>
@@ -453,11 +481,11 @@ function QuizForm({ quiz, onChange }: { quiz: EditorQuiz; onChange: (next: Edito
       </fieldset>
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">맞혔을 때(하나 고름)</legend>
-        <ListRows items={v.correct} onChange={(x) => set("correct", x)} label={`${quiz.id} 맞혔을 때`} />
+        <ListRows items={v.correct} onChange={(x) => set("correct", x)} label={`${quiz.id} 맞혔을 때`} bubbles />
       </fieldset>
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">틀렸을 때(하나 고름)</legend>
-        <ListRows items={v.wrong} onChange={(x) => set("wrong", x)} label={`${quiz.id} 틀렸을 때`} />
+        <ListRows items={v.wrong} onChange={(x) => set("wrong", x)} label={`${quiz.id} 틀렸을 때`} bubbles />
       </fieldset>
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" disabled={pending || !dirty} onClick={save}>

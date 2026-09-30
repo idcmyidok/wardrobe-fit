@@ -8,6 +8,7 @@ import { QUESTIONS, Q_TEXT } from "./questions";
 import { QUIZ } from "./quiz";
 import { applyTextEdits, checkUnit, fromRows, toRows, unitsOf } from "./texts";
 import { fill, josa, MissingVar } from "./text";
+import { joinBubbles, splitSentences } from "@/lib/roast/bubbles";
 
 describe("브랜드 이름 맞추기", () => {
   it("대소문자·띄어쓰기·기호·한글 별칭·악센트를 무시한다", () => {
@@ -280,5 +281,19 @@ describe("새 패턴", () => {
     const roastTexts = plan.asked.map((q) => q.roast[answers[q.id]]).filter(Boolean);
     expect(roastTexts.length).toBeGreaterThan(0);
     expect(r.paragraphs.map((p) => p.text)).toEqual(expect.arrayContaining([roastTexts[0]]));
+  });
+});
+
+describe("말풍선 나누기", () => {
+  it("문장 끝마다 줄을 바꾸고, 말줄임은 나누지 않는다", () => {
+    expect(splitSentences("반소매 티셔츠, 13벌. 취향이라기보다는 운영 방침에 가까워 보입니다.")).toBe("반소매 티셔츠, 13벌.\n취향이라기보다는 운영 방침에 가까워 보입니다.");
+    expect(splitSentences("흠... interesting")).toBe("흠... interesting");
+    expect(joinBubbles("가.\n나.")).toBe("가. 나.");
+  });
+  it("대화 문장 기본값은 나뉘어 있고, 결과 글은 그대로다", () => {
+    const say = unitsOf().filter((u) => u.key.endsWith(".say"));
+    expect(say.some((u) => (u.value as string[]).some((s) => s.includes("\n")))).toBe(true);
+    const para = unitsOf().filter((u) => u.key.endsWith(".para"));
+    expect(para.every((u) => (u.value as string[]).every((s) => !s.includes("\n")))).toBe(true);
   });
 });
