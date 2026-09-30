@@ -338,11 +338,20 @@ function Chat({
     [push],
   );
 
-  // 새 메시지·타이핑이 늘어날 때마다 맨 아래로(결과가 붙은 뒤에는 멈춘다)
+  // 대화가 길어질 때마다(새 메시지, 타이핑 중 줄바꿈, 사진 로딩) 바로 맨 아래로 붙인다. 결과가 붙은 뒤에는 멈춘다.
+  // 부드러운 스크롤은 글자마다 다시 시작돼 살짝 위에 머물러서 쓰지 않는다.
   const finished = useRef(false);
+  const logRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!finished.current) endRef.current?.scrollIntoView({ block: "end", behavior: reducedMotion() ? "auto" : "smooth" });
-  });
+    const log = logRef.current;
+    if (!log) return;
+    const stick = () => {
+      if (!finished.current) endRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
+    };
+    const ro = new ResizeObserver(stick);
+    ro.observe(log);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     if (started.current) return;
@@ -422,7 +431,7 @@ function Chat({
   }, []);
 
   return (
-    <div className="roast-mono roast-log mt-8" aria-live="polite">
+    <div ref={logRef} className="roast-mono roast-log mt-8" aria-live="polite">
       {noAi && <p className="roast-status">{copy.NO_AI_LEFT}</p>}
       {msgs.map((m) =>
         m.kind === "ai" ? (
