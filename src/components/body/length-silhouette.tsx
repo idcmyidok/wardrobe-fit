@@ -9,6 +9,7 @@ export const MALE_BODY_RATIO = {
   shoulderY: 0.17,
   armpitY: 0.235,
   waistY: 0.38,
+  pantsWaistY: 0.4, // 바지 허리선(밑단 비교 기준)
   pelvisY: 0.46,
   crotchY: 0.53,
   kneeY: 0.74,
@@ -27,6 +28,7 @@ export function getMaleBody(height: number) {
     shoulderY: height * r.shoulderY,
     armpitY: height * r.armpitY,
     waistY: height * r.waistY,
+    pantsWaistY: height * r.pantsWaistY,
     pelvisY: height * r.pelvisY,
     crotchY: height * r.crotchY,
     kneeY: height * r.kneeY,
@@ -53,7 +55,7 @@ export function getTshirt(height: number, length: number) {
     shoulderWidth: body.shoulderWidth * 1.08,
     chestWidth: body.chestWidth * 1.06,
     sleeveLength: height * 0.12,
-    diffFromCrotch: hemY - body.crotchY,
+    diffFromWaist: hemY - body.pantsWaistY,
   };
 }
 
@@ -159,14 +161,14 @@ export function LengthSilhouette({
   const marks = Array.from({ length: 21 }, (_, i) => i * 10); // 0~200cm, 10cm마다
   const guides: [string, number][] = [
     ["어깨", b.shoulderY],
-    ["허리", b.waistY],
+    ["바지 허리선", b.pantsWaistY],
     ["골반", b.pelvisY],
     ["사타구니", b.crotchY],
     ["무릎", b.kneeY],
   ];
-  const diff = t.diffFromCrotch;
+  const diff = t.diffFromWaist;
   const diffText =
-    Math.abs(diff) < 0.5 ? "사타구니와 거의 같은 높이" : `사타구니보다 약 ${Math.abs(diff).toFixed(1).replace(/\.0$/, "")}cm ${diff > 0 ? "아래" : "위"}`;
+    Math.abs(diff) < 0.5 ? "바지 허리선과 거의 같은 높이" : `바지 허리선보다 약 ${Math.abs(diff).toFixed(1).replace(/\.0$/, "")}cm ${diff > 0 ? "아래" : "위"}`;
 
   return (
     <figure className="flex items-start gap-4" data-testid="length-silhouette">
@@ -192,15 +194,15 @@ export function LengthSilhouette({
           </g>
           <line x1={0} x2={W} y1={top} y2={top} stroke="#8a8a83" strokeWidth={0.3} strokeDasharray="1.5 1.5" />
           <g transform={`translate(0 ${top})`}>
-            {/* 신체 기준선(어깨·허리·골반·사타구니·무릎) */}
+            {/* 신체 기준선(어깨·바지 허리선·골반·사타구니·무릎) */}
             <g stroke="#7d8f7a" strokeWidth={0.3} strokeDasharray="0.8 1.2">
               {guides.map(([name, y]) => (
-                <line key={name} x1={0} x2={W} y1={y} y2={y} />
+                <line key={name} x1={0} x2={W} y1={y} y2={y} stroke={name === "바지 허리선" ? "#c2410c" : undefined} strokeWidth={name === "바지 허리선" ? 0.5 : undefined} />
               ))}
             </g>
             <g fill="#5f7a5b" fontSize={3.4} textAnchor="end">
               {guides.map(([name, y]) => (
-                <text key={name} x={W - 1} y={y - 0.8}>
+                <text key={name} x={W - 1} y={y - 0.8} fill={name === "바지 허리선" ? "#c2410c" : undefined}>
                   {name}
                 </text>
               ))}
