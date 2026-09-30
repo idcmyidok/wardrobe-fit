@@ -55,6 +55,27 @@ export interface RoastParagraph {
   photos: string[];
 }
 
+/** 결과 페이지(옷장 진단 리포트). 예전 결과에는 없고, 그때는 headline·paragraphs(긴 훈수 글)를 보여 준다. */
+export interface RoastReport {
+  /** 첫 줄: 총점 구간별 평가 */
+  headline: string;
+  /** "> "로 시작하는 짧은 문장들 */
+  intro: string[];
+  /** 굵은 제목 + 목록(많이 가진 옷, 좋아하는 브랜드) */
+  lists: { title: string; items: string[] }[];
+  /** 총 옷장 점수(0~100, 질문·퀴즈 답이 더하거나 뺀다) */
+  total: { score: number; lead: string; text: string };
+  /** 진단 문단: lead는 굵게, answer는 관련 질문 답에 붙는 한 줄, photos는 옆으로 넘기는 사진 줄 */
+  points: { id: string; lead: string; text: string; answer?: string; photos?: string[] }[];
+  /** 옷장 DNA: 굵은 앞말 + 문장들 */
+  dnaLead: string;
+  dna: string[];
+  /** 기준 안내(예: 브랜드 정보가 있는 옷 수) */
+  notes: string[];
+  /** 첫 줄 아래 섹션 순서(관리자 "결과 구성"). 없으면 intro·lists·total·points·dna·notes */
+  order?: string[];
+}
+
 /** 결과에 복사해 두는 관련 옷 정보(옷을 지워도 문장은 남는다) */
 export interface RoastGarmentRef {
   brand: string;
@@ -72,6 +93,8 @@ export interface RoastResult {
   paragraphs: RoastParagraph[];
   closing: string[];
   disclaimer: string;
+  /** 새 결과 페이지. 있으면 headline·paragraphs 대신 이걸 보여 준다(긴 훈수 글은 되돌릴 수 있게 계속 만들어 저장만 한다). */
+  report?: RoastReport;
   garments: Record<string, RoastGarmentRef>;
   answers: { id: string; question: string; answer: string }[];
   patterns: { id: string; stats: Record<string, string | number> }[];

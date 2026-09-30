@@ -13,7 +13,7 @@ type UnitValue = string | string[] | Pair[];
 
 export interface EditorUnit {
   key: string;
-  kind: "text" | "list" | "pairs";
+  kind: "text" | "list" | "pairs" | "number";
   label: string;
   base: UnitValue | number;
   edited: UnitValue | number | null;
@@ -21,7 +21,7 @@ export interface EditorUnit {
 
 export interface EditorGroup {
   id: string;
-  kind: "screen" | "common" | "lines" | "questions";
+  kind: "screen" | "common" | "lines" | "questions" | "report" | "score" | "layout";
   title: string;
   when: string;
   vars: { key: string; label: string }[];
@@ -53,6 +53,9 @@ const KINDS: { id: Kind; label: string }[] = [
   { id: "quiz", label: "패션 퀴즈" },
   { id: "common", label: "공통 문구" },
   { id: "screen", label: "화면·결과 안내" },
+  { id: "report", label: "결과 페이지" },
+  { id: "layout", label: "결과 구성" },
+  { id: "score", label: "점수" },
 ];
 
 type Vars = EditorGroup["vars"];
@@ -90,7 +93,12 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
  * 문장 목록은 항목을 더하거나 뺄 수 있고, 퀴즈는 새로 만들거나 지울 수 있다.
  * {자리}는 그 묶음에서 쓸 수 있는 것만 받는다(서버에서 한 번 더 확인).
  */
-export function RoastTextEditor({ groups, quizzes, brands }: { groups: EditorGroup[]; quizzes: EditorQuiz[]; brands: string[] }) {
+export interface LayoutInfo {
+  sections: Record<string, { name: string; how: string }>;
+  points: Record<string, { name: string; how: string }>;
+}
+
+export function RoastTextEditor({ groups, quizzes, brands, layout }: { groups: EditorGroup[]; quizzes: EditorQuiz[]; brands: string[]; layout: LayoutInfo }) {
   const [kind, setKind] = useState<Kind>("lines");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -202,6 +210,8 @@ export function RoastTextEditor({ groups, quizzes, brands }: { groups: EditorGro
           </ul>
         </>
       ) : (
+        <>
+        {kind === "layout" && !q && <LayoutOverview layout={layout} groups={groups} edited={edited} />}
         <ul className="flex flex-col">
           {shown.map((g) => {
             const isOpen = open.has(g.id) || Boolean(q);
@@ -222,7 +232,11 @@ export function RoastTextEditor({ groups, quizzes, brands }: { groups: EditorGro
                   <div className="flex flex-col gap-5 pb-5">
                     {g.vars.length > 0 && <p className="text-sm text-neutral-700">쓸 수 있는 자리: {g.vars.map((v) => `[${v.label}]`).join(" ")}</p>}
                     {g.units.map((u) => (
-                      <UnitField key={u.key} unit={u} vars={g.vars} edited={edited[u.key]} onSaved={(v) => setEdited((e) => ({ ...e, [u.key]: v }))} />
+                      u.kind === "number" ? (
+                        <NumberField key={u.key} unit={u} edited={edited[u.key]} onSaved={(v) => setEdited((e) => ({ ...e, [u.key]: v }))} />
+                      ) : (
+                        <UnitField key={u.key} unit={u} vars={g.vars} edited={edited[u.key]} onSaved={(v) => setEdited((e) => ({ ...e, [u.key]: v }))} />
+                      )
                     ))}
                   </div>
                 )}
@@ -231,8 +245,48 @@ export function RoastTextEditor({ groups, quizzes, brands }: { groups: EditorGro
           })}
           {!shown.length && <li className="py-8 text-base text-neutral-700">찾는 문장이 없습니다.</li>}
         </ul>
+        </>
       )}
     </main>
+  );
+}
+
+/** 결과 페이지가 지금 설정으로 어떤 순서로 나오는지 한눈에 보여 준다(순서·켜기는 아래 칸에서 고친다). */
+function LayoutOverview({ layout, groups, edited }: { layout: LayoutInfo; groups: EditorGroup[]; edited: Record<string, EditorUnit["edited"]> }) {
+  const valueOf = (key: string) => {
+    for (const g of groups) for (const u of g.units) if (u.key === key) return Number(edited[key] ?? u.base);
+    return undefined;
+  };
+  const sorted = (names: Record<string, unknown>, orderKey: string) =>
+    Object.keys(names)
+      .map((k) => ({ k, n: valueOf(`report.layout.${orderKey}.${k}`) ?? 99 }))
+      .sort((a, b) => a.n - b.n)
+      .map((x) => x.k);
+  const on = (showKey: string, k: string) => valueOf(`report.layout.${showKey}.${k}`) !== 0;
+  return (
+    <section className="flex flex-col gap-2 border-b border-neutral-300 py-4" aria-label="지금 결과 페이지 구성">
+      <p className="text-base font-medium">지금 결과 페이지 구성</p>
+      <p className="text-sm text-neutral-700">내용 자체는 옷장 패턴과 질문 답으로 자동으로 정해집니다. 여기서는 순서·켜기·개수와 고정 문구만 고칩니다.</p>
+      <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm">
+        <li>
+          <b>첫 줄: 점수 구간 문장</b> <span className="text-neutral-700">총점이 속한 10점 구간의 문장(결과 페이지 탭)</span>
+        </li>
+        {sorted(layout.sections, "order").map((k) => (
+          <li key={k} className={on("show", k) ? "" : "text-neutral-500 line-through"}>
+            <b>{layout.sections[k].name}</b> <span className="text-neutral-700">{layout.sections[k].how}</span>
+            {k === "points" && (
+              <ol className="mt-1 flex list-[lower-alpha] flex-col gap-0.5 pl-5">
+                {sorted(layout.points, "point_order").map((p) => (
+                  <li key={p} className={on("point_show", p) ? "" : "text-neutral-500 line-through"}>
+                    {layout.points[p].name} <span className="text-neutral-700">· {layout.points[p].how}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 
@@ -247,6 +301,53 @@ function Message({ message }: { message: { ok: boolean; text: string } | null })
 
 const areaClass = "w-full resize-y border border-neutral-400 bg-surface px-3 py-2 text-base leading-relaxed";
 const rowsFor = (s: string) => Math.min(4, Math.max(1, Math.ceil(s.length / 48) + (s.match(/\n/g)?.length ?? 0)));
+
+/** 점수 증감 한 칸(-20~20) */
+function NumberField({ unit, edited, onSaved }: { unit: EditorUnit; edited: EditorUnit["edited"] | undefined; onSaved: (v: EditorUnit["edited"]) => void }) {
+  const current = String(edited ?? unit.base);
+  const [value, setValue] = useState(current);
+  const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const save = () =>
+    startTransition(async () => {
+      setMessage(null);
+      const r = await saveRoastUnit(unit.key, Number(value));
+      if (r.ok) {
+        const saved = Number(r.value ?? value);
+        onSaved(saved === unit.base ? null : saved);
+        setValue(String(saved));
+        setMessage({ ok: true, text: "저장했습니다." });
+      } else setMessage({ ok: false, text: r.error });
+    });
+  const reset = () =>
+    startTransition(async () => {
+      setMessage(null);
+      const r = await resetRoastUnit(unit.key);
+      if (r.ok) {
+        onSaved(null);
+        setValue(String(unit.base));
+        setMessage({ ok: true, text: "원래 값으로 돌렸습니다." });
+      } else setMessage({ ok: false, text: r.error });
+    });
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <label className="flex min-w-48 items-center gap-2 text-sm">
+        <span className="flex-1">{unit.label}</span>
+        <Input type="number" step={1} className="w-20" value={value} onChange={(e) => setValue(e.target.value)} aria-label={unit.key.startsWith("report.layout.") ? unit.label : `${unit.label} 점수`} />
+      </label>
+      {edited != null && <span className="text-sm text-neutral-700">고침(원래 {String(unit.base)})</span>}
+      <Button size="sm" disabled={pending || value === current} onClick={save}>
+        {pending ? "저장 중…" : "저장"}
+      </Button>
+      {edited != null && (
+        <Button size="sm" variant="ghost" disabled={pending} onClick={reset}>
+          원래대로
+        </Button>
+      )}
+      <Message message={message} />
+    </div>
+  );
+}
 
 function UnitField({
   unit,

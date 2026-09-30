@@ -6,6 +6,8 @@ import type { Analysis, Pattern } from "./analyze";
 import { familyName, type FamilyId } from "./keywords";
 import { LINE_SECTION, type Section } from "./lines";
 import { pickQuestions, QUESTIONS, type AskedQuestion } from "./questions";
+import { scoreWardrobe, tierOf } from "./score";
+import type { ScoreRules } from "./score-deltas";
 import { fill, MissingVar, rng, won, type Rng, type Vars } from "./text";
 import { DEFAULT_TEXTS, type RoastTexts } from "./texts";
 
@@ -89,11 +91,14 @@ export function quotesAnswer(text: string): boolean {
 /** 질문 문장이 관련 패턴 문장과 같은 사실(숫자·달·금액)을 되풀이하는 질문. 이 질문을 하면 패턴 문장은 대화에서 뺀다. */
 const RESTATES = new Set(["recent_reason", "binge_month", "shoes_q", "shoe_sub_q", "hats_q", "hat_sub_q", "subcat_spend_q", "brand_spend_q", "hype_alarm"]);
 
-export function buildScript(a: Analysis, seed: number, name: string | null, T: RoastTexts = DEFAULT_TEXTS): Plan {
+export function buildScript(a: Analysis, seed: number, name: string | null, T: RoastTexts = DEFAULT_TEXTS, age: number | null = null): Plan {
   const r = rng(seed);
   const C = T.common;
   const convo = rank(a, r, 15, T, 3);
-  const asked = pickQuestions(a, r, fill, T);
+  // "스스로 패셔너블한가요?"는 지금까지의 옷장 점수 구간에 따라 반응이 달라진다(질문 답 전 점수)
+  const rules = T.score.rules as unknown as ScoreRules;
+  const base = scoreWardrobe(a, { age, rules, ageRules: T.score.age as unknown as Record<string, Record<string, number>> });
+  const asked = pickQuestions(a, r, fill, T, tierOf(base.score, rules));
   const steps: RoastStep[] = [];
   const say = (text: string, photos?: string[]) => steps.push(photos?.length ? { t: "say", text, photos } : { t: "say", text });
 

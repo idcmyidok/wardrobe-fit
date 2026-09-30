@@ -194,7 +194,9 @@ describe("질문 문구", () => {
       expect(t, q.id).toBeDefined();
       for (const id of q.options) {
         expect(t.options[id], `${q.id}.${id}`).toBeTruthy();
-        if (q.id !== "max_budget") expect(t.react[id]?.length, `${q.id}.${id}`).toBeGreaterThan(0);
+        // "패셔너블한가요?"는 점수 구간(high/mid/low)마다 반응이 따로 있다
+        const keys = q.id === "fashionable_q" ? ["high", "mid", "low"].map((tier) => `${tier}_${id}`) : [id];
+        if (q.id !== "max_budget") for (const k of keys) expect(t.react[k]?.length, `${q.id}.${k}`).toBeGreaterThan(0);
       }
     }
   });

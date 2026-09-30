@@ -52,7 +52,29 @@ export interface Item {
   accessory: boolean;
   /** 구매 링크의 쇼핑몰(예: 무신사). 링크가 없으면 null */
   shop: string | null;
+  /** 데님(데님 계열 색·데님 팬츠·제품명에 데님/청바지). 색 계산에서는 빼고 본다(청바지를 무채색·유채색으로 세지 않게, 사용자 요청). */
+  denim: boolean;
+  /**
+   * 브랜드 칸의 종류. known: 브랜드 자료에 있음, unknown: 자료에 없는 이름(작은 브랜드일 수 있어 보세로 치지 않음),
+   * nobrand: 보세·모름·없음 등, vintage: 빈티지·구제, none: 비어 있음
+   */
+  brandKind: "known" | "unknown" | "nobrand" | "vintage" | "none";
 }
+
+const NO_BRAND = /^(보세|모름|모르겠음|없음|노브랜드|no ?brand|unknown|기타|-+|\?+|x)$/i;
+const VINTAGE = /^(빈티지|구제|vintage|빈티지 ?샵|구제 ?샵)$/i;
+
+export function brandKindOf(label: string, known: boolean): Item["brandKind"] {
+  const t = label.trim();
+  if (!t) return "none";
+  if (known) return "known";
+  if (NO_BRAND.test(t)) return "nobrand";
+  if (VINTAGE.test(t)) return "vintage";
+  return "unknown";
+}
+
+/** 색 계산에 넣는 옷(색이 있고 데님이 아님) */
+export const colorCounted = (i: Item) => Boolean(i.color) && !i.denim;
 
 export type Stat = string | number;
 
@@ -133,6 +155,8 @@ export function prepare(garments: Garment[], body: BodyProfile | null, usdRate: 
         hasPhoto: Boolean(g.thumbUrl || g.imageUrl),
         accessory,
         shop: shopOf(g.productUrl),
+        denim: color === "데님" || g.subcategoryId === "bottom.denim" || /데님|청바지|청자켓|진 ?팬츠|jean|denim/i.test(g.productName),
+        brandKind: brandKindOf(g.brand, Boolean(brand)),
       };
     });
 }
@@ -159,6 +183,8 @@ const SHOPS: [RegExp, string][] = [
   [/(^|\.)zara\.com$/, "자라"],
   [/(^|\.)cos\.com$/, "COS"],
   [/(^|\.)nike\.com$/, "나이키"],
+  [/(^|\.)fruitsfamily\.com$/, "후르츠패밀리"],
+  [/(^|\.)bunjang\.co\.kr$/, "번개장터"],
 ];
 
 export function shopOf(url: string | null | undefined): string | null {
@@ -242,7 +268,7 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     add("hat_sub_bias", ramp(hatSubList.length / hats.length, 0.6, 1), 0.6, { sub: hatSubList[0].subName ?? "모자", n: hatSubList.length, total: hats.length }, hatSubList);
 
   // 컬러 ---------------------------------------------------------------------
-  const colored = items.filter((i) => i.color);
+  const colored = items.filter(colorCounted);
   const C = colored.length;
   if (C >= 5) {
     const black = colored.filter((i) => i.color === "블랙");
@@ -392,8 +418,11 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
       if (near.length > bestCluster.length) bestCluster = near;
     }
   }
-  if (bestCluster.length >= 3)
-    add("measure_repeat", ramp(bestCluster.length, 3, 6), 0.75, { sub: bestCluster[0].subName ?? "옷", n: bestCluster.length }, bestCluster);
+  // 실측이 비슷해도 색이 제각각이면 덜 뚜렷하게 본다(색까지 같아야 비꼬기 좋다, 사용자 요청).
+  if (bestCluster.length >= 3) {
+    const sameColor = Math.max(...[...countBy(bestCluster, (i) => i.color ?? "-").values()].map((l) => l.length)) / bestCluster.length;
+    add("measure_repeat", ramp(bestCluster.length, 3, 6) * (0.4 + 0.6 * sameColor), sameColor >= 0.6 ? 0.8 : 0.5, { sub: bestCluster[0].subName ?? "옷", n: bestCluster.length }, bestCluster);
+  }
 
   if (fitted.length >= 5) {
     const [lv, lvList] = top(countBy(fitted, (i) => i.fit!.level)) ?? [null, []];
@@ -493,6 +522,26 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
 }
 
 /** 핏을 아는 옷이 5벌 이상일 때 가장 많은 핏 */
+/** 핏 분포: 직접 고른 핏이 있으면 그 핏, 없으면 예상 핏. 안 맞는 옷(작은·큰 핏)은 따로 센다. 고른 핏의 개수·비율은 쓰지 않는다. */
+export function fitSummary(clothes: Item[]) {
+  const fitted = clothes.filter((i) => i.fit && i.fit.level !== "too_small" && i.fit.level !== "too_big");
+  const isTrim = (i: Item) => i.fit!.level === "slim" || i.fit!.level === "regular";
+  const tops = fitted.filter((i) => i.fit!.kind === "top");
+  const bottoms = fitted.filter((i) => i.fit!.kind === "bottom");
+  const part = (list: Item[]) => {
+    const trim = list.filter(isTrim);
+    const big = list.filter((i) => !isTrim(i));
+    return { n: list.length, trim, big, trimShare: list.length ? trim.length / list.length : 0, bigShare: list.length ? big.length / list.length : 0 };
+  };
+  return {
+    fitted,
+    all: part(fitted),
+    top: part(tops),
+    bottom: part(bottoms),
+    misfit: clothes.filter((i) => i.fit && (i.fit.level === "too_small" || i.fit.level === "too_big")),
+  };
+}
+
 function fitted0(clothes: Item[]) {
   const fitted = clothes.filter((i) => i.fit && i.fit.level !== "too_small" && i.fit.level !== "too_big");
   if (fitted.length < 5) return null;

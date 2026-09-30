@@ -1,14 +1,14 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- 비공개 저장소의 임시 주소라 next/image 최적화를 쓰지 않는다(다른 화면과 같음). */
-import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { UsageNote } from "@/components/usage/usage-note";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { buttonClassName } from "@/components/ui/button";
 import { MIN_CLOTHES, ROAST_COPY, tooFew, type RoastCopy } from "@/lib/roast/copy";
 import { bubblesOf } from "@/lib/roast/bubbles";
 import { wardrobeHash } from "@/lib/roast/hash";
-import type { RoastQuestion, RoastResult, RoastScript } from "@/lib/roast/types";
+import type { RoastQuestion, RoastReport, RoastResult, RoastScript } from "@/lib/roast/types";
 import { notifyUsageChanged } from "@/lib/usage";
 import { finishRoast, startRoast } from "@/server/roast/actions";
 import "./roast.css";
@@ -62,6 +62,8 @@ export function RoastView({ initialResult, copy = ROAST_COPY }: { initialResult:
   const [mode, setMode] = useState<"result" | "intro" | "name" | "chat">(initialResult ? "result" : "intro");
   // 이름은 이번 결과에만 쓰고 다음 분석 때 미리 채우지 않는다.
   const [name, setName] = useState<string | null>(null);
+  // 나이도 이번 계산에만 쓰고 결과·저장소 어디에도 남기지 않는다.
+  const [age, setAge] = useState<number | null>(null);
   // 방금 끝난 분석의 결과는 대화 아래에 이어 붙인다(다시 들어오면 결과만 보인다).
   const [fresh, setFresh] = useState<RoastResult | null>(null);
   const [run, setRun] = useState(0);
@@ -108,6 +110,7 @@ export function RoastView({ initialResult, copy = ROAST_COPY }: { initialResult:
             <Chat
               key={run}
               name={name}
+              age={age}
               preview={signedIn ? undefined : garments}
               photoOf={photoOf}
               onDone={(r) => {
@@ -135,8 +138,9 @@ export function RoastView({ initialResult, copy = ROAST_COPY }: { initialResult:
           <Intro
             clothes={clothes}
             skipIntro={mode === "name"}
-            onStart={(n) => {
+            onStart={(n, ag) => {
               setName(n);
+              setAge(ag);
               setFresh(null);
               setRun((x) => x + 1);
               setMode("chat");
@@ -273,13 +277,16 @@ function Photos({
   );
 }
 
-function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: boolean; onStart: (name: string | null) => void }) {
+function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: boolean; onStart: (name: string | null, age: number | null) => void }) {
   const copy = useContext(CopyContext);
   // 다시 분석할 때도 소개 문구부터 타이핑한다.
   const [typed, setTyped] = useState(false);
-  const [declined, setDeclined] = useState<string | null>(null);
-  const [asking, setAsking] = useState(skipIntro);
+  // 처음이든 다시 하기든 시작·평가 기준 버튼부터 보여 준다.
+  const [criteria, setCriteria] = useState(false);
+  const [criteriaDone, setCriteriaDone] = useState(false);
+  const [asking, setAsking] = useState(false);
   const [name, setName] = useState("");
+  const [age, setAge] = useState("");
   const enough = clothes >= MIN_CLOTHES;
 
   return (
@@ -291,26 +298,23 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
           <Typed text={tooFew(copy, clothes)} />
         </p>
       )}
-      {typed && enough && !asking && (
+      {typed && enough && criteria && (
+        <p className="roast-ai">
+          <Typed text={copy.CRITERIA} onDone={() => setCriteriaDone(true)} />
+        </p>
+      )}
+      {typed && enough && !asking && (!criteria || criteriaDone) && (
         <>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="roast-choice" onClick={() => setAsking(true)}>
               {copy.START_LABEL}
             </button>
-            <button
-              type="button"
-              className="roast-choice"
-              onClick={() => setDeclined(copy.DECLINE[Math.floor(Math.random() * copy.DECLINE.length)])}
-              disabled={Boolean(declined)}
-            >
-              {copy.DECLINE_LABEL}
-            </button>
+            {!criteria && (
+              <button type="button" className="roast-choice" onClick={() => setCriteria(true)}>
+                {copy.CRITERIA_LABEL}
+              </button>
+            )}
           </div>
-          {declined && (
-            <p className="roast-ai">
-              <Typed key={declined} text={declined} />
-            </p>
-          )}
         </>
       )}
       {typed && asking && (
@@ -318,7 +322,8 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
           className="flex flex-col gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            onStart(name.trim() || null);
+            const n = Number(age);
+            onStart(name.trim() || null, Number.isInteger(n) && n >= 10 && n <= 99 ? n : null);
           }}
         >
           <p className="roast-ai">
@@ -334,11 +339,21 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
               placeholder="예: 세현"
               className="min-h-12 w-56 max-w-full border border-text bg-surface px-3 text-body"
             />
+            <input
+              value={age}
+              onChange={(e) => setAge(e.target.value.replace(/\D/g, "").slice(0, 2))}
+              inputMode="numeric"
+              autoComplete="off"
+              aria-label="나이"
+              placeholder="나이"
+              className="min-h-12 w-20 border border-text bg-surface px-3 text-body"
+            />
             <button type="submit" className={buttonClassName({ variant: "primary", size: "lg" })}>
               시작하기
             </button>
           </div>
           <span className="text-sm text-neutral-700">{copy.NAME_HINT}</span>
+          {copy.AGE_HINT && <span className="text-sm text-neutral-700">{copy.AGE_HINT}</span>}
         </form>
       )}
     </div>
@@ -347,11 +362,13 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
 
 function Chat({
   name,
+  age,
   preview,
   photoOf,
   onDone,
 }: {
   name: string | null;
+  age: number | null;
   preview: unknown;
   photoOf: (id: string) => string | null;
   onDone: (r: RoastResult) => void;
@@ -417,7 +434,7 @@ function Chat({
     started.current = true;
     void (async () => {
       // 분석을 준비하는 동안 첫 멘트를 먼저 띄운다.
-      const starting = startRoast({ name, preview });
+      const starting = startRoast({ name, age, preview });
       if (copy.OPENING.length) {
         await think(700);
         await sayBubbles(copy.OPENING[Math.floor(Math.random() * copy.OPENING.length)]);
@@ -432,7 +449,7 @@ function Chat({
       const answers = await play(start.script);
       push({ kind: "status", text: copy.WRITING });
       const dots = push({ kind: "dots" });
-      const done = await finishRoast({ seed: start.script.seed, name, answers, preview });
+      const done = await finishRoast({ seed: start.script.seed, name, age, answers, preview });
       remove(dots);
       if (!done.ok) {
         setError(done.message);
@@ -496,7 +513,7 @@ function Chat({
       }
       return answers;
     }
-  }, [name, preview, onDone, push, say, think, copy]);
+  }, [name, age, preview, onDone, push, say, think, copy]);
 
   const onTyped = useCallback((id: number) => {
     setTypedIds((s) => new Set(s).add(id));
@@ -609,17 +626,23 @@ function ResultView({
         <span className="text-sm text-neutral-700">
           {date} · 옷 {result.garmentCount}벌 기준
         </span>
-        <h2 className="roast-headline">{result.headline}</h2>
+        {!result.report && <h2 className="roast-headline">{result.headline}</h2>}
       </header>
-      {result.paragraphs.map((p, i) => (
-        <section key={i} className="flex flex-col gap-2">
-          <p>{p.text}</p>
-          <Photos ids={p.photos} photoOf={photoOf} />
-        </section>
-      ))}
-      <div className="flex flex-col gap-1 border-t border-divider pt-5">
+      {result.report ? (
+        <Report report={result.report} photoOf={photoOf} />
+      ) : (
+        result.paragraphs.map((p, i) => (
+          <section key={i} className="flex flex-col gap-2">
+            <p>{p.text}</p>
+            <Photos ids={p.photos} photoOf={photoOf} />
+          </section>
+        ))
+      )}
+      <div className={result.report ? "flex flex-col gap-1" : "flex flex-col gap-1 border-t border-divider pt-5"}>
         {result.closing.map((c, i) => (
-          <p key={i}>{c}</p>
+          <p key={i} className={result.report && i === result.closing.length - 1 ? "roast-last" : undefined}>
+            {c}
+          </p>
         ))}
       </div>
       <p className="text-sm text-neutral-700">{result.disclaimer}</p>
@@ -629,5 +652,123 @@ function ResultView({
         </button>
       </div>
     </article>
+  );
+}
+
+/** 결과 페이지: How Bad Is Your Spotify처럼 글 위주(총점 평가 → "> " 문장 → 목록 → 총점 → 진단 문단·사진 줄 → DNA) */
+const REPORT_ORDER = ["intro", "lists", "total", "points", "dna", "notes"];
+
+function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string) => string | null }) {
+  // 첫 줄은 항상 맨 위, 나머지는 관리자 "결과 구성"의 순서(예전 결과는 기본 순서)
+  const order = report.order?.length ? report.order : REPORT_ORDER;
+  const sections: Record<string, ReactNode> = {
+    intro: report.intro.length > 0 && (
+      <div className="flex flex-col gap-1">
+        {report.intro.map((t, i) => (
+          <p key={i}>
+            <span className="roast-prompt">&gt;</span>
+            {t}
+          </p>
+        ))}
+      </div>
+    ),
+    lists: report.lists.map((l) => (
+      <div key={l.title}>
+        <p>
+          <b>{l.title}</b>
+        </p>
+        <ul className="roast-list">
+          {l.items.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+      </div>
+    )),
+    total: (
+      <p>
+        <b>{report.total.lead}</b> {report.total.text}
+      </p>
+    ),
+    points: report.points.map((p) => (
+      <div key={p.id}>
+        <p>
+          <b>{p.lead}</b> {p.text}
+        </p>
+        {p.answer && <p className="roast-answer">{p.answer}</p>}
+        <PhotoRow ids={p.photos} photoOf={photoOf} />
+      </div>
+    )),
+    dna: report.dna.length > 0 && (
+      <p>
+        <b>{report.dnaLead}</b> {report.dna.join(" ")}
+      </p>
+    ),
+    notes: report.notes.map((n) => (
+      <p key={n} className="text-sm text-neutral-700">
+        {n}
+      </p>
+    )),
+  };
+  return (
+    <div className="roast-report">
+      <h2 className="roast-headline">
+        <span className="roast-prompt">&gt;</span>
+        {report.headline}
+      </h2>
+      {order.map((k) => (
+        <Fragment key={k}>{sections[k]}</Fragment>
+      ))}
+    </div>
+  );
+}
+
+/** 결과 문단 사진 줄: 양옆 화살표로 넘기고, 손가락으로 밀거나 마우스로 끌어도 된다. */
+function PhotoRow({ ids, photoOf }: { ids?: string[]; photoOf: (id: string) => string | null }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; left: number } | null>(null);
+  const [edge, setEdge] = useState({ start: true, end: false });
+  const shown = (ids ?? []).flatMap((id) => {
+    const url = photoOf(id);
+    return url ? [{ id, url }] : [];
+  });
+  const update = () => {
+    const el = ref.current;
+    if (el) setEdge({ start: el.scrollLeft <= 2, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 });
+  };
+  useEffect(update, [shown.length]);
+  if (!shown.length) return null;
+  const move = (dir: 1 | -1) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.8, behavior: "smooth" });
+  return (
+    <div className="roast-row mt-3">
+      {!edge.start && (
+        <button type="button" className="roast-row-btn roast-row-prev" aria-label="이전 사진" onClick={() => move(-1)}>
+          ‹
+        </button>
+      )}
+      <div
+        ref={ref}
+        className="roast-row-track"
+        onScroll={update}
+        onPointerDown={(e) => {
+          if (e.pointerType !== "mouse") return;
+          drag.current = { x: e.clientX, left: e.currentTarget.scrollLeft };
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          if (drag.current) e.currentTarget.scrollLeft = drag.current.left - (e.clientX - drag.current.x);
+        }}
+        onPointerUp={() => (drag.current = null)}
+        onPointerCancel={() => (drag.current = null)}
+      >
+        {shown.map((x) => (
+          <img key={x.id} src={x.url} alt="" draggable={false} />
+        ))}
+      </div>
+      {!edge.end && (
+        <button type="button" className="roast-row-btn roast-row-next" aria-label="다음 사진" onClick={() => move(1)}>
+          ›
+        </button>
+      )}
+    </div>
   );
 }

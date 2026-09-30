@@ -256,6 +256,83 @@
   line-height: 1.85;
   word-break: keep-all;
 }
+/* 결과 페이지: How Bad Is Your Spotify처럼 글 위주 */
+.roast .roast-report {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.roast .roast-prompt {
+  font-weight: 700;
+  margin-right: 0.5em;
+}
+.roast .roast-result h2.roast-headline {
+  font-size: clamp(24px, 5.2vw, 34px);
+}
+.roast .roast-result ul.roast-list {
+  margin-top: 6px;
+  padding-left: 1.4em;
+  list-style: disc;
+}
+.roast .roast-result ul.roast-list li {
+  font-size: 16px;
+  line-height: 1.85;
+}
+.roast .roast-result p.roast-answer {
+  margin-top: 6px;
+  font-size: 15px;
+  padding-left: 12px;
+  border-left: 3px solid var(--text);
+}
+/* 결과 문단 사진 줄: 스크롤바는 숨기고 양옆 화살표로 넘긴다 */
+.roast .roast-row {
+  position: relative;
+}
+.roast .roast-row-track {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  cursor: grab;
+  user-select: none;
+}
+.roast .roast-row-track::-webkit-scrollbar {
+  display: none;
+}
+.roast .roast-row-track img {
+  flex: none;
+  width: 96px;
+  height: 120px;
+  object-fit: cover;
+  border: 1px solid var(--divider);
+  scroll-snap-align: start;
+}
+.roast .roast-row-btn {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  transform: translateY(-50%);
+  border: 1px solid var(--text);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+}
+.roast .roast-row-prev {
+  left: -6px;
+}
+.roast .roast-row-next {
+  right: -6px;
+}
+
+.roast .roast-result .roast-last {
+  font-weight: 700;
+}
+
 .roast .roast-headline {
   font-size: clamp(22px, 4.5vw, 30px);
   line-height: 1.4;
