@@ -326,7 +326,6 @@ function Chat({
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [noAi, setNoAi] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(0);
   const typedWaiters = useRef(new Map<number, () => void>());
   const choiceWaiter = useRef<((id: string) => void) | null>(null);
@@ -361,15 +360,18 @@ function Chat({
     [push],
   );
 
-  // 대화가 길어질 때마다(새 메시지, 타이핑 중 줄바꿈, 사진 로딩) 바로 맨 아래로 붙인다. 결과가 붙은 뒤에는 멈춘다.
+  // 대화가 길어질 때마다(새 메시지, 타이핑 중 줄바꿈, 사진, 선택지) 바로 맨 아래로 붙인다. 결과가 붙은 뒤에는 멈춘다.
   // 부드러운 스크롤은 글자마다 다시 시작돼 살짝 위에 머물러서 쓰지 않는다.
   const finished = useRef(false);
   const logRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const log = logRef.current;
     if (!log) return;
+    // 대화 영역 끝이 아니라 페이지 맨 아래(아래 여백·꼬리말까지)로 보낸다.
     const stick = () => {
-      if (!finished.current) endRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
+      if (finished.current) return;
+      const doc = document.scrollingElement ?? document.documentElement;
+      window.scrollTo({ top: doc.scrollHeight, behavior: "auto" });
     };
     const ro = new ResizeObserver(stick);
     ro.observe(log);
@@ -508,7 +510,6 @@ function Chat({
           {error}
         </p>
       )}
-      <div ref={endRef} />
     </div>
   );
 }
