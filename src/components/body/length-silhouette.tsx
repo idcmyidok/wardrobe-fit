@@ -13,13 +13,9 @@ const BODY = "#9a9a93";
 const SHIRT_FILL = "#3d5a80";
 const SHIRT_LINE = "#2a4262";
 
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-
 export function LengthSilhouette({
   length,
   height,
-  shoulder,
-  chest,
 }: {
   length: number;
   height: number;
@@ -47,14 +43,15 @@ export function LengthSilhouette({
   const legW = H * 0.075;
 
   // ---- 티셔츠 ----
-  const shHalf = clamp(shoulder ? shoulder / 2 : H * 0.125, H * 0.105, H * 0.165);
-  const chestHalf = clamp(chest ? chest / 2 : H * 0.135, H * 0.105, H * 0.185);
+  // 그림 속 사람 몸에 맞춘 너비(실측 어깨·가슴은 쓰지 않는다)
+  const shHalf = H * 0.118;
+  const chestHalf = H * 0.108;
   const bottomY = neckY + length;
   const shY = shoulderY + H * 0.01; // 어깨 끝
   const collar = H * 0.05;
-  const sleeveOut = chestHalf + H * 0.075; // 소매 바깥 끝 x(몸 옆선에서 벌어진 정도)
-  const sleeveOutY = shoulderY + H * 0.1;
-  const hemInX = chestHalf + H * 0.02; // 소매 끝단 안쪽 x
+  const sleeveOut = H * 0.16; // 소매 바깥 끝 x(몸 옆선에서 벌어진 정도)
+  const sleeveOutY = shoulderY + H * 0.09;
+  const hemInX = chestHalf + H * 0.022; // 소매 끝단 안쪽 x
   const hemInY = sleeveOutY + H * 0.05;
   const armpitY = shoulderY + H * 0.105;
   const at = (s: 1 | -1, x: number) => cx + s * x;
