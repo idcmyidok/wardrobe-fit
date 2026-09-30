@@ -380,6 +380,80 @@ describe("항상 내는 질문", () => {
   });
 });
 
+describe("가장 비싼 항목", () => {
+  it("'옷' 대신 '항목'이라 하고, 바로 다음 줄에 '브랜드의 상품명입니다.'를 붙인다", () => {
+    const wardrobe = [
+      ...Array.from({ length: 10 }, (_, i) => g(i, { purchasePrice: 30000 })),
+      g(20, { brand: "Nike", productName: "에어 포스 1", categoryId: "shoes", subcategoryId: null, purchasePrice: 229000 }),
+    ];
+    const a = analyze(wardrobe, null, 1360, new Date("2026-09-29T12:00:00+09:00"));
+    const p = a.patterns.find((x) => x.id === "top_item")!;
+    expect(p.stats.itemName).toBe(`${a.items.find((i) => i.cat === "shoes")!.brandLabel}의 에어 포스 1`);
+    const says = Array.from({ length: 80 }, (_, seed) => buildScript(a, seed, null).script.steps)
+      .flat()
+      .flatMap((s) => (s.t === "say" && s.text.includes("가장 비싼") ? [s.text] : []));
+    expect(says.length).toBeGreaterThan(0);
+    for (const t of says) {
+      expect(t).not.toContain("가장 비싼 옷");
+      expect(t.split("\n")[1]).toBe(`${p.stats.itemName}입니다.`);
+    }
+  });
+});
+
+describe("데님 반복", () => {
+  const now = new Date("2026-09-29T12:00:00+09:00");
+  const denim = (i: number, categoryId: "top" | "outer" | "bottom") =>
+    g(i, { categoryId, subcategoryId: null, productName: categoryId === "bottom" ? `데님 팬츠 ${i}` : `데님 재킷 ${i}` });
+
+  it("데님은 바지만 세고, 질문은 '평생 한 종류의 바지만'으로 묻는다", () => {
+    const wardrobe = [...[0, 1, 2, 3, 4].map((i) => denim(i, "bottom")), ...[5, 6, 7, 8, 9, 10].map((i) => denim(i, i % 2 ? "top" : "outer"))];
+    const a = analyze(wardrobe, null, 1360, now);
+    const p = a.patterns.find((x) => x.id === "family_repeat")!;
+    expect(p.stats).toMatchObject({ family: "denim", n: 5, kind: "바지" });
+    expect(p.garmentIds.every((id) => a.items.find((i) => i.id === id)!.cat === "bottom")).toBe(true);
+    const q = Array.from({ length: 60 }, (_, seed) => buildScript(a, seed, null).script.questions.find((x) => x.id === "extreme_one")).find(Boolean);
+    expect(q!.text).toBe("내일부터 평생 한 종류의 바지만 입을 수 있다면, 역시 데님을 고르겠나요?");
+  });
+
+  it("상의·아우터 데님만 많으면 데님 반복으로 보지 않는다", () => {
+    const wardrobe = [...[0, 1, 2, 3, 4, 5].map((i) => denim(i, i % 2 ? "top" : "outer")), ...[6, 7, 8, 9, 10, 11].map((i) => g(i, {}))];
+    const a = analyze(wardrobe, null, 1360, now);
+    expect(a.patterns.find((x) => x.id === "family_repeat" && x.stats.family === "denim")).toBeUndefined();
+  });
+});
+
+describe("고른 뒤 보여 주는 금액", () => {
+  const now = new Date("2026-09-29T12:00:00+09:00");
+
+  it("비싼 옷 셋은 옷 가격, 브랜드 셋은 그 브랜드에 쓴 돈을 \"N ￦\"로 붙인다", () => {
+    const brands = ["UNIQLO", "UNIQLO", "COS", "COS", "COS", "Levi's", "Levi's", "A.P.C.", "A.P.C.", "UNIQLO", "COS", "A.P.C."];
+    const wardrobe = brands.map((b, i) => g(i, { brand: b, purchasePrice: 10000 * (i + 1) }));
+    const a = analyze(wardrobe, null, 1360, now);
+    const qs = buildScript(a, 3, null).script.questions;
+    const drop = qs.find((q) => q.id === "drop_item")!;
+    for (const o of drop.options) {
+      const price = wardrobe[a.items.findIndex((i) => i.id === o.id)].purchasePrice!;
+      expect(o.amount).toBe(`${price.toLocaleString("ko-KR")} ￦`);
+    }
+    const best = qs.find((q) => q.id === "brand_best")!;
+    for (const o of best.options) {
+      const total = wardrobe.filter((x) => x.brand === o.label).reduce((s, x) => s + x.purchasePrice!, 0);
+      expect(o.amount).toBe(`${total.toLocaleString("ko-KR")} ￦`);
+    }
+  });
+
+  it("브랜드에 쓴 돈 질문은 답한 뒤 그 브랜드 옷 사진과 가격을 비싼 순으로 보여 준다", () => {
+    const wardrobe = Array.from({ length: 12 }, (_, i) =>
+      g(i, { brand: i < 4 ? "COS" : `B${i}`, purchasePrice: i < 4 ? 400000 + i * 10000 : 20000, imageUrl: `https://x/${i}.jpg` }),
+    );
+    const a = analyze(wardrobe, null, 1360, now);
+    const q = Array.from({ length: 60 }, (_, seed) => buildScript(a, seed, null).script.questions.find((x) => x.id === "brand_spend_q")).find(Boolean);
+    expect(q).toBeTruthy();
+    const cos = a.items.filter((i) => i.brandLabel === "COS").sort((x, y) => y.price! - x.price!);
+    expect(q!.reveal).toEqual(cos.map((i) => ({ id: i.id, amount: `${i.price!.toLocaleString("ko-KR")} ￦` })));
+  });
+});
+
 describe("퀴즈", () => {
   it("가진 브랜드의 퀴즈가 있으면 어떤 seed에서도 퀴즈를 낸다", () => {
     const wardrobe = Array.from({ length: 12 }, (_, i) => g(i, { brand: i === 0 ? "메종 마르지엘라" : "우리동네 공방" }));

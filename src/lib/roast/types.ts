@@ -8,6 +8,16 @@ export interface RoastOption {
   label: string;
   /** 브랜드 버리기: 대표 사진 옷 id */
   photoId?: string;
+  /** 선택지 칸에 한 줄로 늘어놓는 사진(칸을 넘는 사진은 보이지 않는다) */
+  photoIds?: string[];
+  /** 고른 뒤 칸의 빈자리에 보여 주는 금액(브랜드 총액·옷 가격, "N ￦") */
+  amount?: string;
+}
+
+/** 답한 뒤 반응과 함께 보여 주는 옷 사진과 그 옷 가격 */
+export interface RoastPriced {
+  id: string;
+  amount: string;
 }
 
 export interface RoastQuestion {
@@ -22,6 +32,8 @@ export interface RoastQuestion {
   leadPhotos?: Record<number, string[]>;
   /** 패션 퀴즈 정답 선택지 id(틀렸을 때 정답을 표시) */
   answer?: string;
+  /** 답한 뒤 반응 아래에 붙이는 옷 사진과 가격("~에 쓴 돈, 알고 있었나요?") */
+  reveal?: RoastPriced[];
 }
 
 export type RoastStep =

@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- 비공개 저장소의 임시 주소라 next/image 최적화를 쓰지 않는다(다른 화면과 같음). */
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { UsageNote } from "@/components/usage/usage-note";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { buttonClassName } from "@/components/ui/button";
@@ -22,7 +22,7 @@ const PREVIEW_KEY = "wardrobe-fit:roast-result";
 const TYPE_MS = 43;
 
 type Msg =
-  | { id: number; kind: "ai"; text: string; photos?: string[]; gap?: boolean }
+  | { id: number; kind: "ai"; text: string; photos?: string[]; gap?: boolean; captions?: Record<string, string> }
   | { id: number; kind: "status"; text: string }
   | { id: number; kind: "dots" }
   | { id: number; kind: "choices"; q: RoastQuestion; picked: string | null };
@@ -200,12 +200,36 @@ function Dots() {
   );
 }
 
+/** 선택지 칸의 금액: 자리는 처음부터 잡아 두고(사진 줄이 밀리지 않게), 고른 뒤에 나타난다. */
+function Amount({ text, shown }: { text: string; shown: boolean }) {
+  return (
+    <span className={shown ? "roast-choice-amount roast-photo-in" : "roast-choice-amount"} data-shown={shown} aria-hidden={!shown}>
+      {text}
+    </span>
+  );
+}
+
 /** 사진이 한 장씩 들어오는 시차(ms) */
 const PHOTO_STAGGER_MS = 110;
 const PHOTO_IN_MS = 450;
 
-function Photos({ ids, photoOf, animate }: { ids?: string[]; photoOf: (id: string) => string | null; animate?: boolean }) {
-  const urls = (ids ?? []).map(photoOf).filter((u): u is string => Boolean(u));
+function Photos({
+  ids,
+  photoOf,
+  animate,
+  captions,
+}: {
+  ids?: string[];
+  photoOf: (id: string) => string | null;
+  animate?: boolean;
+  /** 옷 id → 사진 아래에 적을 글(가격) */
+  captions?: Record<string, string>;
+}) {
+  const shown = (ids ?? []).flatMap((id) => {
+    const url = photoOf(id);
+    return url ? [{ id, url }] : [];
+  });
+  const urls = shown.map((x) => x.url);
   const drag = useRef<{ x: number; left: number } | null>(null);
   if (!urls.length) return null;
   // 3장 이상이면 한 줄로 늘어놓고 옆으로 넘겨 본다(터치는 스크롤, 마우스는 끌기).
@@ -224,17 +248,27 @@ function Photos({ ids, photoOf, animate }: { ids?: string[]; photoOf: (id: strin
       onPointerUp={() => (drag.current = null)}
       onPointerCancel={() => (drag.current = null)}
     >
-      {urls.map((u, i) => (
-        <img
-          key={u}
-          src={u}
-          alt=""
-          className={animate ? "roast-photo roast-photo-in" : "roast-photo"}
-          style={animate ? { animationDelay: `${i * PHOTO_STAGGER_MS}ms` } : undefined}
-          loading="lazy"
-          draggable={false}
-        />
-      ))}
+      {shown.map(({ id, url }, i) => {
+        const style = animate ? { animationDelay: `${i * PHOTO_STAGGER_MS}ms` } : undefined;
+        const img = (
+          <img
+            src={url}
+            alt=""
+            className={captions ? "roast-photo" : animate ? "roast-photo roast-photo-in" : "roast-photo"}
+            style={captions ? undefined : style}
+            loading="lazy"
+            draggable={false}
+          />
+        );
+        return captions?.[id] ? (
+          <figure key={url} className={animate ? "roast-photo-fig roast-photo-in" : "roast-photo-fig"} style={style}>
+            {img}
+            <figcaption>{captions[id]}</figcaption>
+          </figure>
+        ) : (
+          <Fragment key={url}>{img}</Fragment>
+        );
+      })}
     </div>
   );
 }
@@ -341,11 +375,11 @@ function Chat({
   // 사진은 글자가 다 찍힌 뒤에 한 장씩 들어오고, 다 들어온 뒤에 다음 말을 한다.
   const [typedIds, setTypedIds] = useState<Set<number>>(() => new Set());
   const say = useCallback(
-    async (text: string, photos?: string[], gap?: boolean) => {
+    async (text: string, photos?: string[], gap?: boolean, captions?: Record<string, string>) => {
       await new Promise<void>((resolve) => {
         const id = nextId.current;
         typedWaiters.current.set(id, resolve);
-        push(gap ? { kind: "ai", text, photos, gap } : { kind: "ai", text, photos });
+        push({ kind: "ai", text, photos, ...(gap ? { gap } : {}), ...(captions ? { captions } : {}) });
       });
       if (photos?.length && !reducedMotion()) await sleep(Math.min(photos.length, 8) * PHOTO_STAGGER_MS + PHOTO_IN_MS);
     },
@@ -410,12 +444,13 @@ function Chat({
     })();
 
     /** 줄바꿈마다 말풍선을 나눠 띄운다. 사진은 마지막 말풍선에 붙인다. */
-    async function sayBubbles(text: string, photos?: string[], gap?: boolean) {
+    async function sayBubbles(text: string, photos?: string[], gap?: boolean, captions?: Record<string, string>) {
       const parts = bubblesOf(text);
-      if (!parts.length) return say(text, photos, gap);
+      if (!parts.length) return say(text, photos, gap, captions);
       for (let i = 0; i < parts.length; i++) {
         if (i > 0) await sleep(reducedMotion() ? 100 : 380);
-        await say(parts[i], i === parts.length - 1 ? photos : undefined, i === 0 ? gap : undefined);
+        const last = i === parts.length - 1;
+        await say(parts[i], last ? photos : undefined, i === 0 ? gap : undefined, last ? captions : undefined);
       }
     }
 
@@ -448,7 +483,14 @@ function Chat({
           });
           answers[q.id] = picked;
           await think(600);
-          await sayBubbles(q.reactions[picked] ?? "");
+          // "~에 쓴 돈, 알고 있었나요?"는 반응 아래에 그 옷들 사진과 가격을 붙인다.
+          const reveal = q.reveal?.length ? q.reveal : undefined;
+          await sayBubbles(
+            q.reactions[picked] ?? "",
+            reveal?.map((x) => x.id),
+            undefined,
+            reveal && Object.fromEntries(reveal.map((x) => [x.id, x.amount])),
+          );
           await sleep(600);
         }
       }
@@ -469,7 +511,7 @@ function Chat({
         m.kind === "ai" ? (
           <div key={m.id} className="roast-ai" data-gap={m.gap ? "true" : undefined}>
             <Typed text={m.text} onDone={() => onTyped(m.id)} />
-            {typedIds.has(m.id) && <Photos ids={m.photos} photoOf={photoOf} animate />}
+            {typedIds.has(m.id) && <Photos ids={m.photos} photoOf={photoOf} animate captions={m.captions} />}
           </div>
         ) : m.kind === "status" ? (
           <p key={m.id} className="roast-status">
@@ -498,8 +540,33 @@ function Chat({
                   choiceWaiter.current = null;
                 }}
               >
-                {o.photoId && photoOf(o.photoId) && <img src={photoOf(o.photoId)!} alt="" />}
-                {o.label}
+                {o.amount == null ? (
+                  <>
+                    {o.photoId && photoOf(o.photoId) && <img src={photoOf(o.photoId)!} alt="" />}
+                    {o.label}
+                  </>
+                ) : o.photoIds ? (
+                  <>
+                    {o.label}
+                    <span className="roast-choice-line mt-2">
+                      <span className="roast-choice-photos" aria-hidden>
+                        {o.photoIds
+                          .map(photoOf)
+                          .filter((u): u is string => Boolean(u))
+                          .map((u, i) => (
+                            <img key={u} src={u} alt="" className="roast-photo-in" style={{ animationDelay: `${i * PHOTO_STAGGER_MS}ms` }} draggable={false} />
+                          ))}
+                      </span>
+                      <Amount text={o.amount} shown={m.picked !== null} />
+                    </span>
+                  </>
+                ) : (
+                  <span className="roast-choice-line">
+                    {o.photoId && photoOf(o.photoId) && <img src={photoOf(o.photoId)!} alt="" />}
+                    <span className="min-w-0 flex-1">{o.label}</span>
+                    <Amount text={o.amount} shown={m.picked !== null} />
+                  </span>
+                )}
               </button>
             ))}
           </div>

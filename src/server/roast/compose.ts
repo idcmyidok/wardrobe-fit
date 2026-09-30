@@ -180,6 +180,7 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
     photos: q.photos,
     ...(q.leadPhotos ? { leadPhotos: q.leadPhotos } : {}),
     ...(q.answer != null ? { answer: q.answer } : {}),
+    ...(q.reveal?.length ? { reveal: q.reveal } : {}),
   }));
   return { script: { seed, steps, questions }, asked, convo };
 }

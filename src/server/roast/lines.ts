@@ -395,9 +395,9 @@ export const LINE_TEXT: Record<string, PatternLines> = {
     para: ["{fitPhrase}{color} {sub|이} {n}벌입니다. 하나가 사라져도 아무도 모를 겁니다. 본인 포함해서요."],
   },
   family_repeat: {
-    say: ["제품명에 {familyName|이} 들어간 옷이 {n}벌입니다.", "{familyName} 제품이 {n}벌. 좋아하는 건 확실하네요."],
+    say: ["제품명에 {familyName|이} 들어간 {kind|이} {n}벌입니다.", "{familyName} 제품이 {n}벌. 좋아하는 건 확실하네요."],
     head: [["{familyName} 제품을 {n}벌이나 모았는데", "{familyName|이} 빠지면 설명이 안 되는 옷장입니다."]],
-    para: ["{familyName|이} 들어간 옷이 {n}벌입니다. 새로 살 때 기존 것과 비교는 해 보셨겠죠. 비교하고도 샀다면 그건 확신입니다."],
+    para: ["{familyName|이} 들어간 {kind|이} {n}벌입니다. 새로 살 때 기존 것과 비교는 해 보셨겠죠. 비교하고도 샀다면 그건 확신입니다."],
   },
   identical_items: {
     say: ["{color} {name}. 똑같은 옷이 {n}벌 있습니다. 이름도 색도 같아요.", "잠깐만요. {name}, {color}. 이게 {n}벌입니다. 복사 붙여넣기인가요?"],
@@ -454,9 +454,10 @@ export const LINE_TEXT: Record<string, PatternLines> = {
     para: ["한 벌 평균 {avgWon}입니다. 그 옷들이 옷장 안에서만 좋은 시간을 보내지 않기를 바랍니다."],
   },
   top_item: {
-    say: ["가장 비싼 옷이 {priceWon}입니다. 보통 옷의 {ratio}배쯤 되네요.", "{brand} {name}. {priceWon}. 이건 조금 특별 대우를 받는 옷이겠죠."],
+    // 신발·모자일 수도 있어서 "옷" 대신 "항목"(사용자 요청)
+    say: ["가장 비싼 항목이 {priceWon}입니다.\n{itemName}입니다.\n보통 항목 가격의 {ratio}배쯤 되네요.", "가장 비싼 항목은 {priceWon}.\n{itemName}입니다.\n이건 조금 특별 대우를 받고 있겠죠."],
     head: [["한 벌에 {priceWon|을} 쓴 적도 있는데", "한 벌이 나머지를 먹여 살리는 옷장입니다."]],
-    para: ["가장 비싼 옷은 {brand} {name}, {priceWon}입니다. 옷장 안에서 받는 대우만큼 밖에도 자주 나가길 바랍니다."],
+    para: ["가장 비싼 항목은 {itemName}, {priceWon}입니다. 옷장 안에서 받는 대우만큼 밖에도 자주 나가길 바랍니다."],
   },
   category_spend: {
     say: ["{catName}에 쓴 돈이 벌 수보다 훨씬 큽니다. {catName}에는 지갑이 쉽게 열리나 봅니다."],
