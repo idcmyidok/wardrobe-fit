@@ -122,7 +122,7 @@ export function LengthSilhouette({
   // ---- 티셔츠 ----
   const shHalf = t.shoulderWidth / 2;
   const chestHalf = t.chestWidth / 2;
-  const tipY = b.shoulderY + H * 0.02; // 어깨 끝
+  const tipY = b.shoulderY + H * 0.008; // 어깨 끝(몸 어깨보다 살짝 위로 띄운다)
   const collar = H * 0.04;
   const sleeveOut = shHalf + H * 0.03; // 소매 바깥 끝 x
   const sleeveOutY = tipY + t.sleeveLength * 0.8;
@@ -130,11 +130,11 @@ export function LengthSilhouette({
   const hemInY = sleeveOutY + H * 0.04;
   const armpitY = b.armpitY + H * 0.01;
   const hemY = t.hemY;
-  const neckY = b.shoulderY;
+  const neckY = b.shoulderY - H * 0.014; // 옷깃도 몸 어깨선보다 살짝 위
   const rr = H * 0.008;
   const at = (s: 1 | -1, x: number) => cx + s * x;
   const rightSide = [
-    `Q${at(1, shHalf * 0.55)} ${neckY - H * 0.002} ${at(1, shHalf)} ${tipY}`,
+    `Q${at(1, shHalf * 0.55)} ${neckY - H * 0.008} ${at(1, shHalf)} ${tipY}`,
     `L${at(1, sleeveOut)} ${sleeveOutY}`,
     `L${at(1, hemInX)} ${hemInY}`,
     `Q${at(1, chestHalf + H * 0.004)} ${hemInY - H * 0.012} ${at(1, chestHalf)} ${armpitY}`,
@@ -148,7 +148,7 @@ export function LengthSilhouette({
     `Q${at(-1, chestHalf + H * 0.004)} ${hemInY - H * 0.012} ${at(-1, hemInX)} ${hemInY}`,
     `L${at(-1, sleeveOut)} ${sleeveOutY}`,
     `L${at(-1, shHalf)} ${tipY}`,
-    `Q${at(-1, shHalf * 0.55)} ${neckY - H * 0.002} ${cx - collar} ${neckY}`,
+    `Q${at(-1, shHalf * 0.55)} ${neckY - H * 0.008} ${cx - collar} ${neckY}`,
   ];
   const shirt = [`M${cx - collar} ${neckY}`, `Q${cx} ${neckY + H * 0.05} ${cx + collar} ${neckY}`, ...rightSide, ...leftSide, "Z"].join(" ");
   const collarLine = `M${cx - collar} ${neckY} Q${cx} ${neckY + H * 0.05} ${cx + collar} ${neckY}`;
@@ -167,9 +167,9 @@ export function LengthSilhouette({
     Math.abs(diff) < 0.5 ? "사타구니와 거의 같은 높이" : `사타구니보다 약 ${Math.abs(diff).toFixed(1).replace(/\.0$/, "")}cm ${diff > 0 ? "아래" : "위"}`;
 
   return (
-    <figure className="flex flex-col gap-1.5" data-testid="length-silhouette">
+    <figure className="flex items-start gap-4" data-testid="length-silhouette">
       <div
-        className="relative w-full max-w-56 overflow-hidden border border-neutral-300"
+        className="relative w-[46%] max-w-56 shrink-0 overflow-hidden border border-neutral-300"
         style={{ aspectRatio: `${W} / ${CANVAS_H}`, background: "#f3f3f0" }}
         role="img"
         aria-label={`키 ${height}cm 남성 실루엣에 총장 ${length}cm 반팔을 입힌 그림. ${diffText}`}
@@ -220,10 +220,12 @@ export function LengthSilhouette({
           </g>
         </svg>
       </div>
-      <p className="max-w-56 text-xs font-medium">{diffText}</p>
-      <figcaption className="max-w-56 text-xs text-pretty text-neutral-700">
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <p className="text-sm font-medium">{diffText}</p>
+      <figcaption className="text-xs leading-relaxed text-pretty text-neutral-700">
         키 {height}cm 평균 성인 남자 실루엣에, 이 옷과 같은 총장({length}cm, 목 옆 어깨점에서 밑단까지)의 반팔 티셔츠를 입힌 모습이에요. 실제 어깨·가슴·소매 치수에 따라 착용감은 달라질 수 있으니 길이 느낌만 참고하세요.
       </figcaption>
+      </div>
     </figure>
   );
 }
