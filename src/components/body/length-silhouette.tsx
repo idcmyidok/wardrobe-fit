@@ -1,16 +1,71 @@
 /**
- * 총장 길이감을 눈으로 대충 보는 그림. 입력한 키에 맞춘 평균 성인 남자 실루엣 위에, 같은 총장의 반팔 티셔츠를 얹어 그린다.
- * 옷이 덮는 부분은 실루엣이 보이지 않는다. 세로 1cm는 실루엣 세로 1cm와 같은 비율이고, 어깨·가슴 너비는
- * 실측이 있으면 그 값을, 없으면 키에 비례한 평균값을 쓴다. 소매 길이·핏은 그리지 않는 참고용 그림이다.
+ * 총장 길이감을 눈으로 대충 보는 그림. 입력한 키에 맞춘 평균 성인 남자 실루엣(횡단보도 사람 기호 느낌)에,
+ * 같은 총장의 반팔 티셔츠를 반투명으로 겹쳐 그려 티셔츠 뒤로 몸이 비쳐 보이게 한다.
+ * 좌표는 cm 기준(세로 1 unit = 실제 1cm)이고, 몸의 위치는 키에 대한 비율(MALE_BODY_RATIO)로,
+ * 티셔츠 밑단은 목 옆 어깨점(HPS)에서 실제 총장(cm)만큼 아래로 계산한다. 어깨·가슴 실측이 없으면 레귤러핏 평균 폭을 쓴다.
  */
-const NECK_FROM_TOP = 0.15; // 정수리에서 목 아래(총장을 재는 곳)까지, 키의 비율
+export const MALE_BODY_RATIO = {
+  chinY: 0.125,
+  shoulderY: 0.17,
+  armpitY: 0.235,
+  waistY: 0.38,
+  pelvisY: 0.46,
+  crotchY: 0.53,
+  kneeY: 0.74,
+
+  headWidth: 0.085,
+  shoulderWidth: 0.255,
+  chestWidth: 0.22,
+  waistWidth: 0.17,
+  hipWidth: 0.19,
+};
+
+export function getMaleBody(height: number) {
+  const r = MALE_BODY_RATIO;
+  return {
+    chinY: height * r.chinY,
+    shoulderY: height * r.shoulderY,
+    armpitY: height * r.armpitY,
+    waistY: height * r.waistY,
+    pelvisY: height * r.pelvisY,
+    crotchY: height * r.crotchY,
+    kneeY: height * r.kneeY,
+    floorY: height,
+    headWidth: height * r.headWidth,
+    shoulderWidth: height * r.shoulderWidth,
+    chestWidth: height * r.chestWidth,
+    waistWidth: height * r.waistWidth,
+    hipWidth: height * r.hipWidth,
+  };
+}
+
+/** 옷깃이 몸 어깨선보다 살짝 위에 걸치도록 옷 전체를 올리는 정도(키 비율). 총장은 그대로라 밑단도 같이 올라간다. */
+const SHIRT_LIFT = 0.014;
+
+/** 표준 레귤러핏 반팔 티셔츠. 실측(어깨·가슴)이 있으면 그 값을 쓴다. */
+export function getTshirt(height: number, length: number, shoulder?: number | null, chest?: number | null) {
+  const body = getMaleBody(height);
+  const topY = body.shoulderY - height * SHIRT_LIFT;
+  const hemY = topY + length; // 옷 맨 위(목 옆 어깨점)에서 실제 총장만큼 아래
+  return {
+    topY,
+    hemY,
+    shoulderWidth: shoulder ?? body.shoulderWidth * 1.08,
+    chestWidth: chest ?? body.chestWidth * 1.06,
+    sleeveLength: height * 0.12,
+    diffFromCrotch: hemY - body.crotchY,
+  };
+}
+
 /** 그림 칸은 키와 상관없이 같은 눈금(cm)이라, 키가 다르면 사람 크기도 다르게 보인다. */
 const CANVAS_H = 212;
 const GROUND_Y = 202; // 발이 닿는 바닥선(아래에 여백 10cm)
 const CANVAS_W = 128;
-const BODY_FILL = "#bdbdb6";
+const BODY = "#9a9a93";
 const SHIRT_FILL = "#3d5a80";
 const SHIRT_LINE = "#2a4262";
+
+const pts = (list: [number, number][]) => list.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" ");
 
 export function LengthSilhouette({
   length,
@@ -20,76 +75,161 @@ export function LengthSilhouette({
 }: {
   length: number;
   height: number;
-  /** 어깨너비(cm). 없으면 키에 비례한 평균값 */
+  /** 어깨너비(cm). 없으면 레귤러핏 평균 */
   shoulder?: number | null;
-  /** 가슴단면(cm). 없으면 키에 비례한 평균값 */
+  /** 가슴단면(cm). 없으면 레귤러핏 평균 */
   chest?: number | null;
 }) {
   const H = height;
   const W = CANVAS_W;
   const cx = W / 2;
   const top = GROUND_Y - H; // 키가 클수록 머리가 위로 올라가고, 작으면 머리 위가 비어 보인다
-  const neckY = H * NECK_FROM_TOP;
-  const shoulderY = H * 0.18;
-  const bodyHalf = H * 0.125; // 몸 어깨 반폭
-  const hipHalf = H * 0.09;
-  const crotchY = H * 0.47;
-  const armEnd = H * 0.46;
+  const b = getMaleBody(H);
+  const t = getTshirt(H, length, shoulder, chest);
 
-  // 옷: 어깨·가슴 실측이 있으면 반영하되 너무 튀지 않게 범위를 제한
-  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-  const shirtShoulderHalf = clamp(shoulder ? shoulder / 2 : H * 0.135, H * 0.11, H * 0.17);
-  const shirtChestHalf = clamp(chest ? chest / 2 : H * 0.14, H * 0.11, H * 0.19);
-  const bottomY = neckY + length;
-  const sleeveEndY = shoulderY + H * 0.12; // 반팔 소매 끝
-  const sleeveOut = shirtShoulderHalf + H * 0.05;
-  const hemHalf = shirtChestHalf;
-  // 어깨선에서 소매 끝, 겨드랑이, 밑단으로 이어지는 반팔 윤곽
-  const armpitY = sleeveEndY + H * 0.03;
-  const shirt = [
-    `M${cx - H * 0.045} ${neckY}`,
-    `Q${cx} ${neckY + H * 0.03} ${cx + H * 0.045} ${neckY}`,
-    `L${cx + shirtShoulderHalf} ${shoulderY}`,
-    `L${cx + sleeveOut} ${sleeveEndY - H * 0.01}`,
-    `L${cx + sleeveOut - H * 0.035} ${sleeveEndY + H * 0.025}`,
-    `L${cx + hemHalf} ${armpitY}`,
-    `L${cx + hemHalf} ${bottomY}`,
-    `L${cx - hemHalf} ${bottomY}`,
-    `L${cx - hemHalf} ${armpitY}`,
-    `L${cx - sleeveOut + H * 0.035} ${sleeveEndY + H * 0.025}`,
-    `L${cx - sleeveOut} ${sleeveEndY - H * 0.01}`,
-    `L${cx - shirtShoulderHalf} ${shoulderY}`,
-    "Z",
-  ].join(" ");
-  const cut = bottomY > H;
+  // ---- 사람(정면). 어깨 > 가슴 > 허리 < 골반으로 폭이 변한다 ----
+  const sw = b.shoulderWidth / 2;
+  const ch = b.chestWidth / 2;
+  const wh = b.waistWidth / 2;
+  const hh = b.hipWidth / 2;
+  const neckHalf = H * 0.024;
+  const torso = (s: 1 | -1): [number, number][] => [
+    [cx + s * neckHalf, b.shoulderY - H * 0.006],
+    [cx + s * sw * 0.86, b.shoulderY],
+    [cx + s * sw, b.shoulderY + H * 0.014],
+    [cx + s * ch, b.armpitY],
+    [cx + s * wh, b.waistY],
+    [cx + s * hh, b.pelvisY],
+    [cx + s * hh * 0.9, b.crotchY],
+  ];
+  const torsoPoly = [...torso(1), ...torso(-1).reverse()];
+  const arm = (s: 1 | -1): [number, number][] => [
+    [cx + s * (sw - H * 0.02), b.shoulderY + H * 0.005],
+    [cx + s * (sw + H * 0.006), b.shoulderY + H * 0.03],
+    [cx + s * (sw + H * 0.016), H * 0.38],
+    [cx + s * (sw + H * 0.008), H * 0.53],
+    [cx + s * (sw - H * 0.032), H * 0.53],
+    [cx + s * (sw - H * 0.03), H * 0.38],
+    [cx + s * (sw - H * 0.05), b.armpitY],
+  ];
+  const leg = (s: 1 | -1): [number, number][] => [
+    [cx + s * H * 0.004, b.crotchY],
+    [cx + s * hh, b.pelvisY],
+    [cx + s * H * 0.078, b.kneeY],
+    [cx + s * H * 0.062, H * 0.96],
+    [cx + s * H * 0.064, H],
+    [cx + s * H * 0.01, H],
+    [cx + s * H * 0.012, H * 0.96],
+    [cx + s * H * 0.012, b.kneeY],
+  ];
+
+  // ---- 티셔츠 ----
+  const shHalf = t.shoulderWidth / 2;
+  const chestHalf = t.chestWidth / 2;
+  const tipY = t.topY + H * 0.022; // 어깨 끝(몸 어깨보다 살짝 위로 띄운다)
+  const collar = H * 0.04;
+  const sleeveOut = shHalf + H * 0.03; // 소매 바깥 끝 x
+  const sleeveOutY = tipY + t.sleeveLength * 0.8;
+  const hemInX = chestHalf + H * 0.02; // 소매 끝단 안쪽 x
+  const hemInY = sleeveOutY + H * 0.04;
+  const armpitY = b.armpitY + H * 0.01;
+  const hemY = t.hemY;
+  const neckY = t.topY;
+  const rr = H * 0.008;
+  const at = (s: 1 | -1, x: number) => cx + s * x;
+  const rightSide = [
+    `Q${at(1, shHalf * 0.55)} ${neckY - H * 0.008} ${at(1, shHalf)} ${tipY}`,
+    `L${at(1, sleeveOut)} ${sleeveOutY}`,
+    `L${at(1, hemInX)} ${hemInY}`,
+    `Q${at(1, chestHalf + H * 0.004)} ${hemInY - H * 0.012} ${at(1, chestHalf)} ${armpitY}`,
+    `L${at(1, chestHalf)} ${hemY - rr}`,
+    `Q${at(1, chestHalf)} ${hemY} ${at(1, chestHalf - rr)} ${hemY}`,
+  ];
+  const leftSide = [
+    `L${at(-1, chestHalf - rr)} ${hemY}`,
+    `Q${at(-1, chestHalf)} ${hemY} ${at(-1, chestHalf)} ${hemY - rr}`,
+    `L${at(-1, chestHalf)} ${armpitY}`,
+    `Q${at(-1, chestHalf + H * 0.004)} ${hemInY - H * 0.012} ${at(-1, hemInX)} ${hemInY}`,
+    `L${at(-1, sleeveOut)} ${sleeveOutY}`,
+    `L${at(-1, shHalf)} ${tipY}`,
+    `Q${at(-1, shHalf * 0.55)} ${neckY - H * 0.008} ${cx - collar} ${neckY}`,
+  ];
+  const shirt = [`M${cx - collar} ${neckY}`, `Q${cx} ${neckY + H * 0.05} ${cx + collar} ${neckY}`, ...rightSide, ...leftSide, "Z"].join(" ");
+  const collarLine = `M${cx - collar} ${neckY} Q${cx} ${neckY + H * 0.05} ${cx + collar} ${neckY}`;
+  const stroke = H * 0.004;
+
+  const marks = Array.from({ length: 21 }, (_, i) => i * 10); // 0~200cm, 10cm마다
+  const guides: [string, number][] = [
+    ["어깨", b.shoulderY],
+    ["허리", b.waistY],
+    ["골반", b.pelvisY],
+    ["사타구니", b.crotchY],
+    ["무릎", b.kneeY],
+  ];
+  const diff = t.diffFromCrotch;
+  const diffText =
+    Math.abs(diff) < 0.5 ? "사타구니와 거의 같은 높이" : `사타구니보다 약 ${Math.abs(diff).toFixed(1).replace(/\.0$/, "")}cm ${diff > 0 ? "아래" : "위"}`;
 
   return (
-    <figure className="flex flex-col gap-1.5" data-testid="length-silhouette">
+    <figure className="flex items-start gap-4" data-testid="length-silhouette">
       <div
-        className="relative w-full max-w-56 overflow-hidden border border-neutral-300"
+        className="relative w-[46%] max-w-56 shrink-0 overflow-hidden border border-neutral-300"
         style={{ aspectRatio: `${W} / ${CANVAS_H}`, background: "#f3f3f0" }}
         role="img"
-        aria-label={`키 ${height}cm 남성 실루엣에 총장 ${length}cm 반팔을 입힌 그림`}
+        aria-label={`키 ${height}cm 남성 실루엣에 총장 ${length}cm 반팔을 입힌 그림. ${diffText}`}
       >
         <svg viewBox={`0 0 ${W} ${CANVAS_H}`} className="absolute inset-0 size-full" aria-hidden>
-          <g transform={`translate(0 ${top})`}>
-          <g fill={BODY_FILL}>
-            <circle cx={cx} cy={H * 0.065} r={H * 0.055} />
-            <rect x={cx - H * 0.02} y={H * 0.1} width={H * 0.04} height={H * 0.06} />
-            <path d={`M${cx - bodyHalf} ${shoulderY} Q${cx} ${H * 0.15} ${cx + bodyHalf} ${shoulderY} L${cx + hipHalf} ${crotchY} L${cx - hipHalf} ${crotchY} Z`} />
-            <rect x={cx - bodyHalf - H * 0.035} y={shoulderY - H * 0.01} width={H * 0.045} height={armEnd - shoulderY} rx={H * 0.022} />
-            <rect x={cx + bodyHalf - H * 0.01} y={shoulderY - H * 0.01} width={H * 0.045} height={armEnd - shoulderY} rx={H * 0.022} />
-            <rect x={cx - hipHalf} y={crotchY - H * 0.01} width={hipHalf - H * 0.008} height={H - crotchY + H * 0.01} rx={H * 0.015} />
-            <rect x={cx + H * 0.008} y={crotchY - H * 0.01} width={hipHalf - H * 0.008} height={H - crotchY + H * 0.01} rx={H * 0.015} />
+          {/* 키 눈금: 발 밑(0cm)에서 10cm마다 연한 가로줄, 눈금 숫자는 왼쪽 */}
+          <g stroke="#cfcfc8" strokeWidth={0.25}>
+            {marks.map((cm) => (
+              <line key={cm} x1={cm % 50 === 0 ? 0 : 9} x2={W} y1={GROUND_Y - cm} y2={GROUND_Y - cm} strokeOpacity={cm % 50 === 0 ? 0.9 : 0.55} />
+            ))}
           </g>
-          <path d={shirt} fill={SHIRT_FILL} stroke={SHIRT_LINE} strokeWidth={H * 0.004} strokeLinejoin="round" />
-          {!cut && <line x1={cx + hemHalf + H * 0.01} x2={W} y1={bottomY} y2={bottomY} stroke="#111" strokeWidth={H * 0.004} strokeDasharray={`${H * 0.02} ${H * 0.012}`} />}
+          <g fill="#9b9b94" fontSize={4} fontFamily="ui-monospace, monospace">
+            {marks.filter((cm) => cm > 0).map((cm) => (
+              <text key={cm} x={1} y={GROUND_Y - cm + 1.4}>
+                {cm}
+              </text>
+            ))}
+          </g>
+          <line x1={0} x2={W} y1={top} y2={top} stroke="#8a8a83" strokeWidth={0.3} strokeDasharray="1.5 1.5" />
+          <g transform={`translate(0 ${top})`}>
+            {/* 신체 기준선(어깨·허리·골반·사타구니·무릎) */}
+            <g stroke="#7d8f7a" strokeWidth={0.3} strokeDasharray="0.8 1.2">
+              {guides.map(([name, y]) => (
+                <line key={name} x1={0} x2={W} y1={y} y2={y} />
+              ))}
+            </g>
+            <g fill="#5f7a5b" fontSize={3.4} textAnchor="end">
+              {guides.map(([name, y]) => (
+                <text key={name} x={W - 1} y={y - 0.8}>
+                  {name}
+                </text>
+              ))}
+            </g>
+            {/* 사람 */}
+            <g fill={BODY} stroke={BODY} strokeWidth={H * 0.008} strokeLinejoin="round">
+              <ellipse cx={cx} cy={b.chinY / 2} rx={b.headWidth / 2} ry={b.chinY / 2} stroke="none" />
+              <rect x={cx - neckHalf} y={b.chinY - H * 0.01} width={neckHalf * 2} height={b.shoulderY - b.chinY + H * 0.02} stroke="none" />
+              <polygon points={pts(torsoPoly)} />
+              <polygon points={pts(arm(1))} />
+              <polygon points={pts(arm(-1))} />
+              <polygon points={pts(leg(1))} />
+              <polygon points={pts(leg(-1))} />
+            </g>
+            {/* 티셔츠: 반투명이라 뒤의 몸이 비친다 */}
+            <path d={shirt} fill={SHIRT_FILL} fillOpacity={0.62} stroke={SHIRT_LINE} strokeWidth={stroke} strokeLinejoin="round" />
+            <path d={collarLine} fill="none" stroke={SHIRT_LINE} strokeWidth={stroke * 2} strokeLinecap="round" />
+            <line x1={cx + chestHalf + H * 0.015} x2={W} y1={hemY} y2={hemY} stroke="#111" strokeWidth={stroke} strokeDasharray={`${H * 0.02} ${H * 0.012}`} />
           </g>
         </svg>
       </div>
-      <figcaption className="max-w-56 text-xs text-pretty text-neutral-700">
-        키 {height}cm 평균 성인 남자 실루엣에, 이 옷과 같은 총장({length}cm)의 반팔 티셔츠를 입힌 모습이에요. 실제 옷의 모양·핏과는 다를 수 있으니 길이 느낌만 참고하세요.
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <p className="text-sm font-medium">{diffText}</p>
+      <figcaption className="text-xs leading-relaxed text-pretty text-neutral-700">
+        키 {height}cm 평균 성인 남자 실루엣에, 이 옷과 같은 총장({length}cm, 목 옆 어깨점에서 밑단까지)의 반팔 티셔츠를 입힌 모습이에요. 실제 어깨·가슴·소매 치수에 따라 착용감은 달라질 수 있으니 길이 느낌만 참고하세요.
       </figcaption>
+      </div>
     </figure>
   );
 }
