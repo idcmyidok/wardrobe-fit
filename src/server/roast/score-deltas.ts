@@ -7,8 +7,8 @@ import "server-only";
  * 점수는 옷장 수치로 낸 기본 점수에 이 값을 더한 뒤 0~100으로 자른다.
  */
 export const SCORE_DELTAS: Record<string, Record<string, number>> = {
-  quiz: { right: 3, wrong: -3 },
-  drop_item: { most: 2, mid: 0, least: -2 },
+  quiz: { right: 5, wrong: -5 },
+  drop_item: { most: 0, mid: 0, least: 0 },
   brand_best: { spend: 1, count: 1, recent: -1, spend2: -2 },
   count_guess: { under: -2, right: 3, over: 1 },
   odd_photo: { mine: 1, gift: 0, dunno: -2 },
