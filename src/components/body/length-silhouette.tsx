@@ -128,9 +128,10 @@ export function LengthSilhouette({
   const chestHalf = t.chestWidth / 2;
   const tipY = t.topY + H * 0.022; // 어깨 끝(몸 어깨보다 살짝 위로 띄운다)
   const collar = H * 0.04;
-  const sleeveOut = shHalf + H * 0.03; // 소매 바깥 끝 x
+  // 실측 어깨가 가슴보다 좁아도 소매가 몸판 밖으로 충분히 벌어지게 한다
+  const sleeveOut = Math.max(shHalf + H * 0.03, chestHalf + H * 0.05); // 소매 바깥 끝 x
   const sleeveOutY = tipY + t.sleeveLength * 0.8;
-  const hemInX = chestHalf + H * 0.02; // 소매 끝단 안쪽 x
+  const hemInX = Math.max(chestHalf + H * 0.012, sleeveOut - H * 0.075); // 소매 끝단 안쪽 x
   const hemInY = sleeveOutY + H * 0.04;
   const armpitY = b.armpitY + H * 0.01;
   const hemY = t.hemY;
