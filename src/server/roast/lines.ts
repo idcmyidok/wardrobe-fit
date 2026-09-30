@@ -165,6 +165,8 @@ export const LINE_SECTION: Record<string, Section> = {
   recent_30: "timing",
   recent_90: "timing",
   month_binge: "timing",
+  taste_shift: "timing",
+  price_shift: "timing",
   musinsa_kr: "shop",
   shop_focus: "shop",
   identical_items: "repeat",
@@ -435,6 +437,16 @@ export const LINE_TEXT: Record<string, PatternLines> = {
     say: ["해마다 {month}월만 되면 손이 바빠지네요. {month}월에 산 옷이 {n}벌입니다.", "{month}월에 유난히 많이 샀습니다. 올해만 그런 게 아니라 매년요."],
     head: [["{month}월만 되면 결제 버튼이 가벼워지는데", "달력에 쇼핑 시즌이 따로 적혀 있는 옷장입니다."]],
     para: ["구매 기록을 달별로 모아 보면 {month}월이 유독 붐빕니다. {month}월의 기억은 흐릿해도 {month}월의 결제 내역은 해마다 선명합니다."],
+  },
+  taste_shift: {
+    say: ["구매 날짜를 시기별로 묶어 보니 취향이 이사를 갔네요. {from}에는 {fromStyle}이 중심이었고, {to}에는 {toStyle}이 중심입니다."],
+    head: [["예전엔 {fromStyle} 중심이었는데", "지금은 {toStyle} 쪽으로 갈아탄 옷장입니다."]],
+    para: ["{from}에는 {fromStyle} 쪽 옷이 주력이었는데, {to}에 산 옷은 {pct}%가 {toStyle} 계열입니다. 취향이 바뀐 건지 계절이 바뀐 건지는 본인만 아시겠지만, 구매 내역은 이미 눈치챘습니다."],
+  },
+  price_shift: {
+    say: ["구매 시기별로 보니 스타일은 그대로인데 가격표만 달라졌네요. {from}과 {to}를 비교해 봤습니다."],
+    head: [["입는 스타일은 그대로인데", "가격표만 {dir}던 옷장입니다."]],
+    para: ["{style} 중심인 건 {from}이나 {to}나 같은데, 브랜드의 평균 가격 레벨은 {fromLv}에서 {toLv}로 {dir}습니다. 같은 취향을 더 비싸게(혹은 더 알뜰하게) 사는 법을 터득하셨나 봅니다."],
   },
   // 구매처 -------------------------------------------------------------------
   musinsa_kr: {

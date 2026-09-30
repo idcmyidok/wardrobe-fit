@@ -7,6 +7,8 @@ import { computeBodyFit, type BodyProfile } from "@/lib/fit/body-fit";
 import { priceInKrw } from "@/lib/format/price";
 import type { CategoryId, Garment, Season } from "@/lib/types/domain";
 import { brandGroups, brandLabels, findBrand, GROUP_WORD, isTrendBrand, MUSINSA_POPULAR, type BrandGroup, type BrandInfo } from "./brands";
+import { SCORE_RULES, type ScoreRules } from "./score-deltas";
+import { detectTasteShift } from "./shift";
 import { FAMILY_IDS, familyName, productFamilies, type FamilyId } from "./keywords";
 
 /**
@@ -270,7 +272,7 @@ export function isBasicTee(i: Item): boolean {
   return Boolean(i.brand?.tags.some((t) => t === "베이직" || t === "미니멀"));
 }
 
-export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: number, now = new Date()): Analysis {
+export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: number, now = new Date(), rules?: Partial<ScoreRules>): Analysis {
   const prepared = prepare(garments, body, usdRate);
   const clothesTotal = prepared.filter((i) => !i.accessory).length;
   // 무지 티는 5벌까지 취향 분석에서 뺀다(5벌을 넘는 것은 그대로 본다). 벌 수를 말할 때는 clothesTotal을 쓴다.
@@ -504,6 +506,14 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     const [m, mList] = top(byMonth) ?? [null, []];
     if (m && mList.length >= 4 && mList.length >= avg * 2)
       add("month_binge", ramp(mList.length / avg, 2, 6), 0.85, { month: Number(m), n: mList.length }, mList);
+  }
+  // 구매 시기별 변화(반기 구간 비교)
+  const shift = detectTasteShift(clothes, now.getTime(), { ...SCORE_RULES, ...rules });
+  if (shift) {
+    const up = shift.up ? "올랐" : "내려갔";
+    if (shift.kind === "style")
+      add("taste_shift", 0.75, 0.8, { from: shift.fromLabel, to: shift.toLabel, fromStyle: shift.fromStyle, toStyle: shift.toStyle, pct: shift.toPct }, shift.list);
+    else add("price_shift", 0.7, 0.75, { from: shift.fromLabel, to: shift.toLabel, style: shift.toStyle, dir: up, fromLv: Math.round(shift.fromPrice * 10) / 10, toLv: Math.round(shift.toPrice * 10) / 10 }, shift.list);
   }
 
   // 금액 ---------------------------------------------------------------------

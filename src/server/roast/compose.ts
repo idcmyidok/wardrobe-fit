@@ -72,7 +72,7 @@ function rank(a: Analysis, r: Rng, max: number, T: RoastTexts, perSection = 2): 
 const MAX_PHOTOS = 40;
 const photosOf = (a: Analysis, p: Pattern) => p.garmentIds.filter((id) => a.items.find((i) => i.id === id)?.hasPhoto).slice(0, MAX_PHOTOS);
 
-const NO_PHOTO = new Set(["subcategory_spend", "count_small", "count_many", "count_huge", "avg_price", "trait_hype", "trait_trendy", "trait_timeless", "trait_functional", "trait_niche", "trait_mainstream", "trait_formal", "trait_casual", "trait_heritage", "trait_pricey", "country_bias", "season_bias", "musinsa_kr"]);
+const NO_PHOTO = new Set(["subcategory_spend", "count_small", "count_many", "count_huge", "avg_price", "trait_hype", "trait_trendy", "trait_timeless", "trait_functional", "trait_niche", "trait_mainstream", "trait_formal", "trait_casual", "trait_heritage", "trait_pricey", "country_bias", "season_bias", "musinsa_kr", "taste_shift", "price_shift"]);
 
 /** 대화의 이야기 한 묶음: 분석 문장 하나 또는 질문 하나 */
 type Block = { kind: "say"; p: Pattern; sec: Section } | { kind: "ask"; i: number; sec: Section | null };

@@ -20,6 +20,7 @@ import { analyze, MIN_GARMENTS } from "./analyze";
 import { buildScript, composeResult } from "./compose";
 import { getRoastTexts, signGarments } from "./queries";
 import { buildReport } from "./report";
+import type { ScoreRules } from "./score-deltas";
 
 /**
  * AI 옷장 분석 서버 액션.
@@ -93,10 +94,11 @@ export async function startRoast(input: { name: string | null; age?: number | nu
     const name = nameSchema.safeParse(input.name).data ?? null;
     const age = ageSchema.safeParse(input.age ?? null).data ?? null;
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
-    const a = analyze(s.garments, body, usdRate);
+    const texts = await getRoastTexts(s.supabase);
+    const a = analyze(s.garments, body, usdRate, new Date(), texts.score.rules as Partial<ScoreRules> | undefined);
     if (a.clothesTotal < MIN_GARMENTS) return { ok: false, code: "too_few", count: a.clothesTotal };
     const seed = Math.floor(Math.random() * 2 ** 31);
-    const { script } = buildScript(a, seed, name, await getRoastTexts(s.supabase), age);
+    const { script } = buildScript(a, seed, name, texts, age);
     return { ok: true, script, aiLeft: await aiLeft(s) };
   } catch (e) {
     console.error("[roast] start", e instanceof Error ? e.message : e);
@@ -114,9 +116,9 @@ export async function finishRoast(input: { seed: number; name: string | null; ag
     const answers = z.record(z.string().max(60), z.string().max(200)).safeParse(input.answers).data ?? {};
 
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
-    const a = analyze(s.garments, body, usdRate);
-    if (a.clothesTotal < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 10개 이상일 때 분석할 수 있습니다." };
     const texts = await getRoastTexts(s.supabase);
+    const a = analyze(s.garments, body, usdRate, new Date(), texts.score.rules as Partial<ScoreRules> | undefined);
+    if (a.clothesTotal < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 10개 이상일 때 분석할 수 있습니다." };
     const plan = buildScript(a, seed, name, texts, age);
     const composed = composeResult(a, name, seed, texts, plan.asked, answers);
     const report = buildReport(a, name, seed, texts.report, plan.asked, answers, texts.score, age);
