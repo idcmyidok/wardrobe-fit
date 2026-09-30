@@ -355,7 +355,8 @@ export const Q_TEXT: Record<string, QuestionText> = {
     },
   },
   quiz: {
-    lead: ["잠깐만요.", "이 정도 브랜드를 가지고 있으면 이것 정도는 알고 있겠죠."],
+    // {brand}가 처음 나오는 문장에 그 브랜드 옷 사진을 붙인다.
+    lead: ["잠깐만요.", "{brand} 옷이 있네요.", "{brand|을} 가지고 있으면 이것 정도는 알고 있겠죠."],
     text: "",
     options: {},
     react: {},
@@ -981,6 +982,8 @@ export interface AskedQuestion {
   /** 선택지 id별 결과 글 문단(이미 값이 채워진 문장). 없으면 결과 글에 쓰지 않는다. */
   roast: Record<string, string>;
   photos: string[];
+  /** 앞 멘트 번호별 사진 */
+  leadPhotos?: Record<number, string[]>;
   /** 퀴즈 정답 선택지 id */
   answer?: string;
   quizId?: string;
@@ -1076,7 +1079,8 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
   if (!tx) return null;
   const f = (t: string, v: Vars = vars) => fill(t, v);
   const photos = q.photos?.(a) ?? [];
-  const base = { id: q.id, lead: tx.lead.map((l) => f(l)), text: tx.text ? f(tx.text) : "", photos };
+  // 퀴즈 앞 멘트는 브랜드를 고른 뒤에 채운다.
+  const base = { id: q.id, lead: q.id === "quiz" ? [] : tx.lead.map((l) => f(l)), text: tx.text ? f(tx.text) : "", photos };
   if (q.id === "odd_photo" && !photos.length) return null;
 
   // 결과 글 문단: 고를 수 있는 문장이 없거나 자리를 못 채우면 그 답은 결과 글에 쓰지 않는다.
@@ -1105,8 +1109,15 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
         throw e;
       }
     };
+    const brandPhotos = a.items
+      .filter((i) => i.brand?.name === quiz.brand && i.hasPhoto)
+      .slice(0, 3)
+      .map((i) => i.id);
+    const photoAt = tx.lead.findIndex((l) => l.includes("{brand"));
     return {
       ...base,
+      lead: tx.lead.map((l) => fill(l, { brand: brandLabel })),
+      leadPhotos: brandPhotos.length && photoAt >= 0 ? { [photoAt]: brandPhotos } : undefined,
       quizId: quiz.id,
       text: quiz.question,
       options: r.shuffle(ids).map((id) => ({ id, label: quiz.options[Number(id)] })),

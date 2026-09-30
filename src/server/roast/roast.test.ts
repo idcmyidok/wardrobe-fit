@@ -305,4 +305,16 @@ describe("퀴즈", () => {
     const a = analyze(wardrobe, null, 1360, new Date("2026-09-29T12:00:00+09:00"));
     for (let seed = 0; seed < 30; seed++) expect(buildScript(a, seed, null).script.questions.some((q) => q.id === "quiz")).toBe(true);
   });
+
+  it("퀴즈 앞 멘트에 브랜드 이름을 넣고, 브랜드가 처음 나오는 문장에 그 브랜드 옷 사진을 붙인다", () => {
+    const wardrobe = Array.from({ length: 12 }, (_, i) =>
+      g(i, { brand: i === 0 ? "메종 마르지엘라" : "우리동네 공방", imageUrl: i === 0 ? "https://x/m.jpg" : null }),
+    );
+    const a = analyze(wardrobe, null, 1360, new Date("2026-09-29T12:00:00+09:00"));
+    const quiz = buildScript(a, 1, null).script.questions.find((q) => q.id === "quiz")!;
+    expect(quiz.lead.join(" ")).toContain("메종 마르지엘라 옷이 있네요.");
+    expect(quiz.lead.join(" ")).toContain("메종 마르지엘라를 가지고 있으면");
+    const at = quiz.lead.findIndex((l) => l.includes("옷이 있네요"));
+    expect(quiz.leadPhotos?.[at]).toEqual([a.items.find((i) => i.brandLabel === "메종 마르지엘라")!.id]);
+  });
 });

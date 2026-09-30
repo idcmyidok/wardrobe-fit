@@ -417,8 +417,8 @@ function Chat({
           await sleep(350 + Math.random() * 500);
         } else {
           const q = script.questions[step.q];
-          for (const l of q.lead) {
-            await sayBubbles(l);
+          for (const [i, l] of q.lead.entries()) {
+            await sayBubbles(l, q.leadPhotos?.[i]);
             await sleep(450);
           }
           await say(q.text, q.photos);

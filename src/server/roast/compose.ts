@@ -148,6 +148,7 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
     options: q.options,
     reactions: q.reactions,
     photos: q.photos,
+    ...(q.leadPhotos ? { leadPhotos: q.leadPhotos } : {}),
     ...(q.answer != null ? { answer: q.answer } : {}),
   }));
   return { script: { seed, steps, questions }, asked, convo };
