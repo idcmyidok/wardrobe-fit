@@ -30,6 +30,8 @@ type Msg =
 type DistOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 type NewMsg = DistOmit<Msg, "id">;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** 소개 문구가 끝난 뒤 다음 말(버튼·이름 묻기)이 나오기까지 쉬는 시간 */
+const INTRO_PAUSE_MS = 1100;
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /** 화면 문구(관리자가 고친 문장 포함). */
@@ -236,7 +238,7 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
 
   return (
     <div className="roast-mono roast-log mt-8" aria-live="polite">
-      <p className="roast-ai"><Typed text={copy.INTRO} onDone={() => setTyped(true)} /></p>
+      <p className="roast-ai"><Typed text={copy.INTRO} onDone={() => setTimeout(() => setTyped(true), reducedMotion() ? 0 : INTRO_PAUSE_MS)} /></p>
       {!skipIntro && copy.CREDIT && <p className="roast-credit">{copy.CREDIT}</p>}
       {typed && !enough && (
         <p className="roast-ai">
