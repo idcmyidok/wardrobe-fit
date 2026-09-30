@@ -11,7 +11,7 @@ import { BodyFitCompare } from "./body-fit-compare";
 import { FIT_COLOR, FitMeter } from "./fit-meter";
 import { LengthSilhouette } from "./length-silhouette";
 
-const MEASURE_NAME = { chest: "가슴", shoulder: "어깨", waist: "허리", hip: "엉덩이", thigh: "허벅지" } as const;
+const MEASURE_NAME = { chest: "가슴", shoulder: "어깨", hip: "엉덩이", thigh: "허벅지" } as const;
 
 /**
  * 내 치수 기준 예상 핏(옷 정보·구매 판단 공용): 6칸 미터기, 네 가지 핏 점수, 안 맞는 치수. 총장·소매는 보지 않는다(옷장 옷과의 길이 비교는 구매 판단 표에서).

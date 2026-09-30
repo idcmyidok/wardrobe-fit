@@ -28,6 +28,7 @@ const TAG: Record<DimensionTag, { text: string; className: string }> = {
   caution: { text: "주의", className: "tag tag-accent" },
   weak: { text: "근거 부족", className: "tag" },
   none: { text: "비교 불가", className: "tag" },
+  excluded: { text: "판단 제외", className: "tag" },
 };
 
 const CONFIDENCE: Record<Confidence, { text: string; level: number }> = {

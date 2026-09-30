@@ -66,7 +66,6 @@ const firstSub = (c: CategoryId) => SUBCATEGORIES.find((s) => s.categoryId === c
 const REC_OF: Partial<Record<MeasurementKey, RecKey>> = {
   shoulder: "shoulder",
   chest: "chest",
-  waist: "waist",
   hip: "hip",
   thigh: "thigh",
 };
