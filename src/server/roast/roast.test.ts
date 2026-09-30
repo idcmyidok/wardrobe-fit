@@ -297,3 +297,11 @@ describe("말풍선 나누기", () => {
     expect(para.every((u) => (u.value as string[]).every((s) => !s.includes("\n")))).toBe(true);
   });
 });
+
+describe("퀴즈", () => {
+  it("가진 브랜드의 퀴즈가 있으면 어떤 seed에서도 퀴즈를 낸다", () => {
+    const wardrobe = Array.from({ length: 12 }, (_, i) => g(i, { brand: i === 0 ? "메종 마르지엘라" : "우리동네 공방" }));
+    const a = analyze(wardrobe, null, 1360, new Date("2026-09-29T12:00:00+09:00"));
+    for (let seed = 0; seed < 30; seed++) expect(buildScript(a, seed, null).script.questions.some((q) => q.id === "quiz")).toBe(true);
+  });
+});
