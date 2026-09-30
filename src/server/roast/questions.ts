@@ -1043,13 +1043,16 @@ export function pickQuestions(a: Analysis, r: Rng, fill: (t: string, v: Vars) =>
     .map((c) => {
       const p = c.q.pattern ? pat(a, c.q.pattern) : undefined;
       const boost = c.vars.boost ? 0.15 : 0;
-      const score = c.q.base * 0.6 + (p ? p.strength * p.interest * 0.4 : 0.15) + boost + r.next() * 0.35;
+      // 가진 브랜드의 퀴즈가 있으면 퀴즈는 항상 낸다(없으면 build에서 빠진다).
+      const always = c.q.id === "quiz" ? 10 : 0;
+      const score = c.q.base * 0.6 + (p ? p.strength * p.interest * 0.4 : 0.15) + boost + r.next() * 0.35 + always;
       return { ...c, score };
     })
     .sort((x, y) => y.score - x.score);
   const asked: AskedQuestion[] = [];
   const buckets = new Set<string>();
-  const want = candidates.length >= 5 ? (r.next() < 0.4 ? 4 : 5) : candidates.length;
+  // 질문은 최대 8개(후보가 많으면 6~8개)
+  const want = Math.min(candidates.length, 6 + Math.floor(r.next() * 3));
   for (const c of candidates) {
     if (asked.length >= want) break;
     if (buckets.has(c.q.bucket)) continue;
