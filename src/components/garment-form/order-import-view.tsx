@@ -170,7 +170,7 @@ export function OrderImportView() {
       }
       applyResult(mine, result);
       if (result?.outcome?.errorCode === "rate_limited") {
-        setNotice("오늘 가져오기 한도(100번)를 다 써서 멈췄어요. 찾은 옷까지만 확인해서 등록할 수 있어요.");
+        setNotice("하루에 너무 많이 가져와서 일시적으로 막혔어요. 잠시 뒤에 다시 해 주세요. 찾은 옷까지만 확인해서 등록할 수 있어요.");
         break;
       }
       setProgress({ done: n + 1, total: orders.length });
@@ -301,8 +301,7 @@ export function OrderImportView() {
           <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-neutral-700">
             <li>지금은 무신사 주문내역만 가져올 수 있어요.</li>
             <li>이미 옷장에 있는 옷(같은 상품·사이즈)은 자동으로 빼고, 원하면 체크해서 다시 추가할 수 있어요.</li>
-            <li>상품 하나를 찾을 때마다 하루 링크 분석 횟수(100번)를 1번씩 써서, 한 번에 많이 쓰게 돼요.</li>
-            <li>옷이 100벌을 넘으면 오늘 분석 횟수를 다 써서 일부는 찾지 못하거나 등록에 실패할 수 있어요.</li>
+            <li>하루에 너무 많이 가져오면 일시적으로 막힐 수 있어요.</li>
           </ul>
         </section>
       )}
