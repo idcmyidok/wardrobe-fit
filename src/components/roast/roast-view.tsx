@@ -200,7 +200,11 @@ function Dots() {
   );
 }
 
-function Photos({ ids, photoOf }: { ids?: string[]; photoOf: (id: string) => string | null }) {
+/** 사진이 한 장씩 들어오는 시차(ms) */
+const PHOTO_STAGGER_MS = 110;
+const PHOTO_IN_MS = 450;
+
+function Photos({ ids, photoOf, animate }: { ids?: string[]; photoOf: (id: string) => string | null; animate?: boolean }) {
   const urls = (ids ?? []).map(photoOf).filter((u): u is string => Boolean(u));
   const drag = useRef<{ x: number; left: number } | null>(null);
   if (!urls.length) return null;
@@ -220,8 +224,16 @@ function Photos({ ids, photoOf }: { ids?: string[]; photoOf: (id: string) => str
       onPointerUp={() => (drag.current = null)}
       onPointerCancel={() => (drag.current = null)}
     >
-      {urls.map((u) => (
-        <img key={u} src={u} alt="" className="roast-photo" loading="lazy" draggable={false} />
+      {urls.map((u, i) => (
+        <img
+          key={u}
+          src={u}
+          alt=""
+          className={animate ? "roast-photo roast-photo-in" : "roast-photo"}
+          style={animate ? { animationDelay: `${i * PHOTO_STAGGER_MS}ms` } : undefined}
+          loading="lazy"
+          draggable={false}
+        />
       ))}
     </div>
   );
@@ -327,13 +339,17 @@ function Chat({
   }, []);
   const remove = (id: number) => setMsgs((list) => list.filter((m) => m.id !== id));
 
+  // 사진은 글자가 다 찍힌 뒤에 한 장씩 들어오고, 다 들어온 뒤에 다음 말을 한다.
+  const [typedIds, setTypedIds] = useState<Set<number>>(() => new Set());
   const say = useCallback(
-    (text: string, photos?: string[], gap?: boolean) =>
-      new Promise<void>((resolve) => {
+    async (text: string, photos?: string[], gap?: boolean) => {
+      await new Promise<void>((resolve) => {
         const id = nextId.current;
         typedWaiters.current.set(id, resolve);
         push(gap ? { kind: "ai", text, photos, gap } : { kind: "ai", text, photos });
-      }),
+      });
+      if (photos?.length && !reducedMotion()) await sleep(Math.min(photos.length, 8) * PHOTO_STAGGER_MS + PHOTO_IN_MS);
+    },
     [push],
   );
   const think = useCallback(
@@ -439,6 +455,7 @@ function Chat({
   }, [name, preview, onDone, push, say, think, copy]);
 
   const onTyped = useCallback((id: number) => {
+    setTypedIds((s) => new Set(s).add(id));
     typedWaiters.current.get(id)?.();
     typedWaiters.current.delete(id);
   }, []);
@@ -450,7 +467,7 @@ function Chat({
         m.kind === "ai" ? (
           <div key={m.id} className="roast-ai" data-gap={m.gap ? "true" : undefined}>
             <Typed text={m.text} onDone={() => onTyped(m.id)} />
-            <Photos ids={m.photos} photoOf={photoOf} />
+            {typedIds.has(m.id) && <Photos ids={m.photos} photoOf={photoOf} animate />}
           </div>
         ) : m.kind === "status" ? (
           <p key={m.id} className="roast-status">
