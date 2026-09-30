@@ -80,6 +80,12 @@ export interface Plan {
   convo: Pattern[];
 }
 
+/** 첫 문장이 사용자의 답을 옮겨 말하는 틀("~라고 하셨죠.", "~고르셨습니다.")인지 */
+export function quotesAnswer(text: string): boolean {
+  const first = text.split(/(?<=[.?!])\s/)[0] ?? "";
+  return /셨(습니다|죠|네요)[.?!]?$/.test(first.trim());
+}
+
 /** 질문 문장이 관련 패턴 문장과 같은 사실(숫자·달·금액)을 되풀이하는 질문. 이 질문을 하면 패턴 문장은 대화에서 뺀다. */
 const RESTATES = new Set(["recent_reason", "binge_month", "shoes_q", "shoe_sub_q", "hats_q", "hat_sub_q", "subcat_spend_q", "brand_spend_q", "hype_alarm"]);
 
@@ -250,13 +256,17 @@ export function composeResult(
   const outfit = outfitText(a, r, T);
   if (outfit) paragraphs.push({ text: outfit, photos: [] });
 
-  // 답을 두고 한 번 더(질문 순서대로, 네 개까지)
+  // 답을 두고 한 번 더(질문 순서대로, 네 개까지). "~라고 하셨죠."처럼 답을 옮겨 말하며 시작하는 문단은 한 번만 쓴다.
   let roasts = 0;
+  let quoted = false;
   for (const q of asked) {
     if (roasts >= 4) break;
     const picked = answers[q.id];
-    const text = picked ? q.roast[picked] : undefined;
-    if (!text) continue;
+    const list = picked ? (q.roast[picked] ?? []) : [];
+    if (!list.length) continue;
+    const plain = list.filter((t) => !quotesAnswer(t));
+    const text = r.pick(quoted && plain.length ? plain : list);
+    if (quotesAnswer(text)) quoted = true;
     paragraphs.push({ text, photos: [] });
     roasts++;
   }

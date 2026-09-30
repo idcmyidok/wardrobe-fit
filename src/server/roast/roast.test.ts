@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Garment } from "@/lib/types/domain";
 import { analyze } from "./analyze";
 import { BRANDS, brandGroups, brandLabels, findBrand, isTrendBrand, MUSINSA_POPULAR } from "./brands";
-import { buildScript, composeResult, outfitCounts } from "./compose";
+import { buildScript, composeResult, outfitCounts, quotesAnswer } from "./compose";
 import { productFamilies } from "./keywords";
 import { QUESTIONS, Q_TEXT } from "./questions";
 import { QUIZ } from "./quiz";
@@ -297,9 +297,26 @@ describe("새 패턴", () => {
     const plan = buildScript(a, 7, null);
     const answers = Object.fromEntries(plan.asked.map((q) => [q.id, q.options[0].id]));
     const r = composeResult(a, null, 7, undefined, plan.asked, answers);
-    const roastTexts = plan.asked.map((q) => q.roast[answers[q.id]]).filter(Boolean);
-    expect(roastTexts.length).toBeGreaterThan(0);
-    expect(r.paragraphs.map((p) => p.text)).toEqual(expect.arrayContaining([roastTexts[0]]));
+    const candidates = plan.asked.map((q) => q.roast[answers[q.id]] ?? []).filter((l) => l.length);
+    expect(candidates.length).toBeGreaterThan(0);
+    expect(r.paragraphs.some((p) => candidates[0].includes(p.text))).toBe(true);
+  });
+  it("결과 글에서 답을 옮겨 말하며 시작하는 문단(\"~라고 하셨죠.\")은 한 번만 쓴다", () => {
+    const w = Array.from({ length: 14 }, (_, i) => g(i, { productName: i < 3 ? "베이직 반팔 티셔츠" : `옷${i}`, colorName: i < 3 ? "화이트" : "블랙", purchasePrice: 10000 * (i + 1) }));
+    const a = analyze(w, null, 1360, now);
+    for (let seed = 0; seed < 40; seed++) {
+      const plan = buildScript(a, seed, null);
+      for (const pick of [0, 1, 2]) {
+        const answers = Object.fromEntries(plan.asked.map((q) => [q.id, q.options[Math.min(pick, q.options.length - 1)].id]));
+        const r = composeResult(a, null, seed, undefined, plan.asked, answers);
+        const all = new Set(plan.asked.flatMap((q) => Object.values(q.roast).flat()));
+        expect(r.paragraphs.filter((p) => all.has(p.text) && quotesAnswer(p.text)).length).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+  it("질문 답 문단마다 답을 옮겨 말하지 않고 시작하는 문장이 하나 이상 있다", () => {
+    for (const [id, t] of Object.entries(Q_TEXT))
+      for (const [k, list] of Object.entries(t.roast ?? {})) expect(list.some((x) => !quotesAnswer(x)), `${id}.${k}`).toBe(true);
   });
 });
 
