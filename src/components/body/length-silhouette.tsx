@@ -250,8 +250,16 @@ export function LengthSilhouette({
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
       <p className="text-sm font-medium">{diffText}</p>
-      <figcaption className="text-xs leading-relaxed text-pretty text-neutral-700">
-        키 {height}cm 평균 성인 남자 실루엣에, 이 옷과 같은 총장({length}cm, 목 옆 어깨점에서 밑단까지)의 반팔 티셔츠를 입히고, 일반적인 스트레이트 바지를 함께 그린 모습이에요. 실제 어깨·가슴·소매 치수에 따라 착용감은 달라질 수 있으니 길이 느낌만 참고하세요.
+      <figcaption className="flex flex-col gap-1.5">
+        <span className="text-xs leading-relaxed text-pretty text-neutral-700 md:text-sm">
+          키 {height}cm 평균 성인 남자 실루엣에 총장 {length}cm 반팔 티셔츠와 일반적인 스트레이트 바지를 입힌 모습이에요.
+        </span>
+        <span className="text-2xs leading-relaxed text-pretty text-neutral-500 md:text-xs">
+          실제 어깨·가슴·소매 치수에 따라 착용감은 달라질 수 있으니 길이 느낌만 참고하세요.
+        </span>
+        <span className="text-2xs leading-relaxed text-pretty text-neutral-500 md:text-xs">
+          바지를 허리선에 맞춰 입은 경우의 예시예요. 바지를 내려 입거나 새깅하면 바지가 표시된 허리선보다 아래에 있어, 티셔츠 밑단과의 차이도 달라져요.
+        </span>
       </figcaption>
       </div>
     </figure>
