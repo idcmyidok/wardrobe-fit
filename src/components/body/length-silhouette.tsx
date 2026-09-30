@@ -114,6 +114,7 @@ export function LengthSilhouette({
             {/* 사람: 머리는 원, 몸통·팔·다리는 굵고 둥근 선으로 */}
             <g fill={BODY} stroke={BODY} strokeLinecap="round" strokeLinejoin="round">
               <circle cx={cx} cy={headY} r={headR} stroke="none" />
+              <path d={`M${cx} ${headY + headR * 0.7} L${cx} ${shoulderY + H * 0.01}`} strokeWidth={H * 0.042} fill="none" />
               <path d={`M${cx - torsoHalf} ${shoulderY} L${cx + torsoHalf} ${shoulderY} L${cx + torsoHalf * 0.95} ${hipY} L${cx - torsoHalf * 0.95} ${hipY} Z`} strokeWidth={H * 0.03} />
               <path d={`M${cx - bodyShoulder} ${shoulderY + armW / 2} L${cx - bodyShoulder - H * 0.012} ${armEnd}`} strokeWidth={armW} fill="none" />
               <path d={`M${cx + bodyShoulder} ${shoulderY + armW / 2} L${cx + bodyShoulder + H * 0.012} ${armEnd}`} strokeWidth={armW} fill="none" />
