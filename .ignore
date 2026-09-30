@@ -1,0 +1,7 @@
+# 검색(rg/Grep)에서 제외: 크기가 큰 데이터·생성 파일. 조회법은 docs/CODE_MAP.md 참고
+data/
+src/server/roast/brands.json
+package-lock.json
+supabase/migrations/20260927000010_color_names_korean.sql
+*.woff2
+*.xlsx
