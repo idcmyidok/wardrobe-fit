@@ -8,7 +8,7 @@ import { buttonClassName } from "@/components/ui/button";
 import { MIN_CLOTHES, ROAST_COPY, tooFew, type RoastCopy } from "@/lib/roast/copy";
 import { bubblesOf } from "@/lib/roast/bubbles";
 import { wardrobeHash } from "@/lib/roast/hash";
-import type { RoastQuestion, RoastResult, RoastScript } from "@/lib/roast/types";
+import type { RoastQuestion, RoastReport, RoastResult, RoastScript } from "@/lib/roast/types";
 import { notifyUsageChanged } from "@/lib/usage";
 import { finishRoast, startRoast } from "@/server/roast/actions";
 import "./roast.css";
@@ -609,14 +609,18 @@ function ResultView({
         <span className="text-sm text-neutral-700">
           {date} · 옷 {result.garmentCount}벌 기준
         </span>
-        <h2 className="roast-headline">{result.headline}</h2>
+        {!result.report && <h2 className="roast-headline">{result.headline}</h2>}
       </header>
-      {result.paragraphs.map((p, i) => (
-        <section key={i} className="flex flex-col gap-2">
-          <p>{p.text}</p>
-          <Photos ids={p.photos} photoOf={photoOf} />
-        </section>
-      ))}
+      {result.report ? (
+        <Report report={result.report} photoOf={photoOf} />
+      ) : (
+        result.paragraphs.map((p, i) => (
+          <section key={i} className="flex flex-col gap-2">
+            <p>{p.text}</p>
+            <Photos ids={p.photos} photoOf={photoOf} />
+          </section>
+        ))
+      )}
       <div className="flex flex-col gap-1 border-t border-divider pt-5">
         {result.closing.map((c, i) => (
           <p key={i}>{c}</p>
@@ -629,5 +633,93 @@ function ResultView({
         </button>
       </div>
     </article>
+  );
+}
+
+/** 결과 페이지(옷장 진단 리포트): 종합 진단 → 주요 진단 → 점수 → DNA → 대표 캐릭터 → 가장 수상한 부분 */
+function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string) => string | null }) {
+  return (
+    <>
+      <section className="flex flex-col gap-3">
+        <span className="roast-kicker">옷장 종합 진단</span>
+        <h2 className="roast-headline">{report.headline}</h2>
+        <p>{report.summary}</p>
+      </section>
+
+      {report.diagnoses.length > 0 && (
+        <section className="flex flex-col gap-4">
+          <span className="roast-kicker">주요 진단</span>
+          {report.diagnoses.map((d) => (
+            <div key={d.id} className="roast-card">
+              <h3 className="roast-card-title">
+                {d.title} <span className="roast-card-value">{d.value}</span>
+              </h3>
+              <p>{d.text}</p>
+              {d.answer && <p className="roast-answer">{d.answer}</p>}
+              <Photos ids={d.photos} photoOf={photoOf} />
+            </div>
+          ))}
+        </section>
+      )}
+
+      {report.scores.length > 0 && (
+        <section className="flex flex-col gap-4">
+          <span className="roast-kicker">옷장 점수</span>
+          {report.scores.map((s) => (
+            <div key={s.id} className="roast-score">
+              <div className="roast-score-head">
+                <span>{s.label}</span>
+                <span className="roast-score-num">
+                  {s.score}
+                  <small>/100</small>
+                </span>
+              </div>
+              <div className="roast-score-bar" aria-hidden>
+                <span style={{ width: `${s.score}%` }} />
+              </div>
+              {s.text && <p className="roast-score-text">{s.text}</p>}
+            </div>
+          ))}
+        </section>
+      )}
+
+      {report.dna.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <span className="roast-kicker">당신의 옷장 DNA</span>
+          <ul className="roast-dna">
+            {report.dna.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {report.characters.length > 0 && (
+        <section className="flex flex-col gap-4">
+          <span className="roast-kicker">대표 캐릭터</span>
+          {report.characters.map((c) => (
+            <div key={c.name} className="flex flex-col gap-1">
+              <h3 className="roast-card-title">{c.name}</h3>
+              <p>{c.text}</p>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {report.suspicious && (
+        <section className="roast-suspicious flex flex-col gap-3">
+          <span className="roast-kicker">가장 수상한 부분</span>
+          <p>{report.suspicious.text}</p>
+          {report.suspicious.answer && <p className="roast-answer">{report.suspicious.answer}</p>}
+          <Photos ids={report.suspicious.photos} photoOf={photoOf} />
+        </section>
+      )}
+
+      {report.notes.map((n) => (
+        <p key={n} className="text-sm text-neutral-700">
+          {n}
+        </p>
+      ))}
+    </>
   );
 }

@@ -55,6 +55,26 @@ export interface RoastParagraph {
   photos: string[];
 }
 
+/** 결과 페이지(옷장 진단 리포트). 예전 결과에는 없고, 그때는 headline·paragraphs(긴 훈수 글)를 보여 준다. */
+export interface RoastReport {
+  /** 한 줄 정의 */
+  headline: string;
+  /** 종합 진단 문단 */
+  summary: string;
+  /** 주요 진단 카드(뚜렷한 순서, 3~5개) */
+  diagnoses: { id: string; title: string; value: string; text: string; answer?: string; photos: string[] }[];
+  /** 점수(0~100). text는 유난히 높거나 낮을 때만 */
+  scores: { id: string; label: string; score: number; text?: string }[];
+  /** 옷장 DNA 칩 */
+  dna: string[];
+  /** 대표 캐릭터 */
+  characters: { name: string; text: string }[];
+  /** 가장 수상한 부분 */
+  suspicious: { text: string; answer?: string; photos: string[] } | null;
+  /** 기준 안내(예: 브랜드 정보가 있는 옷 수) */
+  notes: string[];
+}
+
 /** 결과에 복사해 두는 관련 옷 정보(옷을 지워도 문장은 남는다) */
 export interface RoastGarmentRef {
   brand: string;
@@ -72,6 +92,8 @@ export interface RoastResult {
   paragraphs: RoastParagraph[];
   closing: string[];
   disclaimer: string;
+  /** 새 결과 페이지. 있으면 headline·paragraphs 대신 이걸 보여 준다(긴 훈수 글은 되돌릴 수 있게 계속 만들어 저장만 한다). */
+  report?: RoastReport;
   garments: Record<string, RoastGarmentRef>;
   answers: { id: string; question: string; answer: string }[];
   patterns: { id: string; stats: Record<string, string | number> }[];

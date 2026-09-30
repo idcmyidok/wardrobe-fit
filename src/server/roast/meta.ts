@@ -1,6 +1,7 @@
 import "server-only";
 import { LINE_SECTION } from "./lines";
 import { Q_TEXT, QUESTIONS } from "./questions";
+import { REPORT_TEXT } from "./report-text";
 
 /**
  * 관리자 문장 편집 화면과 검토 문서에 보여 주는 설명(언제 나오는지, 자리 이름). 분석 계산에는 쓰지 않는다.
@@ -9,7 +10,7 @@ import { Q_TEXT, QUESTIONS } from "./questions";
 /** {자리} → 사람이 읽는 이름 */
 export const VAR_LABEL: Record<string, string> = {
   n: "개수", pct: "비율%", brand: "브랜드", brands: "브랜드 수", names: "브랜드 이름들(쉼표로)", catName: "대분류", sub: "세부분류", color: "색", colorful: "유채색 벌 수",
-  country: "나라", tag: "스타일", fit: "핏", fitPhrase: "핏(알 때만 '○○ 핏 ')", familyName: "제품군", itemName: "브랜드의 상품명", kind: "옷 종류(모두 하의면 '바지', 아니면 '옷')", month: "월",
+  country: "나라", tag: "스타일", fit: "핏", fitPhrase: "핏(알 때만 '○○ 핏 ')", familyName: "제품군", owner: "호칭('○○님의' 또는 '당신의')", first: "첫째 캐릭터 이름", who1: "첫째 캐릭터 한 줄 정의", who2: "둘째 캐릭터 한 줄 정의", what: "반복되는 옷(예: 블랙 반팔 티셔츠)", colorPct: "유채색 비율%", tag1: "스타일 1위", tag2: "스타일 2위", tag3: "스타일 3위", cheapCat: "평균가 가장 낮은 종류", cheapWon: "그 평균 금액", pricyCat: "평균가 가장 높은 종류", pricyWon: "그 평균 금액", minWon: "최저 구매가", months: "평균 보유 개월", year: "브랜드 설립 연도 중간값", topPct: "상의 오버 비율%", bottomPct: "하의 슬림·레귤러 비율%", recent: "최근 6개월 구매 벌 수", recentPct: "최근 6개월 구매분 비율%", level: "낮음·중간·높음", position: "시장 포지션", itemName: "브랜드의 상품명", kind: "옷 종류(모두 하의면 '바지', 아니면 '옷')", month: "월",
   most: "많은 계절", mostN: "많은 계절 벌 수", least: "적은 계절", leastN: "적은 계절 벌 수", avgWon: "평균 금액", priceWon: "금액", amountWon: "금액",
   ratio: "배수", name: "제품명", oldest: "가장 오래된 브랜드", maxWon: "최고 구매가", traitText: "다른 점(색, 종류 등)",
   spendPct: "금액 비중%", countPct: "벌 수 비중%", count: "벌 수", total: "전체 개수", shop: "쇼핑몰", krN: "국내 대중 브랜드 벌 수", krPct: "국내 대중 브랜드 비율%",
@@ -187,10 +188,27 @@ export function varLabel(group: string, key: string): string {
 /** 편집 화면의 묶음(패턴 하나, 질문 하나 등). 퀴즈는 편집 화면이 따로 모은다. */
 export interface TextGroupMeta {
   id: string;
-  kind: "screen" | "common" | "lines" | "questions";
+  kind: "screen" | "common" | "lines" | "questions" | "report";
   title: string;
   when: string;
 }
+
+const SUSPICIOUS_NAME: Record<string, string> = {
+  dup_recent: "이미 많은 옷을 최근에도 또 샀을 때",
+  color_recent: "무채색을 최근에도 계속 샀을 때",
+  brand_recent: "한 브랜드를 최근에도 계속 샀을 때",
+  top_item: "위가 없을 때: 가장 비싼 항목",
+};
+
+const REPORT_NAME: Record<string, string> = {
+  HEADLINE_TWO: "한 줄 정의(캐릭터 둘)",
+  HEADLINE_ONE: "한 줄 정의(캐릭터 하나)",
+  HEADLINE_PLAIN: "한 줄 정의(캐릭터 없음)",
+  SUMMARY_TAIL: "종합 진단 마무리 한 줄",
+  BASIS_BRAND: "기준 안내(브랜드 정보)",
+  dna: "옷장 DNA 칩",
+  suspicious: "가장 수상한 부분",
+};
 
 export function textGroups(): TextGroupMeta[] {
   const out: TextGroupMeta[] = [];
@@ -200,6 +218,10 @@ export function textGroups(): TextGroupMeta[] {
     out.push({ id: `lines.${id}`, kind: "lines", title: `${id} (${SECTION_NAME[sec]})`, when: PATTERN_COND[id] ?? "" });
   for (const q of QUESTIONS)
     out.push({ id: `questions.${q.id}`, kind: "questions", title: Q_TEXT[q.id]?.text || (q.id === "quiz" ? "패션 퀴즈(앞 멘트)" : q.id), when: `${q.id} · ${QUESTION_COND[q.id] ?? ""}` });
+  for (const [k, name] of Object.entries(REPORT_NAME)) out.push({ id: `report.${k}`, kind: "report", title: name, when: "" });
+  for (const [k, v] of Object.entries(REPORT_TEXT.diag)) out.push({ id: `report.diag.${k}`, kind: "report", title: `진단: ${v.title}`, when: k });
+  for (const [k, v] of Object.entries(REPORT_TEXT.score)) out.push({ id: `report.score.${k}`, kind: "report", title: `점수: ${v.label}`, when: "95점 이상·30점 이하일 때만(결과마다 가장 튀는 두 개까지) 한 줄" });
+  for (const [k, v] of Object.entries(REPORT_TEXT.character)) out.push({ id: `report.character.${k}`, kind: "report", title: `캐릭터: ${v.name}`, when: k });
   return out;
 }
 
@@ -212,6 +234,15 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
     if (p[2] === "say") return "대화 문장(하나 고름)";
     if (p[2] === "para") return "결과 본문(하나 고름)";
     if (p[2] === "head") return "헤드라인 앞절 + 뒷절(두 패턴을 이을 때 앞 패턴은 앞절, 뒤 패턴은 뒷절을 씀)";
+  }
+  if (p[0] === "report") {
+    const last = p[p.length - 1];
+    if (p[1] === "diag") return last === "title" ? "카드 제목" : last === "high" ? "뚜렷할 때(하나 고름)" : "반대쪽으로 뚜렷할 때(하나 고름)";
+    if (p[1] === "score") return last === "label" ? "점수 이름" : last === "high" ? "95점 이상일 때(하나 고름)" : "30점 이하일 때(하나 고름)";
+    if (p[1] === "character") return last === "name" ? "캐릭터 이름" : last === "who" ? "한 줄 정의에 들어가는 말" : "설명";
+    if (p[1] === "dna") return `칩: ${last}`;
+    if (p[1] === "suspicious") return `${SUSPICIOUS_NAME[last] ?? last} (하나 고름)`;
+    return "문장들(하나 고름)";
   }
   if (p[0] === "questions") {
     if (p[2] === "lead") return "앞 멘트(차례로 모두 말함)";
