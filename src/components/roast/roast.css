@@ -24,7 +24,7 @@
 
 /* 섹션 사이 혼잣말: 앞 이야기와 떨어뜨린다 */
 .roast .roast-ai[data-gap="true"] {
-  margin-top: 28px;
+  margin-top: 40px;
 }
 
 .roast .roast-status {
@@ -33,6 +33,10 @@
 }
 .roast .roast-status::before {
   content: "› ";
+}
+/* 새 섹션은 앞 섹션과 크게 떨어뜨린다 */
+.roast .roast-status:not(:first-child) {
+  margin-top: 64px;
 }
 
 
