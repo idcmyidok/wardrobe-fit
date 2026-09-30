@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { Garment } from "@/lib/types/domain";
 import { analyze } from "./analyze";
-import { buildScript } from "./compose";
+import { buildScript, mixBlocks, QUESTION_FROM } from "./compose";
 import type { AskedQuestion } from "./questions";
 import { buildReport } from "./report";
 import { REPORT_TEXT } from "./report-text";
+import { rng } from "./text";
 
 const now = new Date("2026-09-29T12:00:00+09:00");
 const g = (i: number, over: Partial<Garment> = {}): Garment =>
@@ -37,13 +38,15 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
   const a = analyze(wardrobe, null, 1360, now);
   const report = buildReport(a, "세현", 1, REPORT_TEXT);
 
-  it("한 줄 정의·\"> \" 문장·목록·진단 문단·DNA를 글로 채운다", () => {
+  it("한 줄 정의·요약 한 문장·\"> \" 문장·목록·진단 문단을 글로 채운다", () => {
     expect(report.headline).toContain("세현님의 옷장");
     expect(report.intro.length).toBeGreaterThan(0);
     expect(report.points.map((p) => p.id)).toContain("duplicate");
     for (const p of report.points) expect(p.lead).toMatch(/[.!?]$/);
     expect(report.lists[0]?.items[0]).toBe("블랙 반소매 티셔츠 7벌");
-    expect(report.dna.length).toBeGreaterThan(0);
+    // 옷장 DNA 대신 제목 아래 요약 한 문장(특징 두세 개를 잇는다)
+    expect(report.summary).toMatch(/^옷장이 전체적으로 .+이고, .+인 옷장이네요\.$/);
+    expect(report.dna).toBeUndefined();
   });
 
   it("총 옷장 점수는 0~100이고, 질문·퀴즈 답의 증감을 더한다", () => {
@@ -98,5 +101,80 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     const withAnswers = buildReport(a, null, 3, REPORT_TEXT, plan.asked, answers);
     const n = withAnswers.points.filter((p) => p.answer || p.id === "answer").length;
     expect(n).toBeLessThanOrEqual(3);
+  });
+
+  it("많이 가진 옷 목록은 같은 옷(세부분류·색·핏) 3벌 이상만, 없으면 목록을 뺀다", () => {
+    // 2벌씩만 겹치는 옷장
+    const pairs = Array.from({ length: 12 }, (_, i) =>
+      g(100 + i, { colorName: ["블랙", "화이트", "그레이", "네이비", "베이지", "카키"][Math.floor(i / 2)], brand: ["COS", "Uniqlo", "Nike", "Lemaire", "A.P.C.", "Levi's"][i % 6] }),
+    );
+    const r2 = buildReport(analyze(pairs, null, 1360, now), null, 1, REPORT_TEXT);
+    expect(r2.lists.find((l) => l.title === REPORT_TEXT.LIST_DUP[0])).toBeUndefined();
+  });
+
+  it("브랜드 목록은 몇 개만 %로, 1위가 기준 미만이면 뺀다", () => {
+    const brands = report.lists.find((l) => l.title === REPORT_TEXT.LIST_BRAND[0]);
+    expect(brands?.items.length).toBeLessThanOrEqual(REPORT_TEXT.layout.count.brand_rows);
+    for (const row of brands?.items ?? []) expect(row).toMatch(/ \d+%$/);
+    // 브랜드가 고르게 흩어진 옷장(1위가 15% 미만)은 목록을 뺀다
+    const spread = Array.from({ length: 16 }, (_, i) => g(200 + i, { brand: `브랜드${Math.floor(i / 2)}`, colorName: i % 2 ? "레드" : "블루" }));
+    const r3 = buildReport(analyze(spread, null, 1360, now), null, 1, REPORT_TEXT);
+    expect(r3.lists.find((l) => l.title === REPORT_TEXT.LIST_BRAND[0])).toBeUndefined();
+  });
+
+  it("결과 사진은 가장 특이한 문단 몇 개에만 넣는다", () => {
+    const withPhotos = report.points.filter((p) => p.photos?.length);
+    expect(withPhotos.length).toBeLessThanOrEqual(REPORT_TEXT.layout.count.photo_blocks);
+  });
+
+  it("무채색이 많다는 말 뒤에 색 종류가 많다는 말을 잇지 않는다", () => {
+    const colors = ["블랙", "블랙", "블랙", "블랙", "그레이", "그레이", "화이트", "화이트", "레드", "블루", "옐로", "그린", "핑크", "퍼플", "오렌지", "브라운"];
+    const mixed = colors.concat(Array(12).fill("블랙")).map((c, i) => g(300 + i, { colorName: c, brand: `브랜드${i}` }));
+    const r4 = buildReport(analyze(mixed, null, 1360, now), null, 1, REPORT_TEXT);
+    const color = r4.points.find((p) => p.id === "color");
+    expect(color).toBeDefined();
+    expect(`${color!.lead} ${color!.text}`).not.toContain("색 계열이");
+  });
+
+  it("실측이 비슷한 옷은 묶음 안의 모든 옷끼리 가슴·총장·소매가 2cm 이내여야 한다", () => {
+    const tee = (i: number, length: number, sleeve: number) =>
+      g(400 + i, { brand: `브랜드${i}`, colorName: ["레드", "블루", "그린", "옐로", "핑크"][i % 5], measurements: { chest: 55, length, sleeve } });
+    const filler = Array.from({ length: 8 }, (_, i) => g(450 + i, { categoryId: "bottom", subcategoryId: "bottom.denim", brand: `바지${i}` }));
+    const near = (list: Garment[]) => analyze([...list, ...filler], null, 1360, now).patterns.find((p) => p.id === "measure_repeat");
+    // 총장 68·70·72·74: 이웃끼리만 비슷하고 끝끼리는 4cm 이상 차이 → 세 벌 묶음이 없다
+    expect(near([tee(0, 68, 20), tee(1, 70, 20), tee(2, 72, 20), tee(3, 74, 20)])).toBeUndefined();
+    // 가슴·총장이 같아도 소매가 10cm 다르면 따로 본다
+    expect(near([tee(0, 70, 20), tee(1, 70, 20), tee(2, 70, 30)])).toBeUndefined();
+    expect(near([tee(0, 70, 20), tee(1, 71, 21), tee(2, 70, 20)])?.stats.n).toBe(3);
+  });
+
+  it("대화는 분석 문장과 질문을 섞되, 질문은 40% 지점 이후에만 두고 질문끼리 붙이지 않는다", () => {
+    for (let seed = 1; seed <= 50; seed++) {
+      const says = Array.from({ length: 10 }, (_, i) => `s${i}`);
+      const asks = ["q0", "q1", "q2"];
+      const out = mixBlocks(says, asks, rng(seed));
+      expect(out.length).toBe(13);
+      const at = out.map((x, i) => (x.startsWith("q") ? i : -1)).filter((i) => i >= 0);
+      expect(at.length).toBe(3);
+      for (const i of at) expect(i).toBeGreaterThanOrEqual(Math.ceil(QUESTION_FROM * 13));
+      for (let k = 1; k < at.length; k++) expect(at[k] - at[k - 1]).toBeGreaterThan(1);
+    }
+    // 질문이 많아도 40% 조건은 지킨다(이때만 질문끼리 붙을 수 있다)
+    for (let seed = 1; seed <= 30; seed++) {
+      const out = mixBlocks(Array.from({ length: 12 }, (_, i) => `s${i}`), Array.from({ length: 8 }, (_, i) => `q${i}`), rng(seed));
+      const first = out.findIndex((x) => x.startsWith("q"));
+      expect(first).toBeGreaterThanOrEqual(Math.ceil(QUESTION_FROM * 20));
+      expect(out.filter((x) => x.startsWith("q")).length).toBe(8);
+    }
+    const plan = buildScript(a, 7, null);
+    expect(plan.script.steps.filter((x) => x.t === "ask").length).toBe(plan.asked.length);
+  });
+
+  it("점수 풀이: 기본 점수 + 항목별 증감이 총점과 맞는다", () => {
+    const d = report.scoreDetail!;
+    expect(d.base).toBe(50);
+    const sum = d.base + d.items.reduce((x, i) => x + i.delta, 0);
+    expect(Math.max(0, Math.min(100, Math.round(sum)))).toBe(report.total.score);
+    for (const i of d.items) expect(i.label).not.toMatch(/^[a-z_]+$/);
   });
 });

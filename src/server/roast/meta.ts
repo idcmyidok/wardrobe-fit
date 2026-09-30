@@ -149,10 +149,10 @@ export const SCREEN_NAME: Record<string, string> = {
   CREDIT: "시작 멘트 아래 작은 글씨(영감 출처)",
   START_LABEL: "시작 버튼",
   CRITERIA_LABEL: "평가 기준 버튼",
-  CRITERIA: "평가 기준 버튼을 눌렀을 때 설명(대략적인 기준 + 비꼬기)",
+  CRITERIA: "평가 기준 버튼을 눌렀을 때 설명(대략적인 기준만 짧게)",
   ASK_NAME: "이름·나이 묻기",
   NAME_HINT: "이름·나이 입력칸 아래 안내",
-  AGE_HINT: "나이를 저장하지 않는다는 안내",
+  AGE_HINT: "한국식 나이로 적으라는 안내 + 나이를 저장하지 않는다는 안내",
   TOO_FEW: "옷이 10벌보다 적을 때",
   OPENING: "분석 시작 전 첫 멘트",
   WRITING: "결과를 쓰는 중",
@@ -199,10 +199,10 @@ export interface TextGroupMeta {
 /** 결과 구성 탭: 섹션·문단 이름과 내용이 무엇으로 정해지는지 */
 export const LAYOUT_SECTION: Record<string, { name: string; how: string }> = {
   intro: { name: "\"> \" 소개 문장", how: "뚜렷한 진단 두 개와 캐릭터(조건이 맞는 것 중 뚜렷한 순서로 셋)로 자동으로 정해집니다." },
-  lists: { name: "목록 두 개", how: "많이 가진 옷(세부분류 + 색)과 많이 산 브랜드, 두 벌 이상인 것만. 제목은 고정 문구입니다." },
+  summary: { name: "요약 한 문장(제목 바로 아래)", how: "가장 뚜렷한 옷장 특징 세 개(모자라면 두 개)를 서로 다른 종류(색·브랜드·스타일·핏 등)에서 골라 한 문장으로 잇습니다." },
+  lists: { name: "목록 두 개", how: "많이 가진 옷(세부분류 + 색 + 핏이 같은 옷 3벌 이상, 없으면 뺌)과 많이 산 브랜드(옷장 대비 %, 1위가 기준 미만이면 뺌). 제목은 고정 문구입니다." },
   total: { name: "총점", how: "옷장 점수(점수 탭 기준) + 질문·퀴즈 답의 증감. 한마디는 총점 구간별 문장에서 고릅니다." },
   points: { name: "진단 문단들", how: "아래 \"진단 문단 순서\"대로 이어집니다." },
-  dna: { name: "옷장 DNA", how: "스타일·포지션·국가·구매처 등 해당하는 것 중에서, 진단 문단에 이미 나온 주제는 빼고 고릅니다." },
   notes: { name: "안내 문구", how: "브랜드 정보가 있는 옷 수 같은 기준 안내입니다." },
 };
 export const LAYOUT_POINT: Record<string, { name: string; how: string }> = {
@@ -219,13 +219,42 @@ export const LAYOUT_POINT: Record<string, { name: string; how: string }> = {
 const LAYOUT_COUNT: Record<string, string> = {
   diag_min: "진단 문단 최소 개수",
   diag_max: "진단 문단 최대 개수",
-  dna_max: "옷장 DNA 문장 수",
-  list_rows: "목록 줄 수",
-  photos: "문단마다 사진 줄의 사진 수",
+  list_rows: "많이 가진 옷 목록 줄 수",
+  dup_min: "많이 가진 옷: 같은 옷이 이 벌 수 이상일 때만 목록에 넣음",
+  brand_rows: "브랜드 목록 줄 수",
+  brand_top_pct: "브랜드 목록: 1위 브랜드가 이 % 이상일 때만 보여 줌",
+  brand_row_pct: "브랜드 목록: 이 % 이상인 브랜드만 넣음",
+  photos: "사진 줄 하나의 사진 수",
+  photo_blocks: "사진을 넣는 문단 수(가장 특이한 문단부터)",
   answers: "문단에 붙는 질문 답 수",
 };
 /** 결과 구성 탭에 같이 보여 주는 고정 문구(결과 페이지 탭과 같은 값) */
-const LAYOUT_FIXED = ["LIST_DUP", "LIST_BRAND", "TOTAL_LEAD", "INTRO_MORE", "DNA_LEAD", "BASIS_BRAND"];
+const LAYOUT_FIXED = ["LIST_DUP", "LIST_BRAND", "TOTAL_LEAD", "INTRO_MORE", "BASIS_BRAND"];
+
+const SUMMARY_NAME: Record<string, string> = {
+  achro: "무채색 60% 이상",
+  black: "검정 40% 이상",
+  colorful: "무채색 40% 미만",
+  brand_one: "한 브랜드 25% 이상",
+  brand_many: "브랜드가 제각각",
+  musinsa: "무신사 인기 브랜드 50% 이상",
+  country: "한 나라 브랜드 45% 이상",
+  designer: "디자이너·명품·컨템포러리 35% 이상",
+  mass: "SPA·대중 브랜드 40% 이상",
+  gem: "자료에 없는 브랜드 30% 이상",
+  hype: "하이프 높음",
+  heritage: "헤리티지 높음",
+  style: "한 스타일 태그 50% 이상",
+  casual: "포멀도 낮음",
+  formal: "포멀도 높음",
+  func: "기능성 높음",
+  big: "세미오버핏 이상 60% 이상",
+  trim: "슬림·레귤러핏 60% 이상",
+  category: "한 종류(상의·하의·아우터) 45% 이상",
+  dup: "같은 옷 3벌 이상",
+  new_items: "최근 6개월 구매 40% 이상",
+  old_items: "3년 넘은 옷 40% 이상",
+};
 
 const SUSPICIOUS_NAME: Record<string, string> = {
   top_item: "다른 문단에 걸리는 게 없을 때: 가장 비싼 항목",
@@ -234,9 +263,9 @@ const SUSPICIOUS_NAME: Record<string, string> = {
 const COLOR_NAME: Record<string, string> = {
   achro_85: "무채색 85% 이상",
   achro_70: "무채색 70~84%",
-  achro_50: "무채색 50~69%",
-  balanced: "무채색 30~49%",
-  colorful: "무채색 30% 미만",
+  achro_50: "무채색 60~69%",
+  balanced: "무채색 40~59%",
+  colorful: "무채색 40% 미만",
   black: "덧붙임: 검정이 40% 이상",
   white: "덧붙임: 흰색 계열이 25% 이상",
   earth: "덧붙임: 베이지·브라운·카키가 35% 이상",
@@ -391,9 +420,10 @@ const REPORT_NAME: Record<string, string> = {
   VINTAGE: "브랜드를 빈티지·구제로 적은 옷이 많을 때",
   age: "나이 한마디(나이를 적었을 때)",
   wallet: "비싼 옷과 싼 옷의 브랜드 비교",
-  DNA_LEAD: "옷장 DNA 앞 굵은 말",
+  SUMMARY_3: "요약 한 문장(특징 세 개)",
+  SUMMARY_2: "요약 한 문장(특징 두 개)",
+  summary: "요약 한 문장에 들어가는 특징 말",
   BASIS_BRAND: "기준 안내(브랜드 정보)",
-  dna: "옷장 DNA 문장",
   suspicious: "마지막 문단",
 };
 
@@ -460,7 +490,7 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
     if (p[1] === "fit") return `${FIT_NAME[last] ?? last} (하나 고름)`;
     if (p[1] === "age") return `${AGE_REMARK_NAME[last] ?? last} (하나 고름)`;
     if (p[1] === "wallet") return `${WALLET_NAME[last] ?? last} (하나 고름)`;
-    if (p[1] === "dna") return `${last} (하나 고름)`;
+    if (p[1] === "summary") return `${SUMMARY_NAME[last] ?? last} (하나 고름, "~이고"·"~인" 앞에 붙는 말)`;
     if (p[1] === "suspicious") return `${SUSPICIOUS_NAME[last] ?? last} (하나 고름)`;
     return "문장들(하나 고름)";
   }

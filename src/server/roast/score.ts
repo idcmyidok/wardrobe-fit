@@ -264,3 +264,47 @@ function groupBy<T>(list: T[], key: (x: T) => string | null): Map<string, T[]> {
   }
   return m;
 }
+
+/** 관리자 점수 풀이에 쓰는 항목 이름(scoreWardrobe의 parts id) */
+export const SCORE_PART_NAME: Record<string, string> = {
+  designer: "디자이너·하이엔드·컨템포러리 브랜드",
+  niche: "아는 사람만 아는 브랜드",
+  style: "뚜렷한 스타일",
+  taste: "헤리티지·빈티지·워크웨어 취향",
+  fruits: "후르츠패밀리 구매",
+  accent: "무채색에 포인트 색 조금",
+  basic_lux: "무채색 + 좋은 브랜드",
+  basic_mass: "무채색 + 대중 브랜드뿐",
+  gap: "몇 달씩 옷을 안 산 공백",
+  steady: "꾸준한 구매",
+  spend: "최근 구매 금액",
+  good_outer: "좋은 브랜드 아우터",
+  leather_shoes: "구두·부츠",
+  shoe_set: "신발 종류 고루 갖춤",
+  sneakers_only: "신발이 운동화뿐",
+  kr_new: "신생 국내 브랜드",
+  jp: "일본 브랜드",
+  repro: "복각·일본 데님",
+  foreign: "해외 브랜드 비중",
+  bold: "큰맘 먹고 산 옷",
+  regular: "레귤러핏",
+  mass: "SPA·대중 브랜드 쏠림",
+  trendy: "유행 브랜드 쏠림",
+  scattered: "스타일 없이 흩어진 브랜드",
+  lux_mismatch: "명품과 옷장 스타일이 따로 놂",
+  musinsa: "무신사 인기 브랜드 쏠림",
+  dup: "같은 옷 반복",
+  misfit: "치수에 안 맞는 옷",
+  fit_trim: "슬림·레귤러핏",
+  fit_big: "큰 핏 쏠림",
+  fit_contrast: "위아래 핏 대비",
+  logo: "로고 옷",
+  season_gap: "계절 옷 불균형",
+  age_street: "나이: 스트릿·하이프",
+  age_young_street: "나이: 지금 입을 스트릿",
+  age_mature: "나이: 나이에 맞는 브랜드",
+  age_musinsa: "나이: 무신사 인기 브랜드",
+  age_formal: "나이: 포멀·명품",
+  age_lux: "나이: 명품",
+};
+

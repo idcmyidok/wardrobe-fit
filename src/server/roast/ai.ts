@@ -93,7 +93,7 @@ const DESCRIBE: Record<string, string> = {
   combo_repeat: "같은 세부분류·색·핏 조합 반복: {fitPhrase}{color} {sub} {n}벌",
   family_repeat: "제품명에 '{familyName}'이 들어간 {kind} {n}벌",
   measure_repeat: "{sub} 중 총장·가슴이 2cm 안쪽으로 거의 같은 옷 {n}벌",
-  fit_bias: "핏을 아는 옷 중 {pct}%가 {fit}({n}벌)",
+  fit_bias: "옷 핏의 {pct}%가 {fit}({n}벌)",
   season_bias: "{most} 옷 {mostN}벌, {least} 옷 {leastN}벌로 계절 쏠림",
   recent_30: "최근 30일에 {n}벌 구매",
   recent_90: "최근 90일에 {n}벌 구매",
