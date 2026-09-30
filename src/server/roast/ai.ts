@@ -102,7 +102,7 @@ const DESCRIBE: Record<string, string> = {
   shop_focus: "구매 링크의 {pct}%가 한 쇼핑몰({shop})",
   identical_items: "이름·색까지 똑같은 옷({color} {name})이 {n}벌",
   avg_price: "한 벌 평균 구매가 {avgWon}(가격 적은 옷 {n}벌)",
-  top_item: "가장 비싼 옷({brand} {name})이 {priceWon}, 가운데 가격의 {ratio}배",
+  top_item: "가장 비싼 항목({itemName})이 {priceWon}, 가운데 가격의 {ratio}배",
   category_spend: "{catName}의 금액 비중({spendPct}%)이 벌 수 비중({countPct}%)보다 훨씬 큼",
   subcategory_spend: "한 세부분류({sub})에만 {amountWon}을 씀(쓴 돈의 {pct}%, {n}벌)",
   brand_spend: "쓴 돈의 {pct}%({amountWon})가 {brand}",

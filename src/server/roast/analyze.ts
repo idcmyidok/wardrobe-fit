@@ -443,7 +443,14 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     const median = sorted[Math.floor(sorted.length / 2)];
     const max = priced.slice().sort((a, b) => b.price! - a.price!)[0];
     if (max.price! >= median * 3)
-      add("top_item", ramp(max.price! / median, 3, 10), 0.75, { price: max.price!, ratio: Math.round((max.price! / median) * 10) / 10, brand: max.brandLabel, name: max.g.productName }, [max]);
+      add("top_item", ramp(max.price! / median, 3, 10), 0.75, {
+        price: max.price!,
+        ratio: Math.round((max.price! / median) * 10) / 10,
+        brand: max.brandLabel,
+        name: max.g.productName,
+        // "브랜드의 상품명"(브랜드가 없으면 상품명만)
+        itemName: max.brandLabel ? `${max.brandLabel}의 ${max.g.productName}` : max.g.productName,
+      }, [max]);
 
     // 아우터·신발은 원래 비싸서 돈이 몰려도 당연하니 뺀다.
     const catSpend = [...countBy(priced, (i) => i.cat)].filter(([c]) => c !== "outer" && c !== "shoes").map(([c, list]) => ({

@@ -454,9 +454,10 @@ export const LINE_TEXT: Record<string, PatternLines> = {
     para: ["한 벌 평균 {avgWon}입니다. 그 옷들이 옷장 안에서만 좋은 시간을 보내지 않기를 바랍니다."],
   },
   top_item: {
-    say: ["가장 비싼 옷이 {priceWon}입니다. 보통 옷의 {ratio}배쯤 되네요.", "{brand} {name}. {priceWon}. 이건 조금 특별 대우를 받는 옷이겠죠."],
+    // 신발·모자일 수도 있어서 "옷" 대신 "항목"(사용자 요청)
+    say: ["가장 비싼 항목이 {priceWon}입니다.\n{itemName}입니다.\n보통 항목 가격의 {ratio}배쯤 되네요.", "가장 비싼 항목은 {priceWon}.\n{itemName}입니다.\n이건 조금 특별 대우를 받고 있겠죠."],
     head: [["한 벌에 {priceWon|을} 쓴 적도 있는데", "한 벌이 나머지를 먹여 살리는 옷장입니다."]],
-    para: ["가장 비싼 옷은 {brand} {name}, {priceWon}입니다. 옷장 안에서 받는 대우만큼 밖에도 자주 나가길 바랍니다."],
+    para: ["가장 비싼 항목은 {itemName}, {priceWon}입니다. 옷장 안에서 받는 대우만큼 밖에도 자주 나가길 바랍니다."],
   },
   category_spend: {
     say: ["{catName}에 쓴 돈이 벌 수보다 훨씬 큽니다. {catName}에는 지갑이 쉽게 열리나 봅니다."],

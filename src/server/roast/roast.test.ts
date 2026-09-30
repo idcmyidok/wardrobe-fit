@@ -380,6 +380,26 @@ describe("항상 내는 질문", () => {
   });
 });
 
+describe("가장 비싼 항목", () => {
+  it("'옷' 대신 '항목'이라 하고, 바로 다음 줄에 '브랜드의 상품명입니다.'를 붙인다", () => {
+    const wardrobe = [
+      ...Array.from({ length: 10 }, (_, i) => g(i, { purchasePrice: 30000 })),
+      g(20, { brand: "Nike", productName: "에어 포스 1", categoryId: "shoes", subcategoryId: null, purchasePrice: 229000 }),
+    ];
+    const a = analyze(wardrobe, null, 1360, new Date("2026-09-29T12:00:00+09:00"));
+    const p = a.patterns.find((x) => x.id === "top_item")!;
+    expect(p.stats.itemName).toBe(`${a.items.find((i) => i.cat === "shoes")!.brandLabel}의 에어 포스 1`);
+    const says = Array.from({ length: 80 }, (_, seed) => buildScript(a, seed, null).script.steps)
+      .flat()
+      .flatMap((s) => (s.t === "say" && s.text.includes("가장 비싼") ? [s.text] : []));
+    expect(says.length).toBeGreaterThan(0);
+    for (const t of says) {
+      expect(t).not.toContain("가장 비싼 옷");
+      expect(t.split("\n")[1]).toBe(`${p.stats.itemName}입니다.`);
+    }
+  });
+});
+
 describe("데님 반복", () => {
   const now = new Date("2026-09-29T12:00:00+09:00");
   const denim = (i: number, categoryId: "top" | "outer" | "bottom") =>

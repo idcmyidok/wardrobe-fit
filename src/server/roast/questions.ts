@@ -619,7 +619,7 @@ export const Q_TEXT: Record<string, QuestionText> = {
   },
   top_item_q: {
     lead: [],
-    text: "가장 비싼 옷, 몇 번이나 입었나요?",
+    text: "가장 비싼 항목, 몇 번이나 써 봤나요?",
     options: { often: "자주 입음", few: "몇 번", saving: "아까워서 모셔 둠" },
     react: {
       often: ["훌륭합니다. 한 번 입을 때마다 가격이 조금씩 내려가고 있습니다.", "그렇다면 가장 잘한 소비입니다."],
