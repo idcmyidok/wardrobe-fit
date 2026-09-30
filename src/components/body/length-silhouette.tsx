@@ -50,7 +50,7 @@ export function getTshirt(height: number, length: number, shoulder?: number | nu
   return {
     topY,
     hemY,
-    shoulderWidth: shoulder ?? body.shoulderWidth * 1.08,
+    shoulderWidth: shoulder ?? body.shoulderWidth * 0.98,
     chestWidth: chest ?? body.chestWidth * 1.18,
     sleeveLength: height * 0.12,
     diffFromCrotch: hemY - body.crotchY,
@@ -128,7 +128,7 @@ export function LengthSilhouette({
   const chestHalf = t.chestWidth / 2;
   const tipY = t.topY + H * 0.022; // 어깨 끝(몸 어깨보다 살짝 위로 띄운다)
   const collar = H * 0.04;
-  const sleeveOut = shHalf + H * 0.03; // 소매 바깥 끝 x
+  const sleeveOut = shHalf + H * 0.024; // 소매 바깥 끝 x
   const sleeveOutY = tipY + t.sleeveLength * 0.8;
   const hemInX = chestHalf + H * 0.02; // 소매 끝단 안쪽 x
   const hemInY = sleeveOutY + H * 0.04;
