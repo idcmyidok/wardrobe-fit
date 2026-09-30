@@ -53,6 +53,15 @@ const shareOver = (a: Analysis, min: number) => {
   return list.length >= 5 ? list.filter((i) => i.price! >= min).length / list.length : 0;
 };
 const DAY = 86_400_000;
+/** 선택지·사진 옆에 적는 금액(사이트의 "N ￦" 표기) */
+const amountLabel = (n: number) => `${n.toLocaleString("ko-KR")} ￦`;
+/** 답한 뒤 보여 줄 옷: 사진과 가격이 있는 옷을 비싼 순으로 여덟 벌까지 */
+const pricedPhotos = (a: Analysis, ids: string[]) =>
+  a.items
+    .filter((i) => ids.includes(i.id) && i.hasPhoto && i.price != null && i.price > 0)
+    .sort((x, y) => y.price! - x.price!)
+    .slice(0, 8)
+    .map((i) => ({ id: i.id, amount: amountLabel(i.price!) }));
 
 export const QUESTIONS: QuestionDef[] = [
   { id: "odd_photo", bucket: "odd", pattern: "odd_one", base: 0.9, options: ["mine", "gift", "dunno"],
@@ -978,7 +987,7 @@ export interface AskedQuestion {
   id: string;
   lead: string[];
   text: string;
-  options: { id: string; label: string; photoId?: string; photoIds?: string[] }[];
+  options: { id: string; label: string; photoId?: string; photoIds?: string[]; amount?: string }[];
   /** 선택지 id별 반응(이미 값이 채워진 문장) */
   reactions: Record<string, string>;
   /** 선택지 id별 결과 글 문단 후보(이미 값이 채워진 문장). 없으면 결과 글에 쓰지 않는다. */
@@ -989,10 +998,12 @@ export interface AskedQuestion {
   /** 퀴즈 정답 선택지 id */
   answer?: string;
   quizId?: string;
+  /** 답한 뒤 반응 아래에 붙이는 옷 사진과 가격 */
+  reveal?: { id: string; amount: string }[];
 }
 
 /** 브랜드 셋: 금액 1위, 벌 수 1위, 최근 90일 구매 1위(없으면 금액 2위). 각 2벌 이상, 서로 달라야 한다. */
-export function brandTrio(a: Analysis): { kind: "spend" | "count" | "recent" | "spend2"; label: string; count: number; ids: string[] }[] | null {
+export function brandTrio(a: Analysis): { kind: "spend" | "count" | "recent" | "spend2"; label: string; count: number; amount: number; ids: string[] }[] | null {
   const byBrand = new Map<string, Item[]>();
   for (const i of a.items) if (i.brand) byBrand.set(i.brand.name, [...(byBrand.get(i.brand.name) ?? []), i]);
   const brands = [...byBrand.entries()].filter(([, list]) => list.length >= 2).map(([key, list]) => ({
@@ -1020,9 +1031,9 @@ export function brandTrio(a: Analysis): { kind: "spend" | "count" | "recent" | "
   }
   if (!third) return null;
   return [
-    { kind: "spend", label: spend.label, count: spend.list.length, ids: spend.list.map((i) => i.id) },
-    { kind: "count", label: count.label, count: count.list.length, ids: count.list.map((i) => i.id) },
-    { kind, label: third.label, count: third.list.length, ids: third.list.map((i) => i.id) },
+    { kind: "spend", label: spend.label, count: spend.list.length, amount: spend.amount, ids: spend.list.map((i) => i.id) },
+    { kind: "count", label: count.label, count: count.list.length, amount: count.amount, ids: count.list.map((i) => i.id) },
+    { kind, label: third.label, count: third.list.length, amount: third.amount, ids: third.list.map((i) => i.id) },
   ];
 }
 
@@ -1134,7 +1145,7 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
     const top3 = pricedClothes(a).sort((x, y) => y.price! - x.price!).slice(0, 3);
     if (top3.length < 3) return null;
     const kinds = ["most", "mid", "least"];
-    const options = top3.map((i) => ({ id: i.id, label: `${i.brandLabel} ${i.g.productName}`.trim(), photoId: i.hasPhoto ? i.id : undefined }));
+    const options = top3.map((i) => ({ id: i.id, label: `${i.brandLabel} ${i.g.productName}`.trim(), photoId: i.hasPhoto ? i.id : undefined, amount: amountLabel(i.price!) }));
     const reactions = Object.fromEntries(top3.map((i, k) => [i.id, f(r.pick(tx.react[kinds[k]]), { priceWon: won(i.price!) })]));
     const roast = roastMap(top3.map((i, k) => [i.id, roastOf(kinds[k], { priceWon: won(i.price!) })]));
     return { ...base, options: r.shuffle(options), reactions, roast };
@@ -1142,8 +1153,13 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
   if (q.id === "brand_best") {
     const trio = brandTrio(a);
     if (!trio) return null;
-    // 브랜드마다 그 브랜드 옷 사진을 칸에 들어가는 만큼(여덟 장까지) 붙인다.
-    const options = trio.map((b) => ({ id: b.label, label: b.label, photoIds: photoIds(a, b.ids).slice(0, 8) }));
+    // 브랜드마다 그 브랜드 옷 사진을 칸에 들어가는 만큼(여덟 장까지) 붙이고, 고른 뒤에는 그 브랜드에 쓴 돈을 보여 준다.
+    const options = trio.map((b) => ({
+      id: b.label,
+      label: b.label,
+      photoIds: photoIds(a, b.ids).slice(0, 8),
+      ...(b.amount > 0 ? { amount: amountLabel(b.amount) } : {}),
+    }));
     const reactions = Object.fromEntries(trio.map((b) => [b.label, f(r.pick(tx.react[b.kind]), { count: b.count })]));
     const roast = roastMap(trio.map((b) => [b.label, roastOf(b.kind, { count: b.count, brand: b.label })]));
     return { ...base, options: r.shuffle(options), reactions, roast };
@@ -1163,10 +1179,13 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
     if (id === "nolimit") return "nolimit";
     return BUDGET[id] < Number(vars.max) ? "below" : "within";
   };
+  // "~에 쓴 돈이 얼마라는 거, 알고 있었나요?"는 답한 뒤 그 옷들 사진과 가격을 보여 준다.
+  const reveal = q.id === "brand_spend_q" || q.id === "subcat_spend_q" ? pricedPhotos(a, pat(a, q.pattern!)?.garmentIds ?? []) : [];
   return {
     ...base,
     options,
     reactions: Object.fromEntries(options.map((o) => [o.id, f(r.pick(tx.react[reactKey(o.id)]))])),
     roast: roastMap(options.map((o) => [o.id, roastOf(reactKey(o.id))])),
+    ...(reveal.length ? { reveal } : {}),
   };
 }

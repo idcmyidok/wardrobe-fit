@@ -130,6 +130,17 @@
     opacity: 0;
   }
 }
+/* 사진 아래 가격 */
+.roast .roast-photo-fig {
+  flex: none;
+  margin: 0;
+  scroll-snap-align: start;
+}
+.roast .roast-photo-fig figcaption {
+  margin-top: 4px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
 .roast .roast-photo {
   width: 144px;
   height: 180px;
@@ -206,6 +217,31 @@
   object-fit: cover;
   border: 1px solid var(--divider);
   background: var(--n-100);
+}
+/* 사진 줄(또는 옷 사진·이름)과 금액을 한 줄에: 금액은 오른쪽 빈칸에 */
+.roast .roast-choice .roast-choice-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.roast .roast-choice .roast-choice-line .roast-choice-photos {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+.roast .roast-choice .roast-choice-line > img {
+  flex: none;
+  margin-right: 0;
+}
+.roast .roast-choice .roast-choice-amount {
+  flex: none;
+  margin-left: auto;
+  white-space: nowrap;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.roast .roast-choice .roast-choice-amount[data-shown="false"] {
+  visibility: hidden;
 }
 .roast .roast-choice img {
   width: 88px;

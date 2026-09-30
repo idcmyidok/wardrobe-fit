@@ -380,6 +380,38 @@ describe("항상 내는 질문", () => {
   });
 });
 
+describe("고른 뒤 보여 주는 금액", () => {
+  const now = new Date("2026-09-29T12:00:00+09:00");
+
+  it("비싼 옷 셋은 옷 가격, 브랜드 셋은 그 브랜드에 쓴 돈을 \"N ￦\"로 붙인다", () => {
+    const brands = ["UNIQLO", "UNIQLO", "COS", "COS", "COS", "Levi's", "Levi's", "A.P.C.", "A.P.C.", "UNIQLO", "COS", "A.P.C."];
+    const wardrobe = brands.map((b, i) => g(i, { brand: b, purchasePrice: 10000 * (i + 1) }));
+    const a = analyze(wardrobe, null, 1360, now);
+    const qs = buildScript(a, 3, null).script.questions;
+    const drop = qs.find((q) => q.id === "drop_item")!;
+    for (const o of drop.options) {
+      const price = wardrobe[a.items.findIndex((i) => i.id === o.id)].purchasePrice!;
+      expect(o.amount).toBe(`${price.toLocaleString("ko-KR")} ￦`);
+    }
+    const best = qs.find((q) => q.id === "brand_best")!;
+    for (const o of best.options) {
+      const total = wardrobe.filter((x) => x.brand === o.label).reduce((s, x) => s + x.purchasePrice!, 0);
+      expect(o.amount).toBe(`${total.toLocaleString("ko-KR")} ￦`);
+    }
+  });
+
+  it("브랜드에 쓴 돈 질문은 답한 뒤 그 브랜드 옷 사진과 가격을 비싼 순으로 보여 준다", () => {
+    const wardrobe = Array.from({ length: 12 }, (_, i) =>
+      g(i, { brand: i < 4 ? "COS" : `B${i}`, purchasePrice: i < 4 ? 400000 + i * 10000 : 20000, imageUrl: `https://x/${i}.jpg` }),
+    );
+    const a = analyze(wardrobe, null, 1360, now);
+    const q = Array.from({ length: 60 }, (_, seed) => buildScript(a, seed, null).script.questions.find((x) => x.id === "brand_spend_q")).find(Boolean);
+    expect(q).toBeTruthy();
+    const cos = a.items.filter((i) => i.brandLabel === "COS").sort((x, y) => y.price! - x.price!);
+    expect(q!.reveal).toEqual(cos.map((i) => ({ id: i.id, amount: `${i.price!.toLocaleString("ko-KR")} ￦` })));
+  });
+});
+
 describe("퀴즈", () => {
   it("가진 브랜드의 퀴즈가 있으면 어떤 seed에서도 퀴즈를 낸다", () => {
     const wardrobe = Array.from({ length: 12 }, (_, i) => g(i, { brand: i === 0 ? "메종 마르지엘라" : "우리동네 공방" }));
