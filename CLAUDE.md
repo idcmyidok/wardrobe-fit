@@ -1,5 +1,7 @@
 @AGENTS.md
 
+작업 전 `docs/CODE_MAP.md`를 먼저 보고, 필요한 파일의 줄 범위만 읽을 것(전체 통독·넓은 검색 금지).
+
 # 버전·배포 규칙
 
 ## 버전 (major.minor.patch)
