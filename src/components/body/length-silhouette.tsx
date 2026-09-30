@@ -30,8 +30,8 @@ export function LengthSilhouette({
   const top = GROUND_Y - H; // 키가 클수록 머리가 위로 올라가고, 작으면 머리 위가 비어 보인다
 
   // ---- 사람(정면 픽토그램). 모든 값은 키(H)의 비율 ----
-  const headR = H * 0.06;
-  const headY = H * 0.066;
+  const headR = H * 0.062;
+  const headY = H * 0.08;
   const neckY = H * NECK_FROM_TOP;
   const shoulderY = H * 0.185;
   const bodyShoulder = H * 0.115; // 어깨 끝 반폭(팔 중심선)
@@ -77,9 +77,6 @@ export function LengthSilhouette({
   const shirt = [`M${cx - collar} ${neckY}`, `Q${cx} ${neckY + H * 0.05} ${cx + collar} ${neckY}`, ...rightSide, ...leftSide, "Z"].join(" ");
   const collarLine = `M${cx - collar} ${neckY} Q${cx} ${neckY + H * 0.05} ${cx + collar} ${neckY}`;
   const collarInner = `M${cx - collar * 0.9} ${neckY + H * 0.008} Q${cx} ${neckY + H * 0.058} ${cx + collar * 0.9} ${neckY + H * 0.008}`;
-  // 밑단 박음선(살짝 안쪽 줄)
-  const seam = H * 0.012;
-  const hemSeams = [`M${cx - chestHalf} ${bottomY - seam * 1.6} L${cx + chestHalf} ${bottomY - seam * 1.6}`];
   const cut = bottomY > H;
   const stroke = H * 0.004;
   const marks = Array.from({ length: 21 }, (_, i) => i * 10); // 0~200cm, 10cm마다
@@ -122,7 +119,6 @@ export function LengthSilhouette({
             <path d={shirt} fill={SHIRT_FILL} fillOpacity={0.62} stroke={SHIRT_LINE} strokeWidth={stroke} strokeLinejoin="round" />
             <path d={collarLine} fill="none" stroke={SHIRT_LINE} strokeWidth={stroke * 2} strokeLinecap="round" />
             <path d={collarInner} fill="none" stroke={SHIRT_LINE} strokeWidth={stroke * 0.8} strokeOpacity={0.6} strokeLinecap="round" />
-            <path d={hemSeams.join(" ")} fill="none" stroke={SHIRT_LINE} strokeWidth={stroke * 0.7} strokeOpacity={0.5} />
             {!cut && <line x1={at(1, chestHalf) + H * 0.015} x2={W} y1={bottomY} y2={bottomY} stroke="#111" strokeWidth={stroke} strokeDasharray={`${H * 0.02} ${H * 0.012}`} />}
           </g>
         </svg>
