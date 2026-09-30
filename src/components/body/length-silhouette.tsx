@@ -9,7 +9,7 @@ export const MALE_BODY_RATIO = {
   shoulderY: 0.17,
   armpitY: 0.235,
   waistY: 0.38,
-  pantsWaistY: 0.4, // 바지 허리선(밑단 비교 기준)
+  pantsWaistY: 0.44, // 바지 허리선(밑단 비교 기준). 배꼽 아래, 골반 바로 위
   pelvisY: 0.46,
   crotchY: 0.53,
   kneeY: 0.74,
@@ -162,7 +162,6 @@ export function LengthSilhouette({
   const guides: [string, number][] = [
     ["어깨", b.shoulderY],
     ["바지 허리선", b.pantsWaistY],
-    ["골반", b.pelvisY],
     ["사타구니", b.crotchY],
     ["무릎", b.kneeY],
   ];
@@ -194,7 +193,7 @@ export function LengthSilhouette({
           </g>
           <line x1={0} x2={W} y1={top} y2={top} stroke="#8a8a83" strokeWidth={0.3} strokeDasharray="1.5 1.5" />
           <g transform={`translate(0 ${top})`}>
-            {/* 신체 기준선(어깨·바지 허리선·골반·사타구니·무릎) */}
+            {/* 신체 기준선(어깨·바지 허리선·사타구니·무릎) */}
             <g stroke="#7d8f7a" strokeWidth={0.3} strokeDasharray="0.8 1.2">
               {guides.map(([name, y]) => (
                 <line key={name} x1={0} x2={W} y1={y} y2={y} stroke={name === "바지 허리선" ? "#c2410c" : undefined} strokeWidth={name === "바지 허리선" ? 0.5 : undefined} />
