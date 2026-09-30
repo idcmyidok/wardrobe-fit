@@ -158,6 +158,23 @@ describe("통계 엔진", () => {
     );
     expect(multi.sizeNote).toContain("48");
   });
+  it("바지 허리는 값만 보여 주고 핏 판단에는 쓰지 않는다", () => {
+    const pants = [
+      g({ brand: "P1", categoryId: "bottom", subcategoryId: "bottom.denim", measurements: { waist: 42, thigh: 32, length: 102, rise: 29 }, fitReview: "허리가 너무 크다" }),
+      g({ brand: "P2", categoryId: "bottom", subcategoryId: "bottom.denim", measurements: { waist: 43, thigh: 33, length: 103, rise: 30 } }),
+    ];
+    // 스판이라 허리 실측이 작게 나온 바지
+    const cand = { categoryId: "bottom" as const, subcategoryId: "bottom.denim", brand: "S", productName: "스판 데님", sizes: [{ sizeLabel: "30", measurements: { waist: 36, thigh: 32.5, length: 102, rise: 29.5 } }] };
+    const r = computeFit(cand, selectComparables(cand, pants).selected).sizes[0];
+    const waist = r.dimensions.find((d) => d.key === "waist")!;
+    expect(waist.candidate).toBe(36);
+    expect(waist.ownedRange).not.toBeNull();
+    expect(waist.tag).toBe("excluded");
+    expect(waist.verdict).toBe("unknown");
+    expect(waist.anchors).toEqual([]);
+    expect(r.summary).not.toContain("허리");
+    expect(r.limitations.join(" ")).not.toContain("허리");
+  });
 });
 
 describe("입력 검증", () => {

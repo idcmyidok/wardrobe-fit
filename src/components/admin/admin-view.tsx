@@ -3,7 +3,6 @@ import { cn } from "@/lib/cn";
 import { IMPORT_FAILURE, type ImportFailureCode } from "@/lib/import/messages";
 import type { AdminOverview, AdminOverviewError } from "@/server/admin/queries";
 import { UsdRateForm } from "./usd-rate-form";
-import { BodyEncryption } from "./body-encryption";
 import { UserActions } from "./user-actions";
 
 const section = "flex flex-col gap-4 border-b border-text py-8";
@@ -33,12 +32,10 @@ export function AdminView({
   overview,
   myId,
   usdRate,
-  bodyEncryption,
 }: {
   overview: AdminOverview | AdminOverviewError | null;
   myId: string;
   usdRate: number;
-  bodyEncryption: { pending: number | null; keySet: boolean };
 }) {
   return (
     <main className="mx-auto max-w-320 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
@@ -71,13 +68,6 @@ export function AdminView({
           달러 환율
         </h2>
         <UsdRateForm current={usdRate} />
-      </section>
-
-      <section className={section} aria-labelledby="admin-body-enc">
-        <h2 id="admin-body-enc" className="text-body font-semibold">
-          신체치수 암호화
-        </h2>
-        <BodyEncryption pending={bodyEncryption.pending} keySet={bodyEncryption.keySet} />
       </section>
 
       <section className={section} aria-labelledby="admin-roast-texts">

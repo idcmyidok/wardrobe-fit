@@ -22,12 +22,14 @@
   overflow-wrap: anywhere;
 }
 
-.roast .roast-status {
-  font-size: 13px;
-  color: var(--n-600);
+/* 새 이야기(분석 문장 묶음·질문 하나)는 앞 이야기와 같은 간격으로 떨어뜨린다 */
+.roast .roast-log > [data-gap="true"] {
+  margin-top: 40px;
 }
-.roast .roast-status::before {
-  content: "› ";
+
+/* "~를 훑는 중입니다" 같은 진행 문구도 본문과 같은 글꼴·크기·색으로 쓴다 */
+.roast .roast-status {
+  margin: 0;
 }
 
 
@@ -52,33 +54,31 @@
   }
 }
 
+/* 고민하는 중: "......"가 물결치듯 차례로 위아래로 출렁인다 */
+.roast .roast-dots {
+  display: inline-flex;
+  gap: 1px;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--n-500);
+}
 .roast .roast-dots span {
   display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 5px;
-  border-radius: 50%;
-  background: var(--n-500);
-  animation: roast-dot 1.2s ease-in-out infinite;
-}
-.roast .roast-dots span:nth-child(2) {
-  animation-delay: 0.15s;
-}
-.roast .roast-dots span:nth-child(3) {
-  animation-delay: 0.3s;
+  animation: roast-dot 1.1s ease-in-out infinite;
 }
 @keyframes roast-dot {
   0%,
-  80%,
+  60%,
   100% {
-    opacity: 0.25;
+    opacity: 0.35;
     transform: translateY(0);
   }
-  40% {
+  30% {
     opacity: 1;
-    transform: translateY(-3px);
+    transform: translateY(-6px);
   }
 }
+
 
 .roast .roast-photos {
   display: flex;
@@ -90,17 +90,56 @@
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x proximity;
-  padding-bottom: 6px;
+  scrollbar-width: none;
   cursor: grab;
   user-select: none;
+}
+.roast .roast-photos-strip::-webkit-scrollbar {
+  display: none;
 }
 .roast .roast-photos-strip .roast-photo {
   flex: none;
   scroll-snap-align: start;
 }
+/* 대화 사진: 글자가 다 찍힌 뒤 한 장씩 오른쪽에서 왼쪽으로 밀려 들어오며 선명해진다. 움직임 줄이기면 제자리에서 흐려졌다 선명해진다. */
+.roast .roast-photo-in {
+  animation: roast-photo-in 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes roast-photo-in {
+  from {
+    opacity: 0;
+    transform: translateX(72px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .roast .roast-photo-in {
+    animation-name: roast-photo-fade;
+    animation-duration: 0.2s;
+  }
+}
+@keyframes roast-photo-fade {
+  from {
+    opacity: 0;
+  }
+}
+/* 사진 아래 가격 */
+.roast .roast-photo-fig {
+  flex: none;
+  margin: 0;
+  scroll-snap-align: start;
+}
+.roast .roast-photo-fig figcaption {
+  margin-top: 4px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
 .roast .roast-photo {
-  width: 72px;
-  height: 90px;
+  width: 144px;
+  height: 180px;
   object-fit: cover;
   border: 1px solid var(--divider);
   background: var(--n-100);
@@ -130,9 +169,79 @@
   background: var(--text);
   color: var(--bg);
 }
+/* 퀴즈를 틀렸을 때 고른 오답: 어둡게 */
+.roast .roast-choice[data-wrong="true"] {
+  background: color-mix(in srgb, var(--text) 55%, #000);
+  border-color: color-mix(in srgb, var(--text) 55%, #000);
+  color: color-mix(in srgb, var(--bg) 80%, transparent);
+  text-decoration: line-through;
+}
+.roast .roast-choice[data-wrong="true"]::after {
+  content: "  ← 내가 고른 답";
+  text-decoration: none;
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 13px;
+}
+/* 퀴즈를 틀렸을 때 정답 선택지 */
+.roast .roast-choice[data-answer="true"] {
+  opacity: 1;
+  border-color: var(--positive);
+  background: color-mix(in srgb, var(--positive) 14%, var(--surface));
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--positive);
+}
+.roast .roast-choice[data-answer="true"]::after {
+  content: "  ← 정답";
+  color: var(--positive);
+  font-weight: 700;
+}
+/* 선택지 칸 안의 사진 줄: 칸 너비에 들어가는 만큼만 보이고, 넘치는 사진은 다음 줄로 밀려 가려진다. */
+.roast .roast-choice .roast-choice-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 64px);
+  grid-auto-rows: 80px;
+  gap: 6px;
+  height: 80px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.roast .roast-choice .roast-choice-photos img {
+  width: 64px;
+  height: 80px;
+  margin: 0;
+  object-fit: cover;
+  border: 1px solid var(--divider);
+  background: var(--n-100);
+}
+/* 사진 줄(또는 옷 사진·이름)과 금액을 한 줄에: 금액은 오른쪽 빈칸에 */
+.roast .roast-choice .roast-choice-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.roast .roast-choice .roast-choice-line .roast-choice-photos {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+.roast .roast-choice .roast-choice-line > img {
+  flex: none;
+  margin-right: 0;
+}
+.roast .roast-choice .roast-choice-amount {
+  flex: none;
+  margin-left: auto;
+  white-space: nowrap;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.roast .roast-choice .roast-choice-amount[data-shown="false"] {
+  visibility: hidden;
+}
 .roast .roast-choice img {
-  width: 44px;
-  height: 55px;
+  width: 88px;
+  height: 110px;
   object-fit: cover;
   margin-right: 10px;
   vertical-align: middle;
@@ -143,11 +252,109 @@
   line-height: 1.85;
   word-break: keep-all;
 }
+/* 결과 페이지: How Bad Is Your Spotify처럼 글 위주 */
+.roast .roast-report {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.roast .roast-prompt {
+  font-weight: 700;
+  margin-right: 0.5em;
+}
+.roast .roast-result h2.roast-headline {
+  font-size: clamp(24px, 5.2vw, 34px);
+}
+/* 제목 바로 아래 요약 한 문장: 제목에 붙여 한 덩어리로 읽히게 한다 */
+.roast .roast-result p.roast-summary {
+  margin-top: -8px;
+  font-size: 17px;
+  line-height: 1.6;
+}
+.roast .roast-result ul.roast-list {
+  margin-top: 6px;
+  padding-left: 1.4em;
+  list-style: disc;
+}
+.roast .roast-result ul.roast-list li {
+  font-size: 16px;
+  line-height: 1.85;
+}
+.roast .roast-result p.roast-answer {
+  margin-top: 6px;
+  font-size: 15px;
+  padding-left: 12px;
+  border-left: 3px solid var(--text);
+}
+/* 결과 문단 사진 줄: 스크롤바는 숨기고 양옆 화살표로 넘긴다 */
+.roast .roast-row {
+  position: relative;
+}
+.roast .roast-row-track {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  cursor: grab;
+  user-select: none;
+}
+.roast .roast-row-track::-webkit-scrollbar {
+  display: none;
+}
+.roast .roast-row-track img {
+  flex: none;
+  width: 96px;
+  height: 120px;
+  object-fit: cover;
+  border: 1px solid var(--divider);
+  scroll-snap-align: start;
+}
+.roast .roast-row-btn {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  transform: translateY(-50%);
+  border: 1px solid var(--text);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+}
+.roast .roast-row-prev {
+  left: -6px;
+}
+.roast .roast-row-next {
+  right: -6px;
+}
+
+.roast .roast-result .roast-last {
+  font-weight: 700;
+}
+
 .roast .roast-headline {
   font-size: clamp(22px, 4.5vw, 30px);
   line-height: 1.4;
   font-weight: 700;
   word-break: keep-all;
+}
+
+.roast .roast-credit {
+  font-size: 12px;
+  color: var(--n-600);
+}
+
+/* 대화 아래에 이어 붙는 결과 */
+.roast .roast-fresh {
+  scroll-margin-top: 16px;
+}
+.roast .roast-divider {
+  margin: 40px 0 0;
+  border: 0;
+  border-top: 1px solid var(--text);
 }
 
 @media (prefers-reduced-motion: reduce) {

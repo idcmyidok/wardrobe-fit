@@ -27,9 +27,23 @@ export interface BrandInfo {
   /** 접근성: 한국에서 사기 쉬운 정도 */
   access: number;
   hype: number;
+  /** 기타 태그(예: "무신사 인기": 무신사 인기 브랜드 순위에 든 브랜드, 너무 유명한 글로벌 브랜드는 뺐다) */
+  labels: string[];
 }
 
-export const BRANDS = RAW as BrandInfo[];
+/** 태그만 있는 브랜드(나머지 칸이 비어 있어 분석에는 쓰지 않는다) */
+interface PartialBrand {
+  name: string;
+  aliases: string[];
+  country: string;
+  labels: string[];
+  partial: true;
+}
+
+const ALL = RAW as (BrandInfo | PartialBrand)[];
+export const BRANDS = ALL.filter((b): b is BrandInfo => !("partial" in b));
+
+export const MUSINSA_POPULAR = "무신사 인기";
 
 export type BrandGroup =
   | "luxury"
@@ -57,6 +71,21 @@ export const BRAND_GROUPS: BrandGroup[] = [
   "outdoor",
   "mass",
 ];
+
+/** 브랜드 그룹을 문장에 쓸 때 */
+export const GROUP_WORD: Record<BrandGroup, string> = {
+  luxury: "명품",
+  designer: "디자이너 브랜드",
+  contemporary: "컨템포러리 브랜드",
+  premium_casual: "프리미엄 캐주얼",
+  specialist: "한 제품 전문 브랜드",
+  jp_denim: "일본 데님·워크웨어",
+  heritage: "헤리티지 브랜드",
+  street: "스트릿 브랜드",
+  sports: "스포츠 브랜드",
+  outdoor: "아웃도어 브랜드",
+  mass: "SPA·대중 브랜드",
+};
 
 /** 비교용 이름: NFKC → 소문자 → 한글·영문·숫자만 */
 export function normalizeBrand(s: string): string {
@@ -118,6 +147,19 @@ export function brandGroups(b: BrandInfo): BrandGroup[] {
   if (has(b.positions, "아웃도어")) out.push("outdoor");
   if (has(b.positions, "SPA", "매스마켓")) out.push("mass");
   return out;
+}
+
+const LABELED = new Map<string, string[]>();
+for (const b of ALL)
+  if (b.labels.length)
+    for (const raw of [b.name, ...b.aliases]) {
+      const key = normalizeBrand(raw);
+      if (key && !LABELED.has(key)) LABELED.set(key, b.labels);
+    }
+
+/** 옷의 브랜드 문자열에 붙은 기타 태그. 분석용 자료가 있는 브랜드는 그 브랜드의 태그(앞부분 일치 포함), 없으면 태그만 있는 브랜드에서 찾는다. */
+export function brandLabels(input: string | null | undefined): string[] {
+  return findBrand(input)?.labels ?? LABELED.get(normalizeBrand(input ?? "")) ?? [];
 }
 
 /** 트렌드 표시: 하이프 성향 높음 이상 */

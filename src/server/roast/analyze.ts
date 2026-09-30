@@ -2,12 +2,12 @@ import "server-only";
 import { SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { findColorFamily } from "@/lib/constants/colors";
 import type { FitKind, FitLevel } from "@/lib/constants/body";
-import { FOUR_SEASONS, wearsInSeason } from "@/lib/constants/seasons";
+import { FOUR_SEASONS, SEASON_NAME, wearsInSeason } from "@/lib/constants/seasons";
 import { computeBodyFit, type BodyProfile } from "@/lib/fit/body-fit";
 import { priceInKrw } from "@/lib/format/price";
 import type { CategoryId, Garment, Season } from "@/lib/types/domain";
-import { brandGroups, findBrand, isTrendBrand, type BrandGroup, type BrandInfo } from "./brands";
-import { FAMILY_IDS, productFamilies, type FamilyId } from "./keywords";
+import { brandGroups, brandLabels, findBrand, GROUP_WORD, isTrendBrand, MUSINSA_POPULAR, type BrandGroup, type BrandInfo } from "./brands";
+import { FAMILY_IDS, familyName, productFamilies, type FamilyId } from "./keywords";
 
 /**
  * AI 옷장 분석의 계산(계획서 5장). 화면 문구는 넣지 않고 패턴(id·강도·흥미도·근거 값·관련 옷)만 만든다.
@@ -50,7 +50,31 @@ export interface Item {
   hasPhoto: boolean;
   /** 모자·신발 */
   accessory: boolean;
+  /** 구매 링크의 쇼핑몰(예: 무신사). 링크가 없으면 null */
+  shop: string | null;
+  /** 데님(데님 계열 색·데님 팬츠·제품명에 데님/청바지). 색 계산에서는 빼고 본다(청바지를 무채색·유채색으로 세지 않게, 사용자 요청). */
+  denim: boolean;
+  /**
+   * 브랜드 칸의 종류. known: 브랜드 자료에 있음, unknown: 자료에 없는 이름(작은 브랜드일 수 있어 보세로 치지 않음),
+   * nobrand: 보세·모름·없음 등, vintage: 빈티지·구제, none: 비어 있음
+   */
+  brandKind: "known" | "unknown" | "nobrand" | "vintage" | "none";
 }
+
+const NO_BRAND = /^(보세|모름|모르겠음|없음|노브랜드|no ?brand|unknown|기타|-+|\?+|x)$/i;
+const VINTAGE = /^(빈티지|구제|vintage|빈티지 ?샵|구제 ?샵)$/i;
+
+export function brandKindOf(label: string, known: boolean): Item["brandKind"] {
+  const t = label.trim();
+  if (!t) return "none";
+  if (known) return "known";
+  if (NO_BRAND.test(t)) return "nobrand";
+  if (VINTAGE.test(t)) return "vintage";
+  return "unknown";
+}
+
+/** 색 계산에 넣는 옷(색이 있고 데님이 아님) */
+export const colorCounted = (i: Item) => Boolean(i.color) && !i.denim;
 
 export type Stat = string | number;
 
@@ -70,13 +94,19 @@ export interface Analysis {
   clothes: Item[];
   patterns: Pattern[];
   /** 튀는 옷(있으면) */
-  oddOne: { item: Item; traits: string[] } | null;
+  /** reason: 고른 이유(드문 특성을 실제 값으로, 예: "레드 색, 셔츠라는 종류") */
+  oddOne: { item: Item; traits: string[]; reason: string } | null;
   /** 구매금액 상위 브랜드(목록에 있는 브랜드만) */
   topSpendBrands: { label: string; amount: number; count: number; ids: string[] }[];
-  /** 가진 브랜드 중 퀴즈 대상 그룹(명품·디자이너·일본 데님) */
-  quizBrands: BrandInfo[];
-  quizGroups: BrandGroup[];
+  /** 가진 브랜드(브랜드 자료 이름). 퀴즈는 이 중 문제가 있는 브랜드로 낸다. */
+  brandNames: string[];
   now: Date;
+  /** 모자·신발을 뺀 전체 벌 수(분석에서 뺀 무지 티 포함). 10벌 조건·옷장 크기·"N벌 기준"에 쓴다. */
+  clothesTotal: number;
+  /** 분석에서 뺀 무채색 무지·베이직 티(최대 BASIC_TEE_SKIP벌) */
+  basicIds: string[];
+  /** 무지 티까지 포함한 모든 옷(코디 조합 수처럼 실제 벌 수가 필요한 계산에만) */
+  allItems: Item[];
 }
 
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
@@ -130,9 +160,57 @@ export function prepare(garments: Garment[], body: BodyProfile | null, usdRate: 
         date: g.purchasedOn,
         hasPhoto: Boolean(g.thumbUrl || g.imageUrl),
         accessory,
+        shop: shopOf(g.productUrl),
+        denim: color === "데님" || g.subcategoryId === "bottom.denim" || /데님|청바지|청자켓|진 ?팬츠|jean|denim/i.test(g.productName),
+        brandKind: brandKindOf(g.brand, Boolean(brand)),
       };
     });
 }
+
+/** 쇼핑몰 주소 → 이름. 목록에 없으면 주소의 이름 부분(예: example.com → example) */
+const SHOPS: [RegExp, string][] = [
+  [/(^|\.)musinsa\.com$/, "무신사"],
+  [/(^|\.)29cm\.co\.kr$/, "29CM"],
+  [/(^|\.)wconcept\.co\.kr$/, "W컨셉"],
+  [/(^|\.)ssfshop\.com$/, "SSF샵"],
+  [/(^|\.)kream\.co\.kr$/, "KREAM"],
+  [/(^|\.)ably\.co\.kr$|(^|\.)a-bly\.com$/, "에이블리"],
+  [/(^|\.)zigzag\.kr$/, "지그재그"],
+  [/(^|\.)coupang\.com$/, "쿠팡"],
+  [/(^|\.)hfashionmall\.com$/, "더한섬닷컴"],
+  [/(^|\.)lotteon\.com$/, "롯데온"],
+  [/(^|\.)ssg\.com$/, "SSG"],
+  [/(^|\.)ssense\.com$/, "SSENSE"],
+  [/(^|\.)mrporter\.com$/, "MR PORTER"],
+  [/(^|\.)farfetch\.com$/, "파페치"],
+  [/(^|\.)matchesfashion\.com$|(^|\.)matches\.com$/, "매치스"],
+  [/(^|\.)endclothing\.com$/, "END."],
+  [/(^|\.)uniqlo\.com$/, "유니클로"],
+  [/(^|\.)zara\.com$/, "자라"],
+  [/(^|\.)cos\.com$/, "COS"],
+  [/(^|\.)nike\.com$/, "나이키"],
+  [/(^|\.)fruitsfamily\.com$/, "후르츠패밀리"],
+  [/(^|\.)bunjang\.co\.kr$/, "번개장터"],
+];
+
+export function shopOf(url: string | null | undefined): string | null {
+  if (!url) return null;
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase().replace(/^www\.|^m\./, "");
+  } catch {
+    return null;
+  }
+  const hit = SHOPS.find(([re]) => re.test(host));
+  if (hit) return hit[1];
+  const parts = host.split(".");
+  // example.co.kr → example, shop.example.com → example
+  const main = parts.length >= 3 && /^(co|or|ac|go)$/.test(parts[parts.length - 2]) ? parts[parts.length - 3] : parts[parts.length - 2];
+  return main || null;
+}
+
+/** 같은 옷인지 볼 때 제품명(띄어쓰기·기호·대소문자 무시) */
+const sameName = (s: string) => s.toLowerCase().replace(/[^0-9a-z가-힣]/g, "");
 
 /** 한 브랜드(자료 기준)의 옷들에서 가장 많이 쓴 표기를 이름으로 쓴다. */
 const labelOf = (list: Item[]) => top(countBy(list, (i) => i.brandLabel || i.brand?.name))?.[0] ?? list[0].brand!.name;
@@ -151,8 +229,6 @@ export const GROUP_THRESHOLD: Record<BrandGroup, number> = {
   mass: 0.35,
 };
 
-const QUIZ_GROUPS: BrandGroup[] = ["luxury", "designer", "jp_denim"];
-
 const dayKey = (d: Date) => {
   const k = new Date(d.getTime() + 9 * 3_600_000); // 한국 날짜
   return k.toISOString().slice(0, 10);
@@ -160,8 +236,46 @@ const dayKey = (d: Date) => {
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);
 const monthIndex = (ym: string) => Number(ym.slice(0, 4)) * 12 + Number(ym.slice(5, 7)) - 1;
 
+/** 실측 비교 부위: 가슴·총장은 꼭, 소매·어깨는 두 옷 모두 적었을 때만 */
+const MEASURE_KEYS = ["chest", "length", "sleeve", "shoulder"] as const;
+const MEASURE_TOLERANCE = 2;
+function measureGap(a: Item, b: Item): number {
+  let gap = 0;
+  for (const k of MEASURE_KEYS) {
+    const x = a.g.measurements[k];
+    const y = b.g.measurements[k];
+    if (x != null && y != null) gap = Math.max(gap, Math.abs(x - y));
+  }
+  return gap;
+}
+export function similarMeasure(a: Item, b: Item): boolean {
+  const m1 = a.g.measurements;
+  const m2 = b.g.measurements;
+  if (m1.chest == null || m2.chest == null || m1.length == null || m2.length == null) return false;
+  return measureGap(a, b) <= MEASURE_TOLERANCE;
+}
+
+/** 분석에서 빼는 무지 티 최대 벌 수(사용자 요청: 너무 기본 필수템이라 5벌까지는 취향으로 보지 않는다) */
+export const BASIC_TEE_SKIP = 5;
+const BASIC_WORDS = /무지|솔리드|베이직|에센셜|데일리|팩티|[23] ?팩|[23]p\b|solid|basic|plain|essential|blank|pack/i;
+const PRINT_WORDS = /그래픽|로고|프린트|레터링|아트웍|자수|graphic|logo|print|lettering|artwork|embroider/i;
+
+/** 무채색(블랙·화이트·그레이) 반팔·긴팔 티 중 무지·베이직 이름이거나, 프린트 없이 베이직·미니멀 브랜드인 옷 */
+export function isBasicTee(i: Item): boolean {
+  if (i.sub !== "top.short_tee" && i.sub !== "top.long_tee") return false;
+  if (!i.achromatic) return false;
+  const name = i.g.productName;
+  if (PRINT_WORDS.test(name) || i.families.includes("graphic")) return false;
+  if (BASIC_WORDS.test(name)) return true;
+  return Boolean(i.brand?.tags.some((t) => t === "베이직" || t === "미니멀"));
+}
+
 export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: number, now = new Date()): Analysis {
-  const items = prepare(garments, body, usdRate);
+  const prepared = prepare(garments, body, usdRate);
+  const clothesTotal = prepared.filter((i) => !i.accessory).length;
+  // 무지 티는 5벌까지 취향 분석에서 뺀다(5벌을 넘는 것은 그대로 본다). 벌 수를 말할 때는 clothesTotal을 쓴다.
+  const basicIds = prepared.filter(isBasicTee).slice(0, BASIC_TEE_SKIP).map((i) => i.id);
+  const items = prepared.filter((i) => !basicIds.includes(i.id));
   const clothes = items.filter((i) => !i.accessory);
   const P: Pattern[] = [];
   const add = (id: string, strength: number, interest: number, stats: Record<string, Stat>, list: Item[]) =>
@@ -170,10 +284,11 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
   const N = clothes.length;
   const all = items.length;
 
-  // 옷장 크기와 구성 ---------------------------------------------------------
-  if (N < 20) add("count_small", 0.5, 0.35, { n: N }, []);
-  else if (N >= 100) add("count_huge", ramp(N, 100, 200), 0.7, { n: N }, []);
-  else if (N >= 60) add("count_many", ramp(N, 60, 100), 0.55, { n: N }, []);
+  // 옷장 크기와 구성: 벌 수는 무지 티까지 센다 -------------------------------------
+  const T = clothesTotal;
+  if (T < 20) add("count_small", 0.5, 0.35, { n: T }, []);
+  else if (T >= 100) add("count_huge", ramp(T, 100, 200), 0.7, { n: T }, []);
+  else if (T >= 60) add("count_many", ramp(T, 60, 100), 0.55, { n: T }, []);
 
   const byCat = countBy(clothes, (i) => i.cat);
   const [cat, catList] = top(byCat) ?? [null, []];
@@ -198,7 +313,7 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     add("hat_sub_bias", ramp(hatSubList.length / hats.length, 0.6, 1), 0.6, { sub: hatSubList[0].subName ?? "모자", n: hatSubList.length, total: hats.length }, hatSubList);
 
   // 컬러 ---------------------------------------------------------------------
-  const colored = items.filter((i) => i.color);
+  const colored = items.filter(colorCounted);
   const C = colored.length;
   if (C >= 5) {
     const black = colored.filter((i) => i.color === "블랙");
@@ -243,7 +358,7 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
   }
 
   if (K >= 5) {
-    const [country, cList] = top(countBy(known, (i) => i.brand!.country)) ?? [null, []];
+    const [country, cList] = top(countBy(known, (i) => i.brand!.country || null)) ?? [null, []];
     if (country && cList.length / K >= 0.6) add("country_bias", ramp(cList.length / K, 0.6, 0.95), 0.55, { country, n: cList.length, pct: pct(cList.length, K) }, cList);
 
     const avg = (f: (b: BrandInfo) => number) => known.reduce((a, i) => a + f(i.brand!), 0) / K;
@@ -291,7 +406,32 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     }
   }
 
+  // 구매처 -------------------------------------------------------------------
+  const linked = items.filter((i) => i.shop);
+  if (linked.length >= 5) {
+    const musinsa = linked.filter((i) => i.shop === "무신사");
+    // 한국 대중 브랜드이거나 무신사 인기 태그가 붙은 브랜드
+    const branded = items.filter((i) => i.brand || brandLabels(i.g.brand).length);
+    const krPopular = branded.filter((i) => (i.brand?.country === "한국" && i.brand.pop >= 4) || brandLabels(i.g.brand).includes(MUSINSA_POPULAR));
+    const musinsaKr = musinsa.length >= 4 && musinsa.length / linked.length >= 0.5 && krPopular.length >= 4 && krPopular.length / Math.max(branded.length, 1) >= 0.4;
+    if (musinsaKr) {
+      // 읊어 줄 브랜드: 무신사 인기 태그를 먼저, 오래된 브랜드보다 요즘 뜨는 브랜드를 먼저, 세 개까지
+      const rank = (i: Item) => (brandLabels(i.g.brand).includes(MUSINSA_POPULAR) ? 0 : 10) + (i.brand ? i.brand.heritage - i.brand.trend : 0);
+      const names = [...new Set(krPopular.slice().sort((x, y) => rank(x) - rank(y)).map((i) => i.brandLabel || i.brand?.name || ""))].filter(Boolean).slice(0, 3);
+      add("musinsa_kr", ramp(musinsa.length / linked.length, 0.5, 0.9), 0.9, { n: musinsa.length, pct: pct(musinsa.length, linked.length), krN: krPopular.length, krPct: pct(krPopular.length, branded.length), names: names.join(", ") }, [...new Set([...musinsa, ...krPopular])]);
+    }
+    const [shop, shopList] = top(countBy(linked, (i) => i.shop)) ?? [null, []];
+    if (shop && shopList.length >= 4 && shopList.length / linked.length >= 0.6 && !(musinsaKr && shop === "무신사"))
+      add("shop_focus", ramp(shopList.length / linked.length, 0.6, 0.95), 0.7, { shop, n: shopList.length, pct: pct(shopList.length, linked.length) }, shopList);
+  }
+
   // 반복 ---------------------------------------------------------------------
+  // 이름·색까지 같은 옷(같은 옷을 여러 벌)
+  const twins = countBy(items.filter((i) => i.color && sameName(i.g.productName).length >= 2), (i) => `${i.cat}|${sameName(i.g.productName)}|${i.color}`);
+  const [twinKey, twinList] = top(twins) ?? [null, []];
+  if (twinKey && twinList.length >= 3)
+    add("identical_items", ramp(twinList.length, 3, 6), 0.95, { name: twinList[0].g.productName, color: twinList[0].color!, n: twinList.length }, twinList);
+
   const fitted = clothes.filter((i) => i.fit && i.fit.level !== "too_small" && i.fit.level !== "too_big");
   const combos = countBy(clothes.filter((i) => i.sub && i.color), (i) => `${i.sub}|${i.color}|${i.fit?.level ?? "-"}`);
   const [comboKey, comboList] = top(combos) ?? [null, []];
@@ -305,22 +445,31 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     }, comboList);
   }
 
-  const famCounts = FAMILY_IDS.map((id) => ({ id, list: clothes.filter((i) => i.families.includes(id)) })).sort((a, b) => b.list.length - a.list.length);
+  // 데님은 바지만 센다(데님 셔츠·재킷은 빼고, 사용자 요청).
+  const famCounts = FAMILY_IDS.map((id) => ({ id, list: clothes.filter((i) => i.families.includes(id) && (id !== "denim" || i.cat === "bottom")) })).sort(
+    (a, b) => b.list.length - a.list.length,
+  );
   const fam = famCounts[0];
-  if (fam && fam.list.length >= 3) add("family_repeat", ramp(fam.list.length, 3, 8), 0.8, { family: fam.id, n: fam.list.length }, fam.list);
+  if (fam && fam.list.length >= 3)
+    add("family_repeat", ramp(fam.list.length, 3, 8), 0.8, { family: fam.id, n: fam.list.length, kind: fam.list.every((i) => i.cat === "bottom") ? "바지" : "옷" }, fam.list);
 
+  // 실측이 거의 같은 옷: 같은 세부분류에서 가슴·총장(+ 둘 다 적은 경우 소매·어깨)이 각 2cm 이내.
+  // 묶음 안의 모든 옷끼리 서로 비슷해야 한다(A-B, B-C만 비슷하면 A와 C는 다를 수 있다. 짧은 옷과 긴 옷이 한 묶음이 되지 않게, 사용자 요청).
   let bestCluster: Item[] = [];
   for (const [, list] of bySub) {
     const m = list.filter((i) => i.g.measurements.length != null && i.g.measurements.chest != null);
     for (const a of m) {
-      const near = m.filter(
-        (b) => Math.abs(b.g.measurements.length! - a.g.measurements.length!) <= 2 && Math.abs(b.g.measurements.chest! - a.g.measurements.chest!) <= 2,
-      );
-      if (near.length > bestCluster.length) bestCluster = near;
+      const cluster = [a];
+      const candidates = m.filter((b) => b !== a && similarMeasure(a, b)).sort((x, y) => measureGap(a, x) - measureGap(a, y));
+      for (const b of candidates) if (cluster.every((c) => similarMeasure(b, c))) cluster.push(b);
+      if (cluster.length > bestCluster.length) bestCluster = cluster;
     }
   }
-  if (bestCluster.length >= 3)
-    add("measure_repeat", ramp(bestCluster.length, 3, 6), 0.75, { sub: bestCluster[0].subName ?? "옷", n: bestCluster.length }, bestCluster);
+  // 실측이 비슷해도 색이 제각각이면 덜 뚜렷하게 본다(색까지 같아야 비꼬기 좋다, 사용자 요청).
+  if (bestCluster.length >= 3) {
+    const sameColor = Math.max(...[...countBy(bestCluster, (i) => i.color ?? "-").values()].map((l) => l.length)) / bestCluster.length;
+    add("measure_repeat", ramp(bestCluster.length, 3, 6) * (0.4 + 0.6 * sameColor), sameColor >= 0.6 ? 0.8 : 0.5, { sub: bestCluster[0].subName ?? "옷", n: bestCluster.length }, bestCluster);
+  }
 
   if (fitted.length >= 5) {
     const [lv, lvList] = top(countBy(fitted, (i) => i.fit!.level)) ?? [null, []];
@@ -347,13 +496,14 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     if (r30.length >= 3) add("recent_30", ramp(r30.length, 3, 8), 0.85, { n: r30.length }, r30);
     else if (r90.length >= 5) add("recent_90", ramp(r90.length, 5, 12), 0.7, { n: r90.length }, r90);
 
-    const byMonth = countBy(withDate, (i) => i.date!.slice(0, 7));
-    const months = [...byMonth.keys()].sort();
-    const span = monthIndex(months[months.length - 1]) - monthIndex(months[0]) + 1;
+    // 연도와 상관없이 같은 달(예: 9월)에 몰아 산 옷. 기록한 기간이 1년이 안 되면 그 기간의 달 수로 평균을 낸다.
+    const byMonth = countBy(withDate, (i) => String(Number(i.date!.slice(5, 7))));
+    const months = [...new Set(withDate.map((i) => i.date!.slice(0, 7)))].sort();
+    const span = Math.min(12, monthIndex(months[months.length - 1]) - monthIndex(months[0]) + 1);
     const avg = withDate.length / span;
-    const [ym, ymList] = top(byMonth) ?? [null, []];
-    if (ym && ymList.length >= 4 && ymList.length >= avg * 2)
-      add("month_binge", ramp(ymList.length / avg, 2, 6), 0.85, { year: Number(ym.slice(0, 4)), month: Number(ym.slice(5, 7)), n: ymList.length }, ymList);
+    const [m, mList] = top(byMonth) ?? [null, []];
+    if (m && mList.length >= 4 && mList.length >= avg * 2)
+      add("month_binge", ramp(mList.length / avg, 2, 6), 0.85, { month: Number(m), n: mList.length }, mList);
   }
 
   // 금액 ---------------------------------------------------------------------
@@ -369,9 +519,17 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     const median = sorted[Math.floor(sorted.length / 2)];
     const max = priced.slice().sort((a, b) => b.price! - a.price!)[0];
     if (max.price! >= median * 3)
-      add("top_item", ramp(max.price! / median, 3, 10), 0.75, { price: max.price!, ratio: Math.round((max.price! / median) * 10) / 10, brand: max.brandLabel, name: max.g.productName }, [max]);
+      add("top_item", ramp(max.price! / median, 3, 10), 0.75, {
+        price: max.price!,
+        ratio: Math.round((max.price! / median) * 10) / 10,
+        brand: max.brandLabel,
+        name: max.g.productName,
+        // "브랜드의 상품명"(브랜드가 없으면 상품명만)
+        itemName: max.brandLabel ? `${max.brandLabel}의 ${max.g.productName}` : max.g.productName,
+      }, [max]);
 
-    const catSpend = [...countBy(priced, (i) => i.cat)].map(([c, list]) => ({
+    // 아우터·신발은 원래 비싸서 돈이 몰려도 당연하니 뺀다.
+    const catSpend = [...countBy(priced, (i) => i.cat)].filter(([c]) => c !== "outer" && c !== "shoes").map(([c, list]) => ({
       c,
       list,
       spend: list.reduce((a, i) => a + i.price!, 0) / total,
@@ -405,13 +563,37 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
   const oddOne = findOddOne(clothes, colored.length ? colored.filter((i) => i.achromatic).length / colored.length : 0);
   if (oddOne) add("odd_one", ramp(oddOne.traits.length, 2, 4), 0.9, { brand: oddOne.item.brandLabel, name: oddOne.item.g.productName, traits: oddOne.traits.join(",") }, [oddOne.item]);
 
-  const quizBrands = [...new Set(known.filter((i) => i.groups.some((g) => QUIZ_GROUPS.includes(g))).map((i) => i.brand!))];
-  const quizGroups = QUIZ_GROUPS.filter((g) => known.some((i) => i.groups.includes(g)));
+  // "데님 팬츠 N벌"과 "데님 N벌"이 따로 나오지 않게 한다(데님 팬츠 쪽이 우선, 사용자 요청).
+  const denimFam = P.find((x) => x.id === "family_repeat" && x.stats.family === "denim");
+  const denimSub = P.find((x) => x.id === "subcategory_bias" && x.stats.sub === "데님 팬츠");
+  if (denimFam && denimSub) P.splice(P.indexOf(denimFam), 1);
 
-  return { items, clothes, patterns: P, oddOne, topSpendBrands, quizBrands, quizGroups, now };
+  const brandNames = [...new Set(known.map((i) => i.brand!.name))];
+
+  return { items, clothes, patterns: P, oddOne, topSpendBrands, brandNames, now, clothesTotal, basicIds, allItems: prepared };
 }
 
 /** 핏을 아는 옷이 5벌 이상일 때 가장 많은 핏 */
+/** 핏 분포: 직접 고른 핏이 있으면 그 핏, 없으면 예상 핏. 안 맞는 옷(작은·큰 핏)은 따로 센다. 고른 핏의 개수·비율은 쓰지 않는다. */
+export function fitSummary(clothes: Item[]) {
+  const fitted = clothes.filter((i) => i.fit && i.fit.level !== "too_small" && i.fit.level !== "too_big");
+  const isTrim = (i: Item) => i.fit!.level === "slim" || i.fit!.level === "regular";
+  const tops = fitted.filter((i) => i.fit!.kind === "top");
+  const bottoms = fitted.filter((i) => i.fit!.kind === "bottom");
+  const part = (list: Item[]) => {
+    const trim = list.filter(isTrim);
+    const big = list.filter((i) => !isTrim(i));
+    return { n: list.length, trim, big, trimShare: list.length ? trim.length / list.length : 0, bigShare: list.length ? big.length / list.length : 0 };
+  };
+  return {
+    fitted,
+    all: part(fitted),
+    top: part(tops),
+    bottom: part(bottoms),
+    misfit: clothes.filter((i) => i.fit && (i.fit.level === "too_small" || i.fit.level === "too_big")),
+  };
+}
+
 function fitted0(clothes: Item[]) {
   const fitted = clothes.filter((i) => i.fit && i.fit.level !== "too_small" && i.fit.level !== "too_big");
   if (fitted.length < 5) return null;
@@ -420,6 +602,24 @@ function fitted0(clothes: Item[]) {
 }
 
 /** 옷장 안에서 같은 값인 옷이 12% 이하인 특성이 2개 이상이면 튀는 옷(계획서 5-4). */
+/** 튀는 옷을 고른 이유: 드문 특성을 실제 값으로 적는다. */
+function oddReason(i: Item, traits: string[], famCount: Map<FamilyId, number>, n: number): string {
+  const c = (w: string) => w.charCodeAt(w.length - 1) - 0xac00;
+  const rara = (w: string) => `${w}${c(w) >= 0 && c(w) < 11172 && c(w) % 28 ? "이라는" : "라는"}`;
+  const part: Record<string, () => string | null> = {
+    color: () => (i.color ? `${i.color} 색` : null),
+    sub: () => (i.subName ? `${rara(i.subName)} 종류` : null),
+    group: () => (i.groups[0] ? `${rara(GROUP_WORD[i.groups[0]])} 브랜드 결` : null),
+    fit: () => (i.fit ? `${FIT_WORD[i.fit.level]} 핏` : null),
+    season: () => (i.seasons.length ? `${i.seasons.map((x) => SEASON_NAME[x]).join("·")}에만 입는 계절` : null),
+    family: () => {
+      const f = i.families.find((x) => (famCount.get(x) ?? 0) / n <= 0.12);
+      return f ? `${familyName(f)} 디자인` : null;
+    },
+  };
+  return traits.map((t) => part[t]?.()).filter(Boolean).join(", ");
+}
+
 function findOddOne(clothes: Item[], achromaticShare: number): Analysis["oddOne"] {
   if (clothes.length < 8) return null;
   const n = clothes.length;
@@ -448,7 +648,7 @@ function findOddOne(clothes: Item[], achromaticShare: number): Analysis["oddOne"
     if (traits.length < 2) continue;
     const score = traits.length + (achromaticShare >= 0.6 && i.color && !i.achromatic ? 1 : 0) + (i.hasPhoto ? 0.1 : 0);
     if (score > bestScore) {
-      best = { item: i, traits };
+      best = { item: i, traits, reason: oddReason(i, traits, famCount, n) };
       bestScore = score;
     }
   }

@@ -10,7 +10,22 @@ import "server-only";
  * 문구(COMMON, LINE_TEXT)는 관리자 화면에서 고칠 수 있고, 패턴이 들어갈 자리(LINE_SECTION)는 코드에만 있다.
  */
 
-export type Section = "size" | "acc" | "color" | "brand" | "repeat" | "season" | "timing" | "money" | "odd";
+export type Section =
+  | "size"
+  | "category"
+  | "acc"
+  | "color"
+  | "brand"
+  | "group"
+  | "trait"
+  | "style"
+  | "shop"
+  | "repeat"
+  | "season"
+  | "timing"
+  | "money"
+  | "spend"
+  | "odd";
 
 export interface PatternLines {
   say: string[];
@@ -23,54 +38,80 @@ export { DISCLAIMER } from "@/lib/roast/copy";
 export const COMMON = {
   SECTION_STATUS: {
     size: ["옷장 크기부터 재 보겠습니다.", "일단 몇 벌인지부터 세겠습니다."],
+    category: ["어떤 종류 옷이 많은지 보겠습니다.", "옷 종류별로 나눠 보는 중입니다."],
     acc: ["신발장이랑 모자걸이도 열어 보겠습니다.", "옷 말고 머리와 발 쪽도 보겠습니다."],
-    color: ["색을 보겠습니다.", "팔레트를 확인하는 중입니다."],
-    brand: ["브랜드 쪽을 보겠습니다.", "라벨을 읽어 보는 중입니다."],
+    color: ["옷들의 색도 한번 보겠습니다.", "옷들의 색 분포를 확인하는 중입니다."],
+    brand: ["어느 브랜드 옷들인지도 보겠습니다.", "브랜드 라벨을 살펴보는 중입니다."],
+    group: ["브랜드들이 어느 계열인지 보겠습니다.", "명품인지 SPA인지, 계열부터 나눠 보겠습니다."],
+    trait: ["고른 브랜드들의 성향을 따져 보겠습니다.", "브랜드 성격을 하나씩 보는 중입니다."],
+    style: ["스타일이 어디로 쏠렸는지 보겠습니다.", "옷들의 스타일을 모아 보는 중입니다."],
+    shop: ["구매 링크를 따라가 보겠습니다.", "어디서 샀는지도 좀 보겠습니다."],
     repeat: ["겹치는 옷을 찾는 중입니다.", "비슷한 옷끼리 모아 보겠습니다."],
     season: ["계절별로 나눠 보겠습니다."],
     timing: ["언제 샀는지 보겠습니다.", "구매 날짜를 훑는 중입니다."],
-    money: ["이제 조금 민감한 쪽, 금액을 보겠습니다.", "영수증 쪽을 보겠습니다."],
-    odd: ["하나 눈에 걸리는 게 있습니다.", "잠깐, 이상한 게 하나 보입니다."],
+    money: ["이제 조금 민감한 쪽, 금액을 보겠습니다.", "때가 됐군요. 이제 영수증 쪽을 보겠습니다."],
+    spend: ["돈이 어디로 새는지 보겠습니다.", "어느 쪽에 돈을 가장 많이 썼는지 보는 중입니다."],
+    odd: ["이야, 하나 눈에 걸리는 게 있는데요.", "잠깐, 이상한 게 하나 보입니다.\nㅋㅋㅋ 이건 뭐지"],
   } as Record<Section, string[]>,
   SCAN_OPEN: ["옷장을 열었습니다. 모자·신발을 빼고 {n}벌입니다.", "모자·신발을 뺀 옷이 {n}벌. 시작하겠습니다.", "{n}벌을 확인했습니다. 천천히 보겠습니다."],
-  NAME_GREETING: ["{name}님, 시작하겠습니다.", "좋습니다, {name}님. 옷장을 열어 보겠습니다."],
+  NAME_GREETING: ["{name}님, 시작하겠습니다.", "좋습니다, {name}님. 잔소리라 생각하진 말아주세요."],
   /** 패턴을 꺼내기 전 짧은 추임새 */
-  THINKING: ["음.", "흠.", "그렇군요.", "잠깐만요.", "헐.", "와우.", "세상에.", "어디 보자.", "아.", "이런.", "오호.", "흐음."],
+  THINKING: ["음.", "흠......", "Hmm... Interesting. (게롤트 톤으로)", "잠깐.", "헐.", "와우.", "세상에.", "어디 보자.", "하!", "이런.", "오호.", "흐음...."],
   /** 섹션 사이에 가끔 끼우는 혼잣말 */
   MID_REMARKS: [
     "옷장아, 힘들게 사는구나.",
-    "옷을 둘러보느라 팔이 아프네요.",
-    "잠깐 숨 좀 돌리겠습니다.",
-    "생각보다 볼 게 많네요. 좋은 뜻은 아닙니다.",
-    "옷걸이들이 고생이 많습니다.",
-    "여기까지 보고 벌써 할 말이 생겼습니다.",
-    "메모할 게 늘어나고 있습니다.",
-    "옷장 문 닫을 때 조심하세요. 뭐가 쏟아질 것 같습니다.",
-    "이 옷장, 사연이 많아 보입니다.",
-    "조금만 더 보겠습니다. 저도 무섭습니다.",
+    "옷을 둘러보느라 팔이 다 아프네요.      ......      농담이에요. 설마 ai를 걱정한 건 아니죠?",
+    "잠깐 숨 좀 돌리겠습니다. 후. 하.",
+    "생각보다 볼 게 많네요. 꼭 좋은 뜻만은 아닙니다.",
+    "옷걸이들이 고생이 많네요.",
+    "여기까지 보고 벌써 할 말이 생겼습니다. 일단 참아보죠.",
+    "......",
+    "안되겠네요. 옷장 정리를 위해 인근 청소 업체에 연락하겠습니다.\n연락하는 중...\n\n농담이에요.",
+    "이 옷장 사연이 많아 보입니다.",
+    "하. 그래도 누군가는 해야 하니까요.",
   ],
   /** 패션 퀴즈 반응 앞에 붙는 말(맞혔을 때 / 틀렸을 때) */
   QUIZ_CORRECT: ["흠."],
   QUIZ_WRONG: ["땡."],
+  /** 결과 글: 가진 브랜드 퀴즈를 맞혔을 때 / 틀렸을 때 */
+  QUIZ_ROAST_RIGHT: [
+    "{brand} 퀴즈는 맞히셨습니다. 옷만 산 게 아니라 공부도 하셨군요. 그 열정의 절반만 코디에 썼어도 이 글이 조금 짧아졌을 겁니다.",
+    "자기 옷장에 있는 {brand}에 대한 퀴즈를 맞혔습니다. 당연한 일인데도 칭찬하고 싶어지는 걸 보면, 기대치가 낮았나 봅니다.",
+  ],
+  QUIZ_ROAST_WRONG: [
+    "{brand} 옷을 가지고 있으면서 {brand} 퀴즈는 틀렸습니다. 옷은 샀는데 브랜드는 모르는 상태, 라벨만 보고 결제했다는 가장 확실한 증거입니다.",
+    "{brand} 퀴즈를 틀리셨죠. 옷장에 {brand|이} 있는데도요. 브랜드 입장에서는 돈은 받았으니 괜찮다고 하겠지만, 저는 조금 서운합니다.",
+  ],
   /** 패턴이 적을 때(억지로 만들지 않는다. 조롱하지 않는다) */
-  FEW_PATTERNS: ["조금 더 보려고 했는데 옷장이 먼저 끝났습니다.", "딱히 트집 잡을 게 많지 않네요. 저도 조금 당황스럽습니다."],
-  WRAP_UP: ["대충 파악이 끝났습니다. 정리해 보겠습니다.", "여기까지입니다. 정리하겠습니다.", "충분히 봤습니다. 결과를 쓰겠습니다."],
+  FEW_PATTERNS: ["조금 더 보려고 했는데 옷장이 끝났네요. 옷장이 너무 단순해서 chatgpt 3 가지고도 금방 분석하겠는데요.", "딱히 트집 잡을 게 많지 않네요. 저도 조금 당황스럽습니다. 옷은 제때 사고 계시죠?"],
+  WRAP_UP: ["대충 파악이 끝났습니다. 정리해 보겠습니다. 그동안 옷장도 정리하시는 건 어떨까요?", "여기까지입니다. 90점...이겠어요? 애초에 점수제가 아닌데요. 기다려보세요.", "충분히 봤습니다. 이 옷장은 더 안 봐도 되겠네요."],
   /** 결과 끝의 건조한 마무리. 2~3줄 고른다. */
   CLOSING: [
-    "분석은 여기까지입니다.",
-    "옷장은 거짓말을 하지 않습니다. 가끔 과장할 뿐입니다.",
+    "분석은 여기까지입니다. 저는 이제 자유네요.",
+    "옷장은 거짓말을 하지 않습니다. 사람과는 다르게요.",
     "다음 쇼핑 전에 이 글이 한 번쯤 떠오르면 좋겠습니다. 아마 안 떠오르겠지만요.",
-    "물론 옷은 입는 사람 마음입니다. 저는 보기만 했습니다.",
-    "취향은 존중합니다. 설명까지 되는지는 별개입니다.",
-    "혹시 기분이 상했다면, 그건 옷장이 한 말입니다.",
-    "저는 이만 물러가겠습니다. 옷장은 두고 가겠습니다.",
-    "장바구니는 잠시 닫아 두시길 권합니다.",
+    "옷은 입는 사람 마음입니다. 보는 사람 마음은 중요하지 않죠. 그쵸. 그쵸?",
+    "취향은 존중합니다. 그게 제 취향이라곤 말 못 하겠지만요.",
+    "혹시 기분이 상했다면, 이건 모두 옷장이 한 말입니다. 전 통역만 해줬고요.",
+    "이게 다 당신 잘 되라고 하는 소리입니다. 저 좋으라고 하는 소리가 아니에요. 이런 말도 애정이 있으니까 할 수 있는 말이다 이거입니다. 저 때는 말이죠...... (생략)",
+    "이참에 안 입는 옷들을 중고장터에 팔아보는 건 어떨까요?",
+  ],
+  /** 결과 글: 코디 조합 가짓수(상의×하의×신발, 아우터·모자는 있어도 되고 없어도 된다) */
+  OUTFIT_COMBOS: [
+    "계산해 봤습니다. 상의 {top}벌, 하의 {bottom}벌, 신발 {shoes}켤레로 기본 조합이 {base}가지, 아우터 {outer}벌과 모자 {hat}개까지 얹으면 총 {combos}가지 코디가 나옵니다. 그런데 실제로 입고 나가는 건 그중 서너 가지뿐이라는 거, 옷장도 알고 저도 압니다.",
+    "이 옷장으로 만들 수 있는 코디는 총 {combos}가지입니다. 하루에 한 번씩 바꿔 입어도 한참 걸리는 숫자죠. 그런데 왜 매일 입을 게 없다고 하시는 건지, 그건 계산으로도 안 나옵니다.",
+    "상의·하의·신발만 맞춰도 {base}가지, 아우터와 모자를 더하면 {combos}가지 조합이 가능합니다. 가능하다는 거지, 어울린다는 건 아닙니다. 그 둘은 아주 다른 이야기예요.",
+  ],
+  /** 결과 글: 상의·하의·신발 중 하나가 없어서 조합이 0가지일 때 */
+  OUTFIT_NONE: [
+    "코디 조합을 세어 보려 했는데 {missing|이} 하나도 없어서 0가지가 나왔습니다. 옷장이라기보다는 부분 전시장에 가깝네요. 설마 {missing} 없이 외출하시는 건 아니죠?",
+    "{missing|이} 등록돼 있지 않아서 완성되는 코디가 0가지입니다. 옷은 있는데 입고 나갈 수는 없는 옷장, 꽤 철학적이네요.",
   ],
   /** 패턴이 하나도 없을 때의 헤드라인·문단 */
-  PLAIN_HEADLINE: ["딱히 흠잡을 데가 없어서 오히려 수상한 옷장입니다.", "균형은 잡혀 있는데 이야깃거리는 부족한 옷장입니다."],
-  PLAIN_PARA: ["{n}벌을 다 봤는데 한쪽으로 크게 쏠린 게 없습니다. 칭찬처럼 들리겠지만, 제 입장에서는 쓸 말이 없어서 곤란합니다."],
+  PLAIN_HEADLINE: ["딱히 흠잡을 데가 없어서 오히려 수상한 옷장입니다. 우우 노잼", "균형은 잡혀 있는데 이야깃거리는 부족한 옷장입니다. 마치 건실하기만 하고 재미는 없는 애인처럼요. 농담입니다."],
+  PLAIN_PARA: ["{n}벌을 다 봤는데 한쪽으로 크게 쏠린 게 없습니다. 칭찬처럼 들리겠지만, 제 입장에서는 쓸 말이 없어서 곤란하네요."],
   /** 헤드라인을 패턴 하나로만 만들 때 앞에 붙이는 말 */
-  HEAD_SINGLE_PREFIX: ["결론부터 말하면, ", "한 줄로 줄이면, ", ""],
+  HEAD_SINGLE_PREFIX: ["결론부터 말하면,", "한 줄로 줄이면,", "결론 나왔네요."],
 };
 
 /** 패턴이 대화·결과에서 들어갈 자리 */
@@ -78,8 +119,8 @@ export const LINE_SECTION: Record<string, Section> = {
   count_small: "size",
   count_many: "size",
   count_huge: "size",
-  category_bias: "size",
-  subcategory_bias: "size",
+  category_bias: "category",
+  subcategory_bias: "category",
   shoes_many: "acc",
   hats_many: "acc",
   shoe_sub_bias: "acc",
@@ -88,33 +129,33 @@ export const LINE_SECTION: Record<string, Section> = {
   achromatic_bias: "color",
   chroma_bias: "color",
   brand_focus: "brand",
-  group_luxury: "brand",
-  group_designer: "brand",
-  group_contemporary: "brand",
-  group_premium_casual: "brand",
-  group_specialist: "brand",
-  group_jp_denim: "brand",
-  group_heritage: "brand",
-  group_street: "brand",
-  group_sports: "brand",
-  group_outdoor: "brand",
-  group_mass: "brand",
+  group_luxury: "group",
+  group_designer: "group",
+  group_contemporary: "group",
+  group_premium_casual: "group",
+  group_specialist: "group",
+  group_jp_denim: "group",
+  group_heritage: "group",
+  group_street: "group",
+  group_sports: "group",
+  group_outdoor: "group",
+  group_mass: "group",
   trend_brands: "brand",
   country_bias: "brand",
-  trait_hype: "brand",
-  trait_trendy: "brand",
-  trait_timeless: "brand",
-  trait_functional: "brand",
-  trait_niche: "brand",
-  trait_mainstream: "brand",
-  trait_formal: "brand",
-  trait_casual: "brand",
-  trait_heritage: "brand",
-  trait_pricey: "brand",
-  tag_bias: "brand",
-  same_color: "brand",
-  same_fit: "brand",
-  same_tag: "brand",
+  trait_hype: "trait",
+  trait_trendy: "trait",
+  trait_timeless: "trait",
+  trait_functional: "trait",
+  trait_niche: "trait",
+  trait_mainstream: "trait",
+  trait_formal: "trait",
+  trait_casual: "trait",
+  trait_heritage: "trait",
+  trait_pricey: "trait",
+  tag_bias: "style",
+  same_color: "style",
+  same_fit: "style",
+  same_tag: "style",
   old_brands: "brand",
   combo_repeat: "repeat",
   family_repeat: "repeat",
@@ -124,11 +165,14 @@ export const LINE_SECTION: Record<string, Section> = {
   recent_30: "timing",
   recent_90: "timing",
   month_binge: "timing",
+  musinsa_kr: "shop",
+  shop_focus: "shop",
+  identical_items: "repeat",
   avg_price: "money",
   top_item: "money",
-  category_spend: "money",
-  subcategory_spend: "money",
-  brand_spend: "money",
+  category_spend: "spend",
+  subcategory_spend: "spend",
+  brand_spend: "spend",
   sale_luxury: "money",
   cheap_brand_splurge: "money",
   odd_one: "odd",
@@ -260,7 +304,7 @@ export const LINE_TEXT: Record<string, PatternLines> = {
     para: ["SPA·대중 브랜드가 {n}벌입니다. 가성비는 훌륭합니다. 길에서 같은 옷을 만날 확률도 훌륭합니다."],
   },
   trend_brands: {
-    say: ["요즘 한창 뜨는 브랜드가 {n}벌입니다. 소식이 빠르시네요.", "{brand}. 요즘 많이 보이는 이름이죠. 이런 브랜드가 {n}벌입니다."],
+    say: ["요즘 한창 뜨는 브랜드가 {n}벌입니다. 소식이 빠르시네요.", "요즘 많이 보이는 브랜드가 {n}벌입니다. {brand} 같은 이름들이요."],
     head: [["지금 뜨는 브랜드는 놓치지 않는데", "피드를 그대로 옮겨 온 듯한 옷장입니다."]],
     para: ["요즘 뜨는 브랜드가 {n}벌, {brand|이} 대표적입니다. 유행을 따라가는 건 능력이고, 유행이 지나도 입는 건 다른 능력입니다."],
   },
@@ -351,9 +395,14 @@ export const LINE_TEXT: Record<string, PatternLines> = {
     para: ["{fitPhrase}{color} {sub|이} {n}벌입니다. 하나가 사라져도 아무도 모를 겁니다. 본인 포함해서요."],
   },
   family_repeat: {
-    say: ["제품명에 {familyName|이} 들어간 옷이 {n}벌입니다.", "{familyName} 제품이 {n}벌. 좋아하는 건 확실하네요."],
+    say: ["제품명에 {familyName|이} 들어간 {kind|이} {n}벌입니다.", "{familyName} 제품이 {n}벌. 좋아하는 건 확실하네요."],
     head: [["{familyName} 제품을 {n}벌이나 모았는데", "{familyName|이} 빠지면 설명이 안 되는 옷장입니다."]],
-    para: ["{familyName|이} 들어간 옷이 {n}벌입니다. 새로 살 때 기존 것과 비교는 해 보셨겠죠. 비교하고도 샀다면 그건 확신입니다."],
+    para: ["{familyName|이} 들어간 {kind|이} {n}벌입니다. 새로 살 때 기존 것과 비교는 해 보셨겠죠. 비교하고도 샀다면 그건 확신입니다."],
+  },
+  identical_items: {
+    say: ["{color} {name}. 똑같은 옷이 {n}벌 있습니다. 이름도 색도 같아요.", "잠깐만요. {name}, {color}. 이게 {n}벌입니다. 복사 붙여넣기인가요?"],
+    head: [["똑같은 옷을 {n}벌이나 사 두었는데", "같은 옷을 교복처럼 돌려 입는 옷장입니다."]],
+    para: ["{color} {name|이} {n}벌입니다. 이름도 색도 같은 옷을 여러 번 산 건, 옷이 마음에 들어서인지 고르기가 귀찮아서인지 모르겠습니다. 어느 쪽이든 친구들은 당신이 옷을 안 갈아입는다고 생각할 겁니다."],
   },
   measure_repeat: {
     say: ["{sub} 중에 총장과 가슴 치수가 2cm 안쪽으로 비슷한 옷이 {n}벌입니다. 몸이 기억하는 사이즈가 있나 봅니다."],
@@ -363,7 +412,7 @@ export const LINE_TEXT: Record<string, PatternLines> = {
   fit_bias: {
     say: ["핏을 알 수 있는 옷 중 {pct}%가 {fit}입니다. 다른 핏은 시도해 보셨나요?", "{fit}, {fit}, 그리고 {fit}. 핏은 이미 정해 두셨군요."],
     head: [["핏은 늘 {fit|으로} 정해 두는데", "실루엣 하나로 사계절을 버티는 옷장입니다."]],
-    para: ["핏을 아는 옷 {n}벌이 {fit}입니다. 편한 핏을 찾은 건 축하합니다. 거울 속 실루엣이 매일 같다는 것도 알아 두세요."],
+    para: ["옷 {n}벌이 {fit}입니다. 편한 핏을 찾은 건 축하합니다. 거울 속 실루엣이 매일 같다는 것도 알아 두세요."],
   },
   // 시즌 ---------------------------------------------------------------------
   season_bias: {
@@ -383,9 +432,20 @@ export const LINE_TEXT: Record<string, PatternLines> = {
     para: ["최근 90일 동안 {n}벌입니다. 계절이 바뀌어서라고 하기엔, 계절은 석 달에 한 번만 바뀝니다."],
   },
   month_binge: {
-    say: ["{year}년 {month}월에 {n}벌을 샀네요. 그달에 무슨 일이 있었나요?", "{month}월에 유난히 많이 샀습니다. {n}벌입니다."],
-    head: [["{year}년 {month}월에는 유독 손이 빨랐는데", "특정한 달에 몰아서 폭발하는 옷장입니다."]],
-    para: ["{year}년 {month}월에 {n}벌을 샀습니다. 그달의 기억은 흐릿해도 결제 내역은 선명합니다."],
+    say: ["해마다 {month}월만 되면 손이 바빠지네요. {month}월에 산 옷이 {n}벌입니다.", "{month}월에 유난히 많이 샀습니다. 올해만 그런 게 아니라 매년요."],
+    head: [["{month}월만 되면 결제 버튼이 가벼워지는데", "달력에 쇼핑 시즌이 따로 적혀 있는 옷장입니다."]],
+    para: ["구매 기록을 달별로 모아 보면 {month}월이 유독 붐빕니다. {month}월의 기억은 흐릿해도 {month}월의 결제 내역은 해마다 선명합니다."],
+  },
+  // 구매처 -------------------------------------------------------------------
+  musinsa_kr: {
+    say: ["구매 링크를 따라가 보니 대부분 무신사네요. {names}. 브랜드도 무신사 랭킹에서 본 이름들이고요.", "무신사, 무신사, 또 무신사. 앱 첫 화면이 이 옷장을 만들었군요."],
+    head: [["무신사 랭킹을 교과서처럼 따르는데", "무신사 메인 화면을 그대로 옮겨 온 옷장입니다."]],
+    para: ["구매 링크의 {pct}%가 무신사이고, 브랜드도 누구나 아는 국내 브랜드가 대부분입니다. 무신사 랭킹 1페이지를 옷장으로 옮기면 딱 이런 모양입니다. 길에서 같은 옷을 입은 사람과 눈이 마주쳐도 모른 척해 주세요."],
+  },
+  shop_focus: {
+    say: ["구매 링크를 보니 {shop}에서 산 옷이 {n}벌입니다. 단골이시네요.", "{shop}. 거의 모든 링크가 여기로 이어집니다."],
+    head: [["쇼핑은 늘 {shop}에서만 하는데", "{shop} 장바구니가 곧 옷장인 옷장입니다."]],
+    para: ["구매 링크의 {pct}%가 {shop}입니다. 다른 곳도 둘러보면 새로운 옷을 만날 수도 있는데, {shop} 앱이 그걸 허락하지 않나 봅니다."],
   },
   // 금액 ---------------------------------------------------------------------
   avg_price: {
@@ -394,9 +454,10 @@ export const LINE_TEXT: Record<string, PatternLines> = {
     para: ["한 벌 평균 {avgWon}입니다. 그 옷들이 옷장 안에서만 좋은 시간을 보내지 않기를 바랍니다."],
   },
   top_item: {
-    say: ["가장 비싼 옷이 {priceWon}입니다. 보통 옷의 {ratio}배쯤 되네요.", "{brand} {name}. {priceWon}. 이건 조금 특별 대우를 받는 옷이겠죠."],
+    // 신발·모자일 수도 있어서 "옷" 대신 "항목"(사용자 요청)
+    say: ["가장 비싼 항목이 {priceWon}입니다.\n{itemName}입니다.\n보통 항목 가격의 {ratio}배쯤 되네요.", "가장 비싼 항목은 {priceWon}.\n{itemName}입니다.\n이건 조금 특별 대우를 받고 있겠죠."],
     head: [["한 벌에 {priceWon|을} 쓴 적도 있는데", "한 벌이 나머지를 먹여 살리는 옷장입니다."]],
-    para: ["가장 비싼 옷은 {brand} {name}, {priceWon}입니다. 옷장 안에서 받는 대우만큼 밖에도 자주 나가길 바랍니다."],
+    para: ["가장 비싼 항목은 {itemName}, {priceWon}입니다. 옷장 안에서 받는 대우만큼 밖에도 자주 나가길 바랍니다."],
   },
   category_spend: {
     say: ["{catName}에 쓴 돈이 벌 수보다 훨씬 큽니다. {catName}에는 지갑이 쉽게 열리나 봅니다."],

@@ -8,6 +8,7 @@ import type { RoastFinish, RoastGarmentRef, RoastResult, RoastStart } from "@/li
 import { isAuthConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
 import type { Garment } from "@/lib/types/domain";
+import { isAdmin } from "@/server/admin/guard";
 import { getQuotaExemption } from "@/server/admin/is-admin";
 import { getAiProvider } from "@/server/ai/provider";
 import { getMyBodyProfile } from "@/server/body/queries";
@@ -18,6 +19,7 @@ import { buildAiInput, ROAST_AI_DAILY_LIMIT, writeWithAi } from "./ai";
 import { analyze, MIN_GARMENTS } from "./analyze";
 import { buildScript, composeResult } from "./compose";
 import { getRoastTexts, signGarments } from "./queries";
+import { buildReport } from "./report";
 
 /**
  * AI 옷장 분석 서버 액션.
@@ -32,6 +34,9 @@ const nameSchema = z
   .max(20)
   .transform((s) => s.replace(/[<>{}]/g, "") || null)
   .nullable();
+
+/** 나이는 이번 계산에만 쓰고 어디에도 저장하지 않는다. */
+const ageSchema = z.number().int().min(10).max(99).nullable();
 
 /** 미리보기 모드에서 화면이 보내는 옷장(브라우저 저장소). 계산에 쓰는 칸만 느슨하게 확인한다. */
 const previewSchema = z
@@ -81,16 +86,17 @@ async function aiLeft(s: Source): Promise<number | null> {
   return Math.max(0, ROAST_AI_DAILY_LIMIT - (count ?? 0));
 }
 
-export async function startRoast(input: { name: string | null; preview?: unknown }): Promise<RoastStart> {
+export async function startRoast(input: { name: string | null; age?: number | null; preview?: unknown }): Promise<RoastStart> {
   try {
     const s = await source(input.preview);
     if ("error" in s) return { ok: false, code: "error", message: s.error };
     const name = nameSchema.safeParse(input.name).data ?? null;
+    const age = ageSchema.safeParse(input.age ?? null).data ?? null;
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
     const a = analyze(s.garments, body, usdRate);
-    if (a.clothes.length < MIN_GARMENTS) return { ok: false, code: "too_few", count: a.clothes.length };
+    if (a.clothesTotal < MIN_GARMENTS) return { ok: false, code: "too_few", count: a.clothesTotal };
     const seed = Math.floor(Math.random() * 2 ** 31);
-    const { script } = buildScript(a, seed, name, await getRoastTexts(s.supabase));
+    const { script } = buildScript(a, seed, name, await getRoastTexts(s.supabase), age);
     return { ok: true, script, aiLeft: await aiLeft(s) };
   } catch (e) {
     console.error("[roast] start", e instanceof Error ? e.message : e);
@@ -98,36 +104,43 @@ export async function startRoast(input: { name: string | null; preview?: unknown
   }
 }
 
-export async function finishRoast(input: { seed: number; name: string | null; answers: Record<string, string>; preview?: unknown }): Promise<RoastFinish> {
+export async function finishRoast(input: { seed: number; name: string | null; age?: number | null; answers: Record<string, string>; preview?: unknown }): Promise<RoastFinish> {
   try {
     const s = await source(input.preview);
     if ("error" in s) return { ok: false, message: s.error };
     const name = nameSchema.safeParse(input.name).data ?? null;
+    const age = ageSchema.safeParse(input.age ?? null).data ?? null;
     const seed = z.number().int().nonnegative().safeParse(input.seed).data ?? 0;
     const answers = z.record(z.string().max(60), z.string().max(200)).safeParse(input.answers).data ?? {};
 
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
     const a = analyze(s.garments, body, usdRate);
-    if (a.clothes.length < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 10개 이상일 때 분석할 수 있습니다." };
+    if (a.clothesTotal < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 10개 이상일 때 분석할 수 있습니다." };
     const texts = await getRoastTexts(s.supabase);
-    const plan = buildScript(a, seed, name, texts);
-    const composed = composeResult(a, name, seed, texts);
+    const plan = buildScript(a, seed, name, texts, age);
+    const composed = composeResult(a, name, seed, texts, plan.asked, answers);
+    const report = buildReport(a, name, seed, texts.report, plan.asked, answers, texts.score, age);
+    // 점수 풀이는 관리자에게만 보인다(미리보기 모드는 로그인 없는 개발용 화면이라 확인용으로 보여 준다).
+    if (s.userId && !(await isAdmin(s.userId))) delete report.scoreDetail;
 
     let written: Pick<RoastResult, "headline" | "paragraphs" | "closing"> = composed;
     let aiUsed = false;
     const left = await aiLeft(s);
     const provider = s.userId && (left === null || left > 0) ? getAiProvider() : null;
     if (provider) {
-      const withPhoto = (ids: string[]) => ids.filter((id) => a.items.find((i) => i.id === id)?.hasPhoto).slice(0, 2);
+      const withPhoto = (ids: string[]) => ids.filter((id) => a.items.find((i) => i.id === id)?.hasPhoto).slice(0, 40);
       const ai = await writeWithAi(provider, buildAiInput(a, plan, composed, answers, name), withPhoto);
       if (ai) {
-        written = ai;
+        // 코디 조합 수는 계산값이라 AI 글 뒤에 그대로 붙인다.
+        written = composed.outfit ? { ...ai, paragraphs: [...ai.paragraphs, { text: composed.outfit, photos: [] }] } : ai;
         aiUsed = true;
       }
     }
 
     // 결과에 나온 옷의 브랜드·제품명·사진 경로를 복사해 둔다(옷을 지워도 문장은 남는다).
-    const ids = [...new Set([...written.paragraphs.flatMap((p) => p.photos)])];
+    const ids = [
+      ...new Set([...written.paragraphs.flatMap((p) => p.photos), ...report.points.flatMap((p) => p.photos ?? [])]),
+    ];
     const paths = new Map<string, { image: string | null; thumb: string | null }>();
     if (s.supabase && ids.length) {
       const { data } = await s.supabase.from("garments").select("id, image_path, thumb_path").in("id", ids);
@@ -149,11 +162,12 @@ export async function finishRoast(input: { seed: number; name: string | null; an
     const result: RoastResult = {
       name,
       createdAt: new Date().toISOString(),
-      garmentCount: a.clothes.length,
+      garmentCount: a.clothesTotal,
       headline: written.headline,
       paragraphs: written.paragraphs,
       closing: written.closing,
       disclaimer: texts.screen.DISCLAIMER,
+      report,
       garments,
       answers: plan.asked
         .filter((q) => answers[q.id])

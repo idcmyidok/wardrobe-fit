@@ -2,7 +2,6 @@ import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isBanned } from "@/lib/supabase/server";
 import { logAdminAction } from "./audit";
-import { hasBodyKey } from "@/server/body/crypto";
 
 /** requireAdmin()을 통과한 뒤에만 부른다. service role로 전체 데이터를 읽는다. */
 
@@ -133,12 +132,3 @@ async function readOverview(adminId: string, page: number): Promise<AdminOvervie
   };
 }
 
-/** 신체치수 암호화 상태: 아직 평문으로 남은(암호화 칸이 빈) 행 수와 서버 키 설정 여부. 못 읽으면 pending은 null */
-export async function getBodyEncryptionStatus(): Promise<{ pending: number | null; keySet: boolean }> {
-  const keySet = hasBodyKey();
-  const db = createSupabaseAdminClient();
-  if (!db) return { pending: null, keySet };
-  const { count, error } = await db.from("body_profiles").select("user_id", { count: "exact", head: true }).is("values_enc", null);
-  if (error) console.error("[admin] body status", error.code ?? error.message);
-  return { pending: error ? null : (count ?? 0), keySet };
-}
