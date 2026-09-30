@@ -2,6 +2,7 @@ import "server-only";
 import { LINE_SECTION } from "./lines";
 import { Q_TEXT, QUESTIONS } from "./questions";
 import { REPORT_TEXT } from "./report-text";
+import { SCORE_DELTAS } from "./score-deltas";
 
 /**
  * 관리자 문장 편집 화면과 검토 문서에 보여 주는 설명(언제 나오는지, 자리 이름). 분석 계산에는 쓰지 않는다.
@@ -188,7 +189,7 @@ export function varLabel(group: string, key: string): string {
 /** 편집 화면의 묶음(패턴 하나, 질문 하나 등). 퀴즈는 편집 화면이 따로 모은다. */
 export interface TextGroupMeta {
   id: string;
-  kind: "screen" | "common" | "lines" | "questions" | "report";
+  kind: "screen" | "common" | "lines" | "questions" | "report" | "score";
   title: string;
   when: string;
 }
@@ -204,7 +205,18 @@ const REPORT_NAME: Record<string, string> = {
   HEADLINE_TWO: "한 줄 정의(캐릭터 둘)",
   HEADLINE_ONE: "한 줄 정의(캐릭터 하나)",
   HEADLINE_PLAIN: "한 줄 정의(캐릭터 없음)",
-  SUMMARY_TAIL: "종합 진단 마무리 한 줄",
+  INTRO_THANKS: "\"> \" 첫 문장(뚜렷한 특징 둘)",
+  INTRO_THANKS_ONE: "\"> \" 첫 문장(뚜렷한 특징 하나)",
+  INTRO_ALSO: "\"> \" 캐릭터가 셋일 때 앞 문장",
+  INTRO_SECOND: "\"> \" 캐릭터가 셋일 때 세 번째 캐릭터",
+  INTRO_MORE: "\"> \" 마지막 문장(진단 문단 앞)",
+  LIST_DUP: "목록 제목: 많이 가진 옷",
+  LIST_BRAND: "목록 제목: 많이 산 브랜드",
+  TOTAL_LEAD: "총 옷장 점수(굵게)",
+  TOTAL_HIGH: "총점 70점 이상일 때 한마디",
+  TOTAL_MID: "총점 40~69점일 때 한마디",
+  TOTAL_LOW: "총점 40점 미만일 때 한마디",
+  DNA_LEAD: "옷장 DNA 앞 굵은 말",
   BASIS_BRAND: "기준 안내(브랜드 정보)",
   dna: "옷장 DNA 칩",
   suspicious: "가장 수상한 부분",
@@ -220,8 +232,9 @@ export function textGroups(): TextGroupMeta[] {
     out.push({ id: `questions.${q.id}`, kind: "questions", title: Q_TEXT[q.id]?.text || (q.id === "quiz" ? "패션 퀴즈(앞 멘트)" : q.id), when: `${q.id} · ${QUESTION_COND[q.id] ?? ""}` });
   for (const [k, name] of Object.entries(REPORT_NAME)) out.push({ id: `report.${k}`, kind: "report", title: name, when: "" });
   for (const [k, v] of Object.entries(REPORT_TEXT.diag)) out.push({ id: `report.diag.${k}`, kind: "report", title: `진단: ${v.title}`, when: k });
-  for (const [k, v] of Object.entries(REPORT_TEXT.score)) out.push({ id: `report.score.${k}`, kind: "report", title: `점수: ${v.label}`, when: "95점 이상·30점 이하일 때만(결과마다 가장 튀는 두 개까지) 한 줄" });
   for (const [k, v] of Object.entries(REPORT_TEXT.character)) out.push({ id: `report.character.${k}`, kind: "report", title: `캐릭터: ${v.name}`, when: k });
+  for (const qid of Object.keys(SCORE_DELTAS))
+    out.push({ id: `score.${qid}`, kind: "score", title: qid === "quiz" ? "패션 퀴즈" : Q_TEXT[qid]?.text || qid, when: `${qid} · 답에 따라 총 옷장 점수에 더하는 값(-20~20)` });
   return out;
 }
 
@@ -235,11 +248,19 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
     if (p[2] === "para") return "결과 본문(하나 고름)";
     if (p[2] === "head") return "헤드라인 앞절 + 뒷절(두 패턴을 이을 때 앞 패턴은 앞절, 뒤 패턴은 뒷절을 씀)";
   }
+  if (p[0] === "score") {
+    if (p[1] === "quiz") return p[2] === "right" ? "맞혔을 때" : "틀렸을 때";
+    return REACT_NAME[p[2]] ?? optionLabel?.(p[1], p[2]) ?? p[2];
+  }
   if (p[0] === "report") {
     const last = p[p.length - 1];
-    if (p[1] === "diag") return last === "title" ? "카드 제목" : last === "high" ? "뚜렷할 때(하나 고름)" : "반대쪽으로 뚜렷할 때(하나 고름)";
-    if (p[1] === "score") return last === "label" ? "점수 이름" : last === "high" ? "95점 이상일 때(하나 고름)" : "30점 이하일 때(하나 고름)";
-    if (p[1] === "character") return last === "name" ? "캐릭터 이름" : last === "who" ? "한 줄 정의에 들어가는 말" : "설명";
+    if (p[1] === "diag") {
+      if (last === "title") return "이름(관리용)";
+      if (last === "fact") return "\"> \" 첫 문장에 들어가는 짧은 말";
+      if (last === "factLow") return "\"> \" 첫 문장에 들어가는 짧은 말(반대쪽)";
+      return last === "high" ? "뚜렷할 때(하나 고름, 첫 문장은 굵게)" : "반대쪽으로 뚜렷할 때(하나 고름, 첫 문장은 굵게)";
+    }
+    if (p[1] === "character") return last === "name" ? "캐릭터 이름(한 줄 정의 앞쪽)" : "한 줄 정의 뒤쪽·\"> \" 문장에 들어가는 말";
     if (p[1] === "dna") return `칩: ${last}`;
     if (p[1] === "suspicious") return `${SUSPICIOUS_NAME[last] ?? last} (하나 고름)`;
     return "문장들(하나 고름)";

@@ -256,86 +256,59 @@
   line-height: 1.85;
   word-break: keep-all;
 }
-/* 결과 페이지 */
-.roast .roast-kicker {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--n-700, currentColor);
-  border-top: 1px solid var(--text);
-  padding-top: 14px;
+/* 결과 페이지: How Bad Is Your Spotify처럼 글 위주. 맨 위에 옷 사진이 선반에 꽂혀 있다. */
+.roast .roast-shelf {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  overflow: hidden;
+  padding: 0 4px;
+  border-bottom: 8px solid var(--text);
+  box-shadow: 0 6px 0 -2px var(--n-300, #bbb);
 }
-.roast .roast-card {
+.roast .roast-shelf img {
+  flex: none;
+  width: clamp(64px, 16vw, 92px);
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border: 1px solid var(--divider);
+  transform-origin: bottom center;
+}
+.roast .roast-shelf img:nth-child(3n + 2) {
+  transform: rotate(-3deg);
+}
+.roast .roast-shelf img:nth-child(4n + 3) {
+  transform: rotate(2deg) translateY(-2px);
+}
+.roast .roast-report {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-  border: 1px solid var(--divider);
-  background: var(--surface);
+  gap: 22px;
 }
-.roast .roast-card-title {
+.roast .roast-prompt {
+  font-weight: 700;
+  margin-right: 0.5em;
+}
+.roast .roast-result h2.roast-headline {
+  font-size: clamp(24px, 5.2vw, 34px);
+}
+.roast .roast-result ul.roast-list {
+  margin-top: 6px;
+  padding-left: 1.4em;
+  list-style: disc;
+}
+.roast .roast-result ul.roast-list li {
   font-size: 16px;
-  font-weight: 700;
-  line-height: 1.5;
-}
-.roast .roast-card-value {
-  margin-left: 6px;
-  font-weight: 700;
-  color: var(--bg);
-  background: var(--text);
-  padding: 1px 8px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+  line-height: 1.85;
 }
 .roast .roast-result p.roast-answer {
+  margin-top: 6px;
   font-size: 15px;
   padding-left: 12px;
   border-left: 3px solid var(--text);
 }
-.roast .roast-score {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.roast .roast-score-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 15px;
-}
-.roast .roast-score-num {
-  font-size: 24px;
+.roast .roast-result .roast-last {
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.roast .roast-score-num small {
-  font-size: 13px;
-  font-weight: 400;
-  margin-left: 2px;
-}
-.roast .roast-score-bar {
-  height: 6px;
-  background: var(--n-100);
-}
-.roast .roast-score-bar span {
-  display: block;
-  height: 100%;
-  background: var(--text);
-}
-.roast .roast-result p.roast-score-text {
-  font-size: 15px;
-}
-.roast .roast-dna {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.roast .roast-dna li {
-  padding: 4px 12px;
-  border: 1px solid var(--text);
-  font-size: 14px;
-  white-space: nowrap;
 }
 
 .roast .roast-headline {
@@ -365,11 +338,4 @@
   .roast .roast-dots span {
     animation: none;
   }
-}
-
-/* 결과 페이지 카드 안 사진은 작게 */
-.roast .roast-card .roast-photo,
-.roast .roast-suspicious .roast-photo {
-  width: 96px;
-  height: 120px;
 }

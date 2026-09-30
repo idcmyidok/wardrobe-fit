@@ -57,20 +57,21 @@ export interface RoastParagraph {
 
 /** 결과 페이지(옷장 진단 리포트). 예전 결과에는 없고, 그때는 headline·paragraphs(긴 훈수 글)를 보여 준다. */
 export interface RoastReport {
+  /** 맨 위 옷 사진 줄(옷 id) */
+  shelf: string[];
   /** 한 줄 정의 */
   headline: string;
-  /** 종합 진단 문단 */
-  summary: string;
-  /** 주요 진단 카드(뚜렷한 순서, 3~5개) */
-  diagnoses: { id: string; title: string; value: string; text: string; answer?: string; photos: string[] }[];
-  /** 점수(0~100). text는 유난히 높거나 낮을 때만 */
-  scores: { id: string; label: string; score: number; text?: string }[];
-  /** 옷장 DNA 칩 */
+  /** "> "로 시작하는 짧은 문장들 */
+  intro: string[];
+  /** 굵은 제목 + 목록(많이 가진 옷, 좋아하는 브랜드) */
+  lists: { title: string; items: string[] }[];
+  /** 총 옷장 점수(0~100, 질문·퀴즈 답이 더하거나 뺀다) */
+  total: { score: number; lead: string; text: string };
+  /** 진단 문단: lead는 굵게, answer는 관련 질문 답에 붙는 한 줄 */
+  points: { id: string; lead: string; text: string; answer?: string }[];
+  /** 옷장 DNA: 굵은 앞말 + 칩 */
+  dnaLead: string;
   dna: string[];
-  /** 대표 캐릭터 */
-  characters: { name: string; text: string }[];
-  /** 가장 수상한 부분 */
-  suspicious: { text: string; answer?: string; photos: string[] } | null;
   /** 기준 안내(예: 브랜드 정보가 있는 옷 수) */
   notes: string[];
 }

@@ -86,9 +86,6 @@ const ANSWER_TO: Record<string, string[]> = {
   formal_job: ["formal"],
   old_trust: ["heritage"],
 };
-/** 점수에 한 줄을 붙이는 기준 */
-export const SCORE_HIGH = 95;
-export const SCORE_LOW = 30;
 /** 결과에 넣는 질문 답은 세 개까지 */
 const MAX_ANSWERS = 3;
 
@@ -99,6 +96,7 @@ export function buildReport(
   R: ReportTexts,
   asked: AskedQuestion[] = [],
   answers: Record<string, string> = {},
+  deltas: Record<string, Record<string, number>> = {},
 ): RoastReport {
   const r = rng(seed ^ 0x2f6a91c3);
   const items = a.items;
@@ -253,14 +251,14 @@ export function buildReport(
   if (shop && linked.length >= 5 && shopList.length / linked.length >= 0.5)
     add({ id: "shop", side: "high", strength: clamp((shopList.length / linked.length - 0.4) / 0.5) * 0.8, value: `${shop} ${pct(shopList.length, linked.length)}%`, vars: { shop, pct: pct(shopList.length, linked.length) } });
 
-  // 진단 카드: 문장이 있는 것만, 뚜렷한 순서로 3~5개(뚜렷하지 않은 "반대쪽" 카드는 모자랄 때만)
-  const texts = R.diag as Record<string, { title: string; high: string[]; low?: string[] }>;
+  // 진단 문단: 문장이 있는 것만, 뚜렷한 순서로 3~5개(뚜렷하지 않은 "반대쪽"은 모자랄 때만)
+  const texts = R.diag as Record<string, { title: string; fact: string; factLow?: string; high: string[]; low?: string[] }>;
   const withText = diags.filter((d) => (texts[d.key]?.[d.side] ?? []).length);
   const strong = withText.filter((d) => d.strength >= 0.3).sort((x, y) => y.strength - x.strength);
   const weak = withText.filter((d) => d.strength < 0.3).sort((x, y) => y.strength - x.strength);
   const picked = [...strong, ...weak].slice(0, Math.max(3, Math.min(5, strong.length)));
 
-  // 질문 답: 관련 카드에 붙이고, 남는 한 개는 "가장 수상한 부분"에 붙인다.
+  // 질문 답: 관련 문단에 한 줄로 붙이고, 남는 한 개는 따로 한 문단이 된다.
   const answerLine = (q: AskedQuestion, quoted: { v: boolean }) => {
     const list = q.roast[answers[q.id]] ?? [];
     if (!list.length) return null;
@@ -270,16 +268,16 @@ export function buildReport(
     return text;
   };
   const quoted = { v: false };
-  const cardAnswers = new Map<string, string>();
+  const pointAnswers = new Map<string, string>();
   let extra: string | null = null;
   let used = 0;
   for (const q of asked) {
     if (used >= MAX_ANSWERS || !answers[q.id]) continue;
-    const target = (ANSWER_TO[q.id] ?? []).find((id) => picked.some((d) => d.id === id) && !cardAnswers.has(id));
+    const target = (ANSWER_TO[q.id] ?? []).find((id) => picked.some((d) => d.id === id) && !pointAnswers.has(id));
     if (target) {
       const line = answerLine(q, quoted);
       if (line) {
-        cardAnswers.set(target, line);
+        pointAnswers.set(target, line);
         used++;
       }
     } else if (!extra && !ANSWER_TO[q.id]) {
@@ -288,33 +286,34 @@ export function buildReport(
     }
   }
 
-  const diagnoses = picked.flatMap((d) => {
+  const points: RoastReport["points"] = picked.flatMap((d) => {
     const text = tryFill(r, texts[d.key][d.side] ?? [], d.vars);
     if (!text) return [];
-    const answer = cardAnswers.get(d.id);
-    return [{ id: d.id, title: texts[d.key].title, value: d.value, text, ...(answer ? { answer } : {}), photos: d.photos.slice(0, 8) }];
+    const answer = pointAnswers.get(d.id);
+    return [{ id: d.id, ...splitLead(text), ...(answer ? { answer } : {}) }];
+  });
+  const facts = picked.flatMap((d) => {
+    const t = d.side === "high" ? texts[d.key].fact : texts[d.key].factLow;
+    const f = t ? tryFill(r, [t], d.vars) : null;
+    return f ? [f] : [];
   });
 
-  // 점수(5.1): 객관적으로 볼 수 있는 것만. 문장은 유난히 높거나 낮을 때만(사용자 요청).
-  const scores: RoastReport["scores"] = [];
-  const S = R.score as Record<string, { label: string; high: string[]; low: string[] }>;
-  const score = (id: string, v: number) => scores.push({ id, label: S[id].label, score: Math.round(clamp(v) * 100) });
+  // 총 옷장 점수: 옷장 수치로 낸 기본 점수(항목별 0~100의 평균) + 질문·퀴즈 답별 증감(관리자에서 고침)
+  const parts: number[] = [];
+  const part = (v: number) => parts.push(clamp(v) * 100);
   const main = ["top", "bottom", "outer"].map((c) => clothes.filter((i) => i.cat === c).length);
-  score("category", evenness(main) * 1.05);
-  score("duplicate", 1 - dupItems / Math.max(clothes.length, 1) / 0.5);
-  if (dated.length >= 8) score("timing", 1 - (binList.length / dated.length - 0.1) / 0.45);
-  if (priced.length >= 5) score("price", 1 - (Math.log(maxP / Math.max(med, 1)) - Math.log(2)) / (Math.log(25) - Math.log(2)));
-  if (fitted.length >= 5) score("fit", evenness(["slim", "regular", "semi_over", "over"].map((l) => fitted.filter((i) => i.fit!.level === l).length)) * 1.1);
-  if (branded.length >= 8) score("brand", 1 - (brandShare - 0.1) / 0.5);
-  // 유난히 높거나 낮은 점수에만, 가장 튀는 두 개까지 한 줄을 붙인다.
-  scores
-    .filter((s) => s.score >= SCORE_HIGH || s.score <= SCORE_LOW)
-    .sort((x, y) => Math.abs(y.score - 50) - Math.abs(x.score - 50))
-    .slice(0, 2)
-    .forEach((s) => {
-      const text = r.pick(S[s.id][s.score >= SCORE_HIGH ? "high" : "low"]);
-      if (text) s.text = text;
-    });
+  part(evenness(main) * 1.05);
+  part(1 - dupItems / Math.max(clothes.length, 1) / 0.5);
+  if (dated.length >= 8) part(1 - (binList.length / dated.length - 0.1) / 0.45);
+  if (priced.length >= 5) part(1 - (Math.log(maxP / Math.max(med, 1)) - Math.log(2)) / (Math.log(25) - Math.log(2)));
+  if (fitted.length >= 5) part(evenness(["slim", "regular", "semi_over", "over"].map((l) => fitted.filter((i) => i.fit!.level === l).length)) * 1.1);
+  if (branded.length >= 8) part(1 - (brandShare - 0.1) / 0.5);
+  const bonus = asked.reduce((sum, q) => {
+    const ans = answers[q.id];
+    if (!ans) return sum;
+    return sum + (deltas[q.id]?.[q.scoreKey?.[ans] ?? ans] ?? 0);
+  }, 0);
+  const totalScore = Math.max(0, Math.min(100, Math.round(avg(parts) + bonus)));
 
   // 옷장 DNA(5.2)
   const D = R.dna;
@@ -340,8 +339,8 @@ export function buildReport(
   if (enough && country && countryShare >= 0.3) chip(D.country, { country, pct: pct(countryList.length, K) });
   if (shop && linked.length >= 5 && shopList.length / linked.length >= 0.3) chip(D.shop, { shop, pct: pct(shopList.length, linked.length) });
 
-  // 대표 캐릭터(6): 조건이 맞는 것 중 뚜렷한 순서로 세 개
-  const C = R.character as Record<string, { name: string; who: string; text: string }>;
+  // 캐릭터(6): 조건이 맞는 것 중 뚜렷한 순서로 세 개. 한 줄 정의와 "> " 문장에 들어간다.
+  const C = R.character as Record<string, { name: string; who: string }>;
   const outerShare = clothes.filter((i) => i.cat === "outer").length / Math.max(clothes.length, 1);
   const designerShare = known.filter((i) => i.groups.includes("designer") || i.groups.includes("luxury")).length / Math.max(K, 1);
   const saleN = a.patterns.find((p) => p.id === "sale_luxury")?.garmentIds.length ?? 0;
@@ -373,46 +372,55 @@ export function buildReport(
       const v = { what };
       const nm = tryFill(r, [C[id].name], v);
       const who = tryFill(r, [C[id].who], v);
-      return nm && who ? [{ name: nm, who, text: C[id].text }] : [];
+      return nm && who ? [{ name: nm, who }] : [];
     });
 
-  // 한 줄 정의와 종합 진단
+  // 한 줄 정의와 "> " 문장들
   const owner = name ? `${name}님의` : "당신의";
   const headline =
     (chars.length >= 2 ? tryFill(r, R.HEADLINE_TWO, { owner, first: chars[0].name, who2: chars[1].who }) : null) ??
     (chars.length ? tryFill(r, R.HEADLINE_ONE, { owner, who1: chars[0].who }) : null) ??
     fill(r.pick(R.HEADLINE_PLAIN), { owner });
-  // 종합 진단: 가장 뚜렷한 두 진단의 수치를 한 문장으로 묶고 마무리 한 줄(카드 문장을 되풀이하지 않는다)
-  const facts = diagnoses.slice(0, 2).map((d) => d.value);
-  const summary = [facts.length ? `${facts.join(", ")}.` : "", r.pick(R.SUMMARY_TAIL)].filter(Boolean).join(" ");
+  const intro = [
+    facts.length >= 2 ? tryFill(r, R.INTRO_THANKS, { fact1: facts[0], fact2: facts[1] }) : facts.length ? tryFill(r, R.INTRO_THANKS_ONE, { fact1: facts[0] }) : null,
+    ...(chars.length >= 3 ? [r.pick(R.INTRO_ALSO), tryFill(r, R.INTRO_SECOND, { who3: chars[2].who })] : []),
+    points.length ? r.pick(R.INTRO_MORE) : null,
+  ].filter((t): t is string => Boolean(t));
 
-  // 가장 수상한 부분: 이미 많은 걸 최근에도 또 산 경우를 먼저 찾는다.
+  // 목록: 많이 가진 옷(세부분류 + 색), 많이 산 브랜드. 각 다섯 개까지, 두 벌 이상인 것만.
+  // 한 줄뿐이면 세 벌 이상일 때만 보여 준다.
+  const lists: RoastReport["lists"] = [];
+  const listOf = (title: string, rows: [string, Item[]][]) => {
+    const top = rows.filter(([, l]) => l.length >= 2).slice(0, 5);
+    if (top.length >= 2 || top[0]?.[1].length >= 3) lists.push({ title, items: top.map(([k, l]) => `${k} ${l.length}벌`) });
+  };
+  listOf(r.pick(R.LIST_DUP), countBy(clothes.filter((i) => i.sub && i.color), (i) => `${i.color} ${i.subName ?? "옷"}`));
+  listOf(r.pick(R.LIST_BRAND), byBrand.map(([, l]) => [l[0].brandLabel, l]));
+
+  const total = {
+    score: totalScore,
+    lead: fill(r.pick(R.TOTAL_LEAD), { owner, score: totalScore }),
+    text: r.pick(totalScore >= 70 ? R.TOTAL_HIGH : totalScore >= 40 ? R.TOTAL_MID : R.TOTAL_LOW),
+  };
+
+  // 가장 수상한 부분: 이미 많은 걸 최근에도 또 산 경우를 먼저 찾는다. 진단 문단 뒤에 한 문단으로 붙는다.
   const U = R.suspicious;
   const isRecent = (i: Item) => Boolean(i.date && now - Date.parse(i.date) <= 183 * DAY && Date.parse(i.date) <= now);
-  let suspicious: RoastReport["suspicious"] = null;
   const dupRecent = dup.filter(isRecent);
   const recentColored = recent.filter((i) => i.color);
   const recentAchro = recentColored.filter((i) => i.achromatic).length / Math.max(recentColored.length, 1);
   const recentBrand = recent.filter((i) => brandList.includes(i)).length / Math.max(recent.length, 1);
   const top = a.patterns.find((p) => p.id === "top_item");
-  if (dup.length >= 3 && dupRecent.length >= 1) {
-    const text = tryFill(r, U.dup_recent, { what, n: dup.length, recent: dupRecent.length });
-    if (text) suspicious = { text, photos: photosOf(dup).slice(0, 8) };
-  }
-  if (!suspicious && achroShare >= 0.6 && recentColored.length >= 3 && recentAchro >= 0.6) {
-    const text = tryFill(r, U.color_recent, { pct: pct(achro.length, colored.length), recentPct: Math.round(recentAchro * 100) });
-    if (text) suspicious = { text, photos: photosOf(recent.filter((i) => i.achromatic)).slice(0, 8) };
-  }
-  if (!suspicious && brandShare >= 0.25 && recent.length >= 3 && recentBrand >= 0.5) {
-    const text = tryFill(r, U.brand_recent, { brand: brandName, pct: pct(brandList.length, branded.length), recentPct: Math.round(recentBrand * 100) });
-    if (text) suspicious = { text, photos: photosOf(brandList.filter(isRecent)).slice(0, 8) };
-  }
-  if (!suspicious && top) {
-    const text = tryFill(r, U.top_item, { ...top.stats, priceWon: won(Number(top.stats.price)) });
-    if (text) suspicious = { text, photos: top.garmentIds.filter((id) => items.find((i) => i.id === id)?.hasPhoto) };
-  }
-  if (suspicious && extra) suspicious.answer = extra;
-  else if (!suspicious && extra) suspicious = { text: extra, photos: [] };
+  const suspicious =
+    (dup.length >= 3 && dupRecent.length >= 1 ? tryFill(r, U.dup_recent, { what, n: dup.length, recent: dupRecent.length }) : null) ??
+    (achroShare >= 0.6 && recentColored.length >= 3 && recentAchro >= 0.6 ? tryFill(r, U.color_recent, { pct: pct(achro.length, colored.length), recentPct: Math.round(recentAchro * 100) }) : null) ??
+    (brandShare >= 0.25 && recent.length >= 3 && recentBrand >= 0.5 ? tryFill(r, U.brand_recent, { brand: brandName, pct: pct(brandList.length, branded.length), recentPct: Math.round(recentBrand * 100) }) : null) ??
+    (top ? tryFill(r, U.top_item, { ...top.stats, priceWon: won(Number(top.stats.price)) }) : null);
+  if (suspicious) points.push({ id: "suspicious", ...splitLead(suspicious), ...(extra ? { answer: extra } : {}) });
+  else if (extra) points.push({ id: "answer", ...splitLead(extra) });
+
+  // 맨 위 사진 줄: 많이 가진 옷 → 많이 산 브랜드 → 나머지 순으로 사진 있는 옷 열두 벌까지
+  const shelf = [...new Set([...photosOf(dup), ...photosOf(brandList), ...photosOf(items)])].slice(0, 12);
 
   const notes: string[] = [];
   if (K && K < items.length) {
@@ -420,7 +428,13 @@ export function buildReport(
     if (note) notes.push(note);
   }
 
-  return { headline, summary, diagnoses, scores, dna, characters: chars.map(({ name: n, text }) => ({ name: n, text })), suspicious, notes };
+  return { shelf, headline, intro, lists, total, points, dnaLead: r.pick(R.DNA_LEAD), dna, notes };
+}
+
+/** 첫 문장(굵게)과 나머지로 나눈다. */
+function splitLead(text: string): { lead: string; text: string } {
+  const m = /^([^]+?[.!?])\s+([^]+)$/.exec(text);
+  return m ? { lead: m[1], text: m[2] } : { lead: text, text: "" };
 }
 
 function tryFill(r: Rng, list: readonly string[], vars: Vars): string | null {

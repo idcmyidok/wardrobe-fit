@@ -21,8 +21,8 @@ export default async function RoastTextsPage() {
       ...g,
       vars: allowedVars(`${g.id}.x`).map((v) => ({ key: v, label: varLabel(g.id, v) })),
       units: units
-        .filter((u) => groupOf(u.key) === g.id && u.kind !== "number")
-        .map((u) => ({ key: u.key, kind: u.kind as "text" | "list" | "pairs", label: fieldLabel(u.key, optionLabel), base: u.value, edited: edits[u.key] ?? null })),
+        .filter((u) => groupOf(u.key) === g.id)
+        .map((u) => ({ key: u.key, kind: u.kind, label: fieldLabel(u.key, optionLabel), base: u.value, edited: edits[u.key] ?? null })),
     }))
     .filter((g) => g.units.length);
 

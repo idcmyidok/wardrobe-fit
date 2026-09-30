@@ -13,7 +13,7 @@ type UnitValue = string | string[] | Pair[];
 
 export interface EditorUnit {
   key: string;
-  kind: "text" | "list" | "pairs";
+  kind: "text" | "list" | "pairs" | "number";
   label: string;
   base: UnitValue | number;
   edited: UnitValue | number | null;
@@ -21,7 +21,7 @@ export interface EditorUnit {
 
 export interface EditorGroup {
   id: string;
-  kind: "screen" | "common" | "lines" | "questions" | "report";
+  kind: "screen" | "common" | "lines" | "questions" | "report" | "score";
   title: string;
   when: string;
   vars: { key: string; label: string }[];
@@ -54,6 +54,7 @@ const KINDS: { id: Kind; label: string }[] = [
   { id: "common", label: "공통 문구" },
   { id: "screen", label: "화면·결과 안내" },
   { id: "report", label: "결과 페이지" },
+  { id: "score", label: "점수" },
 ];
 
 type Vars = EditorGroup["vars"];
@@ -223,7 +224,11 @@ export function RoastTextEditor({ groups, quizzes, brands }: { groups: EditorGro
                   <div className="flex flex-col gap-5 pb-5">
                     {g.vars.length > 0 && <p className="text-sm text-neutral-700">쓸 수 있는 자리: {g.vars.map((v) => `[${v.label}]`).join(" ")}</p>}
                     {g.units.map((u) => (
-                      <UnitField key={u.key} unit={u} vars={g.vars} edited={edited[u.key]} onSaved={(v) => setEdited((e) => ({ ...e, [u.key]: v }))} />
+                      u.kind === "number" ? (
+                        <NumberField key={u.key} unit={u} edited={edited[u.key]} onSaved={(v) => setEdited((e) => ({ ...e, [u.key]: v }))} />
+                      ) : (
+                        <UnitField key={u.key} unit={u} vars={g.vars} edited={edited[u.key]} onSaved={(v) => setEdited((e) => ({ ...e, [u.key]: v }))} />
+                      )
                     ))}
                   </div>
                 )}
@@ -248,6 +253,53 @@ function Message({ message }: { message: { ok: boolean; text: string } | null })
 
 const areaClass = "w-full resize-y border border-neutral-400 bg-surface px-3 py-2 text-base leading-relaxed";
 const rowsFor = (s: string) => Math.min(4, Math.max(1, Math.ceil(s.length / 48) + (s.match(/\n/g)?.length ?? 0)));
+
+/** 점수 증감 한 칸(-20~20) */
+function NumberField({ unit, edited, onSaved }: { unit: EditorUnit; edited: EditorUnit["edited"] | undefined; onSaved: (v: EditorUnit["edited"]) => void }) {
+  const current = String(edited ?? unit.base);
+  const [value, setValue] = useState(current);
+  const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const save = () =>
+    startTransition(async () => {
+      setMessage(null);
+      const r = await saveRoastUnit(unit.key, Number(value));
+      if (r.ok) {
+        const saved = Number(r.value ?? value);
+        onSaved(saved === unit.base ? null : saved);
+        setValue(String(saved));
+        setMessage({ ok: true, text: "저장했습니다." });
+      } else setMessage({ ok: false, text: r.error });
+    });
+  const reset = () =>
+    startTransition(async () => {
+      setMessage(null);
+      const r = await resetRoastUnit(unit.key);
+      if (r.ok) {
+        onSaved(null);
+        setValue(String(unit.base));
+        setMessage({ ok: true, text: "원래 값으로 돌렸습니다." });
+      } else setMessage({ ok: false, text: r.error });
+    });
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <label className="flex min-w-48 items-center gap-2 text-sm">
+        <span className="flex-1">{unit.label}</span>
+        <Input type="number" min={-20} max={20} step={1} className="w-20" value={value} onChange={(e) => setValue(e.target.value)} aria-label={`${unit.label} 점수`} />
+      </label>
+      {edited != null && <span className="text-sm text-neutral-700">고침(원래 {String(unit.base)})</span>}
+      <Button size="sm" disabled={pending || value === current} onClick={save}>
+        {pending ? "저장 중…" : "저장"}
+      </Button>
+      {edited != null && (
+        <Button size="sm" variant="ghost" disabled={pending} onClick={reset}>
+          원래대로
+        </Button>
+      )}
+      <Message message={message} />
+    </div>
+  );
+}
 
 function UnitField({
   unit,

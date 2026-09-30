@@ -113,7 +113,7 @@ export async function finishRoast(input: { seed: number; name: string | null; an
     const texts = await getRoastTexts(s.supabase);
     const plan = buildScript(a, seed, name, texts);
     const composed = composeResult(a, name, seed, texts, plan.asked, answers);
-    const report = buildReport(a, name, seed, texts.report, plan.asked, answers);
+    const report = buildReport(a, name, seed, texts.report, plan.asked, answers, texts.score);
 
     let written: Pick<RoastResult, "headline" | "paragraphs" | "closing"> = composed;
     let aiUsed = false;
@@ -125,15 +125,13 @@ export async function finishRoast(input: { seed: number; name: string | null; an
       if (ai) {
         // 코디 조합 수는 계산값이라 AI 글 뒤에 그대로 붙인다.
         written = composed.outfit ? { ...ai, paragraphs: [...ai.paragraphs, { text: composed.outfit, photos: [] }] } : ai;
-        // 결과 페이지의 종합 진단은 AI가 쓴 첫 문단으로 바꾼다.
-        if (ai.paragraphs[0]) report.summary = ai.paragraphs[0].text;
         aiUsed = true;
       }
     }
 
     // 결과에 나온 옷의 브랜드·제품명·사진 경로를 복사해 둔다(옷을 지워도 문장은 남는다).
     const ids = [
-      ...new Set([...written.paragraphs.flatMap((p) => p.photos), ...report.diagnoses.flatMap((d) => d.photos), ...(report.suspicious?.photos ?? [])]),
+      ...new Set([...written.paragraphs.flatMap((p) => p.photos), ...report.shelf]),
     ];
     const paths = new Map<string, { image: string | null; thumb: string | null }>();
     if (s.supabase && ids.length) {

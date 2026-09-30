@@ -1000,6 +1000,8 @@ export interface AskedQuestion {
   quizId?: string;
   /** 답한 뒤 반응 아래에 붙이는 옷 사진과 가격 */
   reveal?: { id: string; amount: string }[];
+  /** 선택지 id → 점수 증감 키(선택지를 코드가 만드는 질문만. 없으면 선택지 id를 그대로 쓴다) */
+  scoreKey?: Record<string, string>;
 }
 
 /** 브랜드 셋: 금액 1위, 벌 수 1위, 최근 90일 구매 1위(없으면 금액 2위). 각 2벌 이상, 서로 달라야 한다. */
@@ -1138,6 +1140,7 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
         }),
       ),
       roast: roastMap(ids.map((id) => [id, quizRoast(Number(id) === quiz.answer)])),
+      scoreKey: Object.fromEntries(ids.map((id) => [id, Number(id) === quiz.answer ? "right" : "wrong"])),
       photos: [],
     };
   }
@@ -1148,7 +1151,7 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
     const options = top3.map((i) => ({ id: i.id, label: `${i.brandLabel} ${i.g.productName}`.trim(), photoId: i.hasPhoto ? i.id : undefined, amount: amountLabel(i.price!) }));
     const reactions = Object.fromEntries(top3.map((i, k) => [i.id, f(r.pick(tx.react[kinds[k]]), { priceWon: won(i.price!) })]));
     const roast = roastMap(top3.map((i, k) => [i.id, roastOf(kinds[k], { priceWon: won(i.price!) })]));
-    return { ...base, options: r.shuffle(options), reactions, roast };
+    return { ...base, options: r.shuffle(options), reactions, roast, scoreKey: Object.fromEntries(top3.map((i, k) => [i.id, kinds[k]])) };
   }
   if (q.id === "brand_best") {
     const trio = brandTrio(a);
@@ -1162,7 +1165,7 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
     }));
     const reactions = Object.fromEntries(trio.map((b) => [b.label, f(r.pick(tx.react[b.kind]), { count: b.count })]));
     const roast = roastMap(trio.map((b) => [b.label, roastOf(b.kind, { count: b.count, brand: b.label })]));
-    return { ...base, options: r.shuffle(options), reactions, roast };
+    return { ...base, options: r.shuffle(options), reactions, roast, scoreKey: Object.fromEntries(trio.map((b) => [b.label, b.kind])) };
   }
   if (q.id === "count_guess") {
     const n = Number(vars.n);
@@ -1171,7 +1174,7 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
     const kindOf = (x: number) => (x < n ? "under" : x === n ? "right" : "over");
     const reactions = Object.fromEntries(nums.map((x) => [String(x), f(r.pick(tx.react[kindOf(x)]))]));
     const roast = roastMap(nums.map((x) => [String(x), roastOf(kindOf(x))]));
-    return { ...base, options, reactions, roast };
+    return { ...base, options, reactions, roast, scoreKey: Object.fromEntries(nums.map((x) => [String(x), kindOf(x)])) };
   }
   const options = q.options.map((id) => ({ id, label: tx.options[id] ?? id }));
   const reactKey = (id: string) => {

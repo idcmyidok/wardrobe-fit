@@ -6,6 +6,7 @@ import { COMMON, LINE_TEXT } from "./lines";
 import { Q_TEXT } from "./questions";
 import { QUIZ, type QuizEntry } from "./quiz";
 import { REPORT_TEXT } from "./report-text";
+import { SCORE_DELTAS } from "./score-deltas";
 import { varsOf } from "./text";
 
 /**
@@ -30,7 +31,7 @@ function splitChat<T>(node: T, path = ""): T {
   return node;
 }
 
-export const DEFAULT_TEXTS = splitChat({ screen: ROAST_COPY, common: COMMON, lines: LINE_TEXT, questions: Q_TEXT, quiz: QUIZ, report: REPORT_TEXT });
+export const DEFAULT_TEXTS = splitChat({ screen: ROAST_COPY, common: COMMON, lines: LINE_TEXT, questions: Q_TEXT, quiz: QUIZ, report: REPORT_TEXT, score: SCORE_DELTAS });
 export type RoastTexts = typeof DEFAULT_TEXTS;
 
 export const ROAST_TEXT_MAX = 500;
@@ -88,7 +89,7 @@ export function unitAt(key: string): { kind: UnitKind; base: UnitValue | undefin
 /** 문장이 속한 묶음(같은 패턴·질문·퀴즈·공통 항목). 예: "lines.black_bias" */
 export function groupOf(key: string): string {
   // 결과 페이지의 진단·점수·캐릭터는 항목마다 따로 묶는다(예: "report.diag.color").
-  if (/^report\.(diag|score|character)\./.test(key)) return key.split(".").slice(0, 3).join(".");
+  if (/^report\.(diag|character)\./.test(key)) return key.split(".").slice(0, 3).join(".");
   return key.split(".").slice(0, 2).join(".");
 }
 
@@ -133,6 +134,10 @@ function minItems(key: string, base: UnitValue | undefined): number {
 export function checkUnit(key: string, value: unknown): { value: UnitValue } | { error: string } {
   const unit = unitAt(key);
   if (!unit) return { error: "없는 문장입니다." };
+  if (unit.kind === "number" && key.startsWith("score.")) {
+    const n = typeof value === "number" ? value : Number(value);
+    return Number.isInteger(n) && n >= -20 && n <= 20 ? { value: n } : { error: "-20부터 20까지 정수로 써 주세요." };
+  }
   if (unit.kind === "number") {
     const n = typeof value === "number" ? value : Number(value);
     return Number.isInteger(n) && n >= 0 && n < 20 ? { value: n } : { error: "정답 번호가 올바르지 않습니다." };
