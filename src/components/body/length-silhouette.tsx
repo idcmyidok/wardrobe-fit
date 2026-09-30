@@ -39,12 +39,16 @@ export function getMaleBody(height: number) {
   };
 }
 
+/** 옷깃이 몸 어깨선보다 살짝 위에 걸치도록 옷 전체를 올리는 정도(키 비율). 총장은 그대로라 밑단도 같이 올라간다. */
+const SHIRT_LIFT = 0.014;
+
 /** 표준 레귤러핏 반팔 티셔츠. 실측(어깨·가슴)이 있으면 그 값을 쓴다. */
 export function getTshirt(height: number, length: number, shoulder?: number | null, chest?: number | null) {
   const body = getMaleBody(height);
-  const hemY = body.shoulderY + length; // HPS에서 실제 총장만큼 아래
+  const topY = body.shoulderY - height * SHIRT_LIFT;
+  const hemY = topY + length; // 옷 맨 위(목 옆 어깨점)에서 실제 총장만큼 아래
   return {
-    topY: body.shoulderY,
+    topY,
     hemY,
     shoulderWidth: shoulder ?? body.shoulderWidth * 1.08,
     chestWidth: chest ?? body.chestWidth * 1.18,
@@ -122,7 +126,7 @@ export function LengthSilhouette({
   // ---- 티셔츠 ----
   const shHalf = t.shoulderWidth / 2;
   const chestHalf = t.chestWidth / 2;
-  const tipY = b.shoulderY + H * 0.008; // 어깨 끝(몸 어깨보다 살짝 위로 띄운다)
+  const tipY = t.topY + H * 0.022; // 어깨 끝(몸 어깨보다 살짝 위로 띄운다)
   const collar = H * 0.04;
   const sleeveOut = shHalf + H * 0.03; // 소매 바깥 끝 x
   const sleeveOutY = tipY + t.sleeveLength * 0.8;
@@ -130,7 +134,7 @@ export function LengthSilhouette({
   const hemInY = sleeveOutY + H * 0.04;
   const armpitY = b.armpitY + H * 0.01;
   const hemY = t.hemY;
-  const neckY = b.shoulderY - H * 0.014; // 옷깃도 몸 어깨선보다 살짝 위
+  const neckY = t.topY;
   const rr = H * 0.008;
   const at = (s: 1 | -1, x: number) => cx + s * x;
   const rightSide = [
