@@ -78,7 +78,7 @@ export interface RoastReport {
    * 점수 풀이(관리자에게만): 기본 점수 + 항목별 증감 + 질문 답 증감 → 총점.
    * 일반 사용자의 결과에는 서버가 지우고 보낸다.
    */
-  scoreDetail?: { base: number; items: { label: string; why: string; delta: number }[]; total: number };
+  scoreDetail?: { base: number; items: { label: string; why: string; delta: number; garments?: string[] }[]; total: number };
   /** 첫 줄 아래 섹션 순서(관리자 "결과 구성"). 없으면 intro·lists·total·points·dna·notes(dna는 예전 결과만) */
   order?: string[];
 }

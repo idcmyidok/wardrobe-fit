@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Garment } from "@/lib/types/domain";
 import { analyze } from "./analyze";
-import { buildScript, mixBlocks, QUESTION_FROM } from "./compose";
+import { buildScript } from "./compose";
 import type { AskedQuestion } from "./questions";
 import { buildReport } from "./report";
 import { REPORT_TEXT } from "./report-text";
-import { rng } from "./text";
 
 const now = new Date("2026-09-29T12:00:00+09:00");
 const g = (i: number, over: Partial<Garment> = {}): Garment =>
@@ -148,26 +147,13 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     expect(near([tee(0, 70, 20), tee(1, 71, 21), tee(2, 70, 20)])?.stats.n).toBe(3);
   });
 
-  it("대화는 분석 문장과 질문을 섞되, 질문은 40% 지점 이후에만 두고 질문끼리 붙이지 않는다", () => {
-    for (let seed = 1; seed <= 50; seed++) {
-      const says = Array.from({ length: 10 }, (_, i) => `s${i}`);
-      const asks = ["q0", "q1", "q2"];
-      const out = mixBlocks(says, asks, rng(seed));
-      expect(out.length).toBe(13);
-      const at = out.map((x, i) => (x.startsWith("q") ? i : -1)).filter((i) => i >= 0);
-      expect(at.length).toBe(3);
-      for (const i of at) expect(i).toBeGreaterThanOrEqual(Math.ceil(QUESTION_FROM * 13));
-      for (let k = 1; k < at.length; k++) expect(at[k] - at[k - 1]).toBeGreaterThan(1);
+  it("질문은 관련 분석 문장과 묶여 나오고, 패셔너블 질문은 늘 마지막이다", () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const plan = buildScript(a, seed, null);
+      const asks = plan.script.steps.flatMap((x) => (x.t === "ask" ? [plan.script.questions[x.q].id] : []));
+      expect(asks.length).toBe(plan.asked.length);
+      if (asks.includes("fashionable_q")) expect(asks[asks.length - 1]).toBe("fashionable_q");
     }
-    // 질문이 많아도 40% 조건은 지킨다(이때만 질문끼리 붙을 수 있다)
-    for (let seed = 1; seed <= 30; seed++) {
-      const out = mixBlocks(Array.from({ length: 12 }, (_, i) => `s${i}`), Array.from({ length: 8 }, (_, i) => `q${i}`), rng(seed));
-      const first = out.findIndex((x) => x.startsWith("q"));
-      expect(first).toBeGreaterThanOrEqual(Math.ceil(QUESTION_FROM * 20));
-      expect(out.filter((x) => x.startsWith("q")).length).toBe(8);
-    }
-    const plan = buildScript(a, 7, null);
-    expect(plan.script.steps.filter((x) => x.t === "ask").length).toBe(plan.asked.length);
   });
 
   it("점수 풀이: 기본 점수 + 항목별 증감이 총점과 맞는다", () => {
@@ -180,5 +166,19 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
       // 항목마다 실제로 적용된 판단 기준(숫자 포함)이 붙는다
       expect(i.why.length).toBeGreaterThan(0);
     }
+  });
+
+  it("점수 풀이에 그 항목에 반영된 옷이 나온다", () => {
+    const withGarments = report.scoreDetail!.items.filter((x) => x.garments?.length);
+    expect(withGarments.length).toBeGreaterThan(0);
+    for (const x of withGarments) for (const label of x.garments!) expect(label.length).toBeGreaterThan(0);
+  });
+
+  it("데님 팬츠가 많으면 \"데님 팬츠\"와 \"데님\" 이야기가 따로 나오지 않는다(데님 팬츠 우선)", () => {
+    const denim = Array.from({ length: 9 }, (_, i) => g(500 + i, { categoryId: "bottom", subcategoryId: "bottom.denim", brand: `브랜드${i}`, colorName: "데님", productName: `데님 팬츠 ${i}` }));
+    const tees = Array.from({ length: 6 }, (_, i) => g(600 + i, { brand: `티${i}`, colorName: ["블랙", "레드", "블루", "그린", "옐로", "핑크"][i] }));
+    const pats = analyze([...denim, ...tees], null, 1360, now).patterns;
+    expect(pats.some((p) => p.id === "subcategory_bias" && p.stats.sub === "데님 팬츠")).toBe(true);
+    expect(pats.some((p) => p.id === "family_repeat" && p.stats.family === "denim")).toBe(false);
   });
 });

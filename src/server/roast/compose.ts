@@ -83,30 +83,39 @@ function sectionOfQuestion(id: string): Section | null {
   return pattern ? (LINE_SECTION[pattern] ?? null) : null;
 }
 
-/** 질문이 처음 나올 수 있는 위치(전체 이야기 수 대비). 앞쪽은 분석 문장으로만 채운다. */
-export const QUESTION_FROM = 0.4;
+/** 대화에서 섹션(보는 곳)이 나오는 순서 */
+const SECTION_ORDER: Section[] = ["size", "category", "acc", "color", "brand", "group", "trait", "style", "shop", "repeat", "season", "timing", "money", "spend", "odd"];
+
+/** 관련 패턴이 없는 질문이 들어갈 섹션(QUESTION_SECTION에 없는 것) */
+const EXTRA_QUESTION_SECTION: Record<string, Section> = { band_quiz: "brand", rationalize: "spend", three_500: "money", fit_choice: "repeat", fruits_q: "shop", bunjang_q: "shop", vintage_q: "style", influencer_q: "style" };
+
+/** 대화의 끝에 늘 붙는 질문(무신사 링크 → 패셔너블 순서. 패셔너블은 무조건 마지막) */
+const LAST_QUESTIONS = ["musinsa_link_q", "fashionable_q"];
 
 /**
- * 분석 문장과 질문을 섹션으로 묶지 않고 섞는다(사용자 요청). 질문은 늘 전체의 40% 지점 이후에만 두고,
- * 되도록 질문끼리 붙지 않게(사이에 분석 문장 하나 이상) 둔다. 질문이 많아 자리가 모자랄 때만 질문끼리 붙인다.
+ * 분석 문장과 질문을 관련 있는 것끼리 묶어 섹션 순서대로 늘어놓는다.
+ * 관련 패턴이 있는 질문은 그 문장 바로 뒤, 문장이 대화에 없으면 그 섹션 끝에 둔다.
+ * 그래서 질문이 뒤쪽에만 몰리지 않고 대화 전체에 퍼진다. 무신사 링크·패셔너블 질문만 맨 끝에 붙인다(패셔너블이 마지막).
  */
-export function mixBlocks<T>(says: T[], asks: T[], r: Rng): T[] {
-  const S = says.length;
-  const Q = asks.length;
-  if (!Q) return [...says];
-  // k: 그 질문 앞에 오는 분석 문장 수. j번째 질문(0부터)의 위치는 k + j ≥ k라서 k ≥ kMin이면 40% 조건을 지킨다.
-  const kMin = Math.min(S, Math.ceil(QUESTION_FROM * (S + Q)));
-  const range = Array.from({ length: S - kMin + 1 }, (_, i) => kMin + i);
-  // k가 서로 다르면 질문끼리 붙지 않는다. 자리가 모자라면 남은 질문은 이미 고른 자리에 겹쳐 둔다(질문끼리 붙음).
-  const ks = r.shuffle(range).slice(0, Q);
-  while (ks.length < Q) ks.push(r.pick(range));
-  ks.sort((x, y) => x - y);
-  const out: T[] = [];
-  let q = 0;
-  for (let k = 0; k <= S; k++) {
-    while (q < Q && ks[q] === k) out.push(asks[q++]);
-    if (k < S) out.push(says[k]);
+export function arrangeBlocks(says: Extract<Block, { kind: "say" }>[], asks: (Extract<Block, { kind: "ask" }> & { id: string; pattern?: string })[]): Block[] {
+  const out: Block[] = [];
+  const placed = new Set<number>();
+  const push = (q: (typeof asks)[number]) => {
+    if (placed.has(q.i)) return;
+    placed.add(q.i);
+    out.push(q);
+  };
+  const tail = asks.filter((q) => LAST_QUESTIONS.includes(q.id));
+  const body = asks.filter((q) => !LAST_QUESTIONS.includes(q.id));
+  for (const sec of SECTION_ORDER) {
+    for (const b of says.filter((x) => x.sec === sec)) {
+      out.push(b);
+      for (const q of body) if (q.pattern === b.p.id) push(q);
+    }
+    for (const q of body) if (q.sec === sec) push(q);
   }
+  for (const q of body) push(q);
+  for (const id of LAST_QUESTIONS) for (const q of tail) if (q.id === id) push(q);
   return out;
 }
 
@@ -142,8 +151,10 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
   if (greet) say(fill(r.pick(C.NAME_GREETING), { name: name! }));
   say(fill(r.pick(C.SCAN_OPEN), { n: a.clothesTotal }));
 
-  // 질문과 같은 사진은 질문에서만 보여 준다(같은 사진이 두 번 나오지 않게).
-  const askedPhotos = new Set(asked.flatMap((q) => q.photos));
+  // 낯선 옷 고르기 질문은 그 사진을 질문에서만 보여 준다. 다른 문장은 해당 옷 사진을 빠짐없이 다 보여 주고,
+  // 같은 사진이 바로 뒤 질문에 또 나오지 않게 질문 쪽에서 뺀다(sayShown).
+  const askedPhotos = new Set(asked.filter((q) => q.id === "odd_photo").flatMap((q) => q.photos));
+  const sayShown = new Map<string, Set<string>>();
   // 질문은 화면이 늘 새 이야기로 띄운다(앞 문장과 간격을 둔다).
   const ask = (i: number) => {
     steps.push({ t: "think" });
@@ -162,9 +173,15 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
 
   // 질문이 같은 사실(숫자·달·금액)을 다시 말하면 그 패턴 문장은 빼고 질문만 한다.
   const restated = new Set(asked.filter((q) => RESTATES.has(q.id)).map((q) => QUESTIONS.find((d) => d.id === q.id)?.pattern).filter(Boolean));
-  const sayBlocks: Block[] = r.shuffle(convo.filter((p) => !restated.has(p.id))).map((p) => ({ kind: "say", p, sec: LINE_SECTION[p.id] }));
-  const askBlocks: Block[] = r.shuffle(asked.map((q, i) => ({ kind: "ask" as const, i, sec: QUESTION_SECTION[q.id] ?? sectionOfQuestion(q.id) })));
-  const blocks = mixBlocks(sayBlocks, askBlocks, r);
+  const sayBlocks = convo.filter((p) => !restated.has(p.id)).map((p) => ({ kind: "say" as const, p, sec: LINE_SECTION[p.id] }));
+  const askBlocks = asked.map((q, i) => ({
+    kind: "ask" as const,
+    i,
+    id: q.id,
+    pattern: QUESTIONS.find((d) => d.id === q.id)?.pattern,
+    sec: QUESTION_SECTION[q.id] ?? EXTRA_QUESTION_SECTION[q.id] ?? sectionOfQuestion(q.id),
+  }));
+  const blocks = arrangeBlocks(sayBlocks, askBlocks);
 
   let nameUsed = greet;
   let prevSec: Section | null = null;
@@ -203,6 +220,7 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
       }
     }
     const photos = NO_PHOTO.has(p.id) ? [] : photosOf(a, p).filter((id) => !askedPhotos.has(id));
+    if (photos.length) sayShown.set(p.id, new Set(photos));
     steps.push({ t: "say", text, ...(photos.length ? { photos } : {}), ...(gap ? { gap: true } : {}) });
   });
 
@@ -216,7 +234,7 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
     text: q.text,
     options: q.options,
     reactions: q.reactions,
-    photos: q.photos,
+    photos: q.id === "odd_photo" ? q.photos : q.photos.filter((id) => !sayShown.get(QUESTIONS.find((d) => d.id === q.id)?.pattern ?? "")?.has(id)),
     ...(q.leadPhotos ? { leadPhotos: q.leadPhotos } : {}),
     ...(q.answer != null ? { answer: q.answer } : {}),
     ...(q.reveal?.length ? { reveal: q.reveal } : {}),

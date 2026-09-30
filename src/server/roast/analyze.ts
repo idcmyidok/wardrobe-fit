@@ -563,6 +563,11 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
   const oddOne = findOddOne(clothes, colored.length ? colored.filter((i) => i.achromatic).length / colored.length : 0);
   if (oddOne) add("odd_one", ramp(oddOne.traits.length, 2, 4), 0.9, { brand: oddOne.item.brandLabel, name: oddOne.item.g.productName, traits: oddOne.traits.join(",") }, [oddOne.item]);
 
+  // "데님 팬츠 N벌"과 "데님 N벌"이 따로 나오지 않게 한다(데님 팬츠 쪽이 우선, 사용자 요청).
+  const denimFam = P.find((x) => x.id === "family_repeat" && x.stats.family === "denim");
+  const denimSub = P.find((x) => x.id === "subcategory_bias" && x.stats.sub === "데님 팬츠");
+  if (denimFam && denimSub) P.splice(P.indexOf(denimFam), 1);
+
   const brandNames = [...new Set(known.map((i) => i.brand!.name))];
 
   return { items, clothes, patterns: P, oddOne, topSpendBrands, brandNames, now, clothesTotal, basicIds, allItems: prepared };
