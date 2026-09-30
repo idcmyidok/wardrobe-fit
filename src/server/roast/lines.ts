@@ -395,9 +395,9 @@ export const LINE_TEXT: Record<string, PatternLines> = {
     para: ["{fitPhrase}{color} {sub|이} {n}벌입니다. 하나가 사라져도 아무도 모를 겁니다. 본인 포함해서요."],
   },
   family_repeat: {
-    say: ["제품명에 {familyName|이} 들어간 옷이 {n}벌입니다.", "{familyName} 제품이 {n}벌. 좋아하는 건 확실하네요."],
+    say: ["제품명에 {familyName|이} 들어간 {kind|이} {n}벌입니다.", "{familyName} 제품이 {n}벌. 좋아하는 건 확실하네요."],
     head: [["{familyName} 제품을 {n}벌이나 모았는데", "{familyName|이} 빠지면 설명이 안 되는 옷장입니다."]],
-    para: ["{familyName|이} 들어간 옷이 {n}벌입니다. 새로 살 때 기존 것과 비교는 해 보셨겠죠. 비교하고도 샀다면 그건 확신입니다."],
+    para: ["{familyName|이} 들어간 {kind|이} {n}벌입니다. 새로 살 때 기존 것과 비교는 해 보셨겠죠. 비교하고도 샀다면 그건 확신입니다."],
   },
   identical_items: {
     say: ["{color} {name}. 똑같은 옷이 {n}벌 있습니다. 이름도 색도 같아요.", "잠깐만요. {name}, {color}. 이게 {n}벌입니다. 복사 붙여넣기인가요?"],

@@ -374,9 +374,13 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     }, comboList);
   }
 
-  const famCounts = FAMILY_IDS.map((id) => ({ id, list: clothes.filter((i) => i.families.includes(id)) })).sort((a, b) => b.list.length - a.list.length);
+  // 데님은 바지만 센다(데님 셔츠·재킷은 빼고, 사용자 요청).
+  const famCounts = FAMILY_IDS.map((id) => ({ id, list: clothes.filter((i) => i.families.includes(id) && (id !== "denim" || i.cat === "bottom")) })).sort(
+    (a, b) => b.list.length - a.list.length,
+  );
   const fam = famCounts[0];
-  if (fam && fam.list.length >= 3) add("family_repeat", ramp(fam.list.length, 3, 8), 0.8, { family: fam.id, n: fam.list.length }, fam.list);
+  if (fam && fam.list.length >= 3)
+    add("family_repeat", ramp(fam.list.length, 3, 8), 0.8, { family: fam.id, n: fam.list.length, kind: fam.list.every((i) => i.cat === "bottom") ? "바지" : "옷" }, fam.list);
 
   let bestCluster: Item[] = [];
   for (const [, list] of bySub) {

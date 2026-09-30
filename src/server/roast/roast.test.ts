@@ -380,6 +380,28 @@ describe("항상 내는 질문", () => {
   });
 });
 
+describe("데님 반복", () => {
+  const now = new Date("2026-09-29T12:00:00+09:00");
+  const denim = (i: number, categoryId: "top" | "outer" | "bottom") =>
+    g(i, { categoryId, subcategoryId: null, productName: categoryId === "bottom" ? `데님 팬츠 ${i}` : `데님 재킷 ${i}` });
+
+  it("데님은 바지만 세고, 질문은 '평생 한 종류의 바지만'으로 묻는다", () => {
+    const wardrobe = [...[0, 1, 2, 3, 4].map((i) => denim(i, "bottom")), ...[5, 6, 7, 8, 9, 10].map((i) => denim(i, i % 2 ? "top" : "outer"))];
+    const a = analyze(wardrobe, null, 1360, now);
+    const p = a.patterns.find((x) => x.id === "family_repeat")!;
+    expect(p.stats).toMatchObject({ family: "denim", n: 5, kind: "바지" });
+    expect(p.garmentIds.every((id) => a.items.find((i) => i.id === id)!.cat === "bottom")).toBe(true);
+    const q = Array.from({ length: 60 }, (_, seed) => buildScript(a, seed, null).script.questions.find((x) => x.id === "extreme_one")).find(Boolean);
+    expect(q!.text).toBe("내일부터 평생 한 종류의 바지만 입을 수 있다면, 역시 데님을 고르겠나요?");
+  });
+
+  it("상의·아우터 데님만 많으면 데님 반복으로 보지 않는다", () => {
+    const wardrobe = [...[0, 1, 2, 3, 4, 5].map((i) => denim(i, i % 2 ? "top" : "outer")), ...[6, 7, 8, 9, 10, 11].map((i) => g(i, {}))];
+    const a = analyze(wardrobe, null, 1360, now);
+    expect(a.patterns.find((x) => x.id === "family_repeat" && x.stats.family === "denim")).toBeUndefined();
+  });
+});
+
 describe("고른 뒤 보여 주는 금액", () => {
   const now = new Date("2026-09-29T12:00:00+09:00");
 

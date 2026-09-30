@@ -91,7 +91,7 @@ const DESCRIBE: Record<string, string> = {
   same_tag: "브랜드는 {brands}개인데 스타일은 {pct}%가 {tag} 스타일",
   old_brands: "설립 50년 넘은 브랜드가 대부분({pct}%). 가장 오래된 {oldest}는 {year}년 설립",
   combo_repeat: "같은 세부분류·색·핏 조합 반복: {fitPhrase}{color} {sub} {n}벌",
-  family_repeat: "제품명에 '{familyName}'이 들어간 옷 {n}벌",
+  family_repeat: "제품명에 '{familyName}'이 들어간 {kind} {n}벌",
   measure_repeat: "{sub} 중 총장·가슴이 2cm 안쪽으로 거의 같은 옷 {n}벌",
   fit_bias: "핏을 아는 옷 중 {pct}%가 {fit}({n}벌)",
   season_bias: "{most} 옷 {mostN}벌, {least} 옷 {leastN}벌로 계절 쏠림",
