@@ -59,6 +59,13 @@ const C = Object.fromEntries(
   ["브랜드명", "브랜드 별칭", "브랜드 국가", "설립 연도", "시장 포지션", "실제 가격 레벨", "주요 스타일 태그", "브랜드 유형", "대표 제품군", "유행 성향", "포멀도", "기능성 성향", "헤리티지 성향", "대중성", "접근성", "하이프 성향", "기타 태그"].map((k) => [k, col(k)]),
 );
 
+// 무신사 좋아요 수(없거나 0이면 미입점으로 보고 null). 칸이 없는 예전 CSV도 읽힌다.
+const likesCol = header.findIndex((h) => h.trim() === "무신사 좋아요");
+const likesOf = (r) => {
+  const n = likesCol < 0 ? 0 : Number.parseInt((r[likesCol] ?? "").replace(/,/g, ""), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
 const brands = rows.map((r) => {
   const name = r[C["브랜드명"]].trim();
   const labels = list(r[C["기타 태그"]] ?? "");
@@ -83,6 +90,7 @@ const brands = rows.map((r) => {
     access: num(LEVEL, r[C["접근성"]], name, "접근성"),
     hype: num(LEVEL, r[C["하이프 성향"]], name, "하이프 성향"),
     labels,
+    likes: likesOf(r),
   };
 });
 

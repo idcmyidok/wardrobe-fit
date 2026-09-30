@@ -98,6 +98,8 @@ const DESCRIBE: Record<string, string> = {
   recent_30: "최근 30일에 {n}벌 구매",
   recent_90: "최근 90일에 {n}벌 구매",
   month_binge: "해마다 {month}월에 옷을 몰아 삼(연도 상관없이 {month}월 구매 {n}벌)",
+  taste_shift: "{from}에는 {fromStyle} 중심, {to}에는 {toStyle} 중심(최근 구간의 {pct}%)",
+  price_shift: "{from}과 {to}에 스타일({style})은 같은데 평균 가격 레벨이 {fromLv}에서 {toLv}로 변함",
   musinsa_kr: "구매 링크의 {pct}%가 무신사이고, 누구나 아는 국내 대중 브랜드가 브랜드 아는 옷의 {krPct}%",
   shop_focus: "구매 링크의 {pct}%가 한 쇼핑몰({shop})",
   identical_items: "이름·색까지 똑같은 옷({color} {name})이 {n}벌",

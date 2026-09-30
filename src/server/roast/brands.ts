@@ -29,6 +29,8 @@ export interface BrandInfo {
   hype: number;
   /** 기타 태그(예: "무신사 인기": 무신사 인기 브랜드 순위에 든 브랜드, 너무 유명한 글로벌 브랜드는 뺐다) */
   labels: string[];
+  /** 무신사 좋아요 수. 없으면 null(미입점으로 보고 순위에서 뺀다) */
+  likes?: number | null;
 }
 
 /** 태그만 있는 브랜드(나머지 칸이 비어 있어 분석에는 쓰지 않는다) */
@@ -44,6 +46,15 @@ const ALL = RAW as (BrandInfo | PartialBrand)[];
 export const BRANDS = ALL.filter((b): b is BrandInfo => !("partial" in b));
 
 export const MUSINSA_POPULAR = "무신사 인기";
+
+/** 좋아요가 1 이상인 브랜드의 좋아요 수, 큰 순 */
+const LIKES_DESC = BRANDS.map((b) => b.likes ?? 0).filter((n) => n > 0).sort((a, b) => b - a);
+
+/** 좋아요 상위 topPct%에 드는 최소 좋아요 수. topPct가 0 이하이면 null(기준 끔) */
+export function musinsaLikesCut(topPct: number): number | null {
+  if (!(topPct > 0) || !LIKES_DESC.length) return null;
+  return LIKES_DESC[Math.min(LIKES_DESC.length, Math.ceil((LIKES_DESC.length * Math.min(topPct, 100)) / 100)) - 1];
+}
 
 export type BrandGroup =
   | "luxury"
