@@ -9,16 +9,17 @@ import type { LengthOverrides } from "./length-fit";
  * 핵심은 여유분(ease)이다. 옷 실측(단면이면 ×2)에서 몸 치수를 빼고, 옷 종류마다 정해 둔 경계값과 비교해
  * 부위마다 6단계(너무 작음·슬림·레귤러·세미오버·오버·너무 큼)를 먼저 정한다. 그다음 부위를 합친다.
  * - 상의: 가슴이 기본 축(몸통 크기), 어깨는 실루엣을 더하는 보조 축
- * - 하의: 허벅지가 기본 축, 엉덩이가 보조 축. 허리는 스판처럼 실측이 작게 나오는 옷이 있어 보지 않는다.
+ * - 하의: 허벅지가 기본 축, 엉덩이가 보조 축. 허리는 스판처럼 실측이 작게 나오는 옷이 있어 핏 판정에 쓰지 않는다
+ *   (추천 실측 표에는 핏 단계와 관계없는 적정 범위 하나를 보여 준다).
  * - 두 부위 단계 차이가 1 이하면 가중 평균, 2 이상이면 기본 축에서 다른 부위 쪽으로 한 단계만 옮긴다.
  * - 한 부위만 너무 작음·너무 큼이면 전체를 그렇게 만들지 않는다(상의 가슴 너무 작음, 하의 몸보다 좁음은 예외).
  * 제품명(오버핏·슬림핏 등)과 원단·두께·신축성은 판정에 쓰지 않는다.
  *
  * 사용자가 추천 치수를 고쳤으면 그 범위를 기본 경계값 대신 쓴다.
- * 숫자는 FIT_GROUPS·아래 상수에만 둔다. 실제 입어 본 느낌과 다르면 여기 숫자만 고친다.
+ * 숫자는 FIT_GROUPS·WAIST·아래 상수에만 둔다. 실제 입어 본 느낌과 다르면 여기 숫자만 고친다.
  */
 
-export type WidthKey = "chest" | "shoulder" | "hip" | "thigh";
+export type WidthKey = "chest" | "shoulder" | "waist" | "hip" | "thigh";
 /** 추천 치수 표에 쓰는 옷 실측. 총장·소매는 핏과 관계가 적어 보지 않는다(옷장 옷과의 길이 비교는 구매 판단에서). */
 export type RecKey = WidthKey;
 export type Band = [number, number];
@@ -36,7 +37,7 @@ export type FitGroupId =
   | "pants"
   | "shorts";
 
-/** 사용자가 고친 추천 치수(옷 실측 기준: 가슴·엉덩이·허벅지는 단면, 어깨는 그대로) */
+/** 사용자가 고친 추천 치수(옷 실측 기준: 가슴·허리·엉덩이·허벅지는 단면, 어깨는 그대로). 허리는 핏 단계와 무관해 regular 칸에 둔다. */
 export type FitOverrides = Partial<Record<FitGroupId, Partial<Record<WearableLevel, Partial<Record<RecKey, Band>>>>>> & {
   /** 총장 추천 표에서 고친 값(길이감, length-fit.ts) */
   length?: LengthOverrides;
@@ -52,8 +53,8 @@ export interface BodyProfile {
 
 export const EMPTY_BODY: BodyProfile = { values: {}, uncertain: [], overrides: {}, updatedAt: null };
 
-/** 핏을 가르는 폭 치수 */
-type LevelKey = WidthKey;
+/** 핏을 가르는 폭 치수(허리 제외) */
+type LevelKey = Exclude<WidthKey, "waist">;
 /**
  * 여유 경계 5개: 너무 작음 | 슬림 | 레귤러 | 세미오버 | 오버 | 너무 큼.
  * 슬림은 [0]~[1](양끝 포함), 나머지는 (앞 경계, 뒤 경계]. [4]를 넘으면 너무 큼.
@@ -64,7 +65,7 @@ interface GroupDef {
   id: FitGroupId;
   name: string;
   kind: FitKind;
-  /** 가슴·엉덩이·허벅지는 옷 둘레 − 몸 둘레, 어깨는 옷 어깨 − 몸 어깨(직선) */
+  /** 가슴·허리·엉덩이·허벅지는 옷 둘레 − 몸 둘레, 어깨는 옷 어깨 − 몸 어깨(직선) */
   width: Partial<Record<LevelKey, Thresholds>>;
   /** 종합 판정 가중치(합 1) */
   weight: Partial<Record<LevelKey, number>>;
@@ -84,6 +85,9 @@ export const FIT_GROUPS: GroupDef[] = [
   { id: "pants", name: "긴 바지", kind: "bottom", width: { hip: [2, 6, 10, 16, 24], thigh: [2, 4, 8, 14, 22] }, weight: { thigh: 0.55, hip: 0.45 } },
   { id: "shorts", name: "반바지", kind: "bottom", width: { hip: [3, 6, 11, 17, 25], thigh: [3, 5, 9, 15, 23] }, weight: { thigh: 0.6, hip: 0.4 } },
 ];
+
+/** 하의 허리 적정 여유(cm). 추천 실측 표와 내 치수 추정에만 쓰고 핏 판정에는 쓰지 않는다. */
+export const WAIST = { fit: [-2, 2] as Band } as const;
 
 /** 상의 기본 축·보조 축, 하의 기본 축·보조 축 */
 const AXES: Record<FitKind, [LevelKey, LevelKey]> = { top: ["chest", "shoulder"], bottom: ["thigh", "hip"] };
@@ -132,9 +136,9 @@ export const fitGroupName = (id: FitGroupId) => GROUP[id].name;
 export const fitGroupKind = (id: FitGroupId) => GROUP[id].kind;
 
 /** 옷 실측 → 몸과 비교할 값(단면 치수는 둘레로) */
-const HALF: Record<WidthKey, boolean> = { chest: true, shoulder: false, hip: true, thigh: true };
-const BODY_OF: Record<WidthKey, BodyKey> = { chest: "chest", shoulder: "shoulder", hip: "hip", thigh: "thigh" };
-const WIDTH_LABEL: Record<WidthKey, string> = { chest: "가슴", shoulder: "어깨", hip: "엉덩이", thigh: "허벅지" };
+const HALF: Record<WidthKey, boolean> = { chest: true, shoulder: false, waist: true, hip: true, thigh: true };
+const BODY_OF: Record<WidthKey, BodyKey> = { chest: "chest", shoulder: "shoulder", waist: "waist", hip: "hip", thigh: "thigh" };
+const WIDTH_LABEL: Record<WidthKey, string> = { chest: "가슴", shoulder: "어깨", waist: "허리", hip: "엉덩이", thigh: "허벅지" };
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -163,13 +167,21 @@ const euro = (w: string) => {
   return `${w}${jong === 0 || jong === 8 ? "로" : "으로"}`;
 };
 
-const widthKeys = (group: GroupDef): WidthKey[] => (group.kind === "top" ? ["chest", "shoulder"] : ["hip", "thigh"]);
+const widthKeys = (group: GroupDef): WidthKey[] => (group.kind === "top" ? ["chest", "shoulder"] : ["hip", "thigh", "waist"]);
 
-/** 기본 여유 구간(내 핏 보정 전) */
+/** 기본 여유 구간(내 핏 보정 전). 허리는 핏 단계와 무관해 모든 단계가 적정 구간이다. */
 function baseBands(group: GroupDef, key: WidthKey): Record<WearableLevel, Band> | null {
+  if (key === "waist") return group.kind === "bottom" ? { slim: WAIST.fit, regular: WAIST.fit, semi_over: WAIST.fit, over: WAIST.fit } : null;
   const t = group.width[key];
   if (!t) return null;
   return { slim: [t[0], t[1]], regular: [t[1], t[2]], semi_over: [t[2], t[3]], over: [t[3], t[4]] };
+}
+
+/** 사용자가 고친 허리 적정 범위(어느 단계에 저장됐든 하나만 쓴다) */
+function waistOverride(body: BodyProfile, groupId: FitGroupId): Band | undefined {
+  const byLevel = body.overrides[groupId];
+  if (!byLevel) return undefined;
+  return byLevel.regular?.waist ?? WEARABLE_LEVELS.map((l) => byLevel[l]?.waist).find(Boolean);
 }
 
 /** 옷 한 벌: 예상 핏 계산 입력 */
@@ -199,6 +211,11 @@ function effectiveBands(groupId: FitGroupId, key: WidthKey, body: BodyProfile): 
   const base = baseBands(group, key);
   const b = body.values[BODY_OF[key]];
   if (!base || b == null) return null;
+  if (key === "waist") {
+    const o = waistOverride(body, groupId);
+    const band: Band = o ? [toEase(key, o[0], b), toEase(key, o[1], b)] : WAIST.fit;
+    return { slim: band, regular: band, semi_over: band, over: band };
+  }
   const out = {} as Record<WearableLevel, Band>;
   for (const level of WEARABLE_LEVELS) {
     const o = body.overrides[groupId]?.[level]?.[key];
@@ -464,7 +481,8 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile): Body
   const scored: Scored[] = [];
   const issues: BodyFitIssue[] = [];
 
-  for (const key of widthKeys(group)) {
+  // 허리는 스판처럼 실측이 작게 나오는 옷이 있어 핏 판정에 쓰지 않는다.
+  for (const key of widthKeys(group).filter((k) => k !== "waist")) {
     const ease = easeOf(key, m, body);
     const bands = effectiveBands(groupId, key, body);
     if (ease == null || !bands) continue;
@@ -525,8 +543,8 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile): Body
 }
 
 /**
- * 한 핏 단계에서 권장하는 옷 실측 범위(표에 보이는 값: 가슴·엉덩이·허벅지는 단면).
- * 계산에 필요한 내 치수가 없으면 null. 사용자가 고친 값이 있으면 그 값.
+ * 한 핏 단계에서 권장하는 옷 실측 범위(표에 보이는 값: 가슴·허리·엉덩이·허벅지는 단면).
+ * 허리는 단계와 관계없이 같은 적정 범위. 계산에 필요한 내 치수가 없으면 null. 사용자가 고친 값이 있으면 그 값.
  */
 export function garmentRange(
   groupId: FitGroupId,
@@ -535,7 +553,7 @@ export function garmentRange(
   body: BodyProfile,
 ): Band | null {
   const group = GROUP[groupId];
-  const override = body.overrides[groupId]?.[level]?.[key];
+  const override = key === "waist" ? waistOverride(body, groupId) : body.overrides[groupId]?.[level]?.[key];
   if (override) return override;
   const v = body.values;
   if (!widthKeys(group).includes(key)) return null;
@@ -550,8 +568,11 @@ export function garmentRange(
 /** 추천 치수 표의 열(묶음마다) */
 export function recKeys(groupId: FitGroupId): RecKey[] {
   const g = GROUP[groupId];
-  return g.kind === "top" ? ["shoulder", "chest"] : ["hip", "thigh"];
+  return g.kind === "top" ? ["shoulder", "chest"] : ["waist", "hip", "thigh"];
 }
+
+/** 핏 단계와 관계없이 한 범위만 쓰는 추천 치수 열(허리) */
+export const isLevelFreeKey = (key: RecKey) => key === "waist";
 
 /** 추천 치수 표 한 칸에 필요한 내 치수 */
 export function recNeeds(_groupId: FitGroupId, key: RecKey): BodyKey[] {

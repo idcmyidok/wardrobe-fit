@@ -23,9 +23,9 @@ export const bodyInputSchema = z.object({
 });
 export type BodyInput = z.output<typeof bodyInputSchema>;
 
-const REC_KEYS = ["shoulder", "chest", "hip", "thigh"] as const satisfies readonly RecKey[];
-/** 예전에 저장된 총장·소매·허리 수정값은 받아 두기만 하고 계산에는 쓰지 않는다. */
-const LEGACY_REC_KEYS = ["length", "sleeve", "waist"] as const;
+const REC_KEYS = ["shoulder", "chest", "waist", "hip", "thigh"] as const satisfies readonly RecKey[];
+/** 예전에 저장된 총장·소매 수정값은 받아 두기만 하고 계산에는 쓰지 않는다. */
+const LEGACY_REC_KEYS = ["length", "sleeve"] as const;
 const GROUP_IDS = FIT_GROUPS.map((g) => g.id) as [FitGroupId, ...FitGroupId[]];
 
 const band = z

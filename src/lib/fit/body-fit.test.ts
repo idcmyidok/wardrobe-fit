@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_BODY, bodyFitReasons, computeBodyFit, estimateBodyFromGarments, fitGroupOf, garmentRange, recKeys, silhouetteOf, type BodyProfile } from "./body-fit";
+import { EMPTY_BODY, bodyFitReasons, computeBodyFit, estimateBodyFromGarments, fitGroupOf, garmentRange, silhouetteOf, type BodyProfile } from "./body-fit";
 
 const body: BodyProfile = {
   values: { height: 175, shoulder: 45, chest: 94, waist: 80, hip: 94, thigh: 56 },
@@ -157,7 +157,7 @@ describe("하의: 허벅지가 기본 축, 허리는 크기만", () => {
     expect(r.dimensions.find((d) => d.key === "thigh")!.level).toBe("too_small");
     expect(r.level).toBe("slim");
   });
-  it("허리는 핏 판단에 쓰지 않는다(스판처럼 실측이 작게 나오는 옷)", () => {
+  it("허리는 핏 판정에 쓰지 않는다(스판처럼 실측이 작게 나오는 옷)", () => {
     const base = ok(computeBodyFit(pants({ hip: 52, thigh: 32 }), body));
     for (const w of [30, 36, 41, 50]) {
       const r = ok(computeBodyFit(pants({ waist: w, hip: 52, thigh: 32 }), body));
@@ -179,8 +179,11 @@ describe("추천 치수·보정·역산", () => {
   it("권장 실측 범위(단면)", () => {
     expect(garmentRange("short_tee", "regular", "chest", body)).toEqual([50, 53]);
   });
-  it("하의 추천 치수에 허리는 없다", () => {
-    expect(recKeys("pants")).toEqual(["hip", "thigh"]);
+  it("허리는 핏 단계와 관계없이 적정 범위 하나", () => {
+    expect(garmentRange("pants", "slim", "waist", body)).toEqual([39, 41]);
+    expect(garmentRange("pants", "over", "waist", body)).toEqual([39, 41]);
+    const edited: BodyProfile = { ...body, overrides: { pants: { regular: { waist: [40, 43] } } } };
+    expect(garmentRange("pants", "slim", "waist", edited)).toEqual([40, 43]);
   });
   it("사용자가 고친 범위가 추천과 판정에 모두 쓰인다", () => {
     const edited: BodyProfile = { ...body, overrides: { short_tee: { regular: { chest: [55, 57] } } } };
@@ -198,7 +201,7 @@ describe("추천 치수·보정·역산", () => {
     expect(est.chest).toBe(94);
     expect(est.shoulder).toBe(42.5);
     expect(est.hip).toBe(94);
-    expect(est.waist).toBeUndefined();
+    expect(est.waist).toBe(82);
   });
   it("세부분류 묶음", () => {
     expect(fitGroupOf("outer", "outer.coach")).toBe("light_outer");
@@ -231,7 +234,7 @@ describe("예상 핏 판단 근거", () => {
     const reasons = bodyFitReasons(r);
     expect(r.level).toBe("too_small");
     expect(reasons.at(-1)!.text).toMatch(/엉덩이가 내 몸보다도 좁아 전체를 너무 작음으로 봤어요/);
-    expect(reasons.some((x) => (x.key as string) === "waist")).toBe(false);
+    expect(reasons.some((x) => x.key === "waist")).toBe(false);
     expect(reasons.at(-1)!.text).toContain("허리는 핏 판정에 넣지 않아요");
   });
 });

@@ -12,6 +12,7 @@ import {
   FIT_GROUPS,
   estimateBodyFromGarments,
   garmentRange,
+  isLevelFreeKey,
   recKeys,
   recNeeds,
   type Band,
@@ -31,7 +32,7 @@ const GROUPS = [
   { id: "lower", title: "하체" },
 ] as const;
 
-const REC_LABEL: Record<RecKey, string> = { shoulder: "어깨", chest: "가슴", hip: "엉덩이", thigh: "허벅지" };
+const REC_LABEL: Record<RecKey, string> = { shoulder: "어깨", chest: "가슴", waist: "허리", hip: "엉덩이", thigh: "허벅지" };
 
 type ValueDraft = Record<BodyKey, string>;
 
@@ -373,10 +374,12 @@ function Recommendations({
   const keys = recKeys(groupId);
   const overrides = profile.overrides;
   const noOverrides: BodyProfile = { ...profile, overrides: {} };
-  const cellKey = (level: WearableLevel, key: RecKey) => `${level}.${key}`;
+  // 허리처럼 핏 단계와 관계없는 열은 모든 단계가 한 칸을 같이 쓴다.
+  const cellKey = (level: WearableLevel, key: RecKey) => (isLevelFreeKey(key) ? `common.${key}` : `${level}.${key}`);
   const current = (level: WearableLevel, key: RecKey) => garmentRange(groupId, level, key, profile);
   const suggested = (level: WearableLevel, key: RecKey) => garmentRange(groupId, level, key, noOverrides);
-  const isEdited = (level: WearableLevel, key: RecKey) => Boolean(overrides[groupId]?.[level]?.[key]);
+  const isEdited = (level: WearableLevel, key: RecKey) =>
+    isLevelFreeKey(key) ? WEARABLE_LEVELS.some((l) => overrides[groupId]?.[l]?.[key]) : Boolean(overrides[groupId]?.[level]?.[key]);
   // 총장: 이 탭에 맞는 기준(이너·아우터)만 옆에 보여 준다. 같은 기준을 쓰는 탭끼리 값을 같이 쓴다.
   const height = profile.values.height;
   const lengthGroup = lengthGroupOfFitGroup(groupId);
@@ -403,7 +406,7 @@ function Recommendations({
   const resetCell = (level: WearableLevel, key: RecKey) =>
     commit(
       without((o) => {
-        delete o[groupId]?.[level]?.[key];
+        for (const l of isLevelFreeKey(key) ? WEARABLE_LEVELS : [level]) delete o[groupId]?.[l]?.[key];
       }),
       "추천값으로 되돌렸습니다",
     );
@@ -427,6 +430,11 @@ function Recommendations({
     const next = without((o) => {
       for (const level of WEARABLE_LEVELS)
         for (const key of keys) {
+          // 한 칸을 같이 쓰는 열은 레귤러 자리에만 저장하고 다른 단계의 예전 값은 지운다.
+          if (isLevelFreeKey(key) && level !== "regular") {
+            delete o[groupId]?.[level]?.[key];
+            continue;
+          }
           const [a, b] = draft[cellKey(level, key)] ?? ["", ""];
           const lo = Number(a);
           const hi = Number(b);
@@ -469,7 +477,7 @@ function Recommendations({
     <section className="flex flex-col gap-4 border-b border-text py-7">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg">옷 종류별 추천 실측</h2>
-        <span className="text-sm text-neutral-700">cm · 가슴·엉덩이·허벅지는 단면 · 여유분 규칙으로 계산한 참고값</span>
+        <span className="text-sm text-neutral-700">cm · 가슴·허리·엉덩이·허벅지는 단면 · 여유분 규칙으로 계산한 참고값</span>
       </div>
       <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="옷 종류">
         {FIT_GROUPS.map((g) => (
@@ -509,20 +517,23 @@ function Recommendations({
             </tr>
           </thead>
           <tbody>
-            {WEARABLE_LEVELS.map((level) => (
+            {WEARABLE_LEVELS.map((level, row) => (
               <tr key={level}>
                 <td className="font-sans font-semibold whitespace-nowrap" style={{ color: FIT_COLOR[level] }}>
                   {fitLevelName(level, group.kind)}
                 </td>
                 {keys.map((key) => {
-                  const cellName = `${fitLevelName(level, group.kind)} ${REC_LABEL[key]}`;
+                  const shared = isLevelFreeKey(key);
+                  if (shared && row > 0) return null;
+                  const span = shared ? { rowSpan: WEARABLE_LEVELS.length } : {};
+                  const cellName = shared ? `${REC_LABEL[key]}(모든 핏 공통)` : `${fitLevelName(level, group.kind)} ${REC_LABEL[key]}`;
                   const b = current(level, key);
                   const edited = isEdited(level, key);
                   if (editing) {
                     const [a, z] = draft[cellKey(level, key)] ?? ["", ""];
                     const set = (i: 0 | 1, v: string) => setDraft((d) => ({ ...d, [cellKey(level, key)]: i === 0 ? [v, z] : [a, v] }));
                     return (
-                      <td key={key} className="text-right">
+                      <td key={key} {...span} className={cn("text-right", shared && "align-middle")}>
                         <span className="inline-flex items-center gap-1">
                           <input className="input w-15 px-1.5 py-1 text-right text-sm" inputMode="decimal" aria-label={`${cellName} 최소`} value={a} onChange={(e) => set(0, e.target.value)} />
                           –
@@ -532,7 +543,7 @@ function Recommendations({
                     );
                   }
                   return (
-                    <td key={key} className="text-right whitespace-nowrap">
+                    <td key={key} {...span} className={cn("text-right whitespace-nowrap", shared && "align-middle")}>
                       {b ? (
                         <>
                           <span className={edited ? "font-semibold text-accent-800" : undefined}>{fmtBand(b)}</span>
@@ -547,6 +558,7 @@ function Recommendations({
                               직접 수정 · 되돌리기
                             </button>
                           )}
+                          {shared && <span className="block font-sans text-2xs text-neutral-600">모든 핏 공통 · 적정 범위</span>}
                         </>
                       ) : (
                         <span className="font-sans text-xs text-neutral-500" title={`${recNeeds(groupId, key).map((k) => BODY_LABELS[k]).join("·")} 입력 필요`}>
