@@ -133,7 +133,8 @@ export const QUESTION_COND: Record<string, string> = {
   hat_sub_q: "모자 중 한 종류 3개 이상이고 60% 이상",
   vintage_q: "누구에게나(오래된·헤리티지·일본 데님 브랜드가 많으면 더 자주)",
   influencer_q: "누구에게나(요즘 뜨는·유행 타는 브랜드가 많으면 더 자주)",
-  fashionable_q: "누구에게나",
+  fashionable_q: "누구에게나, 늘 마지막에. 반응·결과 글·점수 증감은 옷장 점수 구간(높음·중간·낮음)별로 다름",
+  musinsa_link_q: "구매 링크 5개 이상 중 절반 이상이 무신사일 때 꼭(질문 수에 안 셈). '링크만 무신사'면 무신사 감점 절반",
 };
 
 export const REACT_NAME: Record<string, string> = {
@@ -151,6 +152,7 @@ export const SCREEN_NAME: Record<string, string> = {
   DECLINE: "미루기를 눌렀을 때",
   ASK_NAME: "이름 묻기",
   NAME_HINT: "이름 입력칸 아래 안내",
+  AGE_HINT: "나이 입력칸 아래 안내(저장하지 않는다는 말 포함)",
   TOO_FEW: "옷이 10벌보다 적을 때",
   OPENING: "분석 시작 전 첫 멘트",
   WRITING: "결과를 쓰는 중",
@@ -224,24 +226,52 @@ const WALLET_NAME: Record<string, string> = {
 
 const RULE_NAME: Record<string, string> = {
   base: "기본 점수",
-  designer_max: "디자이너·컨템포러리 비율: 최대 가점",
-  designer_full: "디자이너·컨템포러리 비율: 최대 가점이 되는 비율(%)",
+  designer_each: "디자이너·하이엔드·컨템포러리: 1벌당 가점",
+  designer_max: "디자이너·하이엔드·컨템포러리: 최대 가점",
+  niche_full: "아는 사람만 아는 브랜드: 만점 비율(%)",
   niche_max: "아는 사람만 아는 브랜드: 최대 가점",
-  niche_full: "아는 사람만 아는 브랜드: 최대 가점이 되는 비율(%)",
-  style_mid_pct: "뚜렷한 스타일: 1단계 비율(%)",
-  style_mid: "뚜렷한 스타일: 1단계 가점",
-  style_high_pct: "뚜렷한 스타일: 2단계 비율(%)",
-  style_high: "뚜렷한 스타일: 2단계 가점",
-  taste_max: "헤리티지·일본 데님·워크웨어: 최대 가점",
-  taste_full: "헤리티지·일본 데님·워크웨어: 최대 가점이 되는 비율(%)",
-  digging: "후르츠패밀리·번개장터 3벌 이상: 가점",
-  accent: "무채색 위주 + 포인트 컬러 1~3벌: 가점",
-  mass_from: "SPA 비율: 감점이 시작되는 비율(%)",
+  style_mid_pct: "스타일 뚜렷함: 1단계 비율(%)",
+  style_mid: "스타일 뚜렷함: 1단계 가점",
+  style_high_pct: "스타일 뚜렷함: 2단계 비율(%)",
+  style_high: "스타일 뚜렷함: 2단계 가점",
+  taste_full: "헤리티지·일본 데님·빈티지 계열: 만점 비율(%)",
+  taste_max: "헤리티지·일본 데님·빈티지 계열: 최대 가점",
+  fruits_n: "후르츠패밀리: 기준 벌 수",
+  fruits: "후르츠패밀리: 가점",
+  accent_basic_pct: "기본색 위주 + 포인트 컬러: 무채색 비율(%)",
+  accent_max_n: "기본색 위주 + 포인트 컬러: 포인트 컬러 최대 벌 수",
+  accent: "기본색 위주 + 포인트 컬러: 가점",
+  basic_pct: "기본색뿐인 옷장: 무채색 비율(%)",
+  basic_lux_n: "기본색뿐인데 고급 브랜드: 기준 벌 수",
+  basic_lux: "기본색뿐인데 고급 브랜드: 가점",
+  steady_gap: "꾸준한 구매: 연속으로 안 산 달이 이보다 적으면",
+  steady: "꾸준한 구매: 가점",
+  good_outer: "좋은 아우터 하나: 가점",
+  leather_shoes: "가죽 신발: 가점",
+  kr_new_year: "국내 신진 디자이너: 설립 연도 기준",
+  kr_new_n: "국내 신진 디자이너: 기준 벌 수",
+  kr_new: "국내 신진 디자이너: 가점",
+  jp_n: "일본 브랜드: 기준 벌 수",
+  jp: "일본 브랜드: 가점",
+  repro: "일본 복각 데님·LVC: 1벌 이상 가점",
+  repro_many_n: "일본 복각 데님·LVC: 많을 때 기준 벌 수",
+  repro_many: "일본 복각 데님·LVC: 많을 때 가점",
+  foreign_pct: "해외 브랜드: 기준 비율(%)",
+  foreign: "해외 브랜드: 가점",
+  bold_won: "과감한 한 벌: 기준 금액(만 원)",
+  bold: "과감한 한 벌: 가점",
+  regular_n: "단골 브랜드: 기준 브랜드 수",
+  regular: "단골 브랜드: 가점",
+  shoe_set: "신발 풀세트: 가점",
+  spend_top_won: "소비액: 3개월 평균 이 금액(만 원) 이상이면 가점",
+  spend_top: "소비액: 가점",
+  mass_from: "SPA 비율: 감점 시작(%)",
   mass_per10: "SPA 비율: 10%p마다 감점",
   mass_max: "SPA 비율: 최대 감점",
-  musinsa_from: "무신사 인기 브랜드: 감점이 시작되는 비율(%)",
+  musinsa_from: "무신사 인기 브랜드: 감점 시작(%)",
   musinsa_per10: "무신사 인기 브랜드: 10%p마다 감점",
   musinsa_max: "무신사 인기 브랜드: 최대 감점",
+  musinsa_young_div: "무신사 인기 브랜드: 26세 이하에 산 옷은 1/이 값만 셈",
   trendy_pct: "유행 따라가기: 기준 비율(%)",
   trendy: "유행 따라가기: 감점",
   dup_each: "복붙 중복: 한 벌당 감점",
@@ -250,6 +280,39 @@ const RULE_NAME: Record<string, string> = {
   scattered: "스타일 없음: 감점",
   misfit_each: "치수에 안 맞는 옷: 한 벌당 감점",
   misfit_max: "치수에 안 맞는 옷: 최대 감점",
+  gap_months: "구매 공백: 연속으로 안 산 달 기준",
+  gap_max: "구매 공백: 최대 감점",
+  basic_mass_pct: "기본색뿐인데 SPA 위주: SPA 비율(%)",
+  basic_mass: "기본색뿐인데 SPA 위주: 감점",
+  lux_mismatch: "스타일 모르고 산 명품: 감점",
+  sneakers_only: "신발이 전부 운동화: 감점",
+  logo_pct: "로고 과다: 기준 비율(%)",
+  logo: "로고 과다: 감점",
+  season_gap_pct: "계절 구멍: 가장 많은 계절의 이 비율(%) 미만",
+  season_gap: "계절 구멍: 감점",
+  spend_a_won: "소비액: 1단계 기준(만 원)",
+  spend_a: "소비액: 1단계 감점",
+  spend_b_won: "소비액: 2단계 기준(만 원)",
+  spend_b: "소비액: 2단계 감점",
+  spend_c: "소비액: 그보다 적을 때 감점",
+  tier_high: "마지막 질문: '높음' 구간 시작 점수",
+  tier_low: "마지막 질문: '중간' 구간 시작 점수",
+};
+
+const AGE_BAND_NAME: Record<string, string> = { b0: "19세 이하", b20: "20~23세", b24: "24~26세", b27: "27~29세", b30: "30~35세", b36: "36~40세", b41: "41~50세", b51: "51~60세", b61: "61세 이상" };
+const AGE_KEY_NAME: Record<string, string> = {
+  street_plus_pct: "스트릿 가점 기준(%)",
+  street_plus: "스트릿 가점",
+  street_pct: "스트릿 감점 기준(%)",
+  street_minus: "스트릿 감점",
+  mature_pct: "성숙 가점 기준(%)",
+  mature_plus: "성숙 가점",
+  musinsa_pct: "무신사풍 감점 기준(%)",
+  musinsa_minus: "무신사풍 감점",
+  formal_pct: "포멀·럭셔리 감점 기준(%)",
+  formal_minus: "포멀·럭셔리 감점",
+  lux_n: "럭셔리 감점 기준 벌 수",
+  lux_minus: "럭셔리 감점",
 };
 
 const REPORT_NAME: Record<string, string> = {
@@ -286,8 +349,9 @@ export function textGroups(): TextGroupMeta[] {
   for (const [k, name] of Object.entries(REPORT_NAME)) out.push({ id: `report.${k}`, kind: "report", title: name, when: "" });
   for (const [k, v] of Object.entries(REPORT_TEXT.diag)) out.push({ id: `report.diag.${k}`, kind: "report", title: `진단: ${v.title}`, when: k });
   for (const [k, v] of Object.entries(REPORT_TEXT.character)) out.push({ id: `report.character.${k}`, kind: "report", title: `캐릭터: ${v.name}`, when: k });
-  out.push({ id: "score.rules", kind: "score", title: "총 옷장 점수 기준", when: "기본 점수에서 더하고 빼는 기준(비율은 %, 점수는 정수 0~100)" });
-  for (const qid of Object.keys(SCORE_DELTAS))
+  out.push({ id: "score.rules", kind: "score", title: "총 옷장 점수 기준", when: "기본 점수에서 더하고 빼는 기준(비율은 %, 금액은 만 원, 감점도 양수로)" });
+  out.push({ id: "score.age", kind: "score", title: "나이에 맞는 옷", when: "옷을 산 때 나이 구간별 기준(비율은 %, 감점도 양수로)" });
+  for (const qid of Object.keys(SCORE_DELTAS).filter((k) => k !== "rules" && k !== "age"))
     out.push({ id: `score.${qid}`, kind: "score", title: qid === "quiz" ? "패션 퀴즈" : Q_TEXT[qid]?.text || qid, when: `${qid} · 답에 따라 총 옷장 점수에 더하는 값(-20~20)` });
   return out;
 }
@@ -304,6 +368,11 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
   }
   if (p[0] === "score") {
     if (p[1] === "rules") return RULE_NAME[p[2]] ?? p[2];
+    if (p[1] === "age") return `${AGE_BAND_NAME[p[2]] ?? p[2]}: ${AGE_KEY_NAME[p[3]] ?? p[3]}`;
+    if (p[1] === "fashionable_q") {
+      const [tier, ...opt] = p[2].split("_");
+      return `${{ high: "높음", mid: "중간", low: "낮음" }[tier] ?? tier} 구간 · ${optionLabel?.(p[1], opt.join("_")) ?? opt.join("_")}`;
+    }
     if (p[1] === "quiz") return p[2] === "right" ? "맞혔을 때" : "틀렸을 때";
     return REACT_NAME[p[2]] ?? optionLabel?.(p[1], p[2]) ?? p[2];
   }
@@ -327,7 +396,10 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
     if (p[2] === "lead") return "앞 멘트(차례로 모두 말함)";
     if (p[2] === "text") return "질문";
     if (p[2] === "options") return `선택지: ${p[3]}`;
-    const who = REACT_NAME[p[3]] ?? optionLabel?.(p[1], p[3]) ?? p[3];
+    const tiered = p[1] === "fashionable_q" && /^(high|mid|low)_/.exec(p[3] ?? "");
+    const who = tiered
+      ? `${{ high: "높음", mid: "중간", low: "낮음" }[tiered[1]]} 구간 · ${optionLabel?.(p[1], p[3].slice(tiered[0].length)) ?? p[3]}`
+      : (REACT_NAME[p[3]] ?? optionLabel?.(p[1], p[3]) ?? p[3]);
     if (p[2] === "react") return `바로 반응: ${who}`;
     if (p[2] === "roast") return `결과 글: ${who}`;
   }

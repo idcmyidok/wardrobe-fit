@@ -63,6 +63,16 @@ const pricedPhotos = (a: Analysis, ids: string[]) =>
     .slice(0, 8)
     .map((i) => ({ id: i.id, amount: amountLabel(i.price!) }));
 
+/** 구매 링크 5개 이상 중 절반 이상이 무신사면 { total, n } */
+export function musinsaLinks(a: Analysis): { total: number; n: number } | null {
+  const linked = a.items.filter((i) => i.shop);
+  const n = linked.filter((i) => i.shop === "무신사").length;
+  return linked.length >= 5 && n * 2 >= linked.length ? { total: linked.length, n } : null;
+}
+
+/** 늘 따로 붙이는 질문(질문 수에 세지 않는다) */
+const APPENDED = ["musinsa_link_q", "fashionable_q"];
+
 /** 구매 링크가 그 쇼핑몰인 옷 */
 export const fromShop = (a: Analysis, shop: string) => a.items.filter((i) => i.shop === shop);
 
@@ -216,7 +226,9 @@ export const QUESTIONS: QuestionDef[] = [
     when: (a) => ({ boost: has(a, "old_brands") || has(a, "trait_heritage") || has(a, "group_jp_denim") || has(a, "group_heritage") ? 1 : 0 }) },
   { id: "influencer_q", bucket: "self", base: 0.4, options: ["daily", "sometimes", "never"],
     when: (a) => ({ boost: has(a, "trend_brands") || has(a, "trait_trendy") || has(a, "trait_hype") ? 1 : 0 }) },
-  { id: "fashionable_q", bucket: "self", base: 0.45, options: ["yes", "normal", "no", "others_say"], when: () => ({}) },
+  // 아래 두 질문은 pickQuestions가 따로 붙인다(질문 수와 상관없이). 무신사 링크 질문 → 마지막 질문 순서.
+  { id: "musinsa_link_q", bucket: "musinsa_link", base: 0, options: ["yes", "link_only", "dunno"], when: (a) => musinsaLinks(a) },
+  { id: "fashionable_q", bucket: "last", base: 0, options: ["yes", "normal", "no", "others_say"], when: () => ({}) },
 ];
 
 export const Q_TEXT: Record<string, QuestionText> = {
@@ -1001,21 +1013,54 @@ export const Q_TEXT: Record<string, QuestionText> = {
       regret: ["번개장터 구매를 후회한 적이 있다고 하셨습니다. 그래도 {n}벌을 샀다는 건, 후회보다 알림이 더 빨랐다는 뜻입니다.", "후회는 번개처럼 오고 알림은 더 번개처럼 옵니다. {n}벌이 그 경주의 기록입니다."],
     },
   },
+  // 반응·결과 글은 옷장 점수 구간(high 70+, mid 40~69, low 40 미만) × 답으로 나뉜다(사용자 요청). 늘 마지막에 묻는다.
   fashionable_q: {
     lead: ["마지막으로 하나만요."],
     text: "스스로 패셔너블한 사람이라고 생각하나요? 솔직하게 대답하세요.",
     options: { yes: "그렇다", normal: "평범하다", no: "전혀 아니다", others_say: "남들이 그렇다던데" },
     react: {
-      yes: ["자신감은 훌륭합니다. 옷장과 상의는 해 보셨나요?", "알겠습니다. 결과 글을 읽고도 같은 생각이면 진짜입니다."],
-      normal: ["겸손하시네요. 옷장은 조금 다른 의견입니다.", "평범함을 유지하는 데 이만큼의 옷이 필요했군요."],
-      no: ["솔직해서 좋습니다. 그럼 이 옷들은 누가 고른 건가요.", "스스로 아니라고 하면 저는 할 말이 줄어듭니다. 줄기만 합니다."],
-      others_say: ["그 남들이 누군지 궁금합니다. 혹시 판매 직원인가요?", "남의 말은 공짜입니다. 옷은 아니었지만요."],
+      high_yes: ["인정합니다. 오늘 처음으로 반박할 게 없네요.", "네, 옷장이 먼저 증명했습니다. 조금 얄밉지만요."],
+      high_normal: ["겸손이 지나치면 자랑입니다. 옷장은 평범하지 않았어요.", "평범하다고요? 옷장이 서운해하겠습니다."],
+      high_no: ["이 옷장을 두고 그 대답은 반칙입니다.", "그럼 이 옷들은 우연히 잘 산 건가요? 운이 좋으시네요."],
+      high_others_say: ["남들 말이 이번엔 맞았습니다.", "그 남들, 보는 눈이 있네요."],
+      mid_yes: ["자신감은 좋습니다. 옷장은 반쯤만 동의합니다.", "음, 절반은 맞습니다. 어느 절반인지는 결과에서요."],
+      mid_normal: ["정확한 자기 평가입니다. 옷장도 고개를 끄덕입니다.", "평범하다는 말, 오늘 들은 대답 중 가장 정확합니다."],
+      mid_no: ["그 정도는 아닙니다. 너무 자책하지 마세요.", "전혀는 아니고, 가끔은 맞습니다."],
+      mid_others_say: ["그 남들, 조금 후한 편이네요.", "남의 칭찬은 반만 믿으세요."],
+      low_yes: ["자신감은 만점입니다. 옷장 점수는 곧 보시게 될 겁니다.", "그 자신감, 옷장에도 조금 나눠 주세요."],
+      low_normal: ["평범이라는 말을 꽤 넓게 쓰시는군요.", "평범보다 조금 아래입니다. 괜찮아요, 올라갈 곳이 많습니다."],
+      low_no: ["자기 객관화는 되시는군요. 그게 이 옷장의 유일한 희망입니다.", "솔직해서 좋습니다. 절반은 해결됐습니다."],
+      low_others_say: ["그 남들이 누군지 궁금합니다. 혹시 판매 직원인가요?", "남의 말은 공짜입니다. 옷은 아니었지만요."],
     },
     roast: {
-      yes: ["스스로 패셔너블하다고 자신 있게 답하셨습니다. 그 자신감은 존중하지만, 이 글을 끝까지 읽고도 같은 생각이라면 그때 진짜로 인정해 드리겠습니다.", "자신감은 만점입니다. 패셔너블하다는 대답의 유일한 약점은 옷장과 미리 입을 맞춰 두지 않았다는 점입니다."],
-      normal: ["스스로 평범하다고 하셨습니다. 평범함을 유지하려고 이만큼의 옷을 들였다면, 세상에서 가장 공들인 평범함입니다.", "평범하다는 겸손, 옷장은 동의하지 않습니다. 좋은 쪽으로든 나쁜 쪽으로든요."],
-      no: ["전혀 패셔너블하지 않다고 하셨습니다. 이렇게 먼저 인정해 버리면 할 말이 줄어야 하는데, 안타깝게도 옷장은 아직 할 말이 많습니다.", "전혀 아니라면, 이 옷들은 대체 누가 고른 걸까요? 옷장 앞에서 한 번쯤 진지하게 물어보셔야 합니다."],
-      others_say: ["남들이 그렇다더라고 하셨습니다. 그 남들이 혹시 매장 직원이나 계산을 기다리던 사장님은 아니었는지 한 번쯤 확인해 보시길 권합니다.", "칭찬은 공짜라서 쉽게 나옵니다. 남들이 패셔너블하다고 해 준다지만, 그 칭찬에 맞춰 산 옷들은 공짜가 아니었습니다."],
+      high_yes: ["스스로 패셔너블하다고 답하셨고, 드물게도 옷장이 그 말을 뒷받침합니다. 이번만은 자랑해도 됩니다.", "자신 있게 그렇다고 하셨습니다. 옷장 점수가 그 자신감을 보증하니, 반박은 다음 기회로 미루겠습니다."],
+      high_normal: ["평범하다고 하셨지만 옷장은 평범하지 않습니다. 이 정도면 겸손이 아니라 은근한 자랑입니다.", "스스로를 평범하다고 부르는 사람의 옷장치고는 너무 정돈되어 있습니다."],
+      high_no: ["전혀 아니라고 하셨지만, 이 옷장을 보고 그 말을 믿을 사람은 없습니다. 겸손도 과하면 거짓말입니다.", "패셔너블하지 않다는 사람이 이런 옷장을 가지고 있다면, 나머지 사람들은 뭐라고 해야 할까요."],
+      high_others_say: ["남들이 그렇다고 한다더니, 이번만큼은 남들 말이 맞았습니다.", "칭찬해 준 그 사람들, 보는 눈이 있었습니다. 옷장이 증명했습니다."],
+      mid_yes: ["스스로 패셔너블하다고 하셨습니다. 옷장은 반쯤 동의하고, 나머지 반은 아직 협상 중입니다.", "자신감은 충분합니다. 옷장이 그 자신감을 따라잡기까지 조금만 더 기다려 주세요."],
+      mid_normal: ["평범하다고 하셨고, 옷장도 같은 의견입니다. 드물게 자기 평가와 데이터가 일치했습니다.", "평범하다는 답은 정확했습니다. 정확한 게 늘 좋은 건 아니지만요."],
+      mid_no: ["전혀 아니라고 하셨지만 그 정도는 아닙니다. 옷장에 쓸 만한 옷도 분명 있습니다.", "스스로를 너무 낮게 보셨습니다. 옷장은 그보다는 조금 낫습니다."],
+      mid_others_say: ["남들이 그렇다고 한다지만, 그 칭찬에는 예의가 꽤 섞여 있었던 것 같습니다.", "남들의 칭찬은 반만 믿으세요. 옷장이 나머지 반을 말해 주고 있습니다."],
+      low_yes: ["스스로 패셔너블하다고 자신 있게 답하셨습니다. 이 점수를 보고도 같은 생각이라면, 그 자신감만큼은 진짜 명품입니다.", "자신감은 만점입니다. 패셔너블하다는 대답의 유일한 약점은 옷장과 미리 입을 맞춰 두지 않았다는 점입니다."],
+      low_normal: ["평범하다고 하셨습니다. 옷장 점수를 보면 평범이라는 단어가 꽤 너그럽게 쓰였습니다.", "평범하다는 답에는 약간의 희망이 섞여 있었습니다. 옷장은 그 희망을 아직 따라가지 못합니다."],
+      low_no: ["전혀 아니라고 솔직하게 답하셨습니다. 문제를 아는 게 해결의 절반이니, 이 옷장에도 아직 희망은 있습니다.", "스스로 인정하셨으니 더 몰아붙이지는 않겠습니다. 대신 다음 쇼핑 전에 이 글을 한 번 떠올려 주세요."],
+      low_others_say: ["남들이 그렇다고 했다는데, 그 남들이 혹시 매장 직원이나 계산을 기다리던 사장님은 아니었는지 확인해 보시길 권합니다.", "칭찬은 공짜라서 쉽게 나옵니다. 그 칭찬에 맞춰 산 옷들은 공짜가 아니었습니다."],
+    },
+  },
+  // 무신사 구매 링크가 많으면 질문 수와 상관없이 꼭 묻는다(사용자 요청). link_only면 무신사 관련 감점이 절반이 된다.
+  musinsa_link_q: {
+    lead: ["구매 링크 {total}개 중 {n}개가 무신사입니다."],
+    text: "정말 다 무신사에서 산 건가요?",
+    options: { yes: "다 무신사에서 샀음", link_only: "링크만 무신사인 게 많음", dunno: "모르겠음" },
+    react: {
+      yes: ["솔직하시네요. 무신사 VIP 등급이 궁금해집니다.", "네, 옷장이 먼저 자백했습니다."],
+      link_only: ["아, 링크만 빌려 온 거군요. 감점을 조금 봐 드리겠습니다.", "링크만 무신사라니, 알리바이가 생겼네요."],
+      dunno: ["기억이 안 날 만큼 많이 샀다는 뜻이군요.", "모른다는 대답이 제일 무섭습니다."],
+    },
+    roast: {
+      yes: ["구매 링크 대부분이 무신사고, 실제로도 다 무신사에서 샀다고 하셨습니다. 무신사 앱 첫 화면이 당신 옷장의 입구입니다.", "무신사에서 다 샀다는 솔직한 대답 덕분에 이 옷장의 출처가 명확해졌습니다. 장바구니가 곧 옷장이었습니다."],
+      link_only: ["링크만 무신사인 게 많다고 하셨습니다. 다른 데서 사고 링크만 빌려 왔다면, 무신사는 옷장이 아니라 카탈로그였던 셈입니다.", "링크는 무신사, 결제는 딴 데. 알리바이는 인정하지만 링크를 고르는 손가락은 여전히 무신사로 향했습니다."],
+      dunno: ["어디서 샀는지 모르겠다고 하셨습니다. 기억이 안 날 만큼 샀다는 건, 옷장이 영수증보다 빨리 불어났다는 뜻입니다.", "구매처를 모르는 옷장은 출처 불명의 옷장입니다. 다음엔 적어도 어디서 샀는지는 기억해 주세요."],
     },
   },
 };
@@ -1094,8 +1139,9 @@ const BUDGET: Record<string, number> = { b10: 100_000, b30: 300_000, b100: 1_000
 
 const ALWAYS_ASK = new Set(["quiz", "drop_item", "brand_best"]);
 
-export function pickQuestions(a: Analysis, r: Rng, fill: (t: string, v: Vars) => string, T: RoastTexts): AskedQuestion[] {
-  const candidates = QUESTIONS.map((q) => ({ q, vars: q.when(a) }))
+export function pickQuestions(a: Analysis, r: Rng, fill: (t: string, v: Vars) => string, T: RoastTexts, tier: "high" | "mid" | "low" = "mid"): AskedQuestion[] {
+  const candidates = QUESTIONS.filter((q) => !APPENDED.includes(q.id))
+    .map((q) => ({ q, vars: q.when(a) }))
     .filter((c): c is { q: QuestionDef; vars: Vars } => c.vars != null)
     .map((c) => {
       const p = c.q.pattern ? pat(a, c.q.pattern) : undefined;
@@ -1124,6 +1170,18 @@ export function pickQuestions(a: Analysis, r: Rng, fill: (t: string, v: Vars) =>
     if (!built) continue;
     buckets.add(c.q.bucket);
     asked.push(built);
+  }
+  // 무신사 링크 질문(조건이 맞을 때)과 마지막 질문은 늘 끝에 붙인다.
+  for (const id of APPENDED) {
+    const q = QUESTIONS.find((x) => x.id === id)!;
+    const vars = q.when(a);
+    if (!vars) continue;
+    try {
+      const built = build(q, { ...vars, tier }, a, r, fill, T);
+      if (built) asked.push(built);
+    } catch (e) {
+      if (!(e instanceof MissingVar)) throw e;
+    }
   }
   return asked;
 }
@@ -1215,6 +1273,7 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
   }
   const options = q.options.map((id) => ({ id, label: tx.options[id] ?? id }));
   const reactKey = (id: string) => {
+    if (q.id === "fashionable_q") return `${vars.tier ?? "mid"}_${id}`;
     if (q.id !== "max_budget") return id;
     if (id === "nolimit") return "nolimit";
     return BUDGET[id] < Number(vars.max) ? "below" : "within";
@@ -1226,6 +1285,7 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
     options,
     reactions: Object.fromEntries(options.map((o) => [o.id, f(r.pick(tx.react[reactKey(o.id)]))])),
     roast: roastMap(options.map((o) => [o.id, roastOf(reactKey(o.id))])),
+    ...(q.id === "fashionable_q" ? { scoreKey: Object.fromEntries(options.map((o) => [o.id, reactKey(o.id)])) } : {}),
     ...(reveal.length ? { reveal } : {}),
   };
 }

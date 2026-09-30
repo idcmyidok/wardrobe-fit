@@ -1,13 +1,14 @@
 import "server-only";
 import { CATEGORY_NAME } from "@/lib/constants/categories";
 import type { RoastReport } from "@/lib/roast/types";
-import type { Analysis, Item } from "./analyze";
+import { colorCounted, type Analysis, type Item } from "./analyze";
 import { MUSINSA_POPULAR } from "./brands";
 import { quotesAnswer } from "./compose";
 import type { AskedQuestion } from "./questions";
 import { fill, MissingVar, rng, won, type Rng, type Vars } from "./text";
 import type { ReportTexts } from "./report-text";
-import { SCORE_RULES, type ScoreRules } from "./score-deltas";
+import type { ScoreRules } from "./score-deltas";
+import { scoreWardrobe } from "./score";
 import { findColorFamily } from "@/lib/constants/colors";
 
 /**
@@ -91,8 +92,10 @@ export function buildReport(
   R: ReportTexts,
   asked: AskedQuestion[] = [],
   answers: Record<string, string> = {},
-  deltas: Record<string, Record<string, number>> = {},
+  score: Record<string, unknown> = {},
+  age: number | null = null,
 ): RoastReport {
+  const deltas = score as Record<string, Record<string, number>>;
   const r = rng(seed ^ 0x2f6a91c3);
   const items = a.items;
   const clothes = a.clothes;
@@ -132,12 +135,13 @@ export function buildReport(
     add({ id: "subcat", side: "high", strength: clamp((subList.length / clothes.length - 0.25) / 0.35) * 0.8, value: "", vars: { sub: subList[0].subName ?? "옷", n: subList.length, pct: pct(subList.length, clothes.length) }, photos: photosOf(subList) });
 
   // 컬러 편중(4.3)
-  const colored = items.filter((i) => i.color);
+  // 데님은 색 계산에서 뺀다(청바지를 무채색·유채색으로 세지 않게).
+  const colored = items.filter(colorCounted);
   const achro = colored.filter((i) => i.achromatic);
   const achroShare = achro.length / Math.max(colored.length, 1);
 
   // 브랜드 편중(4.4): 적힌 브랜드 이름 기준
-  const branded = items.filter((i) => i.brandLabel);
+  const branded = items.filter((i) => i.brandKind === "known" || i.brandKind === "unknown");
   const byBrand = countBy(branded, (i) => i.brand?.name ?? i.brandLabel.toLowerCase());
   const [, brandList] = byBrand[0] ?? [null, []];
   const brandShare = brandList.length / Math.max(branded.length, 1);
@@ -368,44 +372,40 @@ export function buildReport(
   });
   if (colorPoint) points.splice(Math.min(1, points.length), 0, withAnswer(colorPoint));
   if (walletPoint) points.push(walletPoint);
+  // 숨은 원석(자료에 없는 브랜드), 빈티지·구제, 나이 한마디(점수와 별개로 한 문단씩)
+  const unknownN = branded.filter((i) => i.brandKind === "unknown").length;
+  if (unknownN >= 3 && unknownN / branded.length >= 0.3) {
+    const t = tryFill(r, R.GEM, { pct: pct(unknownN, branded.length), n: unknownN });
+    if (t) points.push({ id: "gem", ...splitLead(t), photos: photosOf(branded.filter((i) => i.brandKind === "unknown")) });
+  }
+  const vintage = items.filter((i) => i.brandKind === "vintage");
+  if (vintage.length >= 3) {
+    const t = tryFill(r, R.VINTAGE, { n: vintage.length });
+    if (t) points.push({ id: "vintage", ...splitLead(t), photos: photosOf(vintage) });
+  }
   const facts = picked.flatMap((d) => {
     const t = d.side === "high" ? texts[d.key].fact : texts[d.key].factLow;
     const f = t ? tryFill(r, [t], d.vars) : null;
     return f ? [f] : [];
   });
 
-  // 총 옷장 점수: "얼마나 힙한가"(SCORE_RULES) + 질문·퀴즈 답별 증감. 가격은 넣지 않는다.
-  const RU = { ...SCORE_RULES, ...((deltas.rules ?? {}) as Partial<ScoreRules>) };
-  const upTo = (share: number, full: number, max: number) => Math.min(max, (share * 100 * max) / Math.max(full, 1));
-  const over = (share: number, from: number, per10: number, max: number) => Math.min(max, (Math.max(0, share * 100 - from) / 10) * per10);
-  const shareOf = (f: (i: Item) => boolean) => (K ? known.filter(f).length / K : 0);
-  let score = RU.base;
-  const styleTop = tags[0] ? tags[0].n / K : 0;
-  if (enough) {
-    score += upTo(shareOf((i) => i.groups.some((g) => g === "designer" || g === "luxury" || g === "contemporary")), RU.designer_full, RU.designer_max);
-    score += upTo(shareOf((i) => i.brand!.pop <= 2), RU.niche_full, RU.niche_max);
-    score += styleTop * 100 >= RU.style_high_pct ? RU.style_high : styleTop * 100 >= RU.style_mid_pct ? RU.style_mid : 0;
-    score += upTo(shareOf((i) => i.groups.includes("jp_denim") || i.brand!.heritage >= 4 || i.brand!.tags.some((t) => /워크웨어|빈티지|아메카지/.test(t))), RU.taste_full, RU.taste_max);
-    score -= over(shareOf((i) => i.groups.includes("mass")), RU.mass_from, RU.mass_per10, RU.mass_max);
-    if (shareOf((i) => i.brand!.hype >= 4 && i.brand!.pop >= 4) * 100 >= RU.trendy_pct) score -= RU.trendy;
-    if (styleTop * 100 < RU.scattered_pct && branded.length >= 8 && byBrand.length / branded.length >= 0.7) score -= RU.scattered;
-  }
-  if (branded.length >= 8) score -= over(musinsaShare, RU.musinsa_from, RU.musinsa_per10, RU.musinsa_max);
-  if (linked.filter((i) => i.shop === "후르츠패밀리" || i.shop === "번개장터").length >= 3) score += RU.digging;
-  const chromaN = colored.filter((i) => !i.achromatic).length;
-  if (colored.length >= 5 && achroShare >= 0.6 && chromaN >= 1 && chromaN <= 3) score += RU.accent;
-  const copies =
-    countBy(clothes.filter((i) => i.sub && i.color), (i) => `${i.sub}|${i.color}`).reduce((n, [, l]) => n + Math.max(0, l.length - 2), 0) +
-    countBy(items, (i) => (i.g.productName ? `${i.brandLabel}|${i.g.productName}|${i.color ?? ""}`.toLowerCase() : null)).reduce((n, [, l]) => n + Math.max(0, l.length - 1), 0);
-  score -= Math.min(RU.dup_max, copies * RU.dup_each);
-  const misfit = clothes.filter((i) => i.fit && (i.fit.level === "too_small" || i.fit.level === "too_big")).length;
-  score -= Math.min(RU.misfit_max, misfit * RU.misfit_each);
+  // 총 옷장 점수: 옷장 점수(score.ts) + 질문·퀴즈 답별 증감
+  const wardrobe = scoreWardrobe(a, {
+    age,
+    musinsaLinkOnly: answers.musinsa_link_q === "link_only",
+    rules: deltas.rules as Partial<ScoreRules> | undefined,
+    ageRules: (score.age as Record<string, Record<string, number>> | undefined) ?? undefined,
+  });
   const bonus = asked.reduce((sum, q) => {
     const ans = answers[q.id];
     if (!ans) return sum;
     return sum + (deltas[q.id]?.[q.scoreKey?.[ans] ?? ans] ?? 0);
   }, 0);
-  const totalScore = Math.max(0, Math.min(100, Math.round(score + bonus)));
+  const totalScore = Math.max(0, Math.min(100, Math.round(wardrobe.score + bonus)));
+  if (wardrobe.age) {
+    const t = tryFill(r, (R.age as Record<string, string[]>)[wardrobe.age.kind] ?? [], { age: wardrobe.age.age, pct: wardrobe.age.pct });
+    if (t) points.push({ id: "age", ...splitLead(t) });
+  }
   const band = (totalScore >= 90 ? "b90" : `b${Math.floor(totalScore / 10) * 10}`) as keyof ReportTexts["HEADLINE"];
 
   // 옷장 DNA: 해당하는 것 중 다섯 문장까지. 진단 문단에 이미 나온 주제는 뺀다.

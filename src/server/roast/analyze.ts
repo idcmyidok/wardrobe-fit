@@ -52,7 +52,29 @@ export interface Item {
   accessory: boolean;
   /** 구매 링크의 쇼핑몰(예: 무신사). 링크가 없으면 null */
   shop: string | null;
+  /** 데님(데님 계열 색·데님 팬츠·제품명에 데님/청바지). 색 계산에서는 빼고 본다(청바지를 무채색·유채색으로 세지 않게, 사용자 요청). */
+  denim: boolean;
+  /**
+   * 브랜드 칸의 종류. known: 브랜드 자료에 있음, unknown: 자료에 없는 이름(작은 브랜드일 수 있어 보세로 치지 않음),
+   * nobrand: 보세·모름·없음 등, vintage: 빈티지·구제, none: 비어 있음
+   */
+  brandKind: "known" | "unknown" | "nobrand" | "vintage" | "none";
 }
+
+const NO_BRAND = /^(보세|모름|모르겠음|없음|노브랜드|no ?brand|unknown|기타|-+|\?+|x)$/i;
+const VINTAGE = /^(빈티지|구제|vintage|빈티지 ?샵|구제 ?샵)$/i;
+
+export function brandKindOf(label: string, known: boolean): Item["brandKind"] {
+  const t = label.trim();
+  if (!t) return "none";
+  if (known) return "known";
+  if (NO_BRAND.test(t)) return "nobrand";
+  if (VINTAGE.test(t)) return "vintage";
+  return "unknown";
+}
+
+/** 색 계산에 넣는 옷(색이 있고 데님이 아님) */
+export const colorCounted = (i: Item) => Boolean(i.color) && !i.denim;
 
 export type Stat = string | number;
 
@@ -133,6 +155,8 @@ export function prepare(garments: Garment[], body: BodyProfile | null, usdRate: 
         hasPhoto: Boolean(g.thumbUrl || g.imageUrl),
         accessory,
         shop: shopOf(g.productUrl),
+        denim: color === "데님" || g.subcategoryId === "bottom.denim" || /데님|청바지|청자켓|진 ?팬츠|jean|denim/i.test(g.productName),
+        brandKind: brandKindOf(g.brand, Boolean(brand)),
       };
     });
 }
@@ -244,7 +268,7 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     add("hat_sub_bias", ramp(hatSubList.length / hats.length, 0.6, 1), 0.6, { sub: hatSubList[0].subName ?? "모자", n: hatSubList.length, total: hats.length }, hatSubList);
 
   // 컬러 ---------------------------------------------------------------------
-  const colored = items.filter((i) => i.color);
+  const colored = items.filter(colorCounted);
   const C = colored.length;
   if (C >= 5) {
     const black = colored.filter((i) => i.color === "블랙");

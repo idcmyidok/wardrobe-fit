@@ -62,6 +62,8 @@ export function RoastView({ initialResult, copy = ROAST_COPY }: { initialResult:
   const [mode, setMode] = useState<"result" | "intro" | "name" | "chat">(initialResult ? "result" : "intro");
   // 이름은 이번 결과에만 쓰고 다음 분석 때 미리 채우지 않는다.
   const [name, setName] = useState<string | null>(null);
+  // 나이도 이번 계산에만 쓰고 결과·저장소 어디에도 남기지 않는다.
+  const [age, setAge] = useState<number | null>(null);
   // 방금 끝난 분석의 결과는 대화 아래에 이어 붙인다(다시 들어오면 결과만 보인다).
   const [fresh, setFresh] = useState<RoastResult | null>(null);
   const [run, setRun] = useState(0);
@@ -108,6 +110,7 @@ export function RoastView({ initialResult, copy = ROAST_COPY }: { initialResult:
             <Chat
               key={run}
               name={name}
+              age={age}
               preview={signedIn ? undefined : garments}
               photoOf={photoOf}
               onDone={(r) => {
@@ -135,8 +138,9 @@ export function RoastView({ initialResult, copy = ROAST_COPY }: { initialResult:
           <Intro
             clothes={clothes}
             skipIntro={mode === "name"}
-            onStart={(n) => {
+            onStart={(n, ag) => {
               setName(n);
+              setAge(ag);
               setFresh(null);
               setRun((x) => x + 1);
               setMode("chat");
@@ -273,13 +277,14 @@ function Photos({
   );
 }
 
-function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: boolean; onStart: (name: string | null) => void }) {
+function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: boolean; onStart: (name: string | null, age: number | null) => void }) {
   const copy = useContext(CopyContext);
   // 다시 분석할 때도 소개 문구부터 타이핑한다.
   const [typed, setTyped] = useState(false);
   const [declined, setDeclined] = useState<string | null>(null);
   const [asking, setAsking] = useState(skipIntro);
   const [name, setName] = useState("");
+  const [age, setAge] = useState("");
   const enough = clothes >= MIN_CLOTHES;
 
   return (
@@ -318,7 +323,8 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
           className="flex flex-col gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            onStart(name.trim() || null);
+            const n = Number(age);
+            onStart(name.trim() || null, Number.isInteger(n) && n >= 10 && n <= 99 ? n : null);
           }}
         >
           <p className="roast-ai">
@@ -334,11 +340,21 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
               placeholder="예: 세현"
               className="min-h-12 w-56 max-w-full border border-text bg-surface px-3 text-body"
             />
+            <input
+              value={age}
+              onChange={(e) => setAge(e.target.value.replace(/\D/g, "").slice(0, 2))}
+              inputMode="numeric"
+              autoComplete="off"
+              aria-label="나이"
+              placeholder="나이"
+              className="min-h-12 w-20 border border-text bg-surface px-3 text-body"
+            />
             <button type="submit" className={buttonClassName({ variant: "primary", size: "lg" })}>
               시작하기
             </button>
           </div>
           <span className="text-sm text-neutral-700">{copy.NAME_HINT}</span>
+          {copy.AGE_HINT && <span className="text-sm text-neutral-700">{copy.AGE_HINT}</span>}
         </form>
       )}
     </div>
@@ -347,11 +363,13 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
 
 function Chat({
   name,
+  age,
   preview,
   photoOf,
   onDone,
 }: {
   name: string | null;
+  age: number | null;
   preview: unknown;
   photoOf: (id: string) => string | null;
   onDone: (r: RoastResult) => void;
@@ -417,7 +435,7 @@ function Chat({
     started.current = true;
     void (async () => {
       // 분석을 준비하는 동안 첫 멘트를 먼저 띄운다.
-      const starting = startRoast({ name, preview });
+      const starting = startRoast({ name, age, preview });
       if (copy.OPENING.length) {
         await think(700);
         await sayBubbles(copy.OPENING[Math.floor(Math.random() * copy.OPENING.length)]);
@@ -432,7 +450,7 @@ function Chat({
       const answers = await play(start.script);
       push({ kind: "status", text: copy.WRITING });
       const dots = push({ kind: "dots" });
-      const done = await finishRoast({ seed: start.script.seed, name, answers, preview });
+      const done = await finishRoast({ seed: start.script.seed, name, age, answers, preview });
       remove(dots);
       if (!done.ok) {
         setError(done.message);
@@ -496,7 +514,7 @@ function Chat({
       }
       return answers;
     }
-  }, [name, preview, onDone, push, say, think, copy]);
+  }, [name, age, preview, onDone, push, say, think, copy]);
 
   const onTyped = useCallback((id: number) => {
     setTypedIds((s) => new Set(s).add(id));

@@ -57,54 +57,171 @@ export const SCORE_DELTAS: Record<string, Record<string, number>> = {
   shop_q: { points: -1, habit: -2, best: 1 },
   vintage_q: { often: 2, browse: 0, no_used: -1 },
   influencer_q: { daily: -2, sometimes: 0, never: 1 },
-  fashionable_q: { yes: -2, normal: 0, no: 1, others_say: -1 },
+  /** 마지막 질문: 옷장 점수 구간(high 70+, mid 40~69, low 40 미만) × 답 */
+  fashionable_q: {
+    high_yes: 3,
+    high_normal: 1,
+    high_no: -1,
+    high_others_say: 2,
+    mid_yes: -2,
+    mid_normal: 1,
+    mid_no: 0,
+    mid_others_say: -1,
+    low_yes: -5,
+    low_normal: -2,
+    low_no: 2,
+    low_others_say: -3,
+  },
+  /** 무신사 구매 링크 질문. link_only를 고르면 무신사 관련 감점이 절반이 된다(report.ts). */
+  musinsa_link_q: { yes: 0, link_only: 0, dunno: 0 },
 };
 
 /**
- * 총 옷장 점수 기준("얼마나 힙한가", 사용자 요청: 다양하다고 좋은 게 아니라 힙하고 패셔너블할수록 높게).
- * 기본 점수에서 더하고 빼고, 질문·퀴즈 증감(SCORE_DELTAS)을 더한 뒤 0~100으로 자른다. 가격은 넣지 않는다.
- * 비율 기준은 %(0~100), 점수는 정수. 관리자 문장 편집의 "점수" 탭(score.rules)에서 고친다.
+ * 총 옷장 점수 기준("얼마나 힙한가", 계획서 /mnt/project-files/roast/score-plan.md).
+ * 기본 점수에서 더하고 빼고, 질문·퀴즈 증감(SCORE_DELTAS)을 더한 뒤 0~100으로 자른다.
+ * 비율은 %, 금액은 만 원, 점수는 정수(감점도 양수로 적는다). 관리자 문장 편집의 "점수" 탭(score.rules)에서 고친다.
  */
 export const SCORE_RULES = {
   base: 50,
-  /** 디자이너·하이엔드·컨템포러리·럭셔리 브랜드 비율이 designer_full%면 +designer_max */
-  designer_max: 20,
-  designer_full: 80,
-  /** 대중성 낮은 브랜드(대중성 2 이하) 비율이 niche_full%면 +niche_max */
-  niche_max: 10,
-  niche_full: 60,
-  /** 1위 스타일 태그 비율 */
-  style_mid_pct: 50,
-  style_mid: 5,
-  style_high_pct: 65,
-  style_high: 10,
-  /** 헤리티지·일본 데님·워크웨어 브랜드 비율이 taste_full%면 +taste_max */
+  // 더하는 점수
+  designer_each: 2,
+  designer_max: 10,
+  niche_full: 20,
+  niche_max: 8,
+  style_mid_pct: 30,
+  style_mid: 4,
+  style_high_pct: 50,
+  style_high: 8,
+  taste_full: 20,
   taste_max: 5,
-  taste_full: 50,
-  /** 후르츠패밀리·번개장터 구매 3벌 이상 */
-  digging: 3,
-  /** 무채색이 60% 이상인데 유채색이 1~3벌 */
+  fruits_n: 3,
+  fruits: 3,
+  accent_basic_pct: 70,
+  accent_max_n: 4,
   accent: 3,
-  /** SPA·매스마켓 비율이 mass_from%를 넘는 10%p마다 -mass_per10(최대 mass_max) */
-  mass_from: 20,
-  mass_per10: 4,
-  mass_max: 20,
-  /** 무신사 인기 브랜드 비율 */
-  musinsa_from: 50,
+  basic_pct: 85,
+  basic_lux_n: 3,
+  basic_lux: 4,
+  steady_gap: 3,
+  steady: 2,
+  good_outer: 2,
+  leather_shoes: 2,
+  kr_new_year: 2015,
+  kr_new_n: 2,
+  kr_new: 3,
+  jp_n: 3,
+  jp: 2,
+  repro: 2,
+  repro_many_n: 3,
+  repro_many: 4,
+  foreign_pct: 30,
+  foreign: 2,
+  bold_won: 50,
+  bold: 2,
+  regular_n: 3,
+  regular: 2,
+  shoe_set: 3,
+  spend_top_won: 30,
+  spend_top: 3,
+  // 빼는 점수
+  mass_from: 50,
+  mass_per10: 3,
+  mass_max: 12,
+  musinsa_from: 60,
   musinsa_per10: 3,
-  musinsa_max: 10,
-  /** 하이프 4 이상이고 대중성 4 이상인 브랜드가 trendy_pct% 이상 */
+  musinsa_max: 9,
+  /** 26세 이하에 산 옷은 무신사 인기 브랜드 쏠림에서 1/musinsa_young_div만 센다 */
+  musinsa_young_div: 3,
   trendy_pct: 50,
   trendy: 5,
-  /** 세부분류·색이 같은 묶음의 3벌째부터, 제품명이 같은 옷의 2벌째부터 한 벌당 */
   dup_each: 3,
   dup_max: 15,
-  /** 1위 스타일 태그가 scattered_pct% 미만이고 브랜드가 문어발 */
-  scattered_pct: 25,
+  scattered_pct: 20,
   scattered: 5,
-  /** 내 치수 기준 너무 작거나 큰 옷 한 벌당 */
   misfit_each: 2,
   misfit_max: 10,
+  gap_months: 4,
+  gap_max: 12,
+  basic_mass_pct: 40,
+  basic_mass: 4,
+  lux_mismatch: 3,
+  sneakers_only: 2,
+  logo_pct: 20,
+  logo: 3,
+  season_gap_pct: 25,
+  season_gap: 2,
+  spend_a_won: 20,
+  spend_a: 1,
+  spend_b_won: 10,
+  spend_b: 3,
+  spend_c: 5,
+  // 마지막 질문("스스로 패셔너블하다고 생각하나요?")의 점수 구간
+  tier_high: 70,
+  tier_low: 40,
 };
 
 export type ScoreRules = typeof SCORE_RULES;
+
+/**
+ * 나이에 맞는 옷: 옷을 산 때 나이 구간별 기준(구매일이 없으면 지금 나이). 구간마다 그 구간에 산 옷끼리 비율을 내고,
+ * 그 구간 옷이 차지하는 비중만큼 반영한다. *_pct는 %, 나머지는 점수(감점도 양수).
+ * street: 스트릿·하이프, mature: 컨템포러리·헤리티지·포멀, musinsa: 무신사 인기 브랜드(SPA 제외), formal: 포멀·럭셔리, lux_n: 럭셔리 벌 수
+ */
+export const AGE_RULES: Record<string, Record<string, number>> = {
+  b0: {
+    street_plus_pct: 40,
+    street_plus: 2,
+    formal_pct: 40,
+    formal_minus: 3,
+    lux_n: 2,
+    lux_minus: 3,
+  },
+  b20: { street_plus_pct: 40, street_plus: 2, formal_pct: 40, formal_minus: 2 },
+  b24: {},
+  b27: { mature_pct: 30, mature_plus: 2, musinsa_pct: 60, musinsa_minus: 1 },
+  b30: { mature_pct: 30, mature_plus: 2, musinsa_pct: 50, musinsa_minus: 3 },
+  b36: {
+    mature_pct: 40,
+    mature_plus: 3,
+    musinsa_pct: 45,
+    musinsa_minus: 4,
+    street_pct: 60,
+    street_minus: 4,
+  },
+  b41: {
+    mature_pct: 40,
+    mature_plus: 4,
+    musinsa_pct: 40,
+    musinsa_minus: 5,
+    street_pct: 50,
+    street_minus: 5,
+  },
+  b51: {
+    mature_pct: 40,
+    mature_plus: 5,
+    musinsa_pct: 40,
+    musinsa_minus: 6,
+    street_pct: 40,
+    street_minus: 6,
+  },
+  b61: {
+    mature_pct: 50,
+    mature_plus: 5,
+    musinsa_pct: 40,
+    musinsa_minus: 6,
+    street_pct: 30,
+    street_minus: 7,
+  },
+};
+/** 구간 시작 나이(위 AGE_RULES 키 순서대로) */
+export const AGE_BANDS: [string, number][] = [
+  ["b0", 0],
+  ["b20", 20],
+  ["b24", 24],
+  ["b27", 27],
+  ["b30", 30],
+  ["b36", 36],
+  ["b41", 41],
+  ["b51", 51],
+  ["b61", 61],
+];
