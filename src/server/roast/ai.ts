@@ -114,7 +114,7 @@ const DESCRIBE: Record<string, string> = {
 for (const g of BRAND_GROUPS) DESCRIBE[`group_${g}`] = `${GROUP_WORD[g]}가 많음({n}벌, {pct}%, 대표 {brand})`;
 
 /** 자리로 보내면 안 되는(개인정보·지어낼 수 있는) 값: 이름·브랜드·제품명·모든 숫자 */
-const SECRET_KEYS = new Set(["brand", "name", "oldest"]);
+const SECRET_KEYS = new Set(["brand", "name", "oldest", "names"]);
 
 export interface AiInput {
   text: string;
