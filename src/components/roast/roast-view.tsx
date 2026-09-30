@@ -18,7 +18,7 @@ import "./roast.css";
  */
 
 const PREVIEW_KEY = "wardrobe-fit:roast-result";
-const TYPE_MS = 26;
+const TYPE_MS = 52;
 
 type Msg =
   | { id: number; kind: "ai"; text: string; photos?: string[]; gap?: boolean }
@@ -188,9 +188,11 @@ function Typed({ text, onDone }: { text: string; onDone?: () => void }) {
 function Dots() {
   return (
     <span className="roast-dots" role="status" aria-label="생각하는 중">
-      <span />
-      <span />
-      <span />
+      {Array.from({ length: 6 }, (_, i) => (
+        <span key={i} aria-hidden style={{ animationDelay: `${i * 0.12}s` }}>
+          .
+        </span>
+      ))}
     </span>
   );
 }
@@ -368,14 +370,18 @@ function Chat({
 
     async function play(script: RoastScript): Promise<Record<string, string>> {
       const answers: Record<string, string> = {};
+      let sectionSeen = false;
       for (const step of script.steps) {
         if (step.t === "status") {
+          // 섹션이 바뀔 때는 한참 고민하는 것처럼 멈춘다.
+          if (sectionSeen) await think(2400 + Math.random() * 1200);
+          sectionSeen = true;
           push({ kind: "status", text: step.text });
           await sleep(500);
         } else if (step.t === "think") await think(700 + Math.random() * 700);
         else if (step.t === "say") {
           // 섹션 사이 혼잣말은 앞 이야기와 이어지는 말로 읽히지 않게 한 박자 쉬고 띄워서 보여 준다.
-          if (step.gap) await sleep(reducedMotion() ? 150 : 1400);
+          if (step.gap) await think(1600 + Math.random() * 800);
           await say(step.text, step.photos, step.gap);
           await sleep(350 + Math.random() * 500);
         } else {
