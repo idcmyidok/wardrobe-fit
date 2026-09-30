@@ -23,7 +23,7 @@ const TYPE_MS = 43;
 
 type Msg =
   | { id: number; kind: "ai"; text: string; photos?: string[]; gap?: boolean; captions?: Record<string, string> }
-  | { id: number; kind: "status"; text: string }
+  | { id: number; kind: "status"; text: string; gap?: boolean }
   | { id: number; kind: "dots" }
   | { id: number; kind: "choices"; q: RoastQuestion; picked: string | null };
 
@@ -447,7 +447,7 @@ function Chat({
       }
       if (start.aiLeft === 0) setNoAi(true);
       const answers = await play(start.script);
-      push({ kind: "status", text: copy.WRITING });
+      push({ kind: "status", text: copy.WRITING, gap: true });
       const dots = push({ kind: "dots" });
       const done = await finishRoast({ seed: start.script.seed, name, age, answers, preview });
       remove(dots);
@@ -479,7 +479,7 @@ function Chat({
           // 섹션이 바뀔 때는 한참 고민하는 것처럼 멈춘다.
           if (sectionSeen) await think(2400 + Math.random() * 1200);
           sectionSeen = true;
-          push({ kind: "status", text: step.text });
+          push({ kind: "status", text: step.text, ...(step.gap ? { gap: true } : {}) });
           await sleep(500);
         } else if (step.t === "think") await think(700 + Math.random() * 700);
         else if (step.t === "say") {
@@ -489,11 +489,12 @@ function Chat({
           await sleep(350 + Math.random() * 500);
         } else {
           const q = script.questions[step.q];
+          // 질문은 늘 새 이야기로 시작한다(앞 문장과 간격을 둔다).
           for (const [i, l] of q.lead.entries()) {
-            await sayBubbles(l, q.leadPhotos?.[i]);
+            await sayBubbles(l, q.leadPhotos?.[i], i === 0);
             await sleep(450);
           }
-          await say(q.text, q.photos);
+          await say(q.text, q.photos, !q.lead.length);
           const picked = await new Promise<string>((resolve) => {
             choiceWaiter.current = resolve;
             push({ kind: "choices", q, picked: null });
@@ -531,7 +532,7 @@ function Chat({
             {typedIds.has(m.id) && <Photos ids={m.photos} photoOf={photoOf} animate captions={m.captions} />}
           </div>
         ) : m.kind === "status" ? (
-          <p key={m.id} className="roast-status">
+          <p key={m.id} className="roast-status" data-gap={m.gap ? "true" : undefined}>
             {m.text}
           </p>
         ) : m.kind === "dots" ? (
@@ -646,6 +647,7 @@ function ResultView({
         ))}
       </div>
       <p className="text-sm text-neutral-700">{result.disclaimer}</p>
+      {result.report?.scoreDetail && <ScoreDetail detail={result.report.scoreDetail} />}
       <div>
         <button type="button" className={buttonClassName({ variant: "primary", size: "lg" })} onClick={onRetry}>
           {copy.RETRY_LABEL}
@@ -655,7 +657,7 @@ function ResultView({
   );
 }
 
-/** 결과 페이지: How Bad Is Your Spotify처럼 글 위주(총점 평가 → "> " 문장 → 목록 → 총점 → 진단 문단·사진 줄 → DNA) */
+/** 결과 페이지: How Bad Is Your Spotify처럼 글 위주(총점 평가 → 요약 한 문장 → "> " 문장 → 목록 → 총점 → 진단 문단·사진 줄) */
 const REPORT_ORDER = ["intro", "lists", "total", "points", "dna", "notes"];
 
 function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string) => string | null }) {
@@ -698,7 +700,8 @@ function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string
         <PhotoRow ids={p.photos} photoOf={photoOf} />
       </div>
     )),
-    dna: report.dna.length > 0 && (
+    // 예전 결과만 옷장 DNA가 있다(새 결과는 제목 아래 요약 한 문장).
+    dna: report.dna && report.dna.length > 0 && (
       <p>
         <b>{report.dnaLead}</b> {report.dna.join(" ")}
       </p>
@@ -715,10 +718,41 @@ function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string
         <span className="roast-prompt">&gt;</span>
         {report.headline}
       </h2>
+      {report.summary && <p className="roast-summary">{report.summary}</p>}
       {order.map((k) => (
         <Fragment key={k}>{sections[k]}</Fragment>
       ))}
     </div>
+  );
+}
+
+/** 점수 풀이(관리자에게만 온다): 기본 점수에서 무엇 때문에 얼마나 오르내렸는지 */
+function ScoreDetail({ detail }: { detail: NonNullable<RoastReport["scoreDetail"]> }) {
+  const sum = detail.base + detail.items.reduce((s, x) => s + x.delta, 0);
+  const sign = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(Math.round(v * 10) / 10)}`;
+  return (
+    <section className="roast-score border border-divider px-4 py-3 text-sm" data-testid="roast-score-detail">
+      <p className="font-semibold">점수 계산 (관리자에게만 보입니다)</p>
+      <ul className="mt-2 flex flex-col gap-1">
+        <li className="flex justify-between gap-4">
+          <span>기본 점수</span>
+          <span className="tabular-nums">{detail.base}</span>
+        </li>
+        {detail.items.map((x, i) => (
+          <li key={i} className="flex justify-between gap-4">
+            <span>
+              {x.label}
+              {x.why && <span className="text-neutral-700"> ({x.why})</span>}
+            </span>
+            <span className="tabular-nums">{sign(x.delta)}</span>
+          </li>
+        ))}
+        <li className="flex justify-between gap-4 border-t border-divider pt-1 font-semibold">
+          <span>{Math.round(sum) !== detail.total ? `총점 (계산 ${Math.round(sum)}점, 0~100으로 맞춤)` : "총점"}</span>
+          <span className="tabular-nums">{detail.total}</span>
+        </li>
+      </ul>
+    </section>
   );
 }
 

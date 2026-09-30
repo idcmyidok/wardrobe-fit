@@ -717,7 +717,7 @@ export const Q_TEXT: Record<string, QuestionText> = {
     },
   },
   fit_choice: {
-    lead: ["핏을 아는 옷 {n}벌 중 {pct}%가 {fit}입니다."],
+    lead: ["옷 핏을 보면 {pct}%가 {fit}입니다."],
     text: "일부러 이렇게 입는 건가요?",
     options: { intended: "의도한 실루엣", comfy: "편해서", dunno: "사이즈 잘 모름" },
     react: {

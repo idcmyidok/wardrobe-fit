@@ -230,6 +230,25 @@ const dayKey = (d: Date) => {
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);
 const monthIndex = (ym: string) => Number(ym.slice(0, 4)) * 12 + Number(ym.slice(5, 7)) - 1;
 
+/** 실측 비교 부위: 가슴·총장은 꼭, 소매·어깨는 두 옷 모두 적었을 때만 */
+const MEASURE_KEYS = ["chest", "length", "sleeve", "shoulder"] as const;
+const MEASURE_TOLERANCE = 2;
+function measureGap(a: Item, b: Item): number {
+  let gap = 0;
+  for (const k of MEASURE_KEYS) {
+    const x = a.g.measurements[k];
+    const y = b.g.measurements[k];
+    if (x != null && y != null) gap = Math.max(gap, Math.abs(x - y));
+  }
+  return gap;
+}
+export function similarMeasure(a: Item, b: Item): boolean {
+  const m1 = a.g.measurements;
+  const m2 = b.g.measurements;
+  if (m1.chest == null || m2.chest == null || m1.length == null || m2.length == null) return false;
+  return measureGap(a, b) <= MEASURE_TOLERANCE;
+}
+
 export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: number, now = new Date()): Analysis {
   const items = prepare(garments, body, usdRate);
   const clothes = items.filter((i) => !i.accessory);
@@ -408,14 +427,16 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
   if (fam && fam.list.length >= 3)
     add("family_repeat", ramp(fam.list.length, 3, 8), 0.8, { family: fam.id, n: fam.list.length, kind: fam.list.every((i) => i.cat === "bottom") ? "바지" : "옷" }, fam.list);
 
+  // 실측이 거의 같은 옷: 같은 세부분류에서 가슴·총장(+ 둘 다 적은 경우 소매·어깨)이 각 2cm 이내.
+  // 묶음 안의 모든 옷끼리 서로 비슷해야 한다(A-B, B-C만 비슷하면 A와 C는 다를 수 있다. 짧은 옷과 긴 옷이 한 묶음이 되지 않게, 사용자 요청).
   let bestCluster: Item[] = [];
   for (const [, list] of bySub) {
     const m = list.filter((i) => i.g.measurements.length != null && i.g.measurements.chest != null);
     for (const a of m) {
-      const near = m.filter(
-        (b) => Math.abs(b.g.measurements.length! - a.g.measurements.length!) <= 2 && Math.abs(b.g.measurements.chest! - a.g.measurements.chest!) <= 2,
-      );
-      if (near.length > bestCluster.length) bestCluster = near;
+      const cluster = [a];
+      const candidates = m.filter((b) => b !== a && similarMeasure(a, b)).sort((x, y) => measureGap(a, x) - measureGap(a, y));
+      for (const b of candidates) if (cluster.every((c) => similarMeasure(b, c))) cluster.push(b);
+      if (cluster.length > bestCluster.length) bestCluster = cluster;
     }
   }
   // 실측이 비슷해도 색이 제각각이면 덜 뚜렷하게 본다(색까지 같아야 비꼬기 좋다, 사용자 요청).

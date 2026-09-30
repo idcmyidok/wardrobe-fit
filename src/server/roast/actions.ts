@@ -8,6 +8,7 @@ import type { RoastFinish, RoastGarmentRef, RoastResult, RoastStart } from "@/li
 import { isAuthConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
 import type { Garment } from "@/lib/types/domain";
+import { isAdmin } from "@/server/admin/guard";
 import { getQuotaExemption } from "@/server/admin/is-admin";
 import { getAiProvider } from "@/server/ai/provider";
 import { getMyBodyProfile } from "@/server/body/queries";
@@ -119,6 +120,8 @@ export async function finishRoast(input: { seed: number; name: string | null; ag
     const plan = buildScript(a, seed, name, texts, age);
     const composed = composeResult(a, name, seed, texts, plan.asked, answers);
     const report = buildReport(a, name, seed, texts.report, plan.asked, answers, texts.score, age);
+    // 점수 풀이는 관리자에게만 보인다(미리보기 모드는 로그인 없는 개발용 화면이라 확인용으로 보여 준다).
+    if (s.userId && !(await isAdmin(s.userId))) delete report.scoreDetail;
 
     let written: Pick<RoastResult, "headline" | "paragraphs" | "closing"> = composed;
     let aiUsed = false;

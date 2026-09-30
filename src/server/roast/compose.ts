@@ -16,7 +16,6 @@ import { DEFAULT_TEXTS, type RoastTexts } from "./texts";
  * 숫자와 이름은 모두 패턴의 근거 값에서 채운다.
  */
 
-const SECTION_ORDER: Section[] = ["size", "category", "acc", "color", "brand", "group", "trait", "style", "shop", "repeat", "season", "timing", "money", "spend", "odd"];
 /** 관련 패턴이 없는 질문이 들어갈 자리 */
 const QUESTION_SECTION: Record<string, Section> = { quiz: "brand", brand_best: "brand", drop_item: "money", count_guess: "size", max_budget: "money", food_vs_clothes: "money", golden_spoon: "money" };
 
@@ -75,6 +74,42 @@ const photosOf = (a: Analysis, p: Pattern) => p.garmentIds.filter((id) => a.item
 
 const NO_PHOTO = new Set(["subcategory_spend", "count_small", "count_many", "count_huge", "avg_price", "trait_hype", "trait_trendy", "trait_timeless", "trait_functional", "trait_niche", "trait_mainstream", "trait_formal", "trait_casual", "trait_heritage", "trait_pricey", "country_bias", "season_bias", "musinsa_kr"]);
 
+/** 대화의 이야기 한 묶음: 분석 문장 하나 또는 질문 하나 */
+type Block = { kind: "say"; p: Pattern; sec: Section } | { kind: "ask"; i: number; sec: Section | null };
+
+/** 관련 패턴이 있는 질문은 그 패턴의 섹션 */
+function sectionOfQuestion(id: string): Section | null {
+  const pattern = QUESTIONS.find((d) => d.id === id)?.pattern;
+  return pattern ? (LINE_SECTION[pattern] ?? null) : null;
+}
+
+/** 질문이 처음 나올 수 있는 위치(전체 이야기 수 대비). 앞쪽은 분석 문장으로만 채운다. */
+export const QUESTION_FROM = 0.4;
+
+/**
+ * 분석 문장과 질문을 섹션으로 묶지 않고 섞는다(사용자 요청). 질문은 늘 전체의 40% 지점 이후에만 두고,
+ * 되도록 질문끼리 붙지 않게(사이에 분석 문장 하나 이상) 둔다. 질문이 많아 자리가 모자랄 때만 질문끼리 붙인다.
+ */
+export function mixBlocks<T>(says: T[], asks: T[], r: Rng): T[] {
+  const S = says.length;
+  const Q = asks.length;
+  if (!Q) return [...says];
+  // k: 그 질문 앞에 오는 분석 문장 수. j번째 질문(0부터)의 위치는 k + j ≥ k라서 k ≥ kMin이면 40% 조건을 지킨다.
+  const kMin = Math.min(S, Math.ceil(QUESTION_FROM * (S + Q)));
+  const range = Array.from({ length: S - kMin + 1 }, (_, i) => kMin + i);
+  // k가 서로 다르면 질문끼리 붙지 않는다. 자리가 모자라면 남은 질문은 이미 고른 자리에 겹쳐 둔다(질문끼리 붙음).
+  const ks = r.shuffle(range).slice(0, Q);
+  while (ks.length < Q) ks.push(r.pick(range));
+  ks.sort((x, y) => x - y);
+  const out: T[] = [];
+  let q = 0;
+  for (let k = 0; k <= S; k++) {
+    while (q < Q && ks[q] === k) out.push(asks[q++]);
+    if (k < S) out.push(says[k]);
+  }
+  return out;
+}
+
 export interface Plan {
   script: RoastScript;
   /** 결과 글을 만들 때 다시 쓰는 질문(반응·결과 문장 포함) */
@@ -107,25 +142,15 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
   if (greet) say(fill(r.pick(C.NAME_GREETING), { name: name! }));
   say(fill(r.pick(C.SCAN_OPEN), { n: a.clothes.length }));
 
-  // 질문이 들어갈 자리: 관련 패턴 바로 뒤, 없으면 그 섹션 끝
-  const questionFor = (p: Pattern) =>
-    asked.map((q, i) => ({ q, i })).filter(({ q }) => QUESTIONS.find((d) => d.id === q.id)?.pattern === p.id);
-  const placed = new Set<number>();
+  // 질문과 같은 사진은 질문에서만 보여 준다(같은 사진이 두 번 나오지 않게).
+  const askedPhotos = new Set(asked.flatMap((q) => q.photos));
+  // 질문은 화면이 늘 새 이야기로 띄운다(앞 문장과 간격을 둔다).
   const ask = (i: number) => {
-    if (placed.has(i)) return;
-    placed.add(i);
-    // 같은 섹션 안에서 먼저 보여 준 사진이 질문 사진과 겹치면 질문에서만 보여 준다(같은 사진이 두 번 나오지 않게).
-    const photos = new Set(asked[i].photos);
-    for (let k = steps.length - 1; photos.size && k >= 0; k--) {
-      const s = steps[k];
-      if (s.t === "status") break;
-      if (s.t === "say" && s.photos?.some((id) => photos.has(id))) delete s.photos;
-    }
     steps.push({ t: "think" });
     steps.push({ t: "ask", q: i });
   };
 
-  // 혼잣말·추임새는 한 번의 분석에서 같은 문장을 두 번 쓰지 않는다(다 쓰면 더 끼우지 않는다).
+  // 혼잣말·추임새·진행 문구는 한 번의 분석에서 같은 문장을 두 번 쓰지 않는다(다 쓰면 더 끼우지 않는다).
   const usedLines = new Set<string>();
   const fresh = (list: string[]) => {
     const left = list.filter((x) => !usedLines.has(x));
@@ -135,42 +160,51 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
     return t;
   };
 
+  // 질문이 같은 사실(숫자·달·금액)을 다시 말하면 그 패턴 문장은 빼고 질문만 한다.
+  const restated = new Set(asked.filter((q) => RESTATES.has(q.id)).map((q) => QUESTIONS.find((d) => d.id === q.id)?.pattern).filter(Boolean));
+  const sayBlocks: Block[] = r.shuffle(convo.filter((p) => !restated.has(p.id))).map((p) => ({ kind: "say", p, sec: LINE_SECTION[p.id] }));
+  const askBlocks: Block[] = r.shuffle(asked.map((q, i) => ({ kind: "ask" as const, i, sec: QUESTION_SECTION[q.id] ?? sectionOfQuestion(q.id) })));
+  const blocks = mixBlocks(sayBlocks, askBlocks, r);
+
   let nameUsed = greet;
-  let sections = 0;
-  for (const sec of SECTION_ORDER) {
-    const inSec = convo.filter((p) => LINE_SECTION[p.id] === sec);
-    const secQuestions = asked.map((q, i) => ({ q, i })).filter(({ q, i }) => !placed.has(i) && QUESTION_SECTION[q.id] === sec);
-    if (!inSec.length && !secQuestions.length) continue;
-    // 섹션 사이에 가끔 혼잣말을 끼운다.
-    if (sections++ > 0 && r.next() < 0.3) {
+  let prevSec: Section | null = null;
+  blocks.forEach((b, idx) => {
+    // 이야기 사이에 가끔 혼잣말을 끼운다.
+    if (idx > 0 && r.next() < 0.2) {
       const text = fresh(C.MID_REMARKS);
       if (text) steps.push({ t: "say", text, gap: true });
     }
-    steps.push({ t: "status", text: r.pick(C.SECTION_STATUS[sec]) });
-    for (const p of inSec) {
-      // 질문이 같은 사실을 다시 말하면 패턴 문장은 빼고 질문만 한다.
-      if (questionFor(p).some(({ q }) => RESTATES.has(q.id))) {
-        for (const { i } of questionFor(p)) ask(i);
-        continue;
-      }
-      let text = tryFill(r, T.lines[p.id].say, varsOf(p));
-      if (!text) continue;
-      // 이름은 가끔만 부른다.
-      if (name && !nameUsed && r.next() < 0.3) {
-        text = `${name}님, ${text}`;
-        nameUsed = true;
-      }
-      if (r.next() < 0.4) {
-        const t = fresh(C.THINKING);
-        if (t) steps.push({ t: "say", text: t });
-      }
-      say(text, NO_PHOTO.has(p.id) ? undefined : photosOf(a, p));
-      for (const { i } of questionFor(p)) ask(i);
+    if (b.kind === "ask") {
+      ask(b.i);
+      prevSec = b.sec ?? prevSec;
+      return;
     }
-    for (const { i } of secQuestions) ask(i);
-  }
-  // 관련 패턴이 대화에 안 나온 질문은 끝에서 묻는다.
-  asked.forEach((_, i) => ask(i));
+    const p = b.p;
+    let text = tryFill(r, T.lines[p.id].say, varsOf(p));
+    if (!text) return;
+    // 이름은 가끔만 부른다.
+    if (name && !nameUsed && r.next() < 0.3) {
+      text = `${name}님, ${text}`;
+      nameUsed = true;
+    }
+    // 보는 곳이 바뀌면 진행 문구("~를 보겠습니다")로 새 이야기를 연다. 같은 곳이면 첫 말에 간격만 둔다.
+    let gap = true;
+    if (b.sec !== prevSec) {
+      const status = fresh(C.SECTION_STATUS[b.sec]) ?? r.pick(C.SECTION_STATUS[b.sec]);
+      steps.push({ t: "status", text: status, gap: true });
+      gap = false;
+    }
+    prevSec = b.sec;
+    if (r.next() < 0.4) {
+      const t = fresh(C.THINKING);
+      if (t) {
+        steps.push(gap ? { t: "say", text: t, gap: true } : { t: "say", text: t });
+        gap = false;
+      }
+    }
+    const photos = NO_PHOTO.has(p.id) ? [] : photosOf(a, p).filter((id) => !askedPhotos.has(id));
+    steps.push({ t: "say", text, ...(photos.length ? { photos } : {}), ...(gap ? { gap: true } : {}) });
+  });
 
   if (convo.length < 2) say(r.pick(C.FEW_PATTERNS));
   steps.push({ t: "think" });

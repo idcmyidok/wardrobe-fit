@@ -1,14 +1,14 @@
 import "server-only";
 import { CATEGORY_NAME } from "@/lib/constants/categories";
 import type { RoastReport } from "@/lib/roast/types";
-import { colorCounted, fitSummary, type Analysis, type Item } from "./analyze";
+import { colorCounted, FIT_WORD, fitSummary, type Analysis, type Item } from "./analyze";
 import { MUSINSA_POPULAR } from "./brands";
 import { quotesAnswer } from "./compose";
 import type { AskedQuestion } from "./questions";
 import { fill, MissingVar, rng, won, type Rng, type Vars } from "./text";
 import type { ReportTexts } from "./report-text";
-import type { ScoreRules } from "./score-deltas";
-import { fitContrast, scoreWardrobe } from "./score";
+import { SCORE_RULES, type ScoreRules } from "./score-deltas";
+import { fitContrast, SCORE_PART_NAME, scoreWardrobe } from "./score";
 import { findColorFamily } from "@/lib/constants/colors";
 
 /**
@@ -33,8 +33,6 @@ function countBy<T>(list: T[], key: (x: T) => string | null | undefined): [strin
   }
   return [...m.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
 }
-/** 1~5 평균 → 낮음·중간·높음 */
-const level = (v: number) => (v < 2.4 ? "낮음" : v < 3.6 ? "중간" : "높음");
 
 type Side = "high" | "low";
 interface Diag {
@@ -180,7 +178,7 @@ export function buildReport(
   if (enough) {
     if (hype >= 3.6) add({ id: "hype", side: "high", strength: clamp((hype - 3.3) / 1.2), value: "하이프 높음", vars: {} });
     else if (hype <= 2.2) add({ id: "hype", side: "low", strength: clamp((2.5 - hype) / 1.2), value: "하이프 낮음", vars: {} });
-    if (pop >= 4.2) add({ id: "popularity", side: "high", strength: clamp((pop - 4) / 1) * 0.6, value: "메이저 중심", vars: {} });
+    if (pop >= 4.2) add({ id: "popularity", side: "high", strength: clamp((pop - 4) / 1) * 0.6, value: "메이저 중심", vars: { pct: pct(known.filter((i) => i.brand!.pop >= 4).length, K) } });
     else if (pop <= 2.4) add({ id: "popularity", side: "low", strength: clamp((2.7 - pop) / 1.2) * 0.8, value: "마이너 탐색", vars: {} });
     const founded = known.map((i) => i.brand!.founded).filter((y): y is number => y != null);
     const midYear = median(founded);
@@ -272,7 +270,9 @@ export function buildReport(
   if (colored.length >= 5) {
     const Cc = R.color;
     const ap = pct(achro.length, colored.length);
-    const main = ap >= 85 ? Cc.achro_85 : ap >= 70 ? Cc.achro_70 : ap >= 50 ? Cc.achro_50 : ap >= 30 ? Cc.balanced : Cc.colorful;
+    // 무채색이 60% 이상일 때만 "무채색이 많다"고 말한다(57%는 특징이 아니다, 사용자 요청).
+    const achroMain = ap >= 60;
+    const main = ap >= 85 ? Cc.achro_85 : ap >= 70 ? Cc.achro_70 : achroMain ? Cc.achro_50 : ap >= 40 ? Cc.balanced : Cc.colorful;
     const fam = colored.map((i) => findColorFamily(i.color));
     const count = (...names: string[]) => fam.filter((f) => f && names.includes(f)).length;
     const chroma = colored.filter((i) => !i.achromatic);
@@ -282,21 +282,22 @@ export function buildReport(
     const recentAchro = recentColored.filter((i) => i.achromatic).length / Math.max(recentColored.length, 1);
     const pastel = colored.filter((i) => /라이트|베이비|파우더|라벤더|라일락|민트|피치|버터|스카이|파스텔/.test(i.color ?? "")).length;
     const n = colored.length;
+    // 덧붙임은 첫 문장과 같은 방향만 쓴다. "무채색이 많다" 뒤에 "색 종류가 많다"처럼 반대 얘기를 잇지 않는다.
     const extras: [boolean, readonly string[], Vars][] = [
       [ap >= 60 && recentColored.length >= 3 && recentAchro >= 0.6, Cc.recent, { recentPct: Math.round(recentAchro * 100) }],
       [count("블랙") / n >= 0.4, Cc.black, { n: count("블랙") }],
       [count("화이트") / n >= 0.25, Cc.white, { n: count("화이트") }],
-      [count("베이지", "브라운", "카키") / n >= 0.35, Cc.earth, { n: count("베이지", "브라운", "카키") }],
-      [count("네이비", "데님") / n >= 0.3, Cc.blue, { n: count("네이비", "데님") }],
+      [!achroMain && count("베이지", "브라운", "카키") / n >= 0.35, Cc.earth, { n: count("베이지", "브라운", "카키") }],
+      [!achroMain && count("네이비", "데님") / n >= 0.3, Cc.blue, { n: count("네이비", "데님") }],
       [chroma.length >= 3 && chromaList.length / chroma.length >= 0.5 && chromaList.length >= 3, Cc.one_chroma, { family: chromaFam ?? "", n: chromaList.length }],
-      [count("레드", "옐로", "오렌지", "그린", "핑크", "퍼플", "블루") / n >= 0.25, Cc.vivid, { n: count("레드", "옐로", "오렌지", "그린", "핑크", "퍼플", "블루") }],
-      [pastel >= 3, Cc.pastel, { n: pastel }],
-      [kinds >= 9, Cc.many, { k: kinds }],
+      [!achroMain && count("레드", "옐로", "오렌지", "그린", "핑크", "퍼플", "블루") / n >= 0.25, Cc.vivid, { n: count("레드", "옐로", "오렌지", "그린", "핑크", "퍼플", "블루") }],
+      [!achroMain && pastel >= 3, Cc.pastel, { n: pastel }],
+      [!achroMain && kinds >= 9, Cc.many, { k: kinds }],
       [n >= 8 && kinds <= 3, Cc.few, { k: kinds }],
     ];
     const first = tryFill(r, main, { pct: ap, colorPct: 100 - ap });
     const extra = extras.filter(([ok]) => ok).map(([, list, v]) => tryFill(r, list, v)).find(Boolean);
-    if (first) colorPoint = { id: "color", ...splitLead([first, extra].filter(Boolean).join(" ")), photos: photosOf(ap >= 50 ? achro : chroma) };
+    if (first) colorPoint = { id: "color", ...splitLead([first, extra].filter(Boolean).join(" ")), photos: photosOf(achroMain ? achro : chroma) };
   }
 
   // 핏 한마디: 주력 핏으로 한 문장, 눈에 띄는 경우가 있으면 한 문장 더
@@ -329,11 +330,15 @@ export function buildReport(
     const cheapTag = topOf(cheap, (i) => i.brand!.tags);
     const pricyTag = topOf(pricy, (i) => i.brand!.tags);
     const pricyPos = topOf(pricy, (i) => i.brand!.positions);
-    const t =
-      (heri(pricy) - heri(cheap) >= 1.2 ? tryFill(r, W.heritage, {}) : null) ??
-      (lux(pricy) >= 0.5 && lux(cheap) <= 0.2 && cheapTag && pricyPos ? tryFill(r, W.luxury, { cheapTag, pricyPos }) : null) ??
-      (cheapTag && pricyTag && cheapTag !== pricyTag ? tryFill(r, W.style, { cheapTag, pricyTag }) : null);
-    if (t) walletPoint = { id: "wallet", ...splitLead(t), photos: photosOf([...pricy, ...cheap]) };
+    // 사진은 문장이 말하는 옷만 보여 준다(헤리티지 문장이면 비싸게 산 헤리티지 브랜드 옷만).
+    const isLux = (i: Item) => i.groups.includes("luxury") || i.groups.includes("designer");
+    const hasTag = (tag: string | null) => (i: Item) => Boolean(tag && i.brand!.tags.includes(tag));
+    let t: string | null = null;
+    let shown: Item[] = [];
+    if (heri(pricy) - heri(cheap) >= 1.2 && (t = tryFill(r, W.heritage, {}))) shown = pricy.filter((i) => i.brand!.heritage >= 4);
+    else if (lux(pricy) >= 0.5 && lux(cheap) <= 0.2 && cheapTag && pricyPos && (t = tryFill(r, W.luxury, { cheapTag, pricyPos }))) shown = pricy.filter(isLux);
+    else if (cheapTag && pricyTag && cheapTag !== pricyTag && (t = tryFill(r, W.style, { cheapTag, pricyTag }))) shown = [...pricy.filter(hasTag(pricyTag)), ...cheap.filter(hasTag(cheapTag))];
+    if (t) walletPoint = { id: "wallet", ...splitLead(t), photos: photosOf(shown) };
   }
 
   // 질문 답: 관련 문단에 한 줄로 붙이고, 남는 한 개는 따로 한 문단이 된다.
@@ -410,47 +415,77 @@ export function buildReport(
     rules: deltas.rules as Partial<ScoreRules> | undefined,
     ageRules: (score.age as Record<string, Record<string, number>> | undefined) ?? undefined,
   });
-  const bonus = asked.reduce((sum, q) => {
+  const answerDeltas = asked.flatMap((q) => {
     const ans = answers[q.id];
-    if (!ans) return sum;
-    return sum + (deltas[q.id]?.[q.scoreKey?.[ans] ?? ans] ?? 0);
-  }, 0);
+    const d = ans ? (deltas[q.id]?.[q.scoreKey?.[ans] ?? ans] ?? 0) : 0;
+    return d ? [{ label: "질문 답", why: `"${q.text}" → ${q.options.find((o) => o.id === ans)?.label ?? ans}`, delta: d }] : [];
+  });
+  const bonus = answerDeltas.reduce((sum, x) => sum + x.delta, 0);
   const totalScore = Math.max(0, Math.min(100, Math.round(wardrobe.score + bonus)));
+  // 관리자 점수 풀이: 같은 항목(나이 구간별 등)은 합치고 판단 기준은 이어 붙인다.
+  const merged = new Map<string, { delta: number; why: string[] }>();
+  for (const p of wardrobe.parts) {
+    const m = merged.get(p.id) ?? { delta: 0, why: [] };
+    merged.set(p.id, { delta: m.delta + p.delta, why: [...m.why, p.why] });
+  }
+  const scoreDetail = {
+    base: Number((deltas.rules as Partial<ScoreRules> | undefined)?.base ?? SCORE_RULES.base),
+    items: [
+      ...[...merged.entries()].map(([id, m]) => ({ label: SCORE_PART_NAME[id] ?? id, why: m.why.join(" / "), delta: Math.round(m.delta * 10) / 10 })),
+      ...answerDeltas,
+    ].filter((x) => x.delta),
+    total: totalScore,
+  };
   if (wardrobe.age) {
     const t = tryFill(r, (R.age as Record<string, string[]>)[wardrobe.age.kind] ?? [], { age: wardrobe.age.age, pct: wardrobe.age.pct });
     if (t) put("age", { id: "age", ...splitLead(t) });
   }
   const band = (totalScore >= 90 ? "b90" : `b${Math.floor(totalScore / 10) * 10}`) as keyof ReportTexts["HEADLINE"];
 
-  // 옷장 DNA: 해당하는 것 중 다섯 문장까지. 진단 문단에 이미 나온 주제는 뺀다.
-  const D = R.dna;
-  const inPoints = new Set(picked.map((d) => d.id));
-  const dnaCand: [boolean, readonly string[], Vars][] = [];
-  if (enough && tags.length >= 2 && !inPoints.has("style")) dnaCand.push([true, tags[1].n / K >= 0.25 ? D.styles : D.style, { tag1: tags[0].t, tag2: tags[1].t }]);
-  const positions = countBy(known.flatMap((i) => i.brand!.positions.map((p) => ({ p, i }))), (x) => x.p);
-  if (enough && positions.length) dnaCand.push([true, D.position, { position: positions[0][0] }]);
-  if (enough) {
-    const lv: [string, number][] = [
-      ["hype", hype],
-      ["formal", formal],
-      ["func", func],
-      ["heritage", heritage],
-    ];
-    lv.filter(([id]) => !inPoints.has(id))
-      .map(([id, v]) => ({ id, v, side: level(v) === "높음" ? "high" : level(v) === "낮음" ? "low" : null }))
-      .filter((x) => x.side && (D as Record<string, readonly string[]>)[`${x.id}_${x.side}`])
-      .sort((x, y) => Math.abs(y.v - 3) - Math.abs(x.v - 3))
-      .slice(0, 2)
-      .forEach((x) => dnaCand.push([true, (D as Record<string, readonly string[]>)[`${x.id}_${x.side}`], {}]));
+  // 제목 아래 요약 한 문장: 가장 뚜렷한 특징 세 개(모자라면 두 개)를 서로 다른 종류에서 골라 잇는다(사용자 요청).
+  const Sm = R.summary as Record<string, readonly string[]>;
+  const fsum = fitSummary(clothes);
+  const designerShareAll = known.filter((i) => i.groups.includes("designer") || i.groups.includes("luxury") || i.groups.includes("contemporary")).length / Math.max(K, 1);
+  const massShare = known.filter((i) => i.groups.includes("mass")).length / Math.max(K, 1);
+  const unknownShare = branded.filter((i) => i.brandKind === "unknown").length / Math.max(branded.length, 1);
+  const oldShareAll = dated.length ? dated.filter((i) => now - Date.parse(i.date!) >= 3 * 365 * DAY).length / dated.length : 0;
+  const colorAp = colored.length ? achro.length / colored.length : 0;
+  const blackShare = colored.length ? colored.filter((i) => findColorFamily(i.color) === "블랙").length / colored.length : 0;
+  const traits: { kind: string; key: string; s: number; vars?: Vars }[] = [
+    { kind: "color", key: "black", s: colored.length >= 5 && blackShare >= 0.4 ? clamp((blackShare - 0.3) / 0.4) + 0.05 : 0 },
+    { kind: "color", key: "achro", s: colored.length >= 5 && colorAp >= 0.6 ? clamp((colorAp - 0.5) / 0.4) : 0 },
+    { kind: "color", key: "colorful", s: colored.length >= 5 && colorAp < 0.4 ? clamp((0.4 - colorAp) / 0.3) : 0 },
+    { kind: "brand", key: "brand_one", s: branded.length >= 8 && brandShare >= 0.25 ? clamp((brandShare - 0.2) / 0.4) : 0, vars: { brand: brandName } },
+    { kind: "brand", key: "musinsa", s: branded.length >= 8 && musinsaShare >= 0.5 ? clamp((musinsaShare - 0.4) / 0.5) : 0 },
+    { kind: "brand", key: "designer", s: enough && designerShareAll >= 0.35 ? clamp((designerShareAll - 0.25) / 0.5) : 0 },
+    { kind: "brand", key: "mass", s: enough && massShare >= 0.4 ? clamp((massShare - 0.3) / 0.5) : 0 },
+    { kind: "brand", key: "gem", s: branded.length >= 8 && unknownShare >= 0.3 ? clamp((unknownShare - 0.2) / 0.5) : 0 },
+    { kind: "brand", key: "hype", s: enough && hype >= 3.6 ? clamp((hype - 3.3) / 1.2) : 0 },
+    { kind: "brand", key: "heritage", s: enough && heritage >= 3.8 ? clamp((heritage - 3.5) / 1.2) : 0 },
+    { kind: "brand", key: "country", s: enough && country && countryShare >= 0.45 ? clamp((countryShare - 0.4) / 0.5) * 0.8 : 0, vars: { country: country ?? "" } },
+    { kind: "brand", key: "brand_many", s: branded.length >= 10 && byBrand.length / branded.length >= 0.75 ? 0.3 : 0 },
+    { kind: "style", key: "style", s: enough && tags.length && tags[0].n / K >= 0.5 ? clamp((tags[0].n / K - 0.4) / 0.5) : 0, vars: { tag: tags[0]?.t ?? "" } },
+    { kind: "style", key: "casual", s: enough && formal <= 1.9 ? clamp((2.2 - formal) / 1) * 0.7 : 0 },
+    { kind: "style", key: "formal", s: enough && formal >= 3.5 ? clamp((formal - 3.2) / 1.3) : 0 },
+    { kind: "style", key: "func", s: enough && func >= 3.5 ? clamp((func - 3.2) / 1.3) : 0 },
+    { kind: "fit", key: "big", s: fsum.fitted.length >= 5 && fsum.all.bigShare >= 0.6 ? clamp((fsum.all.bigShare - 0.5) / 0.4) : 0 },
+    { kind: "fit", key: "trim", s: fsum.fitted.length >= 5 && fsum.all.trimShare >= 0.6 ? clamp((fsum.all.trimShare - 0.5) / 0.4) : 0 },
+    { kind: "category", key: "category", s: cat && catShare >= 0.45 ? clamp((catShare - 0.4) / 0.4) : 0, vars: { catName: cat ? CATEGORY_NAME[cat as Item["cat"]] : "" } },
+    { kind: "repeat", key: "dup", s: dup.length >= 3 ? clamp((dup.length - 2) / 5) : 0 },
+    { kind: "timing", key: "new_items", s: dated.length >= 8 && recentShare >= 0.4 ? clamp((recentShare - 0.3) / 0.5) : 0 },
+    { kind: "timing", key: "old_items", s: dated.length >= 8 && oldShareAll >= 0.4 ? clamp((oldShareAll - 0.3) / 0.5) : 0 },
+  ];
+  const kindsUsed = new Set<string>();
+  const words: string[] = [];
+  for (const t of traits.filter((x) => x.s > 0 && Sm[x.key]?.length).sort((x, y) => y.s - x.s)) {
+    if (words.length >= 3 || kindsUsed.has(t.kind)) continue;
+    const w = tryFill(r, Sm[t.key], t.vars ?? {});
+    if (!w) continue;
+    kindsUsed.add(t.kind);
+    words.push(w);
   }
-  if (branded.length >= 8 && !inPoints.has("musinsa")) {
-    if (musinsaShare >= 0.3) dnaCand.push([true, D.musinsa, { pct: pct(labeled.length, branded.length) }]);
-    else if (musinsaShare <= 0.1) dnaCand.push([true, D.musinsa_low, { pct: pct(labeled.length, branded.length) }]);
-  }
-  if (enough && country && countryShare >= 0.4 && !inPoints.has("country") && !inPoints.has("country_kr"))
-    dnaCand.push([true, country === "한국" ? D.country_kr : D.country, { country, pct: pct(countryList.length, K) }]);
-  if (shop && linked.length >= 5 && shopList.length / linked.length >= 0.4 && !inPoints.has("shop")) dnaCand.push([true, D.shop, { shop, pct: pct(shopList.length, linked.length) }]);
-  const dna = dnaCand.flatMap(([, list, v]) => tryFill(r, list, v) ?? []).slice(0, L.count.dna_max);
+  const summary =
+    words.length >= 3 ? tryFill(r, R.SUMMARY_3, { a: words[0], b: words[1], c: words[2] }) : words.length === 2 ? tryFill(r, R.SUMMARY_2, { a: words[0], b: words[1] }) : null;
 
   // 캐릭터(6): 조건이 맞는 것 중 뚜렷한 순서로 세 개. "> " 문장에 들어간다.
   const C = R.character as Record<string, { name: string; who: string }>;
@@ -498,7 +533,7 @@ export function buildReport(
 
   const pointOrder = Object.entries(L.point_order).sort((x, y) => x[1] - y[1]).map(([k]) => k);
   const pointShown = (k: string) => (L.point_show as Record<string, number>)[k] !== 0;
-  const points = pointOrder.filter(pointShown).flatMap((k) => slot[k] ?? []);
+  const points = limitPhotos(pointOrder.filter(pointShown).flatMap((k) => slot[k] ?? []), L.count.photo_blocks);
 
   // 첫 줄(총점 평가)과 "> " 문장들
   const owner = name ? `${name}님의` : "당신의";
@@ -510,15 +545,25 @@ export function buildReport(
     points.length ? r.pick(R.INTRO_MORE) : null,
   ].filter((t): t is string => Boolean(t));
 
-  // 목록: 많이 가진 옷(세부분류 + 색), 많이 산 브랜드. 각 다섯 개까지, 두 벌 이상인 것만.
-  // 한 줄뿐이면 세 벌 이상일 때만 보여 준다.
+  // 목록: 많이 가진 옷, 많이 산 브랜드(사용자 요청).
+  // - 많이 가진 옷: 세부분류 + 색 + 핏이 같은 옷이 dup_min벌(3벌) 이상인 것만. 2벌은 중복으로 보지 않고, 없으면 목록을 뺀다.
+  // - 브랜드: 옷장(브랜드를 적은 옷) 대비 %로 몇 개만. 1위가 brand_top_pct% 미만이면 뺀다.
   const lists: RoastReport["lists"] = [];
-  const listOf = (title: string, rows: [string, Item[]][]) => {
-    const top = rows.filter(([, l]) => l.length >= 2).slice(0, L.count.list_rows);
-    if (top.length >= 2 || top[0]?.[1].length >= 3) lists.push({ title, items: top.map(([k, l]) => `${k} ${l.length}벌`) });
-  };
-  listOf(r.pick(R.LIST_DUP), countBy(clothes.filter((i) => i.sub && i.color), (i) => (i.color === "데님" && i.subName?.includes("데님") ? i.subName : `${i.color} ${i.subName ?? "옷"}`)));
-  listOf(r.pick(R.LIST_BRAND), byBrand.map(([, l]) => [l[0].brandLabel, l]));
+  const dupRows = countBy(clothes.filter((i) => i.sub && i.color), (i) => `${i.sub}|${i.color}|${i.fit?.level ?? "-"}`)
+    .filter(([, l]) => l.length >= L.count.dup_min)
+    .slice(0, L.count.list_rows);
+  if (dupRows.length) {
+    const labelOf = (i: Item) => (i.color === "데님" && i.subName?.includes("데님") ? i.subName : `${i.color} ${i.subName ?? "옷"}`);
+    const labels = dupRows.map(([, l]) => labelOf(l[0]));
+    lists.push({
+      title: r.pick(R.LIST_DUP),
+      // 같은 옷 이름이 두 줄이면 핏으로 구분한다.
+      items: dupRows.map(([, l], k) => `${labels[k]}${labels.filter((x) => x === labels[k]).length > 1 && l[0].fit ? ` (${FIT_WORD[l[0].fit.level]})` : ""} ${l.length}벌`),
+    });
+  }
+  const brandRows = byBrand.filter(([, l]) => l.length >= 2 && (l.length / Math.max(branded.length, 1)) * 100 >= L.count.brand_row_pct).slice(0, L.count.brand_rows);
+  if (branded.length >= 8 && brandRows.length && (brandRows[0][1].length / branded.length) * 100 >= L.count.brand_top_pct)
+    lists.push({ title: r.pick(R.LIST_BRAND), items: brandRows.map(([, l]) => `${l[0].brandLabel} ${pct(l.length, branded.length)}%`) });
 
   const total = {
     score: totalScore,
@@ -540,11 +585,36 @@ export function buildReport(
     lists: show("lists") ? lists : [],
     total,
     points,
-    dnaLead: r.pick(R.DNA_LEAD),
-    dna: show("dna") ? dna : [],
+    ...(summary && show("summary") ? { summary } : {}),
+    scoreDetail,
     notes: show("notes") ? notes : [],
     order,
   };
+}
+
+/**
+ * 결과에서는 사진을 문단마다 넣지 않고, 가장 특이한 문단 max개에만 넣는다(그 문단 안에서는 여러 장도 된다, 사용자 요청).
+ * 특이한 순서: 같은 옷·가장 비싼 옷·비슷한 옷처럼 옷 자체가 증거인 문단부터.
+ */
+const PHOTO_PRIORITY = ["identical", "top_item", "similar", "duplicate", "gem", "vintage", "fruits", "bunjang", "binge", "wallet", "polar", "subcat", "country", "country_kr", "brand", "musinsa", "burst", "category", "color", "fit"];
+export function limitPhotos<P extends { id: string; photos?: string[] }>(points: P[], max: number): P[] {
+  const rank = (id: string) => {
+    const k = PHOTO_PRIORITY.indexOf(id);
+    return k < 0 ? PHOTO_PRIORITY.length : k;
+  };
+  const keep = new Set(
+    points
+      .filter((p) => p.photos?.length)
+      .sort((x, y) => rank(x.id) - rank(y.id))
+      .slice(0, Math.max(0, max))
+      .map((p) => p.id),
+  );
+  return points.map((p) => {
+    if (keep.has(p.id) || !p.photos) return p;
+    const rest = { ...p };
+    delete rest.photos;
+    return rest;
+  });
 }
 
 /** 첫 문장(굵게)과 나머지로 나눈다. */

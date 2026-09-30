@@ -37,8 +37,8 @@ export interface RoastQuestion {
 }
 
 export type RoastStep =
-  | { t: "status"; text: string }
-  /** gap: 앞 이야기와 끊어서 보여 준다(섹션 사이 혼잣말) */
+  /** gap: 새 이야기(분석 문장 묶음·질문 하나)의 시작. 앞 이야기와 간격을 두고 보여 준다. */
+  | { t: "status"; text: string; gap?: boolean }
   | { t: "say"; text: string; photos?: string[]; gap?: boolean }
   | { t: "think" }
   | { t: "ask"; q: number };
@@ -67,12 +67,19 @@ export interface RoastReport {
   total: { score: number; lead: string; text: string };
   /** 진단 문단: lead는 굵게, answer는 관련 질문 답에 붙는 한 줄, photos는 옆으로 넘기는 사진 줄 */
   points: { id: string; lead: string; text: string; answer?: string; photos?: string[] }[];
-  /** 옷장 DNA: 굵은 앞말 + 문장들 */
-  dnaLead: string;
-  dna: string[];
+  /** 제목 바로 아래 한 문장: 가장 뚜렷한 특징 두세 개를 이은 요약 */
+  summary?: string;
+  /** 예전 결과의 옷장 DNA(굵은 앞말 + 문장들). 새 결과에는 없고 summary를 쓴다. */
+  dnaLead?: string;
+  dna?: string[];
   /** 기준 안내(예: 브랜드 정보가 있는 옷 수) */
   notes: string[];
-  /** 첫 줄 아래 섹션 순서(관리자 "결과 구성"). 없으면 intro·lists·total·points·dna·notes */
+  /**
+   * 점수 풀이(관리자에게만): 기본 점수 + 항목별 증감 + 질문 답 증감 → 총점.
+   * 일반 사용자의 결과에는 서버가 지우고 보낸다.
+   */
+  scoreDetail?: { base: number; items: { label: string; why: string; delta: number }[]; total: number };
+  /** 첫 줄 아래 섹션 순서(관리자 "결과 구성"). 없으면 intro·lists·total·points·dna·notes(dna는 예전 결과만) */
   order?: string[];
 }
 
