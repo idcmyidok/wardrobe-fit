@@ -517,7 +517,7 @@ export function buildReport(
     const top = rows.filter(([, l]) => l.length >= 2).slice(0, L.count.list_rows);
     if (top.length >= 2 || top[0]?.[1].length >= 3) lists.push({ title, items: top.map(([k, l]) => `${k} ${l.length}벌`) });
   };
-  listOf(r.pick(R.LIST_DUP), countBy(clothes.filter((i) => i.sub && i.color), (i) => `${i.color} ${i.subName ?? "옷"}`));
+  listOf(r.pick(R.LIST_DUP), countBy(clothes.filter((i) => i.sub && i.color), (i) => (i.color === "데님" && i.subName?.includes("데님") ? i.subName : `${i.color} ${i.subName ?? "옷"}`)));
   listOf(r.pick(R.LIST_BRAND), byBrand.map(([, l]) => [l[0].brandLabel, l]));
 
   const total = {
