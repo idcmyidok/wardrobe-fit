@@ -301,7 +301,7 @@ export function ageAt(age: number, i: Item, now: number): number {
 }
 
 /** 나이 구간 이름: "b24" → "24~26세", 마지막 구간은 "51세 이상" */
-function bandName(key: string): string {
+export function bandName(key: string): string {
   const i = AGE_BANDS.findIndex(([k]) => k === key);
   if (i < 0) return key;
   const from = AGE_BANDS[i][1];

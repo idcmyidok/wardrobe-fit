@@ -21,7 +21,7 @@ export interface EditorUnit {
 
 export interface EditorGroup {
   id: string;
-  kind: "screen" | "common" | "lines" | "questions" | "report" | "score" | "layout";
+  kind: "screen" | "common" | "lines" | "questions" | "report" | "score" | "layout" | "orders";
   title: string;
   when: string;
   vars: { key: string; label: string }[];
@@ -56,6 +56,7 @@ const KINDS: { id: Kind; label: string }[] = [
   { id: "report", label: "결과 페이지" },
   { id: "layout", label: "결과 구성" },
   { id: "score", label: "점수" },
+  { id: "orders", label: "주문내역 훈수" },
 ];
 
 type Vars = EditorGroup["vars"];

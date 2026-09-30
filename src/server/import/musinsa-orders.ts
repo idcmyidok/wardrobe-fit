@@ -213,3 +213,36 @@ export function matchSizeRow<T extends { sizeLabel: string }>(rows: T[], size: s
   if (hit) return hit;
   return wanted.has("FREE") && rows.length === 1 ? rows[0] : null;
 }
+
+/** 주문내역 훈수에서 쓰는 주문 상태 종류. 교환한 옷은 결국 가졌으니 kept로 두고 exchanged로 따로 센다. */
+export type RoastOrderStatus = "kept" | "exchanged" | "returned" | "cancelled";
+const ROAST_STATUS: Record<string, RoastOrderStatus> = {
+  "구매 확정": "kept",
+  "오프라인 구매 완료": "kept",
+  "교환 요청": "exchanged",
+  "교환 완료": "exchanged",
+  "반품 완료": "returned",
+  "반품 신청": "returned",
+  "취소 완료": "cancelled",
+};
+
+export interface RoastOrderGarment extends OrderGarment {
+  status: RoastOrderStatus;
+}
+
+/**
+ * 주문내역 훈수용: 반품·취소·교환 건도 버리지 않고 상태를 붙여 돌려준다(사용자 요청: 분석에 쓴다).
+ * 속옷·양말과 옷이 아닌 것은 주문 가져오기와 똑같이 뺀다. "사용 완료"(상품권 등)는 뺀다.
+ */
+export function parseOrdersForRoast(text: string): { orders: MusinsaOrder[]; garments: RoastOrderGarment[] } {
+  const orders = parseMusinsaOrders(text);
+  const garments: RoastOrderGarment[] = [];
+  for (const order of orders) {
+    const status = ROAST_STATUS[order.status];
+    if (!status || UNDERWEAR_RE.test(order.name) || NOT_GARMENT_RE.test(order.name)) continue;
+    // 반품·취소는 한 벌로만 센다(팩을 나누면 반품 건수가 부풀려진다).
+    const parts = status === "kept" || status === "exchanged" ? splitOrder(order) : splitOrder(order).slice(0, 1);
+    garments.push(...parts.map((g) => ({ ...g, price: status === "returned" || status === "cancelled" ? order.price : g.price, status })));
+  }
+  return { orders, garments };
+}

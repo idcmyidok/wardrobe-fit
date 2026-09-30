@@ -16,8 +16,14 @@ import { normalizeProductUrl } from "./url";
 
 export const IMPORT_REUSE_MINUTES = 10;
 export const IMPORT_DAILY_LIMIT = 100;
+/**
+ * 주문내역 훈수가 읽는 상품은 하루 분석 한도에 세지 않는다(사용자 요청). 남용을 막는 안전 상한만 둔다(화면에 안 보임).
+ * 기록(product_imports.source_url) 끝에 표시를 붙여 일반 분석과 나눠 센다.
+ */
+export const ORDER_ROAST_DAILY_CAP = 1000;
+export const ORDER_ROAST_MARK = "#order-roast";
 /** 분석 방식이 바뀌면 올린다. 이전 방식의 결과는 다시 쓰지 않는다(product_imports.parser_version). */
-export const IMPORT_ENGINE_VERSION = "v4";
+export const IMPORT_ENGINE_VERSION = "v5";
 
 type Client = SupabaseClient<Database>;
 
@@ -43,11 +49,15 @@ export async function runImport(
   input: string,
   purpose: "wardrobe" | "fit_check",
   onStage?: (stage: AnalyzeStage) => void,
-  /** photosOnly: 등록된 옷의 사진만 다시 고를 때. 실측 AI 추출을 건너뛴다(하루 분석 한도에는 센다). */
-  { photosOnly = false }: { photosOnly?: boolean } = {},
+  /**
+   * photosOnly: 등록된 옷의 사진만 다시 고를 때. 실측 AI 추출을 건너뛴다(하루 분석 한도에는 센다).
+   * orderRoast: 주문내역 훈수. 하루 분석 한도 대신 ORDER_ROAST_DAILY_CAP만 본다(AI는 부르지 않는다).
+   */
+  { photosOnly = false, orderRoast = false }: { photosOnly?: boolean; orderRoast?: boolean } = {},
 ): Promise<ImportOutcome> {
   const started = Date.now();
-  const base = { importId: null, reused: false, domain: null, sourceUrl: input.trim().slice(0, 2048), parserId: null, product: null };
+  const sourceUrl = input.trim().slice(0, 2000) + (orderRoast ? ORDER_ROAST_MARK : "");
+  const base = { importId: null, reused: false, domain: null, sourceUrl, parserId: null, product: null };
   const fail = (errorCode: ImportFailureCode, errorDetail: string | null = null): ImportOutcome => ({
     ...base,
     status: "failed",
@@ -64,12 +74,14 @@ export async function runImport(
   }
 
   if (!(await getQuotaExemption(supabase, userId))) {
-    const { count } = await supabase
+    const q = supabase
       .from("product_imports")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .gte("created_at", minutesAgo(24 * 60));
-    if ((count ?? 0) >= IMPORT_DAILY_LIMIT) return fail("rate_limited");
+    const pattern = `%${ORDER_ROAST_MARK.slice(1)}`;
+    const { count } = await (orderRoast ? q.like("source_url", pattern) : q.not("source_url", "like", pattern));
+    if ((count ?? 0) >= (orderRoast ? ORDER_ROAST_DAILY_CAP : IMPORT_DAILY_LIMIT)) return fail("rate_limited");
   }
 
   const { data: recent } = await supabase
@@ -105,7 +117,7 @@ export async function runImport(
 
   let outcome: ImportOutcome;
   try {
-    const result = await analyzeProductUrl(normalizedUrl.toString(), { normalize: { knownBrands }, onStage, extractSizeChart: photosOnly ? undefined : aiSizeChart });
+    const result = await analyzeProductUrl(normalizedUrl.toString(), { normalize: { knownBrands }, onStage, extractSizeChart: photosOnly || orderRoast ? undefined : aiSizeChart });
     const found = Boolean(result.product.productName);
     outcome = {
       ...base,
