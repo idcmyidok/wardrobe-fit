@@ -64,6 +64,7 @@ const CANVAS_H = 212;
 const GROUND_Y = 202; // 발이 닿는 바닥선(아래에 여백 10cm)
 const CANVAS_W = 128;
 const BODY = "#9a9a93";
+const PANTS_FILL = "#4a4f57";
 const SHIRT_FILL = "#3d5a80";
 const SHIRT_LINE = "#2a4262";
 
@@ -158,6 +159,27 @@ export function LengthSilhouette({
   const collarLine = `M${cx - collar} ${neckY} Q${cx} ${neckY + H * 0.05} ${cx + collar} ${neckY}`;
   const stroke = H * 0.004;
 
+  // ---- 바지: 일반적인 스트레이트 핏을 고정으로 겹쳐 그려 밑단과 허리선을 비교한다 ----
+  const pw = b.pantsWaistY;
+  const pantsHemY = H * 0.965; // 발목 위까지
+  const pantsCrotchY = b.crotchY + H * 0.02;
+  const pants = [
+    `M${cx - hh * 1.04} ${pw}`,
+    `L${cx + hh * 1.04} ${pw}`,
+    `L${cx + hh * 1.08} ${b.pelvisY}`,
+    `L${cx + H * 0.088} ${b.kneeY}`,
+    `L${cx + H * 0.074} ${pantsHemY}`,
+    `L${cx + H * 0.016} ${pantsHemY}`,
+    `L${cx + H * 0.02} ${b.kneeY}`,
+    `L${cx} ${pantsCrotchY}`,
+    `L${cx - H * 0.02} ${b.kneeY}`,
+    `L${cx - H * 0.016} ${pantsHemY}`,
+    `L${cx - H * 0.074} ${pantsHemY}`,
+    `L${cx - H * 0.088} ${b.kneeY}`,
+    `L${cx - hh * 1.08} ${b.pelvisY}`,
+    "Z",
+  ].join(" ");
+
   const marks = Array.from({ length: 21 }, (_, i) => i * 10); // 0~200cm, 10cm마다
   const guides: [string, number][] = [
     ["어깨", b.shoulderY],
@@ -216,6 +238,9 @@ export function LengthSilhouette({
               <polygon points={pts(leg(1))} />
               <polygon points={pts(leg(-1))} />
             </g>
+            {/* 바지(고정 스트레이트 핏) */}
+            <path d={pants} fill={PANTS_FILL} fillOpacity={0.72} stroke={PANTS_FILL} strokeWidth={stroke} strokeLinejoin="round" />
+            <line x1={cx - hh * 1.04} x2={cx + hh * 1.04} y1={pw + H * 0.008} y2={pw + H * 0.008} stroke="#2f333a" strokeWidth={stroke * 0.8} />
             {/* 티셔츠: 반투명이라 뒤의 몸이 비친다 */}
             <path d={shirt} fill={SHIRT_FILL} fillOpacity={0.62} stroke={SHIRT_LINE} strokeWidth={stroke} strokeLinejoin="round" />
             <path d={collarLine} fill="none" stroke={SHIRT_LINE} strokeWidth={stroke * 2} strokeLinecap="round" />
@@ -226,7 +251,7 @@ export function LengthSilhouette({
       <div className="flex min-w-0 flex-1 flex-col gap-2">
       <p className="text-sm font-medium">{diffText}</p>
       <figcaption className="text-xs leading-relaxed text-pretty text-neutral-700">
-        키 {height}cm 평균 성인 남자 실루엣에, 이 옷과 같은 총장({length}cm, 목 옆 어깨점에서 밑단까지)의 반팔 티셔츠를 입힌 모습이에요. 실제 어깨·가슴·소매 치수에 따라 착용감은 달라질 수 있으니 길이 느낌만 참고하세요.
+        키 {height}cm 평균 성인 남자 실루엣에, 이 옷과 같은 총장({length}cm, 목 옆 어깨점에서 밑단까지)의 반팔 티셔츠를 입히고, 일반적인 스트레이트 바지를 함께 그린 모습이에요. 실제 어깨·가슴·소매 치수에 따라 착용감은 달라질 수 있으니 길이 느낌만 참고하세요.
       </figcaption>
       </div>
     </figure>
