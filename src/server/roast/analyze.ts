@@ -343,8 +343,12 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     const branded = items.filter((i) => i.brand || brandLabels(i.g.brand).length);
     const krPopular = branded.filter((i) => (i.brand?.country === "한국" && i.brand.pop >= 4) || brandLabels(i.g.brand).includes(MUSINSA_POPULAR));
     const musinsaKr = musinsa.length >= 4 && musinsa.length / linked.length >= 0.5 && krPopular.length >= 4 && krPopular.length / Math.max(branded.length, 1) >= 0.4;
-    if (musinsaKr)
-      add("musinsa_kr", ramp(musinsa.length / linked.length, 0.5, 0.9), 0.9, { n: musinsa.length, pct: pct(musinsa.length, linked.length), krN: krPopular.length, krPct: pct(krPopular.length, branded.length) }, [...new Set([...musinsa, ...krPopular])]);
+    if (musinsaKr) {
+      // 읊어 줄 브랜드: 무신사 인기 태그를 먼저, 오래된 브랜드보다 요즘 뜨는 브랜드를 먼저, 세 개까지
+      const rank = (i: Item) => (brandLabels(i.g.brand).includes(MUSINSA_POPULAR) ? 0 : 10) + (i.brand ? i.brand.heritage - i.brand.trend : 0);
+      const names = [...new Set(krPopular.slice().sort((x, y) => rank(x) - rank(y)).map((i) => i.brandLabel || i.brand?.name || ""))].filter(Boolean).slice(0, 3);
+      add("musinsa_kr", ramp(musinsa.length / linked.length, 0.5, 0.9), 0.9, { n: musinsa.length, pct: pct(musinsa.length, linked.length), krN: krPopular.length, krPct: pct(krPopular.length, branded.length), names: names.join(", ") }, [...new Set([...musinsa, ...krPopular])]);
+    }
     const [shop, shopList] = top(countBy(linked, (i) => i.shop)) ?? [null, []];
     if (shop && shopList.length >= 4 && shopList.length / linked.length >= 0.6 && !(musinsaKr && shop === "무신사"))
       add("shop_focus", ramp(shopList.length / linked.length, 0.6, 0.95), 0.7, { shop, n: shopList.length, pct: pct(shopList.length, linked.length) }, shopList);

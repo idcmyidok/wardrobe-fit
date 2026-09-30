@@ -8,7 +8,7 @@ import { Q_TEXT, QUESTIONS } from "./questions";
 
 /** {자리} → 사람이 읽는 이름 */
 export const VAR_LABEL: Record<string, string> = {
-  n: "개수", pct: "비율%", brand: "브랜드", brands: "브랜드 수", catName: "대분류", sub: "세부분류", color: "색", colorful: "유채색 벌 수",
+  n: "개수", pct: "비율%", brand: "브랜드", brands: "브랜드 수", names: "브랜드 이름들(쉼표로)", catName: "대분류", sub: "세부분류", color: "색", colorful: "유채색 벌 수",
   country: "나라", tag: "스타일", fit: "핏", fitPhrase: "핏(알 때만 '○○ 핏 ')", familyName: "제품군", month: "월",
   most: "많은 계절", mostN: "많은 계절 벌 수", least: "적은 계절", leastN: "적은 계절 벌 수", avgWon: "평균 금액", priceWon: "금액", amountWon: "금액",
   ratio: "배수", name: "제품명", oldest: "가장 오래된 브랜드", maxWon: "최고 구매가", traitText: "다른 점(색, 종류 등)",

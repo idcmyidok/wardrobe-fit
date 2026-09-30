@@ -334,6 +334,21 @@ describe("말풍선 나누기", () => {
   });
 });
 
+describe("무신사 패턴", () => {
+  it("무신사 옷장이면 가진 브랜드 중 요즘 뜨는 브랜드 이름을 세 개까지 읊는다", () => {
+    const pop = [...BRANDS].filter((b) => b.country === "한국" && brandLabels(b.name).includes(MUSINSA_POPULAR)).slice(0, 4);
+    const wardrobe = Array.from({ length: 12 }, (_, i) =>
+      g(i, { brand: pop[i % pop.length].name, productUrl: "https://www.musinsa.com/products/" + i }),
+    );
+    const a = analyze(wardrobe, null, 1360, new Date("2026-09-29T12:00:00+09:00"));
+    const p = a.patterns.find((x) => x.id === "musinsa_kr")!;
+    expect(p).toBeTruthy();
+    const names = String(p.stats.names).split(", ");
+    expect(names.length).toBe(3);
+    for (const n of names) expect(pop.map((b) => b.name)).toContain(n);
+  });
+});
+
 describe("항상 내는 질문", () => {
   it("비싼 옷 셋 중 버리기와 브랜드 셋 중 고르기는 어떤 seed에서도 나오고, 비싼 옷 셋에는 모자·신발이 없다", () => {
     const brands = ["UNIQLO", "UNIQLO", "COS", "COS", "COS", "Levi's", "Levi's", "A.P.C.", "A.P.C.", "UNIQLO", "COS", "A.P.C."];
