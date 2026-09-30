@@ -150,6 +150,7 @@ export const SCREEN_NAME: Record<string, string> = {
   ASK_NAME: "이름 묻기",
   NAME_HINT: "이름 입력칸 아래 안내",
   TOO_FEW: "옷이 10벌보다 적을 때",
+  OPENING: "분석 시작 전 첫 멘트",
   WRITING: "결과를 쓰는 중",
   NO_AI_LEFT: "오늘 AI 글쓰기를 다 썼을 때",
   DISCLAIMER: "결과 맨 아래 안내",
@@ -205,7 +206,7 @@ export function textGroups(): TextGroupMeta[] {
 /** 고치는 단위 위치 → 사람이 읽는 칸 이름. 예: "lines.x.head" → "헤드라인(앞절 + 뒷절)" */
 export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string) => string | undefined): string {
   const p = key.split(".");
-  if (p[0] === "screen") return p[1] === "DECLINE" ? "문장들(하나 고름)" : "문장";
+  if (p[0] === "screen") return p[1] === "DECLINE" || p[1] === "OPENING" ? "문장들(하나 고름)" : "문장";
   if (p[0] === "common") return p[1] === "SECTION_STATUS" ? `${SECTION_NAME[p[2]] ?? p[2]} (하나 고름)` : "문장들(하나 고름)";
   if (p[0] === "lines") {
     if (p[2] === "say") return "대화 문장(하나 고름)";

@@ -362,8 +362,14 @@ function Chat({
     if (started.current) return;
     started.current = true;
     void (async () => {
+      // 분석을 준비하는 동안 첫 멘트를 먼저 띄운다.
+      const starting = startRoast({ name, preview });
+      if (copy.OPENING.length) {
+        await think(700);
+        await sayBubbles(copy.OPENING[Math.floor(Math.random() * copy.OPENING.length)]);
+      }
       await think(900);
-      const start = await startRoast({ name, preview });
+      const start = await starting;
       if (!start.ok) {
         setError(start.code === "too_few" ? tooFew(copy, start.count) : start.message);
         return;
