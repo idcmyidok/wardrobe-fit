@@ -6,7 +6,7 @@ import { buildScript, composeResult, outfitCounts } from "./compose";
 import { productFamilies } from "./keywords";
 import { QUESTIONS, Q_TEXT } from "./questions";
 import { QUIZ } from "./quiz";
-import { applyTextEdits, checkUnit, fromRows, toRows, unitsOf } from "./texts";
+import { applyTextEdits, checkUnit, DEFAULT_TEXTS, fromRows, toRows, unitsOf } from "./texts";
 import { fill, josa, MissingVar } from "./text";
 import { joinBubbles, splitSentences } from "@/lib/roast/bubbles";
 
@@ -156,6 +156,24 @@ describe("분석과 결과", () => {
     expect(brand.stats.n).toBe(6);
     expect(a.patterns.find((p) => p.id === "recent_30")?.stats.n).toBe(5);
   });
+  it("질문이 같은 사실을 되풀이하면 패턴 문장은 대화에서 뺀다(최근 한 달 구매)", () => {
+    let seen = 0;
+    for (let seed = 0; seed < 60; seed++) {
+      const { script } = buildScript(a, seed, null);
+      if (!script.questions.some((q) => q.id === "recent_reason")) continue;
+      seen++;
+      const says = script.steps.filter((s) => s.t === "say").map((s) => s.text).join("\n");
+      expect(says).not.toMatch(/최근 한 달 사이에 5벌을 샀습니다|30일 안에 5벌/);
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
+  it("섹션 사이 혼잣말과 추임새는 한 번의 분석에서 같은 문장이 두 번 나오지 않는다", () => {
+    for (let seed = 0; seed < 60; seed++) {
+      const texts = buildScript(a, seed, null).script.steps.filter((s) => s.t === "say").map((s) => s.text);
+      const extra = texts.filter((t) => DEFAULT_TEXTS.common.MID_REMARKS.includes(t) || DEFAULT_TEXTS.common.THINKING.includes(t));
+      expect(new Set(extra).size).toBe(extra.length);
+    }
+  });
   it("같은 seed면 같은 대화와 결과", () => {
     const p1 = buildScript(a, 42, "세현");
     const p2 = buildScript(a, 42, "세현");
@@ -299,10 +317,42 @@ describe("말풍선 나누기", () => {
   });
 });
 
+describe("항상 내는 질문", () => {
+  it("비싼 옷 셋 중 버리기와 브랜드 셋 중 고르기는 어떤 seed에서도 나오고, 비싼 옷 셋에는 모자·신발이 없다", () => {
+    const brands = ["UNIQLO", "UNIQLO", "COS", "COS", "COS", "Levi's", "Levi's", "A.P.C.", "A.P.C.", "UNIQLO", "COS", "A.P.C."];
+    const wardrobe = [
+      ...brands.map((b, i) => g(i, { brand: b, purchasePrice: 10000 * (i + 1) })),
+      g(20, { brand: "Z", categoryId: "shoes", subcategoryId: null, purchasePrice: 9000000 }),
+      g(21, { brand: "Z", categoryId: "hat", subcategoryId: null, purchasePrice: 8000000 }),
+    ];
+    const a = analyze(wardrobe, null, 1360, new Date("2026-09-29T12:00:00+09:00"));
+    for (let seed = 0; seed < 30; seed++) {
+      const qs = buildScript(a, seed, null).script.questions;
+      expect(qs.some((q) => q.id === "brand_best")).toBe(true);
+      const drop = qs.find((q) => q.id === "drop_item");
+      expect(drop).toBeTruthy();
+      expect(drop!.options.map((o) => o.id)).not.toContain(a.items.find((i) => i.cat === "shoes")!.id);
+      expect(drop!.options.map((o) => o.id)).not.toContain(a.items.find((i) => i.cat === "hat")!.id);
+    }
+  });
+});
+
 describe("퀴즈", () => {
   it("가진 브랜드의 퀴즈가 있으면 어떤 seed에서도 퀴즈를 낸다", () => {
     const wardrobe = Array.from({ length: 12 }, (_, i) => g(i, { brand: i === 0 ? "메종 마르지엘라" : "우리동네 공방" }));
     const a = analyze(wardrobe, null, 1360, new Date("2026-09-29T12:00:00+09:00"));
     for (let seed = 0; seed < 30; seed++) expect(buildScript(a, seed, null).script.questions.some((q) => q.id === "quiz")).toBe(true);
+  });
+
+  it("퀴즈 앞 멘트에 브랜드 이름을 넣고, 브랜드가 처음 나오는 문장에 그 브랜드 옷 사진을 붙인다", () => {
+    const wardrobe = Array.from({ length: 12 }, (_, i) =>
+      g(i, { brand: i === 0 ? "메종 마르지엘라" : "우리동네 공방", imageUrl: i === 0 ? "https://x/m.jpg" : null }),
+    );
+    const a = analyze(wardrobe, null, 1360, new Date("2026-09-29T12:00:00+09:00"));
+    const quiz = buildScript(a, 1, null).script.questions.find((q) => q.id === "quiz")!;
+    expect(quiz.lead.join(" ")).toContain("메종 마르지엘라 옷이 있네요.");
+    expect(quiz.lead.join(" ")).toContain("메종 마르지엘라를 가지고 있으면");
+    const at = quiz.lead.findIndex((l) => l.includes("옷이 있네요"));
+    expect(quiz.leadPhotos?.[at]).toEqual([a.items.find((i) => i.brandLabel === "메종 마르지엘라")!.id]);
   });
 });

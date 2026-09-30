@@ -227,7 +227,8 @@ function Photos({ ids, photoOf }: { ids?: string[]; photoOf: (id: string) => str
 
 function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: boolean; onStart: (name: string | null) => void }) {
   const copy = useContext(CopyContext);
-  const [typed, setTyped] = useState(skipIntro);
+  // 다시 분석할 때도 소개 문구부터 타이핑한다.
+  const [typed, setTyped] = useState(false);
   const [declined, setDeclined] = useState<string | null>(null);
   const [asking, setAsking] = useState(skipIntro);
   const [name, setName] = useState("");
@@ -235,9 +236,13 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
 
   return (
     <div className="roast-mono roast-log mt-8" aria-live="polite">
-      <p className="roast-ai">{skipIntro ? copy.INTRO : <Typed text={copy.INTRO} onDone={() => setTyped(true)} />}</p>
+      <p className="roast-ai"><Typed text={copy.INTRO} onDone={() => setTyped(true)} /></p>
       {!skipIntro && copy.CREDIT && <p className="roast-credit">{copy.CREDIT}</p>}
-      {typed && !enough && <p className="roast-ai">{tooFew(copy, clothes)}</p>}
+      {typed && !enough && (
+        <p className="roast-ai">
+          <Typed text={tooFew(copy, clothes)} />
+        </p>
+      )}
       {typed && enough && !asking && (
         <>
           <div className="flex flex-wrap gap-2">
@@ -260,7 +265,7 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
           )}
         </>
       )}
-      {asking && (
+      {typed && asking && (
         <form
           className="flex flex-col gap-2"
           onSubmit={(e) => {
@@ -357,8 +362,14 @@ function Chat({
     if (started.current) return;
     started.current = true;
     void (async () => {
+      // 분석을 준비하는 동안 첫 멘트를 먼저 띄운다.
+      const starting = startRoast({ name, preview });
+      if (copy.OPENING.length) {
+        await think(700);
+        await sayBubbles(copy.OPENING[Math.floor(Math.random() * copy.OPENING.length)]);
+      }
       await think(900);
-      const start = await startRoast({ name, preview });
+      const start = await starting;
       if (!start.ok) {
         setError(start.code === "too_few" ? tooFew(copy, start.count) : start.message);
         return;
@@ -406,8 +417,8 @@ function Chat({
           await sleep(350 + Math.random() * 500);
         } else {
           const q = script.questions[step.q];
-          for (const l of q.lead) {
-            await sayBubbles(l);
+          for (const [i, l] of q.lead.entries()) {
+            await sayBubbles(l, q.leadPhotos?.[i]);
             await sleep(450);
           }
           await say(q.text, q.photos);

@@ -22,6 +22,7 @@ export function isBubbleKey(key: string): boolean {
     /^lines\.[^.]+\.say$/.test(key) ||
     /^questions\.[^.]+\.(lead|react\.[^.]+)$/.test(key) ||
     /^quiz\.[^.]+\.(correct|wrong)$/.test(key) ||
+    key === "screen.OPENING" ||
     /^common\.(SCAN_OPEN|NAME_GREETING|THINKING|MID_REMARKS|FEW_PATTERNS|WRAP_UP|QUIZ_CORRECT|QUIZ_WRONG)$/.test(key)
   );
 }

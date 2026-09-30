@@ -18,6 +18,8 @@ export interface RoastQuestion {
   /** 선택지 id별 즉시 반응 */
   reactions: Record<string, string>;
   photos: string[];
+  /** 앞 멘트 번호별로 붙일 사진(패션 퀴즈: 그 브랜드 옷) */
+  leadPhotos?: Record<number, string[]>;
   /** 패션 퀴즈 정답 선택지 id(틀렸을 때 정답을 표시) */
   answer?: string;
 }

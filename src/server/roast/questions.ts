@@ -45,6 +45,8 @@ const has = (a: Analysis, id: string) => Boolean(pat(a, id));
 const photoIds = (a: Analysis, ids: string[]) => ids.filter((id) => a.items.find((i) => i.id === id)?.hasPhoto);
 const stats = (p: Pattern | undefined) => (p ? { ...p.stats } : null);
 const priced = (a: Analysis) => a.items.filter((i) => i.price != null && i.price > 0);
+/** 가격을 적은 옷(모자·신발 제외) */
+const pricedClothes = (a: Analysis) => priced(a).filter((i) => i.cat !== "hat" && i.cat !== "shoes");
 /** 가격을 적은 옷 중 기준 금액 이상인 옷의 비율(5벌 이상일 때만) */
 const shareOver = (a: Analysis, min: number) => {
   const list = priced(a);
@@ -71,7 +73,7 @@ export const QUESTIONS: QuestionDef[] = [
   { id: "golden_spoon", bucket: "money", base: 0.85, options: ["no", "yes", "skip"],
     when: (a) => (shareOver(a, 500_000) >= 0.2 ? { pct: Math.round(shareOver(a, 500_000) * 100) } : null) },
   // 가장 비싼 옷 3벌 중 하나 버리기(가격 적은 옷 5벌 이상)
-  { id: "drop_item", bucket: "drop", base: 0.75, options: [], when: (a) => (priced(a).length >= 5 ? {} : null) },
+  { id: "drop_item", bucket: "drop", base: 0.75, options: [], when: (a) => (pricedClothes(a).length >= 3 ? {} : null) },
   { id: "brand_best", bucket: "pick", base: 0.7, options: [], when: (a) => (brandTrio(a) ? {} : null) },
   { id: "rationalize", bucket: "justify", base: 0.7, options: ["none", "some", "why"],
     when: (a) => {
@@ -355,7 +357,8 @@ export const Q_TEXT: Record<string, QuestionText> = {
     },
   },
   quiz: {
-    lead: ["잠깐만요.", "이 정도 브랜드를 가지고 있으면 이것 정도는 알고 있겠죠."],
+    // {brand}가 처음 나오는 문장에 그 브랜드 옷 사진을 붙인다.
+    lead: ["잠깐만요.", "{brand} 옷이 있네요.", "{brand|을} 가지고 있으면 이것 정도는 알고 있겠죠."],
     text: "",
     options: {},
     react: {},
@@ -981,6 +984,8 @@ export interface AskedQuestion {
   /** 선택지 id별 결과 글 문단(이미 값이 채워진 문장). 없으면 결과 글에 쓰지 않는다. */
   roast: Record<string, string>;
   photos: string[];
+  /** 앞 멘트 번호별 사진 */
+  leadPhotos?: Record<number, string[]>;
   /** 퀴즈 정답 선택지 id */
   answer?: string;
   quizId?: string;
@@ -1037,14 +1042,16 @@ function countChoices(n: number, r: Rng): number[] {
 
 const BUDGET: Record<string, number> = { b10: 100_000, b30: 300_000, b100: 1_000_000 };
 
+const ALWAYS_ASK = new Set(["quiz", "drop_item", "brand_best"]);
+
 export function pickQuestions(a: Analysis, r: Rng, fill: (t: string, v: Vars) => string, T: RoastTexts): AskedQuestion[] {
   const candidates = QUESTIONS.map((q) => ({ q, vars: q.when(a) }))
     .filter((c): c is { q: QuestionDef; vars: Vars } => c.vars != null)
     .map((c) => {
       const p = c.q.pattern ? pat(a, c.q.pattern) : undefined;
       const boost = c.vars.boost ? 0.15 : 0;
-      // 가진 브랜드의 퀴즈가 있으면 퀴즈는 항상 낸다(없으면 build에서 빠진다).
-      const always = c.q.id === "quiz" ? 10 : 0;
+      // 퀴즈, 비싼 옷 셋 중 버리기, 브랜드 셋 중 고르기는 조건이 맞으면 항상 낸다(못 만들면 build에서 빠진다).
+      const always = ALWAYS_ASK.has(c.q.id) ? 10 : 0;
       const score = c.q.base * 0.6 + (p ? p.strength * p.interest * 0.4 : 0.15) + boost + r.next() * 0.35 + always;
       return { ...c, score };
     })
@@ -1076,7 +1083,8 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
   if (!tx) return null;
   const f = (t: string, v: Vars = vars) => fill(t, v);
   const photos = q.photos?.(a) ?? [];
-  const base = { id: q.id, lead: tx.lead.map((l) => f(l)), text: tx.text ? f(tx.text) : "", photos };
+  // 퀴즈 앞 멘트는 브랜드를 고른 뒤에 채운다.
+  const base = { id: q.id, lead: q.id === "quiz" ? [] : tx.lead.map((l) => f(l)), text: tx.text ? f(tx.text) : "", photos };
   if (q.id === "odd_photo" && !photos.length) return null;
 
   // 결과 글 문단: 고를 수 있는 문장이 없거나 자리를 못 채우면 그 답은 결과 글에 쓰지 않는다.
@@ -1105,8 +1113,15 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
         throw e;
       }
     };
+    const brandPhotos = a.items
+      .filter((i) => i.brand?.name === quiz.brand && i.hasPhoto)
+      .slice(0, 3)
+      .map((i) => i.id);
+    const photoAt = tx.lead.findIndex((l) => l.includes("{brand"));
     return {
       ...base,
+      lead: tx.lead.map((l) => fill(l, { brand: brandLabel })),
+      leadPhotos: brandPhotos.length && photoAt >= 0 ? { [photoAt]: brandPhotos } : undefined,
       quizId: quiz.id,
       text: quiz.question,
       options: r.shuffle(ids).map((id) => ({ id, label: quiz.options[Number(id)] })),
@@ -1122,7 +1137,7 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
     };
   }
   if (q.id === "drop_item") {
-    const top3 = priced(a).sort((x, y) => y.price! - x.price!).slice(0, 3);
+    const top3 = pricedClothes(a).sort((x, y) => y.price! - x.price!).slice(0, 3);
     if (top3.length < 3) return null;
     const kinds = ["most", "mid", "least"];
     const options = top3.map((i) => ({ id: i.id, label: `${i.brandLabel} ${i.g.productName}`.trim(), photoId: i.hasPhoto ? i.id : undefined }));
