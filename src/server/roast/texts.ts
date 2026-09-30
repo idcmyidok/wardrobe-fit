@@ -1,4 +1,5 @@
 import "server-only";
+import { isBubbleKey, splitSentences } from "@/lib/roast/bubbles";
 import { ROAST_COPY } from "@/lib/roast/copy";
 import { findBrand } from "./brands";
 import { COMMON, LINE_TEXT } from "./lines";
@@ -19,7 +20,16 @@ import { varsOf } from "./text";
  * 예전 방식(목록 안 항목 하나, 예: "lines.black_bias.say.0")으로 저장된 값은 쓰지 않는다.
  */
 
-export const DEFAULT_TEXTS = { screen: ROAST_COPY, common: COMMON, lines: LINE_TEXT, questions: Q_TEXT, quiz: QUIZ };
+/** 대화 말풍선 문장은 기본값에서 문장마다 줄을 바꿔 둔다(한 문장씩 말풍선으로 나온다). */
+function splitChat<T>(node: T, path = ""): T {
+  if (typeof node === "string") return (isBubbleKey(path.split(".").slice(0, -1).join(".")) || isBubbleKey(path) ? splitSentences(node) : node) as T;
+  if (Array.isArray(node)) return node.map((x, i) => splitChat(x, `${path}.${i}`)) as T;
+  if (node && typeof node === "object")
+    return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, splitChat(v, path ? `${path}.${k}` : k)])) as T;
+  return node;
+}
+
+export const DEFAULT_TEXTS = splitChat({ screen: ROAST_COPY, common: COMMON, lines: LINE_TEXT, questions: Q_TEXT, quiz: QUIZ });
 export type RoastTexts = typeof DEFAULT_TEXTS;
 
 export const ROAST_TEXT_MAX = 500;

@@ -5,8 +5,7 @@ import { BRANDS } from "@/server/roast/brands";
 import { fieldLabel, textGroups, varLabel } from "@/server/roast/meta";
 import { getRoastTextEdits } from "@/server/roast/queries";
 import { Q_TEXT } from "@/server/roast/questions";
-import { QUIZ } from "@/server/roast/quiz";
-import { allowedVars, applyTextEdits, CUSTOM_QUIZ_ID, fromRows, groupOf, unitsOf } from "@/server/roast/texts";
+import { allowedVars, applyTextEdits, CUSTOM_QUIZ_ID, DEFAULT_TEXTS, fromRows, groupOf, unitsOf } from "@/server/roast/texts";
 
 export const metadata = { title: "훈수 문장 · 관리자", robots: { index: false } };
 
@@ -29,7 +28,7 @@ export default async function RoastTextsPage() {
 
   const current = applyTextEdits(rows).quiz;
   const quizzes: EditorQuiz[] = [
-    ...Object.entries(QUIZ).map(([id, base]) => ({ id, builtIn: true, base, value: current[id] ?? base, deleted: !current[id] })),
+    ...Object.entries(DEFAULT_TEXTS.quiz).map(([id, base]) => ({ id, builtIn: true, base, value: current[id] ?? base, deleted: !current[id] })),
     ...Object.entries(current)
       .filter(([id]) => CUSTOM_QUIZ_ID.test(id))
       .map(([id, value]) => ({ id, builtIn: false, base: null, value, deleted: false })),

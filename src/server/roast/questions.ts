@@ -1111,7 +1111,7 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
       reactions: Object.fromEntries(
         ids.map((id) => {
           const ok = Number(id) === quiz.answer;
-          return [id, `${r.pick(ok ? T.common.QUIZ_CORRECT : T.common.QUIZ_WRONG) ?? ""} ${r.pick(ok ? quiz.correct : quiz.wrong)}`.trim()];
+          return [id, `${r.pick(ok ? T.common.QUIZ_CORRECT : T.common.QUIZ_WRONG) ?? ""}\n${r.pick(ok ? quiz.correct : quiz.wrong)}`.trim()];
         }),
       ),
       roast: roastMap(ids.map((id) => [id, quizRoast(Number(id) === quiz.answer)])),

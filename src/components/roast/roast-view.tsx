@@ -6,6 +6,7 @@ import { UsageNote } from "@/components/usage/usage-note";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { buttonClassName } from "@/components/ui/button";
 import { MIN_CLOTHES, ROAST_COPY, tooFew, type RoastCopy } from "@/lib/roast/copy";
+import { bubblesOf } from "@/lib/roast/bubbles";
 import { wardrobeHash } from "@/lib/roast/hash";
 import type { RoastQuestion, RoastResult, RoastScript } from "@/lib/roast/types";
 import { notifyUsageChanged } from "@/lib/usage";
@@ -18,7 +19,7 @@ import "./roast.css";
  */
 
 const PREVIEW_KEY = "wardrobe-fit:roast-result";
-const TYPE_MS = 52;
+const TYPE_MS = 43;
 
 type Msg =
   | { id: number; kind: "ai"; text: string; photos?: string[]; gap?: boolean }
@@ -368,6 +369,16 @@ function Chat({
       onDone(done.result);
     })();
 
+    /** 줄바꿈마다 말풍선을 나눠 띄운다. 사진은 마지막 말풍선에 붙인다. */
+    async function sayBubbles(text: string, photos?: string[], gap?: boolean) {
+      const parts = bubblesOf(text);
+      if (!parts.length) return say(text, photos, gap);
+      for (let i = 0; i < parts.length; i++) {
+        if (i > 0) await sleep(reducedMotion() ? 100 : 380);
+        await say(parts[i], i === parts.length - 1 ? photos : undefined, i === 0 ? gap : undefined);
+      }
+    }
+
     async function play(script: RoastScript): Promise<Record<string, string>> {
       const answers: Record<string, string> = {};
       let sectionSeen = false;
@@ -382,12 +393,12 @@ function Chat({
         else if (step.t === "say") {
           // 섹션 사이 혼잣말은 앞 이야기와 이어지는 말로 읽히지 않게 한 박자 쉬고 띄워서 보여 준다.
           if (step.gap) await think(1600 + Math.random() * 800);
-          await say(step.text, step.photos, step.gap);
+          await sayBubbles(step.text, step.photos, step.gap);
           await sleep(350 + Math.random() * 500);
         } else {
           const q = script.questions[step.q];
           for (const l of q.lead) {
-            await say(l);
+            await sayBubbles(l);
             await sleep(450);
           }
           await say(q.text, q.photos);
@@ -397,7 +408,7 @@ function Chat({
           });
           answers[q.id] = picked;
           await think(600);
-          await say(q.reactions[picked] ?? "");
+          await sayBubbles(q.reactions[picked] ?? "");
           await sleep(600);
         }
       }
