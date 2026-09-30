@@ -66,7 +66,7 @@ const ALIAS = {
   pos: { '캐주얼 브랜드': '프리미엄 캐주얼', 캐주얼: '프리미엄 캐주얼', 프리미엘: '프리미엄', '프리미엠 캐주얼': '프리미엄 캐주얼', '라이프스타일': '전문 브랜드', '슈즈 전문': '전문 브랜드', '데님 전문': '전문 브랜드', 헤리티지: '프리미엄', 페미닌: '컨템포러리' },
   tags: { 캐주얼: '베이직' },
   types: {},
-  prods: { 자켓: '재킷', 롱슬리브: '티셔츠', 악세서리: '액세서리', 티셨츠: '티셔츠', 맨투맨: '후드/스웨트', 반팔티: '티셔츠' },
+  prods: { 자켓: '재킷', 롱슬리브: '티셔츠', 악세서리: '액세서리', 티셨츠: '티셔츠', 맨투맨: '후드/스웨트', 반팔티: '티셔츠', 상의: '티셔츠', 블라우스: '셔츠', 탑: '티셔츠', 후드: '후드/스웨트', 카디건: '니트' },
 };
 const fix = (v, key) => [...new Set(v.split(',').map((x) => x.trim()).filter(Boolean).map((x) => ALIAS[key][x] ?? x).filter((x) => ENUM[key].includes(x)))].join(', ');
 const oneOf = (v, list) => list.includes(v);
@@ -80,7 +80,11 @@ for (const f of readdirSync(dir).filter((x) => /^out-\d+\.txt$/.test(x)).sort())
     if (p[1] === 'EXCLUDE') { excluded++; continue; }
     if (existingIds.has(b.id) || existingNames.has(norm(b.en))) continue;
     if (p.length !== 15) { problems.push(`${b.id}: ${p.length} fields`); continue; }
-    const [, country, founded, pos0, price, tags0, types0, prods0, trend, formal, func, heritage, pop, access, hype] = p;
+    const [, country, founded, pos0, price, tags0, types0, prods0, trend0, formal0, func, heritage, pop0, access, hype] = p;
+    // 드물게 벗어난 단일 값은 가장 가까운 값으로 보정한다(없으면 '중간').
+    const trend = ENUM.trend.includes(trend0) ? trend0 : '중간';
+    const formal = formal0 === '포멀/캐주얼 혼합' ? '캐주얼/포멀 혼합' : formal0;
+    const pop = pop0 === '매니아 중심' ? '마니아 중심' : pop0;
     const pos = fix(pos0, 'pos'), tags = fix(tags0, 'tags'), types = fix(types0, 'types'), prods = fix(prods0, 'prods');
     const bad =
       !many(pos, ENUM.pos, 1, 3) ? '시장 포지션' : !oneOf(price, ENUM.price) ? '가격 레벨' : !many(tags, ENUM.tags, 1, 4) ? '스타일 태그' :
