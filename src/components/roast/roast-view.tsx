@@ -740,7 +740,10 @@ function ScoreDetail({ detail }: { detail: NonNullable<RoastReport["scoreDetail"
         </li>
         {detail.items.map((x, i) => (
           <li key={i} className="flex justify-between gap-4">
-            <span>{x.label}</span>
+            <span>
+              {x.label}
+              {x.why && <span className="text-neutral-700"> ({x.why})</span>}
+            </span>
             <span className="tabular-nums">{sign(x.delta)}</span>
           </li>
         ))}

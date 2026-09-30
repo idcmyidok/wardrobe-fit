@@ -175,6 +175,10 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     expect(d.base).toBe(50);
     const sum = d.base + d.items.reduce((x, i) => x + i.delta, 0);
     expect(Math.max(0, Math.min(100, Math.round(sum)))).toBe(report.total.score);
-    for (const i of d.items) expect(i.label).not.toMatch(/^[a-z_]+$/);
+    for (const i of d.items) {
+      expect(i.label).not.toMatch(/^[a-z_]+$/);
+      // 항목마다 실제로 적용된 판단 기준(숫자 포함)이 붙는다
+      expect(i.why.length).toBeGreaterThan(0);
+    }
   });
 });

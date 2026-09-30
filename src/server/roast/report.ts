@@ -418,17 +418,20 @@ export function buildReport(
   const answerDeltas = asked.flatMap((q) => {
     const ans = answers[q.id];
     const d = ans ? (deltas[q.id]?.[q.scoreKey?.[ans] ?? ans] ?? 0) : 0;
-    return d ? [{ label: `질문 "${q.text}" → ${q.options.find((o) => o.id === ans)?.label ?? ans}`, delta: d }] : [];
+    return d ? [{ label: "질문 답", why: `"${q.text}" → ${q.options.find((o) => o.id === ans)?.label ?? ans}`, delta: d }] : [];
   });
   const bonus = answerDeltas.reduce((sum, x) => sum + x.delta, 0);
   const totalScore = Math.max(0, Math.min(100, Math.round(wardrobe.score + bonus)));
-  // 관리자 점수 풀이: 같은 항목(나이 구간별 등)은 합친다.
-  const merged = new Map<string, number>();
-  for (const p of wardrobe.parts) merged.set(p.id, (merged.get(p.id) ?? 0) + p.delta);
+  // 관리자 점수 풀이: 같은 항목(나이 구간별 등)은 합치고 판단 기준은 이어 붙인다.
+  const merged = new Map<string, { delta: number; why: string[] }>();
+  for (const p of wardrobe.parts) {
+    const m = merged.get(p.id) ?? { delta: 0, why: [] };
+    merged.set(p.id, { delta: m.delta + p.delta, why: [...m.why, p.why] });
+  }
   const scoreDetail = {
     base: Number((deltas.rules as Partial<ScoreRules> | undefined)?.base ?? SCORE_RULES.base),
     items: [
-      ...[...merged.entries()].map(([id, d]) => ({ label: SCORE_PART_NAME[id] ?? id, delta: Math.round(d * 10) / 10 })),
+      ...[...merged.entries()].map(([id, m]) => ({ label: SCORE_PART_NAME[id] ?? id, why: m.why.join(" / "), delta: Math.round(m.delta * 10) / 10 })),
       ...answerDeltas,
     ].filter((x) => x.delta),
     total: totalScore,
