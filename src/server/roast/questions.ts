@@ -978,7 +978,7 @@ export interface AskedQuestion {
   id: string;
   lead: string[];
   text: string;
-  options: { id: string; label: string; photoId?: string }[];
+  options: { id: string; label: string; photoId?: string; photoIds?: string[] }[];
   /** 선택지 id별 반응(이미 값이 채워진 문장) */
   reactions: Record<string, string>;
   /** 선택지 id별 결과 글 문단 후보(이미 값이 채워진 문장). 없으면 결과 글에 쓰지 않는다. */
@@ -1142,7 +1142,8 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
   if (q.id === "brand_best") {
     const trio = brandTrio(a);
     if (!trio) return null;
-    const options = trio.map((b) => ({ id: b.label, label: b.label, photoId: photoIds(a, b.ids)[0] }));
+    // 브랜드마다 그 브랜드 옷 사진을 칸에 들어가는 만큼(여덟 장까지) 붙인다.
+    const options = trio.map((b) => ({ id: b.label, label: b.label, photoIds: photoIds(a, b.ids).slice(0, 8) }));
     const reactions = Object.fromEntries(trio.map((b) => [b.label, f(r.pick(tx.react[b.kind]), { count: b.count })]));
     const roast = roastMap(trio.map((b) => [b.label, roastOf(b.kind, { count: b.count, brand: b.label })]));
     return { ...base, options: r.shuffle(options), reactions, roast };

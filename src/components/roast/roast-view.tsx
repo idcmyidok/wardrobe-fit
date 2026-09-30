@@ -500,6 +500,16 @@ function Chat({
               >
                 {o.photoId && photoOf(o.photoId) && <img src={photoOf(o.photoId)!} alt="" />}
                 {o.label}
+                {o.photoIds && o.photoIds.some((id) => photoOf(id)) && (
+                  <span className="roast-choice-photos" aria-hidden>
+                    {o.photoIds
+                      .map(photoOf)
+                      .filter((u): u is string => Boolean(u))
+                      .map((u, i) => (
+                        <img key={u} src={u} alt="" className="roast-photo-in" style={{ animationDelay: `${i * PHOTO_STAGGER_MS}ms` }} draggable={false} />
+                      ))}
+                  </span>
+                )}
               </button>
             ))}
           </div>

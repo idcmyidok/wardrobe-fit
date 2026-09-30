@@ -8,6 +8,8 @@ export interface RoastOption {
   label: string;
   /** 브랜드 버리기: 대표 사진 옷 id */
   photoId?: string;
+  /** 선택지 칸에 한 줄로 늘어놓는 사진(칸을 넘는 사진은 보이지 않는다) */
+  photoIds?: string[];
 }
 
 export interface RoastQuestion {
