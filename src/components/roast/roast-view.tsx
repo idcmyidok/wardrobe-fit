@@ -281,8 +281,10 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
   const copy = useContext(CopyContext);
   // 다시 분석할 때도 소개 문구부터 타이핑한다.
   const [typed, setTyped] = useState(false);
-  const [declined, setDeclined] = useState<string | null>(null);
-  const [asking, setAsking] = useState(skipIntro);
+  // 처음이든 다시 하기든 시작·평가 기준 버튼부터 보여 준다.
+  const [criteria, setCriteria] = useState(false);
+  const [criteriaDone, setCriteriaDone] = useState(false);
+  const [asking, setAsking] = useState(false);
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const enough = clothes >= MIN_CLOTHES;
@@ -296,26 +298,23 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
           <Typed text={tooFew(copy, clothes)} />
         </p>
       )}
-      {typed && enough && !asking && (
+      {typed && enough && criteria && (
+        <p className="roast-ai">
+          <Typed text={copy.CRITERIA} onDone={() => setCriteriaDone(true)} />
+        </p>
+      )}
+      {typed && enough && !asking && (!criteria || criteriaDone) && (
         <>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="roast-choice" onClick={() => setAsking(true)}>
               {copy.START_LABEL}
             </button>
-            <button
-              type="button"
-              className="roast-choice"
-              onClick={() => setDeclined(copy.DECLINE[Math.floor(Math.random() * copy.DECLINE.length)])}
-              disabled={Boolean(declined)}
-            >
-              {copy.DECLINE_LABEL}
-            </button>
+            {!criteria && (
+              <button type="button" className="roast-choice" onClick={() => setCriteria(true)}>
+                {copy.CRITERIA_LABEL}
+              </button>
+            )}
           </div>
-          {declined && (
-            <p className="roast-ai">
-              <Typed key={declined} text={declined} />
-            </p>
-          )}
         </>
       )}
       {typed && asking && (

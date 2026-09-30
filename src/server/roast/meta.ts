@@ -148,11 +148,11 @@ export const SCREEN_NAME: Record<string, string> = {
   INTRO: "시작 멘트",
   CREDIT: "시작 멘트 아래 작은 글씨(영감 출처)",
   START_LABEL: "시작 버튼",
-  DECLINE_LABEL: "미루기 버튼",
-  DECLINE: "미루기를 눌렀을 때",
-  ASK_NAME: "이름 묻기",
-  NAME_HINT: "이름 입력칸 아래 안내",
-  AGE_HINT: "나이 입력칸 아래 안내(저장하지 않는다는 말 포함)",
+  CRITERIA_LABEL: "평가 기준 버튼",
+  CRITERIA: "평가 기준 버튼을 눌렀을 때 설명(대략적인 기준 + 비꼬기)",
+  ASK_NAME: "이름·나이 묻기",
+  NAME_HINT: "이름·나이 입력칸 아래 안내",
+  AGE_HINT: "나이를 저장하지 않는다는 안내",
   TOO_FEW: "옷이 10벌보다 적을 때",
   OPENING: "분석 시작 전 첫 멘트",
   WRITING: "결과를 쓰는 중",
@@ -424,7 +424,7 @@ export function textGroups(): TextGroupMeta[] {
 /** 고치는 단위 위치 → 사람이 읽는 칸 이름. 예: "lines.x.head" → "헤드라인(앞절 + 뒷절)" */
 export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string) => string | undefined): string {
   const p = key.split(".");
-  if (p[0] === "screen") return p[1] === "DECLINE" || p[1] === "OPENING" ? "문장들(하나 고름)" : "문장";
+  if (p[0] === "screen") return p[1] === "OPENING" ? "문장들(하나 고름)" : "문장";
   if (p[0] === "common") return p[1] === "SECTION_STATUS" ? `${SECTION_NAME[p[2]] ?? p[2]} (하나 고름)` : "문장들(하나 고름)";
   if (p[0] === "lines") {
     if (p[2] === "say") return "대화 문장(하나 고름)";
