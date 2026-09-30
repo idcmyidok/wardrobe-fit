@@ -196,7 +196,7 @@ export function buildAiInput(a: Analysis, plan: Plan, composed: Composed, answer
   ]
     .filter(Boolean)
     .join("\n");
-  values.total = a.clothes.length;
+  values.total = a.clothesTotal;
   return { text, values, photosByKey };
 }
 

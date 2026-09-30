@@ -140,7 +140,7 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
   // 이름은 가끔만 부른다: 인사에서 부르거나, 대화 중에 한 번.
   const greet = Boolean(name) && r.next() < 0.5;
   if (greet) say(fill(r.pick(C.NAME_GREETING), { name: name! }));
-  say(fill(r.pick(C.SCAN_OPEN), { n: a.clothes.length }));
+  say(fill(r.pick(C.SCAN_OPEN), { n: a.clothesTotal }));
 
   // 질문과 같은 사진은 질문에서만 보여 준다(같은 사진이 두 번 나오지 않게).
   const askedPhotos = new Set(asked.flatMap((q) => q.photos));
@@ -226,14 +226,15 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
 
 /** 코디 조합 수: 기본(상의×하의×신발) × (1+아우터) × (1+모자). 아우터만·모자만·둘 다 얹은 경우를 기본에 더한 것과 같다. */
 export function outfitCounts(a: Analysis) {
-  const n = (c: CategoryId) => a.items.filter((i) => i.cat === c).length;
+  // 코디 조합은 실제 벌 수로 센다(분석에서 뺀 무지 티 포함).
+  const n = (c: CategoryId) => a.allItems.filter((i) => i.cat === c).length;
   const top = n("top"), bottom = n("bottom"), shoes = n("shoes"), outer = n("outer"), hat = n("hat");
   const base = top * bottom * shoes;
   return { top, bottom, shoes, outer, hat, base, combos: base * (1 + outer) * (1 + hat) };
 }
 
 function outfitText(a: Analysis, r: Rng, T: RoastTexts): string | null {
-  if (!a.items.length) return null;
+  if (!a.allItems.length) return null;
   const c = outfitCounts(a);
   const num = (x: number) => x.toLocaleString("ko-KR");
   if (!c.base) {
@@ -290,7 +291,7 @@ export function composeResult(
     if (idx === 0 && name) text = `${name}님, ${text}`;
     paragraphs.push({ text, photos: NO_PHOTO.has(p.id) ? [] : photosOf(a, p) });
   });
-  if (!paragraphs.length) paragraphs.push({ text: fill(r.pick(C.PLAIN_PARA), { n: a.clothes.length }), photos: [] });
+  if (!paragraphs.length) paragraphs.push({ text: fill(r.pick(C.PLAIN_PARA), { n: a.clothesTotal }), photos: [] });
   if (used.length < 2) paragraphs.push({ text: r.pick(C.FEW_PATTERNS), photos: [] });
 
   const outfit = outfitText(a, r, T);

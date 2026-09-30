@@ -99,7 +99,7 @@ const g = (i: number, over: Partial<Garment>): Garment => ({
   categoryId: "top",
   subcategoryId: "top.short_tee",
   brand: "UNIQLO",
-  productName: "티셔츠",
+  productName: "프린트 티셔츠", // 무지 티(분석에서 빠짐)가 아니게
   sizeLabel: "M",
   colorName: "블랙",
   seasons: ["summer"],
@@ -179,7 +179,8 @@ describe("분석과 결과", () => {
     const p2 = buildScript(a, 42, "세현");
     expect(p1.script).toEqual(p2.script);
     expect(p1.script.questions.length).toBeGreaterThan(0);
-    expect(p1.script.questions.length).toBeLessThanOrEqual(8);
+    // 일반 질문은 최대 8개, 끝에 늘 붙는 질문(무신사 링크·패셔너블)은 따로 센다.
+    expect(p1.script.questions.filter((q) => !["musinsa_link_q", "fashionable_q"].includes(q.id)).length).toBeLessThanOrEqual(8);
     expect(p1.script.steps.filter((s) => s.t === "status").length).toBeLessThanOrEqual(15);
     const r = composeResult(a, "세현", 42);
     expect(r.headline).not.toMatch(/[{}]/);
@@ -257,13 +258,13 @@ describe("새 패턴", () => {
   const now = new Date("2026-09-29T12:00:00+09:00");
   it("같은 달 구매는 연도를 합쳐 센다(9월)", () => {
     const w = Array.from({ length: 16 }, (_, i) =>
-      g(i, { purchasedOn: i < 3 ? "2025-09-10" : i < 6 ? "2024-09-03" : `2025-${String((i % 8) + 1).padStart(2, "0")}-15`, productName: `옷${i}` }),
+      g(i, { purchasedOn: i < 3 ? "2025-09-10" : i < 6 ? "2024-09-03" : `2025-${String((i % 8) + 1).padStart(2, "0")}-15`, productName: `프린트 옷${i}` }),
     );
     const p = analyze(w, null, 1360, now).patterns.find((x) => x.id === "month_binge");
     expect(p?.stats).toEqual({ month: 9, n: 6 });
   });
   it("이름·색이 같은 옷 3벌 이상은 짱구 질문", () => {
-    const w = Array.from({ length: 12 }, (_, i) => g(i, { productName: i < 3 ? "베이직 반팔 티셔츠" : `옷${i}`, colorName: i < 3 ? "화이트" : "블랙" }));
+    const w = Array.from({ length: 12 }, (_, i) => g(i, { productName: i < 3 ? "그래픽 반팔 티셔츠" : `프린트 옷${i}`, colorName: i < 3 ? "화이트" : "블랙" }));
     const a = analyze(w, null, 1360, now);
     expect(a.patterns.find((x) => x.id === "identical_items")?.stats.n).toBe(3);
     const asked = buildScript(a, 7, null).asked.map((q) => q.id);
@@ -271,7 +272,7 @@ describe("새 패턴", () => {
   });
   it("무신사 링크가 많고 국내 대중 브랜드가 많으면 무신사 패턴", () => {
     const w = Array.from({ length: 12 }, (_, i) =>
-      g(i, { brand: i < 8 ? "Musinsa Standard" : "UNIQLO", productName: `옷${i}`, productUrl: i < 9 ? `https://www.musinsa.com/products/${i}` : "https://www.29cm.co.kr/p/1" }),
+      g(i, { brand: i < 8 ? "Musinsa Standard" : "UNIQLO", productName: `프린트 옷${i}`, productUrl: i < 9 ? `https://www.musinsa.com/products/${i}` : "https://www.29cm.co.kr/p/1" }),
     );
     const a = analyze(w, null, 1360, now);
     expect(a.patterns.find((x) => x.id === "musinsa_kr")).toBeDefined();
@@ -279,7 +280,7 @@ describe("새 패턴", () => {
   });
   it("질문과 같은 사진이면 같은 섹션의 앞 문장에서는 사진을 뺀다", () => {
     const w = Array.from({ length: 12 }, (_, i) =>
-      g(i, { productName: i < 4 ? "베이직 반팔 티셔츠" : `옷${i}`, colorName: i < 4 ? "화이트" : "블랙", imageUrl: "https://x/y.jpg" }),
+      g(i, { productName: i < 4 ? "그래픽 반팔 티셔츠" : `프린트 옷${i}`, colorName: i < 4 ? "화이트" : "블랙", imageUrl: "https://x/y.jpg" }),
     );
     const a = analyze(w, null, 1360, now);
     for (let seed = 1; seed < 20; seed++) {
@@ -294,7 +295,7 @@ describe("새 패턴", () => {
     }
   });
   it("결과 글에 답을 두고 비꼬는 문단이 들어간다", () => {
-    const w = Array.from({ length: 12 }, (_, i) => g(i, { productName: i < 3 ? "베이직 반팔 티셔츠" : `옷${i}`, colorName: i < 3 ? "화이트" : "블랙" }));
+    const w = Array.from({ length: 12 }, (_, i) => g(i, { productName: i < 3 ? "그래픽 반팔 티셔츠" : `프린트 옷${i}`, colorName: i < 3 ? "화이트" : "블랙" }));
     const a = analyze(w, null, 1360, now);
     const plan = buildScript(a, 7, null);
     const answers = Object.fromEntries(plan.asked.map((q) => [q.id, q.options[0].id]));
@@ -304,7 +305,7 @@ describe("새 패턴", () => {
     expect(r.paragraphs.some((p) => candidates[0].includes(p.text))).toBe(true);
   });
   it("결과 글에서 답을 옮겨 말하며 시작하는 문단(\"~라고 하셨죠.\")은 한 번만 쓴다", () => {
-    const w = Array.from({ length: 14 }, (_, i) => g(i, { productName: i < 3 ? "베이직 반팔 티셔츠" : `옷${i}`, colorName: i < 3 ? "화이트" : "블랙", purchasePrice: 10000 * (i + 1) }));
+    const w = Array.from({ length: 14 }, (_, i) => g(i, { productName: i < 3 ? "그래픽 반팔 티셔츠" : `프린트 옷${i}`, colorName: i < 3 ? "화이트" : "블랙", purchasePrice: 10000 * (i + 1) }));
     const a = analyze(w, null, 1360, now);
     for (let seed = 0; seed < 40; seed++) {
       const plan = buildScript(a, seed, null);

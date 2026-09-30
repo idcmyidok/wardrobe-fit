@@ -94,7 +94,7 @@ export async function startRoast(input: { name: string | null; age?: number | nu
     const age = ageSchema.safeParse(input.age ?? null).data ?? null;
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
     const a = analyze(s.garments, body, usdRate);
-    if (a.clothes.length < MIN_GARMENTS) return { ok: false, code: "too_few", count: a.clothes.length };
+    if (a.clothesTotal < MIN_GARMENTS) return { ok: false, code: "too_few", count: a.clothesTotal };
     const seed = Math.floor(Math.random() * 2 ** 31);
     const { script } = buildScript(a, seed, name, await getRoastTexts(s.supabase), age);
     return { ok: true, script, aiLeft: await aiLeft(s) };
@@ -115,7 +115,7 @@ export async function finishRoast(input: { seed: number; name: string | null; ag
 
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
     const a = analyze(s.garments, body, usdRate);
-    if (a.clothes.length < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 10개 이상일 때 분석할 수 있습니다." };
+    if (a.clothesTotal < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 10개 이상일 때 분석할 수 있습니다." };
     const texts = await getRoastTexts(s.supabase);
     const plan = buildScript(a, seed, name, texts, age);
     const composed = composeResult(a, name, seed, texts, plan.asked, answers);
@@ -162,7 +162,7 @@ export async function finishRoast(input: { seed: number; name: string | null; ag
     const result: RoastResult = {
       name,
       createdAt: new Date().toISOString(),
-      garmentCount: a.clothes.length,
+      garmentCount: a.clothesTotal,
       headline: written.headline,
       paragraphs: written.paragraphs,
       closing: written.closing,
