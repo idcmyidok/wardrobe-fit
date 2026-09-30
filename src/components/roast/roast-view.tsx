@@ -200,7 +200,11 @@ function Dots() {
   );
 }
 
-function Photos({ ids, photoOf }: { ids?: string[]; photoOf: (id: string) => string | null }) {
+/** 사진이 한 장씩 들어오는 시차(ms) */
+const PHOTO_STAGGER_MS = 110;
+const PHOTO_IN_MS = 450;
+
+function Photos({ ids, photoOf, animate }: { ids?: string[]; photoOf: (id: string) => string | null; animate?: boolean }) {
   const urls = (ids ?? []).map(photoOf).filter((u): u is string => Boolean(u));
   const drag = useRef<{ x: number; left: number } | null>(null);
   if (!urls.length) return null;
@@ -220,8 +224,16 @@ function Photos({ ids, photoOf }: { ids?: string[]; photoOf: (id: string) => str
       onPointerUp={() => (drag.current = null)}
       onPointerCancel={() => (drag.current = null)}
     >
-      {urls.map((u) => (
-        <img key={u} src={u} alt="" className="roast-photo" loading="lazy" draggable={false} />
+      {urls.map((u, i) => (
+        <img
+          key={u}
+          src={u}
+          alt=""
+          className={animate ? "roast-photo roast-photo-in" : "roast-photo"}
+          style={animate ? { animationDelay: `${i * PHOTO_STAGGER_MS}ms` } : undefined}
+          loading="lazy"
+          draggable={false}
+        />
       ))}
     </div>
   );
@@ -314,7 +326,6 @@ function Chat({
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [noAi, setNoAi] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(0);
   const typedWaiters = useRef(new Map<number, () => void>());
   const choiceWaiter = useRef<((id: string) => void) | null>(null);
@@ -327,13 +338,17 @@ function Chat({
   }, []);
   const remove = (id: number) => setMsgs((list) => list.filter((m) => m.id !== id));
 
+  // 사진은 글자가 다 찍힌 뒤에 한 장씩 들어오고, 다 들어온 뒤에 다음 말을 한다.
+  const [typedIds, setTypedIds] = useState<Set<number>>(() => new Set());
   const say = useCallback(
-    (text: string, photos?: string[], gap?: boolean) =>
-      new Promise<void>((resolve) => {
+    async (text: string, photos?: string[], gap?: boolean) => {
+      await new Promise<void>((resolve) => {
         const id = nextId.current;
         typedWaiters.current.set(id, resolve);
         push(gap ? { kind: "ai", text, photos, gap } : { kind: "ai", text, photos });
-      }),
+      });
+      if (photos?.length && !reducedMotion()) await sleep(Math.min(photos.length, 8) * PHOTO_STAGGER_MS + PHOTO_IN_MS);
+    },
     [push],
   );
   const think = useCallback(
@@ -345,15 +360,18 @@ function Chat({
     [push],
   );
 
-  // 대화가 길어질 때마다(새 메시지, 타이핑 중 줄바꿈, 사진 로딩) 바로 맨 아래로 붙인다. 결과가 붙은 뒤에는 멈춘다.
+  // 대화가 길어질 때마다(새 메시지, 타이핑 중 줄바꿈, 사진, 선택지) 바로 맨 아래로 붙인다. 결과가 붙은 뒤에는 멈춘다.
   // 부드러운 스크롤은 글자마다 다시 시작돼 살짝 위에 머물러서 쓰지 않는다.
   const finished = useRef(false);
   const logRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const log = logRef.current;
     if (!log) return;
+    // 대화 영역 끝이 아니라 페이지 맨 아래(아래 여백·꼬리말까지)로 보낸다.
     const stick = () => {
-      if (!finished.current) endRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
+      if (finished.current) return;
+      const doc = document.scrollingElement ?? document.documentElement;
+      window.scrollTo({ top: doc.scrollHeight, behavior: "auto" });
     };
     const ro = new ResizeObserver(stick);
     ro.observe(log);
@@ -439,6 +457,7 @@ function Chat({
   }, [name, preview, onDone, push, say, think, copy]);
 
   const onTyped = useCallback((id: number) => {
+    setTypedIds((s) => new Set(s).add(id));
     typedWaiters.current.get(id)?.();
     typedWaiters.current.delete(id);
   }, []);
@@ -450,7 +469,7 @@ function Chat({
         m.kind === "ai" ? (
           <div key={m.id} className="roast-ai" data-gap={m.gap ? "true" : undefined}>
             <Typed text={m.text} onDone={() => onTyped(m.id)} />
-            <Photos ids={m.photos} photoOf={photoOf} />
+            {typedIds.has(m.id) && <Photos ids={m.photos} photoOf={photoOf} animate />}
           </div>
         ) : m.kind === "status" ? (
           <p key={m.id} className="roast-status">
@@ -491,7 +510,6 @@ function Chat({
           {error}
         </p>
       )}
-      <div ref={endRef} />
     </div>
   );
 }

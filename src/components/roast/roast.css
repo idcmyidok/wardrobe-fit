@@ -105,6 +105,31 @@
   flex: none;
   scroll-snap-align: start;
 }
+/* 대화 사진: 글자가 다 찍힌 뒤 한 장씩 오른쪽에서 왼쪽으로 밀려 들어오며 선명해진다. 움직임 줄이기면 제자리에서 흐려졌다 선명해진다. */
+.roast .roast-photo-in {
+  animation: roast-photo-in 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes roast-photo-in {
+  from {
+    opacity: 0;
+    transform: translateX(72px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .roast .roast-photo-in {
+    animation-name: roast-photo-fade;
+    animation-duration: 0.2s;
+  }
+}
+@keyframes roast-photo-fade {
+  from {
+    opacity: 0;
+  }
+}
 .roast .roast-photo {
   width: 144px;
   height: 180px;
