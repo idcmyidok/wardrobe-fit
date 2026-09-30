@@ -45,6 +45,8 @@ const has = (a: Analysis, id: string) => Boolean(pat(a, id));
 const photoIds = (a: Analysis, ids: string[]) => ids.filter((id) => a.items.find((i) => i.id === id)?.hasPhoto);
 const stats = (p: Pattern | undefined) => (p ? { ...p.stats } : null);
 const priced = (a: Analysis) => a.items.filter((i) => i.price != null && i.price > 0);
+/** 가격을 적은 옷(모자·신발 제외) */
+const pricedClothes = (a: Analysis) => priced(a).filter((i) => i.cat !== "hat" && i.cat !== "shoes");
 /** 가격을 적은 옷 중 기준 금액 이상인 옷의 비율(5벌 이상일 때만) */
 const shareOver = (a: Analysis, min: number) => {
   const list = priced(a);
@@ -71,7 +73,7 @@ export const QUESTIONS: QuestionDef[] = [
   { id: "golden_spoon", bucket: "money", base: 0.85, options: ["no", "yes", "skip"],
     when: (a) => (shareOver(a, 500_000) >= 0.2 ? { pct: Math.round(shareOver(a, 500_000) * 100) } : null) },
   // 가장 비싼 옷 3벌 중 하나 버리기(가격 적은 옷 5벌 이상)
-  { id: "drop_item", bucket: "drop", base: 0.75, options: [], when: (a) => (priced(a).length >= 5 ? {} : null) },
+  { id: "drop_item", bucket: "drop", base: 0.75, options: [], when: (a) => (pricedClothes(a).length >= 3 ? {} : null) },
   { id: "brand_best", bucket: "pick", base: 0.7, options: [], when: (a) => (brandTrio(a) ? {} : null) },
   { id: "rationalize", bucket: "justify", base: 0.7, options: ["none", "some", "why"],
     when: (a) => {
@@ -1040,14 +1042,16 @@ function countChoices(n: number, r: Rng): number[] {
 
 const BUDGET: Record<string, number> = { b10: 100_000, b30: 300_000, b100: 1_000_000 };
 
+const ALWAYS_ASK = new Set(["quiz", "drop_item", "brand_best"]);
+
 export function pickQuestions(a: Analysis, r: Rng, fill: (t: string, v: Vars) => string, T: RoastTexts): AskedQuestion[] {
   const candidates = QUESTIONS.map((q) => ({ q, vars: q.when(a) }))
     .filter((c): c is { q: QuestionDef; vars: Vars } => c.vars != null)
     .map((c) => {
       const p = c.q.pattern ? pat(a, c.q.pattern) : undefined;
       const boost = c.vars.boost ? 0.15 : 0;
-      // 가진 브랜드의 퀴즈가 있으면 퀴즈는 항상 낸다(없으면 build에서 빠진다).
-      const always = c.q.id === "quiz" ? 10 : 0;
+      // 퀴즈, 비싼 옷 셋 중 버리기, 브랜드 셋 중 고르기는 조건이 맞으면 항상 낸다(못 만들면 build에서 빠진다).
+      const always = ALWAYS_ASK.has(c.q.id) ? 10 : 0;
       const score = c.q.base * 0.6 + (p ? p.strength * p.interest * 0.4 : 0.15) + boost + r.next() * 0.35 + always;
       return { ...c, score };
     })
@@ -1133,7 +1137,7 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
     };
   }
   if (q.id === "drop_item") {
-    const top3 = priced(a).sort((x, y) => y.price! - x.price!).slice(0, 3);
+    const top3 = pricedClothes(a).sort((x, y) => y.price! - x.price!).slice(0, 3);
     if (top3.length < 3) return null;
     const kinds = ["most", "mid", "least"];
     const options = top3.map((i) => ({ id: i.id, label: `${i.brandLabel} ${i.g.productName}`.trim(), photoId: i.hasPhoto ? i.id : undefined }));

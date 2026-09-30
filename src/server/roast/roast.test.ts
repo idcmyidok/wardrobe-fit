@@ -310,6 +310,26 @@ describe("말풍선 나누기", () => {
   });
 });
 
+describe("항상 내는 질문", () => {
+  it("비싼 옷 셋 중 버리기와 브랜드 셋 중 고르기는 어떤 seed에서도 나오고, 비싼 옷 셋에는 모자·신발이 없다", () => {
+    const brands = ["UNIQLO", "UNIQLO", "COS", "COS", "COS", "Levi's", "Levi's", "A.P.C.", "A.P.C.", "UNIQLO", "COS", "A.P.C."];
+    const wardrobe = [
+      ...brands.map((b, i) => g(i, { brand: b, purchasePrice: 10000 * (i + 1) })),
+      g(20, { brand: "Z", categoryId: "shoes", subcategoryId: null, purchasePrice: 9000000 }),
+      g(21, { brand: "Z", categoryId: "hat", subcategoryId: null, purchasePrice: 8000000 }),
+    ];
+    const a = analyze(wardrobe, null, 1360, new Date("2026-09-29T12:00:00+09:00"));
+    for (let seed = 0; seed < 30; seed++) {
+      const qs = buildScript(a, seed, null).script.questions;
+      expect(qs.some((q) => q.id === "brand_best")).toBe(true);
+      const drop = qs.find((q) => q.id === "drop_item");
+      expect(drop).toBeTruthy();
+      expect(drop!.options.map((o) => o.id)).not.toContain(a.items.find((i) => i.cat === "shoes")!.id);
+      expect(drop!.options.map((o) => o.id)).not.toContain(a.items.find((i) => i.cat === "hat")!.id);
+    }
+  });
+});
+
 describe("퀴즈", () => {
   it("가진 브랜드의 퀴즈가 있으면 어떤 seed에서도 퀴즈를 낸다", () => {
     const wardrobe = Array.from({ length: 12 }, (_, i) => g(i, { brand: i === 0 ? "메종 마르지엘라" : "우리동네 공방" }));
