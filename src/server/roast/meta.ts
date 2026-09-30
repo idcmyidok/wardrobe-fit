@@ -17,7 +17,7 @@ export const VAR_LABEL: Record<string, string> = {
 };
 
 export const SECTION_NAME: Record<string, string> = {
-  size: "옷장 크기", acc: "모자·신발", color: "컬러", brand: "브랜드", shop: "구매처", repeat: "반복", season: "시즌", timing: "구매 시기", money: "금액", odd: "튀는 옷",
+  size: "옷장 크기", category: "옷 종류", acc: "모자·신발", color: "컬러", brand: "브랜드", group: "브랜드 계열", trait: "브랜드 성향", style: "스타일", shop: "구매처", repeat: "반복", season: "시즌", timing: "구매 시기", money: "금액", spend: "지출 비중", odd: "튀는 옷",
 };
 
 export const PATTERN_COND: Record<string, string> = {

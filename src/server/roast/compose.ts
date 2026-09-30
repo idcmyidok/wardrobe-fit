@@ -14,7 +14,7 @@ import { DEFAULT_TEXTS, type RoastTexts } from "./texts";
  * 숫자와 이름은 모두 패턴의 근거 값에서 채운다.
  */
 
-const SECTION_ORDER: Section[] = ["size", "acc", "color", "brand", "shop", "repeat", "season", "timing", "money", "odd"];
+const SECTION_ORDER: Section[] = ["size", "category", "acc", "color", "brand", "group", "trait", "style", "shop", "repeat", "season", "timing", "money", "spend", "odd"];
 /** 관련 패턴이 없는 질문이 들어갈 자리 */
 const QUESTION_SECTION: Record<string, Section> = { quiz: "brand", brand_best: "brand", drop_item: "money", count_guess: "size", max_budget: "money", food_vs_clothes: "money", golden_spoon: "money" };
 
@@ -83,7 +83,7 @@ export interface Plan {
 export function buildScript(a: Analysis, seed: number, name: string | null, T: RoastTexts = DEFAULT_TEXTS): Plan {
   const r = rng(seed);
   const C = T.common;
-  const convo = rank(a, r, 10, T, 3);
+  const convo = rank(a, r, 15, T, 3);
   const asked = pickQuestions(a, r, fill, T);
   const steps: RoastStep[] = [];
   const say = (text: string, photos?: string[]) => steps.push(photos?.length ? { t: "say", text, photos } : { t: "say", text });

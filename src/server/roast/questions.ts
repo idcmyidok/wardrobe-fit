@@ -1051,7 +1051,8 @@ export function pickQuestions(a: Analysis, r: Rng, fill: (t: string, v: Vars) =>
     .sort((x, y) => y.score - x.score);
   const asked: AskedQuestion[] = [];
   const buckets = new Set<string>();
-  const want = candidates.length >= 5 ? (r.next() < 0.4 ? 4 : 5) : candidates.length;
+  // 질문은 최대 8개(후보가 많으면 6~8개)
+  const want = Math.min(candidates.length, 6 + Math.floor(r.next() * 3));
   for (const c of candidates) {
     if (asked.length >= want) break;
     if (buckets.has(c.q.bucket)) continue;

@@ -10,7 +10,22 @@ import "server-only";
  * 문구(COMMON, LINE_TEXT)는 관리자 화면에서 고칠 수 있고, 패턴이 들어갈 자리(LINE_SECTION)는 코드에만 있다.
  */
 
-export type Section = "size" | "acc" | "color" | "brand" | "shop" | "repeat" | "season" | "timing" | "money" | "odd";
+export type Section =
+  | "size"
+  | "category"
+  | "acc"
+  | "color"
+  | "brand"
+  | "group"
+  | "trait"
+  | "style"
+  | "shop"
+  | "repeat"
+  | "season"
+  | "timing"
+  | "money"
+  | "spend"
+  | "odd";
 
 export interface PatternLines {
   say: string[];
@@ -23,14 +38,19 @@ export { DISCLAIMER } from "@/lib/roast/copy";
 export const COMMON = {
   SECTION_STATUS: {
     size: ["옷장 크기부터 재 보겠습니다.", "일단 몇 벌인지부터 세겠습니다."],
+    category: ["어떤 종류 옷이 많은지 보겠습니다.", "옷 종류별로 나눠 보는 중입니다."],
     acc: ["신발장이랑 모자걸이도 열어 보겠습니다.", "옷 말고 머리와 발 쪽도 보겠습니다."],
     color: ["옷들의 색도 한번 보겠습니다.", "옷들의 색 분포를 확인하는 중입니다."],
     brand: ["어느 브랜드 옷들인지도 보겠습니다.", "브랜드 라벨을 살펴보는 중입니다."],
+    group: ["브랜드들이 어느 계열인지 보겠습니다.", "명품인지 SPA인지, 계열부터 나눠 보겠습니다."],
+    trait: ["고른 브랜드들의 성향을 따져 보겠습니다.", "브랜드 성격을 하나씩 보는 중입니다."],
+    style: ["스타일이 어디로 쏠렸는지 보겠습니다.", "옷들의 스타일을 모아 보는 중입니다."],
     shop: ["구매 링크를 따라가 보겠습니다.", "어디서 샀는지도 좀 보겠습니다."],
     repeat: ["겹치는 옷을 찾는 중입니다.", "비슷한 옷끼리 모아 보겠습니다."],
     season: ["계절별로 나눠 보겠습니다."],
     timing: ["언제 샀는지 보겠습니다.", "구매 날짜를 훑는 중입니다."],
     money: ["이제 조금 민감한 쪽, 금액을 보겠습니다.", "때가 됐군요. 이제 영수증 쪽을 보겠습니다."],
+    spend: ["돈이 어디로 새는지 보겠습니다.", "어느 쪽에 돈을 가장 많이 썼는지 보는 중입니다."],
     odd: ["이야, 하나 눈에 걸리는 게 있는데요.", "잠깐, 이상한 게 하나 보입니다.\nㅋㅋㅋ 이건 뭐지"],
   } as Record<Section, string[]>,
   SCAN_OPEN: ["옷장을 열었습니다. 모자·신발을 빼고 {n}벌입니다.", "모자·신발을 뺀 옷이 {n}벌. 시작하겠습니다.", "{n}벌을 확인했습니다. 천천히 보겠습니다."],
@@ -99,8 +119,8 @@ export const LINE_SECTION: Record<string, Section> = {
   count_small: "size",
   count_many: "size",
   count_huge: "size",
-  category_bias: "size",
-  subcategory_bias: "size",
+  category_bias: "category",
+  subcategory_bias: "category",
   shoes_many: "acc",
   hats_many: "acc",
   shoe_sub_bias: "acc",
@@ -109,33 +129,33 @@ export const LINE_SECTION: Record<string, Section> = {
   achromatic_bias: "color",
   chroma_bias: "color",
   brand_focus: "brand",
-  group_luxury: "brand",
-  group_designer: "brand",
-  group_contemporary: "brand",
-  group_premium_casual: "brand",
-  group_specialist: "brand",
-  group_jp_denim: "brand",
-  group_heritage: "brand",
-  group_street: "brand",
-  group_sports: "brand",
-  group_outdoor: "brand",
-  group_mass: "brand",
+  group_luxury: "group",
+  group_designer: "group",
+  group_contemporary: "group",
+  group_premium_casual: "group",
+  group_specialist: "group",
+  group_jp_denim: "group",
+  group_heritage: "group",
+  group_street: "group",
+  group_sports: "group",
+  group_outdoor: "group",
+  group_mass: "group",
   trend_brands: "brand",
   country_bias: "brand",
-  trait_hype: "brand",
-  trait_trendy: "brand",
-  trait_timeless: "brand",
-  trait_functional: "brand",
-  trait_niche: "brand",
-  trait_mainstream: "brand",
-  trait_formal: "brand",
-  trait_casual: "brand",
-  trait_heritage: "brand",
-  trait_pricey: "brand",
-  tag_bias: "brand",
-  same_color: "brand",
-  same_fit: "brand",
-  same_tag: "brand",
+  trait_hype: "trait",
+  trait_trendy: "trait",
+  trait_timeless: "trait",
+  trait_functional: "trait",
+  trait_niche: "trait",
+  trait_mainstream: "trait",
+  trait_formal: "trait",
+  trait_casual: "trait",
+  trait_heritage: "trait",
+  trait_pricey: "trait",
+  tag_bias: "style",
+  same_color: "style",
+  same_fit: "style",
+  same_tag: "style",
   old_brands: "brand",
   combo_repeat: "repeat",
   family_repeat: "repeat",
@@ -150,9 +170,9 @@ export const LINE_SECTION: Record<string, Section> = {
   identical_items: "repeat",
   avg_price: "money",
   top_item: "money",
-  category_spend: "money",
-  subcategory_spend: "money",
-  brand_spend: "money",
+  category_spend: "spend",
+  subcategory_spend: "spend",
+  brand_spend: "spend",
   sale_luxury: "money",
   cheap_brand_splurge: "money",
   odd_one: "odd",

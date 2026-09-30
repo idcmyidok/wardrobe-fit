@@ -161,7 +161,8 @@ describe("분석과 결과", () => {
     const p2 = buildScript(a, 42, "세현");
     expect(p1.script).toEqual(p2.script);
     expect(p1.script.questions.length).toBeGreaterThan(0);
-    expect(p1.script.questions.length).toBeLessThanOrEqual(5);
+    expect(p1.script.questions.length).toBeLessThanOrEqual(8);
+    expect(p1.script.steps.filter((s) => s.t === "status").length).toBeLessThanOrEqual(15);
     const r = composeResult(a, "세현", 42);
     expect(r.headline).not.toMatch(/[{}]/);
     expect(r.paragraphs.map((x) => x.text).join(" ")).not.toMatch(/[{}]/);
