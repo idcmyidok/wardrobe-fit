@@ -3,6 +3,9 @@ import { LINE_SECTION } from "./lines";
 import { Q_TEXT, QUESTIONS } from "./questions";
 import { REPORT_TEXT } from "./report-text";
 import { SCORE_DELTAS } from "./score-deltas";
+import { ORDER_QUESTIONS } from "./orders/questions";
+import { ORDER_DELTAS } from "./orders/rules";
+import { ORDER_AGE_KEY_NAME, ORDER_COMMON, ORDER_QUESTION_COND, ORDER_REPORT_NAME, ORDER_RULE_NAME, ORDER_SCREEN_NAME } from "./orders/texts";
 
 /**
  * 관리자 문장 편집 화면과 검토 문서에 보여 주는 설명(언제 나오는지, 자리 이름). 분석 계산에는 쓰지 않는다.
@@ -195,7 +198,7 @@ export function varLabel(group: string, key: string): string {
 /** 편집 화면의 묶음(패턴 하나, 질문 하나 등). 퀴즈는 편집 화면이 따로 모은다. */
 export interface TextGroupMeta {
   id: string;
-  kind: "screen" | "common" | "lines" | "questions" | "report" | "score" | "layout";
+  kind: "screen" | "common" | "lines" | "questions" | "report" | "score" | "layout" | "orders";
   title: string;
   when: string;
 }
@@ -436,6 +439,26 @@ const REPORT_NAME: Record<string, string> = {
   suspicious: "마지막 문단",
 };
 
+/** 주문내역 결과 문장의 경우 이름 */
+const ORDER_REPORT_SIDE: Record<string, string> = {
+  high: "랭킹템 30% 이상",
+  low: "숨은 상품 25% 이상",
+  cheap: "한 벌 평균 3만 원 미만",
+  mid: "한 벌 평균 3만~10만 원",
+  pricey: "한 벌 평균 10만 원 이상",
+  style: "주 스타일이 바뀜",
+  hipper: "랭킹템 비율이 줄어듦",
+  mainstream: "랭킹템 비율이 늘어남",
+  pricier: "한 벌 평균가가 30% 이상 오름",
+  cheaper: "한 벌 평균가가 30% 이상 내림",
+  rank: "나이에 비해 랭킹템이 많음",
+  standard: "나이에 비해 무신사 스탠다드가 많음",
+  street: "나이에 비해 스트릿이 많음",
+  mature: "나이에 맞게 성숙한 주문",
+  young_street: "어린 나이에 스트릿",
+  lux: "어린 나이에 명품",
+};
+
 export function textGroups(): TextGroupMeta[] {
   const out: TextGroupMeta[] = [];
   for (const [k, name] of Object.entries(SCREEN_NAME)) out.push({ id: `screen.${k}`, kind: "screen", title: name, when: "" });
@@ -457,6 +480,17 @@ export function textGroups(): TextGroupMeta[] {
   out.push({ id: "score.age", kind: "score", title: "나이에 맞는 옷", when: "옷을 산 때 나이 구간별 기준(비율은 %, 감점도 양수로)" });
   for (const qid of Object.keys(SCORE_DELTAS).filter((k) => k !== "rules" && k !== "age"))
     out.push({ id: `score.${qid}`, kind: "score", title: qid === "quiz" ? "패션 퀴즈" : Q_TEXT[qid]?.text || qid, when: `${qid} · 답에 따라 총 옷장 점수에 더하는 값(-20~20)` });
+  // 주문내역 훈수(숨은 주소 /roast/orders): 한 탭에 화면·질문·결과 문장·점수를 모은다.
+  const O = "[주문내역] ";
+  for (const [k, name] of Object.entries(ORDER_SCREEN_NAME))
+    out.push({ id: `orders.${k in ORDER_COMMON ? "common" : "screen"}.${k}`, kind: "orders", title: `${O}화면: ${name}`, when: "" });
+  for (const q of ORDER_QUESTIONS.filter((d) => d.id.startsWith("o_")))
+    out.push({ id: `questions.${q.id}`, kind: "orders", title: `${O}질문: ${Q_TEXT[q.id]?.text ?? q.id}`, when: `${q.id} · ${ORDER_QUESTION_COND[q.id] ?? ""}` });
+  for (const [k, name] of Object.entries(ORDER_REPORT_NAME)) out.push({ id: `orders.report.${k}`, kind: "orders", title: `${O}결과: ${name}`, when: "" });
+  out.push({ id: "score.orules", kind: "orders", title: `${O}점수 기준`, when: "기본 점수에서 더하고 빼는 기준(비율은 %, 금액은 만 원, 감점도 양수로). 퀴즈·밥과 옷·패셔너블 질문 증감은 '점수' 탭 값을 같이 씁니다." });
+  out.push({ id: "score.oage", kind: "orders", title: `${O}나이에 맞는 주문`, when: "옷을 산 때 나이 구간별 기준(비율은 %, 감점도 양수로)" });
+  for (const qid of Object.keys(ORDER_DELTAS))
+    out.push({ id: `score.${qid}`, kind: "orders", title: `${O}점수: ${Q_TEXT[qid]?.text || qid}`, when: `${qid} · 답에 따라 총점에 더하는 값(-20~20)` });
   return out;
 }
 
@@ -472,6 +506,8 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
   }
   if (p[0] === "score") {
     if (p[1] === "rules") return RULE_NAME[p[2]] ?? p[2];
+    if (p[1] === "orules") return ORDER_RULE_NAME[p[2]] ?? p[2];
+    if (p[1] === "oage") return `${AGE_BAND_NAME[p[2]] ?? p[2]}: ${ORDER_AGE_KEY_NAME[p[3]] ?? p[3]}`;
     if (p[1] === "age") return `${AGE_BAND_NAME[p[2]] ?? p[2]}: ${AGE_KEY_NAME[p[3]] ?? p[3]}`;
     if (p[1] === "fashionable_q") {
       const [tier, ...opt] = p[2].split("_");
@@ -479,6 +515,12 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
     }
     if (p[1] === "quiz") return p[2] === "right" ? "맞혔을 때" : "틀렸을 때";
     return REACT_NAME[p[2]] ?? optionLabel?.(p[1], p[2]) ?? p[2];
+  }
+  if (p[0] === "orders") {
+    const last = p[p.length - 1];
+    if (p[1] === "report" && (p[2] === "HEADLINE")) return last === "b90" ? "90점 이상" : last === "b0" ? "10점 미만" : `${last.slice(1)}~${Number(last.slice(1)) + 9}점`;
+    if (p[1] === "report" && p.length === 4) return `${ORDER_REPORT_SIDE[last] ?? last} (하나 고름)`;
+    return p[1] === "screen" && !["LOADING", "OPENING"].includes(p[2]) ? "문장" : "문장들(하나 고름, LOADING은 차례로 번갈아 나옴)";
   }
   if (p[0] === "report") {
     const last = p[p.length - 1];

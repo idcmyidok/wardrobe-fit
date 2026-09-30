@@ -4,6 +4,7 @@ import type { CategoryId } from "@/lib/types/domain";
 import { fitSummary, type Analysis, type Item, type Pattern } from "./analyze";
 import { familyName, type FamilyId } from "./keywords";
 import { findBand } from "./bands";
+import { ORDER_Q_TEXT } from "./orders/texts";
 import { pickQuiz } from "./quiz";
 import { MissingVar, won, type Rng, type Vars } from "./text";
 import type { RoastTexts } from "./texts";
@@ -244,6 +245,8 @@ export const QUESTIONS: QuestionDef[] = [
 ];
 
 export const Q_TEXT: Record<string, QuestionText> = {
+  // 주문내역 훈수 질문(관리자 화면에서는 "주문내역 훈수" 탭에서 고친다)
+  ...ORDER_Q_TEXT,
   odd_photo: {
     lead: ["잠깐만요.", "이 옷을 고른 이유는 {reason}입니다. 옷장 전체에서 열 벌에 한 벌도 안 되는 것들인데, 이 옷 하나에 전부 몰려 있어요."],
     text: "이건 정말 본인 옷 맞나요?",
@@ -1180,8 +1183,16 @@ const BUDGET: Record<string, number> = { b10: 100_000, b30: 300_000, b100: 1_000
 
 const ALWAYS_ASK = new Set(["quiz", "drop_item", "brand_best", "band_quiz", "three_500"]);
 
-export function pickQuestions(a: Analysis, r: Rng, fill: (t: string, v: Vars) => string, T: RoastTexts, tier: "high" | "mid" | "low" = "mid"): AskedQuestion[] {
-  const candidates = QUESTIONS.filter((q) => !APPENDED.includes(q.id))
+export function pickQuestions(
+  a: Analysis,
+  r: Rng,
+  fill: (t: string, v: Vars) => string,
+  T: RoastTexts,
+  tier: "high" | "mid" | "low" = "mid",
+  /** 후보 질문(주문내역 훈수는 orders/questions.ts의 ORDER_QUESTIONS) */
+  defs: QuestionDef[] = QUESTIONS,
+): AskedQuestion[] {
+  const candidates = defs.filter((q) => !APPENDED.includes(q.id))
     .map((q) => ({ q, vars: q.when(a) }))
     .filter((c): c is { q: QuestionDef; vars: Vars } => c.vars != null)
     .map((c) => {
@@ -1214,7 +1225,8 @@ export function pickQuestions(a: Analysis, r: Rng, fill: (t: string, v: Vars) =>
   }
   // 무신사 링크 질문(조건이 맞을 때)과 마지막 질문은 늘 끝에 붙인다.
   for (const id of APPENDED) {
-    const q = QUESTIONS.find((x) => x.id === id)!;
+    const q = defs.find((x) => x.id === id);
+    if (!q) continue;
     const vars = q.when(a);
     if (!vars) continue;
     try {

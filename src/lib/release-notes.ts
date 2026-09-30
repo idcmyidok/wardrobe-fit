@@ -1,3 +1,5 @@
+import { FEATURES } from "./features";
+
 /**
  * 업데이트 노트(사용자 메뉴 → 업데이트 노트). 최신 버전을 맨 위에 둔다.
  *
@@ -15,6 +17,8 @@
 export interface ReleaseFeature {
   title: string;
   description: string;
+  /** 숨긴 기능이면 그 기능 켜기 이름(src/lib/features.ts). 꺼져 있으면 노트에 보이지 않는다. */
+  feature?: keyof typeof FEATURES;
 }
 
 export interface ReleaseNote {
@@ -28,7 +32,7 @@ export interface ReleaseNote {
   fixes: string[];
 }
 
-export const RELEASE_NOTES: ReleaseNote[] = [
+const ALL_NOTES: ReleaseNote[] = [
   {
     version: "1.3.1",
     date: "2026-09-30",
@@ -41,6 +45,12 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       {
         title: "입으면 이 정도 길이",
         description: "구매 판단기 결과의 길이감 아래에, 내 키에 맞춘 사람 그림 위로 그 옷의 총장을 겹쳐 보여 줍니다. 옷이 어디까지 내려오는지 한눈에 보입니다.",
+      },
+      {
+        title: "주문내역만 보고 훈수",
+        description:
+          "무신사 주문내역을 붙여 넣기만 하면 그 주문만 보고 훈수를 둡니다. 하트가 많은 랭킹템을 얼마나 샀는지, 무신사 스탠다드나 한 브랜드에 얼마나 쏠렸는지, 반품·취소 습관, 예전과 요즘 주문의 변화까지 짚고 100점 만점 점수를 매깁니다. 붙여 넣은 주문내역은 저장하지 않습니다.",
+        feature: "orderRoastMenu",
       },
       {
         title: "옷장 성적표 나왔습니다",
@@ -302,6 +312,9 @@ export const RELEASE_NOTES: ReleaseNote[] = [
 ];
 
 /** 지금 버전(맨 위 노트) */
+/** 화면에 보이는 노트: 꺼 둔 기능의 문장은 뺀다 */
+export const RELEASE_NOTES: ReleaseNote[] = ALL_NOTES.map((n) => ({ ...n, features: n.features.filter((f) => !f.feature || FEATURES[f.feature]) }));
+
 export const CURRENT_VERSION = RELEASE_NOTES[0]?.version ?? "";
 
 /** "1.1.0" → "1" */

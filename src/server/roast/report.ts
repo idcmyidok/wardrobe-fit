@@ -8,7 +8,7 @@ import type { AskedQuestion } from "./questions";
 import { fill, MissingVar, rng, won, type Rng, type Vars } from "./text";
 import type { ReportTexts } from "./report-text";
 import { SCORE_RULES, type ScoreRules } from "./score-deltas";
-import { fitContrast, SCORE_PART_NAME, scoreWardrobe } from "./score";
+import { fitContrast, SCORE_PART_NAME, scoreWardrobe, type ScorePart, type WardrobeScore } from "./score";
 import { findColorFamily } from "@/lib/constants/colors";
 
 /**
@@ -82,6 +82,23 @@ const ANSWER_TO: Record<string, string[]> = {
 };
 /** 결과에 넣는 질문 답은 세 개까지 */
 
+/**
+ * 주문내역 훈수(orders/report.ts)가 결과를 바꿀 때: 점수는 주문내역 기준으로, 주문내역 문단은 진단 문단 앞에,
+ * 첫 줄·총점 문장은 주문내역 문장으로 쓴다. 나머지(요약·목록·진단 문단)는 옷장 훈수와 같다.
+ */
+export interface ReportOverride {
+  score: { score: number; parts: ScorePart[] };
+  base: number;
+  partName: Record<string, string>;
+  points: RoastReport["points"];
+  /** 질문 id → 답을 붙일 문단 id */
+  answerTo: Record<string, string[]>;
+  headline: Record<string, readonly string[]>;
+  totalLead: readonly string[];
+  /** 빼는 진단 문단(주문내역에서는 당연한 것, 예: 구매 링크가 전부 무신사) */
+  skipDiags: string[];
+}
+
 export function buildReport(
   a: Analysis,
   name: string | null,
@@ -91,6 +108,7 @@ export function buildReport(
   answers: Record<string, string> = {},
   score: Record<string, unknown> = {},
   age: number | null = null,
+  override?: ReportOverride,
 ): RoastReport {
   const deltas = score as Record<string, Record<string, number>>;
   const r = rng(seed ^ 0x2f6a91c3);
@@ -259,7 +277,7 @@ export function buildReport(
 
   // 진단 문단: 문장이 있는 것만, 뚜렷한 순서로 3~5개(뚜렷하지 않은 "반대쪽"은 모자랄 때만)
   const texts = R.diag as Record<string, { title: string; fact: string; factLow?: string; high: string[]; low?: string[] }>;
-  const withText = diags.filter((d) => (texts[d.key]?.[d.side] ?? []).length);
+  const withText = diags.filter((d) => (texts[d.key]?.[d.side] ?? []).length && !override?.skipDiags.includes(d.id));
   const rank = (d: Diag) => d.strength + (tails.has(d.id) ? 1 : 0);
   const strong = withText.filter((d) => d.strength >= 0.3).sort((x, y) => rank(y) - rank(x));
   const weak = withText.filter((d) => d.strength < 0.3).sort((x, y) => rank(y) - rank(x));
@@ -350,21 +368,22 @@ export function buildReport(
     if (quotesAnswer(text)) quoted.v = true;
     return text;
   };
-  const targets = new Set([...picked.map((d) => d.id), ...(colorPoint ? ["color"] : []), ...(fitPoint ? ["fit"] : [])]);
+  const targets = new Set([...picked.map((d) => d.id), ...(colorPoint ? ["color"] : []), ...(fitPoint ? ["fit"] : []), ...(override?.points.map((p) => p.id) ?? [])]);
+  const answerTo: Record<string, string[]> = { ...ANSWER_TO, ...(override?.answerTo ?? {}) };
   const quoted = { v: false };
   const pointAnswers = new Map<string, string>();
   let extra: string | null = null;
   let used = 0;
   for (const q of asked) {
     if (used >= L.count.answers || !answers[q.id]) continue;
-    const target = (ANSWER_TO[q.id] ?? []).find((id) => targets.has(id) && !pointAnswers.has(id));
+    const target = (answerTo[q.id] ?? []).find((id) => targets.has(id) && !pointAnswers.has(id));
     if (target) {
       const line = answerLine(q, quoted);
       if (line) {
         pointAnswers.set(target, line);
         used++;
       }
-    } else if (!extra && !ANSWER_TO[q.id]) {
+    } else if (!extra && !answerTo[q.id]) {
       extra = answerLine(q, quoted);
       if (extra) used++;
     }
@@ -409,12 +428,14 @@ export function buildReport(
   });
 
   // 총 옷장 점수: 옷장 점수(score.ts) + 질문·퀴즈 답별 증감
-  const wardrobe = scoreWardrobe(a, {
-    age,
-    musinsaLinkOnly: answers.musinsa_link_q === "link_only",
-    rules: deltas.rules as Partial<ScoreRules> | undefined,
-    ageRules: (score.age as Record<string, Record<string, number>> | undefined) ?? undefined,
-  });
+  const wardrobe: Pick<WardrobeScore, "score" | "parts" | "age"> = override
+    ? { ...override.score, age: null }
+    : scoreWardrobe(a, {
+        age,
+        musinsaLinkOnly: answers.musinsa_link_q === "link_only",
+        rules: deltas.rules as Partial<ScoreRules> | undefined,
+        ageRules: (score.age as Record<string, Record<string, number>> | undefined) ?? undefined,
+      });
   const answerDeltas = asked.flatMap((q) => {
     const ans = answers[q.id];
     const d = ans ? (deltas[q.id]?.[q.scoreKey?.[ans] ?? ans] ?? 0) : 0;
@@ -429,9 +450,9 @@ export function buildReport(
     merged.set(p.id, { delta: m.delta + p.delta, why: [...m.why, p.why], items: [...new Set([...m.items, ...(p.items ?? [])])] });
   }
   const scoreDetail = {
-    base: Number((deltas.rules as Partial<ScoreRules> | undefined)?.base ?? SCORE_RULES.base),
+    base: override?.base ?? Number((deltas.rules as Partial<ScoreRules> | undefined)?.base ?? SCORE_RULES.base),
     items: [
-      ...[...merged.entries()].map(([id, m]) => ({ label: SCORE_PART_NAME[id] ?? id, why: m.why.join(" / "), delta: Math.round(m.delta * 10) / 10, ...(m.items.length ? { garments: m.items } : {}) })),
+      ...[...merged.entries()].map(([id, m]) => ({ label: (override?.partName ?? SCORE_PART_NAME)[id] ?? id, why: m.why.join(" / "), delta: Math.round(m.delta * 10) / 10, ...(m.items.length ? { garments: m.items } : {}) })),
       ...answerDeltas,
     ].filter((x) => x.delta),
     total: totalScore,
@@ -533,11 +554,11 @@ export function buildReport(
 
   const pointOrder = Object.entries(L.point_order).sort((x, y) => x[1] - y[1]).map(([k]) => k);
   const pointShown = (k: string) => (L.point_show as Record<string, number>)[k] !== 0;
-  const points = limitPhotos(pointOrder.filter(pointShown).flatMap((k) => slot[k] ?? []), L.count.photo_blocks);
+  const points = limitPhotos([...(override?.points.map(withAnswer) ?? []), ...pointOrder.filter(pointShown).flatMap((k) => slot[k] ?? [])], L.count.photo_blocks);
 
   // 첫 줄(총점 평가)과 "> " 문장들
   const owner = name ? `${name}님의` : "당신의";
-  const headline = tryFill(r, R.HEADLINE[band], { owner, score: totalScore }) ?? `${owner} 옷장은 ${totalScore}점입니다.`;
+  const headline = tryFill(r, override?.headline[band] ?? R.HEADLINE[band], { owner, score: totalScore }) ?? `${owner} ${override ? "주문내역" : "옷장"}은 ${totalScore}점입니다.`;
   const intro = [
     facts.length >= 2 ? tryFill(r, R.INTRO_THANKS, { fact1: facts[0], fact2: facts[1] }) : facts.length ? tryFill(r, R.INTRO_THANKS_ONE, { fact1: facts[0] }) : null,
     chars.length >= 2 ? tryFill(r, R.INTRO_CHAR_TWO, { first: chars[0].name, who2: chars[1].who }) : chars.length ? tryFill(r, R.INTRO_CHAR_ONE, { who1: chars[0].who }) : null,
@@ -567,7 +588,7 @@ export function buildReport(
 
   const total = {
     score: totalScore,
-    lead: fill(r.pick(R.TOTAL_LEAD), { owner, score: totalScore }),
+    lead: tryFill(r, override?.totalLead ?? R.TOTAL_LEAD, { owner, score: totalScore }) ?? `${totalScore}점`,
     text: r.pick(R.TOTAL[band]),
   };
 
@@ -618,12 +639,12 @@ export function limitPhotos<P extends { id: string; photos?: string[] }>(points:
 }
 
 /** 첫 문장(굵게)과 나머지로 나눈다. */
-function splitLead(text: string): { lead: string; text: string } {
+export function splitLead(text: string): { lead: string; text: string } {
   const m = /^([^]+?[.!?])\s+([^]+)$/.exec(text);
   return m ? { lead: m[1], text: m[2] } : { lead: text, text: "" };
 }
 
-function tryFill(r: Rng, list: readonly string[], vars: Vars): string | null {
+export function tryFill(r: Rng, list: readonly string[], vars: Vars): string | null {
   for (const t of r.shuffle(list)) {
     try {
       return fill(t, vars);

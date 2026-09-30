@@ -136,6 +136,7 @@ export function normalizeProduct(raw: RawProduct, sources: FieldSources, options
     sizeOptions,
     sizeChart,
     categoryPath: (raw.categoryHints ?? []).map((h) => cleanText(h, 100)).filter(Boolean),
+    ...(raw.popularity ? { popularity: raw.popularity } : {}),
     warnings,
   };
 }

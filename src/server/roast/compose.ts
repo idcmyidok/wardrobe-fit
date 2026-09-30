@@ -7,6 +7,9 @@ import { familyName, type FamilyId } from "./keywords";
 import { LINE_SECTION, type Section } from "./lines";
 import { pickQuestions, QUESTIONS, type AskedQuestion } from "./questions";
 import { scoreWardrobe, tierOf } from "./score";
+import { ORDER_QUESTIONS } from "./orders/questions";
+import type { OrderRules } from "./orders/rules";
+import { orderTier, scoreOrders } from "./orders/score";
 import type { ScoreRules } from "./score-deltas";
 import { fill, MissingVar, rng, won, type Rng, type Vars } from "./text";
 import { DEFAULT_TEXTS, type RoastTexts } from "./texts";
@@ -137,19 +140,26 @@ const RESTATES = new Set(["recent_reason", "binge_month", "shoes_q", "shoe_sub_q
 
 export function buildScript(a: Analysis, seed: number, name: string | null, T: RoastTexts = DEFAULT_TEXTS, age: number | null = null): Plan {
   const r = rng(seed);
-  const C = T.common;
+  // 주문내역 훈수: 대화 공통 문구는 주문내역 문구로 덮고, 옷장 문장의 "옷장"은 "주문내역"으로 바꿔 말한다.
+  const orders = Boolean(a.orders);
+  const C = orders ? { ...T.common, ...T.orders.common } : T.common;
   const convo = rank(a, r, 15, T, 3);
-  // "스스로 패셔너블한가요?"는 지금까지의 옷장 점수 구간에 따라 반응이 달라진다(질문 답 전 점수)
+  // "스스로 패셔너블한가요?"는 지금까지의 점수 구간에 따라 반응이 달라진다(질문 답 전 점수)
   const rules = T.score.rules as unknown as ScoreRules;
-  const base = scoreWardrobe(a, { age, rules, ageRules: T.score.age as unknown as Record<string, Record<string, number>> });
-  const asked = pickQuestions(a, r, fill, T, tierOf(base.score, rules));
+  const orules = T.score.orules as unknown as Partial<OrderRules>;
+  const tier = orders
+    ? orderTier(scoreOrders(a, { age, rules: orules, ageRules: T.score.oage as unknown as Record<string, Record<string, number>> }).score, orules)
+    : tierOf(scoreWardrobe(a, { age, rules, ageRules: T.score.age as unknown as Record<string, Record<string, number>> }).score, rules);
+  const defs = orders ? ORDER_QUESTIONS : QUESTIONS;
+  const picked = pickQuestions(a, r, fill, T, tier, defs);
+  const asked = orders ? picked.map(askedAsOrders) : picked;
   const steps: RoastStep[] = [];
   const say = (text: string, photos?: string[]) => steps.push(photos?.length ? { t: "say", text, photos } : { t: "say", text });
 
   // 이름은 가끔만 부른다: 인사에서 부르거나, 대화 중에 한 번.
   const greet = Boolean(name) && r.next() < 0.5;
   if (greet) say(fill(r.pick(C.NAME_GREETING), { name: name! }));
-  say(fill(r.pick(C.SCAN_OPEN), { n: a.clothesTotal }));
+  say(fill(r.pick(C.SCAN_OPEN), { n: a.clothesTotal, orders: a.orders?.orders ?? a.clothesTotal }));
 
   // 낯선 옷 고르기 질문은 그 사진을 질문에서만 보여 준다. 다른 문장은 해당 옷 사진을 빠짐없이 다 보여 주고,
   // 같은 사진이 바로 뒤 질문에 또 나오지 않게 질문 쪽에서 뺀다(sayShown).
@@ -172,13 +182,13 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
   };
 
   // 질문이 같은 사실(숫자·달·금액)을 다시 말하면 그 패턴 문장은 빼고 질문만 한다.
-  const restated = new Set(asked.filter((q) => RESTATES.has(q.id)).map((q) => QUESTIONS.find((d) => d.id === q.id)?.pattern).filter(Boolean));
+  const restated = new Set(asked.filter((q) => RESTATES.has(q.id)).map((q) => defs.find((d) => d.id === q.id)?.pattern).filter(Boolean));
   const sayBlocks = convo.filter((p) => !restated.has(p.id)).map((p) => ({ kind: "say" as const, p, sec: LINE_SECTION[p.id] }));
   const askBlocks = asked.map((q, i) => ({
     kind: "ask" as const,
     i,
     id: q.id,
-    pattern: QUESTIONS.find((d) => d.id === q.id)?.pattern,
+    pattern: defs.find((d) => d.id === q.id)?.pattern,
     sec: QUESTION_SECTION[q.id] ?? EXTRA_QUESTION_SECTION[q.id] ?? sectionOfQuestion(q.id),
   }));
   const blocks = arrangeBlocks(sayBlocks, askBlocks);
@@ -234,12 +244,28 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
     text: q.text,
     options: q.options,
     reactions: q.reactions,
-    photos: q.id === "odd_photo" ? q.photos : q.photos.filter((id) => !sayShown.get(QUESTIONS.find((d) => d.id === q.id)?.pattern ?? "")?.has(id)),
+    photos: q.id === "odd_photo" ? q.photos : q.photos.filter((id) => !sayShown.get(defs.find((d) => d.id === q.id)?.pattern ?? "")?.has(id)),
     ...(q.leadPhotos ? { leadPhotos: q.leadPhotos } : {}),
     ...(q.answer != null ? { answer: q.answer } : {}),
     ...(q.reveal?.length ? { reveal: q.reveal } : {}),
   }));
-  return { script: { seed, steps, questions }, asked, convo };
+  // 주문내역 훈수: 공통 추임새·진행 문구에 남은 "옷장"도 "주문내역"으로
+  const said = orders ? steps.map((s) => ("text" in s ? { ...s, text: asOrders(s.text) } : s)) : steps;
+  return { script: { seed, steps: said, questions }, asked, convo };
+}
+
+/** 옷장 훈수 문장을 주문내역 훈수에서 쓸 때: "옷장"을 "주문내역"으로(조사는 받침이 같아 그대로 둔다) */
+export const asOrders = (text: string) => text.replace(/옷장/g, "주문내역");
+const mapValues = <T>(o: Record<string, T>, f: (v: T) => T) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, f(v)]));
+function askedAsOrders(q: AskedQuestion): AskedQuestion {
+  return {
+    ...q,
+    lead: q.lead.map(asOrders),
+    text: asOrders(q.text),
+    options: q.options.map((o) => ({ ...o, label: asOrders(o.label) })),
+    reactions: mapValues(q.reactions, asOrders),
+    roast: mapValues(q.roast, (list) => list.map(asOrders)),
+  };
 }
 
 /** 코디 조합 수: 기본(상의×하의×신발) × (1+아우터) × (1+모자). 아우터만·모자만·둘 다 얹은 경우를 기본에 더한 것과 같다. */

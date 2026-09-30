@@ -363,3 +363,36 @@
     animation: none;
   }
 }
+
+/* 주문내역 훈수: 상품을 읽는 동안의 로딩(점 여섯 개, 번갈아 바뀌는 문장, 진행 %) */
+.roast .roast-order-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 56px 0;
+  text-align: center;
+}
+.roast .roast-order-line {
+  min-height: 1.6em;
+  animation: roast-order-line 0.5s ease-out;
+}
+.roast .roast-order-percent {
+  font-variant-numeric: tabular-nums;
+  color: var(--n-500);
+}
+@keyframes roast-order-line {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .roast .roast-order-line {
+    animation: none;
+  }
+}

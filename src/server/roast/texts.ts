@@ -8,6 +8,8 @@ import { QUIZ, type QuizEntry } from "./quiz";
 import { REPORT_TEXT } from "./report-text";
 import { AGE_RULES, SCORE_DELTAS, SCORE_RULES } from "./score-deltas";
 import { varsOf } from "./text";
+import { ORDER_AGE_RULES, ORDER_DELTAS, ORDER_RULES } from "./orders/rules";
+import { ORDER_COMMON, ORDER_REPORT_TEXT, ORDER_SCREEN } from "./orders/texts";
 
 /**
  * 내 옷장 훈수의 모든 문장(관리자 화면에서 고칠 수 있는 것). 조건·선택지 id는 코드에만 있다.
@@ -31,7 +33,20 @@ function splitChat<T>(node: T, path = ""): T {
   return node;
 }
 
-export const DEFAULT_TEXTS = splitChat({ screen: ROAST_COPY, common: COMMON, lines: LINE_TEXT, questions: Q_TEXT, quiz: QUIZ, report: REPORT_TEXT, score: { ...SCORE_DELTAS, rules: SCORE_RULES, age: AGE_RULES } });
+/**
+ * 주문내역 훈수: 질문 문구는 questions(o_*), 답별 증감은 score(o_*), 점수 기준은 score.orules·score.oage,
+ * 화면·대화·결과 문장은 orders.screen·orders.common·orders.report에 있다(관리자 "주문내역 훈수" 탭).
+ */
+export const DEFAULT_TEXTS = splitChat({
+  screen: ROAST_COPY,
+  common: COMMON,
+  lines: LINE_TEXT,
+  questions: Q_TEXT,
+  quiz: QUIZ,
+  report: REPORT_TEXT,
+  score: { ...SCORE_DELTAS, ...ORDER_DELTAS, rules: SCORE_RULES, age: AGE_RULES, orules: ORDER_RULES, oage: ORDER_AGE_RULES },
+  orders: { screen: ORDER_SCREEN, common: ORDER_COMMON, report: ORDER_REPORT_TEXT },
+});
 export type RoastTexts = typeof DEFAULT_TEXTS;
 
 export const ROAST_TEXT_MAX = 500;
@@ -90,6 +105,8 @@ export function unitAt(key: string): { kind: UnitKind; base: UnitValue | undefin
 export function groupOf(key: string): string {
   // 결과 페이지의 진단·점수·캐릭터는 항목마다 따로 묶는다(예: "report.diag.color").
   if (/^report\.(diag|character|layout)\./.test(key)) return key.split(".").slice(0, 3).join(".");
+  // 주문내역 훈수의 화면·대화·결과 문장은 항목마다 따로 묶는다(예: "orders.report.shift").
+  if (key.startsWith("orders.")) return key.split(".").slice(0, 3).join(".");
   return key.split(".").slice(0, 2).join(".");
 }
 
@@ -141,7 +158,7 @@ export function checkUnit(key: string, value: unknown): { value: UnitValue } | {
     const hint = max === 1 ? "1(보임) 또는 0(뺌)으로 써 주세요." : `${min}부터 ${max}까지 정수로 써 주세요.`;
     return Number.isInteger(n) && n >= min && n <= max ? { value: n } : { error: hint };
   }
-  if (unit.kind === "number" && (key.startsWith("score.rules.") || key.startsWith("score.age."))) {
+  if (unit.kind === "number" && /^score\.(o?rules|o?age)\./.test(key)) {
     const n = typeof value === "number" ? value : Number(value);
     const max = key.endsWith("_year") ? 2100 : 100;
     return Number.isInteger(n) && n >= 0 && n <= max ? { value: n } : { error: `0부터 ${max}까지 정수로 써 주세요.` };

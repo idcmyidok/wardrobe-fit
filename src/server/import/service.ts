@@ -11,7 +11,7 @@ import { normalizeProductUrl } from "./url";
  * 링크 분석 1건을 실행하고 product_imports에 남긴다(PROJECT_SPEC.md 12.1 [6], 12.3).
  * - 같은 사용자·같은 주소는 10분 동안 이전 결과를 다시 쓴다(쇼핑몰에 다시 요청하지 않음).
  * - 링크 가져오기는 사용자당 24시간에 100번, 무신사 주문 가져오기는 따로 세어 500번까지(PROJECT_SPEC.md 19장 비용 남용). 관리자·테스터는 제한 없음.
- *   주문 가져오기 기록은 parser_version 끝에 ORDER_IMPORT_SUFFIX를 붙여 구분한다(마이그레이션 없이).
+ *   주문 가져오기·주문내역 훈수 기록은 parser_version 끝에 ORDER_IMPORT_SUFFIX·ORDER_ROAST_SUFFIX를 붙여 구분한다(마이그레이션 없이).
  *   AI(Gemini)는 규칙으로 사이즈표를 못 찾았을 때만 1번 부르므로 실제 AI 호출은 이보다 훨씬 적다.
  */
 
@@ -19,8 +19,14 @@ export const IMPORT_REUSE_MINUTES = 10;
 export const IMPORT_DAILY_LIMIT = 100;
 export const ORDER_IMPORT_DAILY_LIMIT = 500;
 export const ORDER_IMPORT_SUFFIX = ":order";
+/**
+ * 주문내역 훈수가 읽는 상품은 하루 분석 한도에 세지 않는다(사용자 요청). 남용을 막는 안전 상한만 둔다(화면에 안 보임).
+ * 기록의 parser_version 끝에 ORDER_ROAST_SUFFIX를 붙여 나눠 센다.
+ */
+export const ORDER_ROAST_DAILY_CAP = 1000;
+export const ORDER_ROAST_SUFFIX = ":roast";
 /** 분석 방식이 바뀌면 올린다. 이전 방식의 결과는 다시 쓰지 않는다(product_imports.parser_version). */
-export const IMPORT_ENGINE_VERSION = "v4";
+export const IMPORT_ENGINE_VERSION = "v5";
 
 type Client = SupabaseClient<Database>;
 
@@ -46,8 +52,11 @@ export async function runImport(
   input: string,
   purpose: "wardrobe" | "fit_check",
   onStage?: (stage: AnalyzeStage) => void,
-  /** photosOnly: 등록된 옷의 사진만 다시 고를 때. 실측 AI 추출을 건너뛴다(하루 분석 한도에는 센다). */
-  { photosOnly = false, kind = "link" }: { photosOnly?: boolean; kind?: "link" | "order" } = {},
+  /**
+   * photosOnly: 등록된 옷의 사진만 다시 고를 때. 실측 AI 추출을 건너뛴다(하루 분석 한도에는 센다).
+   * kind: link(링크 가져오기) · order(무신사 주문 가져오기, ORDER_IMPORT_DAILY_LIMIT) · roast(주문내역 훈수, ORDER_ROAST_DAILY_CAP만 보고 AI는 부르지 않는다)
+   */
+  { photosOnly = false, kind = "link" }: { photosOnly?: boolean; kind?: "link" | "order" | "roast" } = {},
 ): Promise<ImportOutcome> {
   const started = Date.now();
   const base = { importId: null, reused: false, domain: null, sourceUrl: input.trim().slice(0, 2048), parserId: null, product: null };
@@ -72,8 +81,8 @@ export async function runImport(
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .gte("created_at", minutesAgo(24 * 60));
-    const { count } = await (kind === "order" ? counted.like("parser_version", `%${ORDER_IMPORT_SUFFIX}`) : counted.or(`parser_version.is.null,parser_version.not.like.%${ORDER_IMPORT_SUFFIX}`));
-    if ((count ?? 0) >= (kind === "order" ? ORDER_IMPORT_DAILY_LIMIT : IMPORT_DAILY_LIMIT)) return fail("rate_limited");
+    const { count } = await (kind === "link" ? counted.or(`parser_version.is.null,and(parser_version.not.like.%${ORDER_IMPORT_SUFFIX},parser_version.not.like.%${ORDER_ROAST_SUFFIX})`) : counted.like("parser_version", `%${kind === "order" ? ORDER_IMPORT_SUFFIX : ORDER_ROAST_SUFFIX}`));
+    if ((count ?? 0) >= (kind === "order" ? ORDER_IMPORT_DAILY_LIMIT : kind === "roast" ? ORDER_ROAST_DAILY_CAP : IMPORT_DAILY_LIMIT)) return fail("rate_limited");
   }
 
   const { data: recent } = await supabase
@@ -83,7 +92,7 @@ export async function runImport(
     .eq("normalized_url", normalizedUrl.toString())
     .eq("purpose", purpose)
     .in("status", ["succeeded", "partial"])
-    .in("parser_version", [IMPORT_ENGINE_VERSION, IMPORT_ENGINE_VERSION + ORDER_IMPORT_SUFFIX])
+    .in("parser_version", [IMPORT_ENGINE_VERSION, IMPORT_ENGINE_VERSION + ORDER_IMPORT_SUFFIX, IMPORT_ENGINE_VERSION + ORDER_ROAST_SUFFIX])
     .gte("created_at", minutesAgo(IMPORT_REUSE_MINUTES))
     .order("created_at", { ascending: false })
     .limit(1)
@@ -109,7 +118,7 @@ export async function runImport(
 
   let outcome: ImportOutcome;
   try {
-    const result = await analyzeProductUrl(normalizedUrl.toString(), { normalize: { knownBrands }, onStage, extractSizeChart: photosOnly ? undefined : aiSizeChart });
+    const result = await analyzeProductUrl(normalizedUrl.toString(), { normalize: { knownBrands }, onStage, extractSizeChart: photosOnly || kind === "roast" ? undefined : aiSizeChart });
     const found = Boolean(result.product.productName);
     outcome = {
       ...base,
@@ -136,7 +145,7 @@ export async function runImport(
       normalized_url: normalizedUrl.toString(),
       domain: (outcome.domain ?? normalizedUrl.hostname).slice(0, 255),
       parser_id: outcome.parserId,
-      parser_version: kind === "order" ? IMPORT_ENGINE_VERSION + ORDER_IMPORT_SUFFIX : outcome.parserId ? IMPORT_ENGINE_VERSION : null,
+      parser_version: kind === "order" ? IMPORT_ENGINE_VERSION + ORDER_IMPORT_SUFFIX : kind === "roast" ? IMPORT_ENGINE_VERSION + ORDER_ROAST_SUFFIX : outcome.parserId ? IMPORT_ENGINE_VERSION : null,
       status: outcome.status,
       result: outcome.product as unknown as Json,
       warnings: (outcome.product?.warnings ?? []) as unknown as Json,

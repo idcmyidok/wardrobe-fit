@@ -7,6 +7,7 @@ import { runImport, type ImportOutcome } from "@/server/import/service";
  * POST /api/order-imports/item { brand, name, goodsNo? } → 주문 한 건의 무신사 상품 정보
  * 상품번호가 없으면 브랜드+상품명으로 검색하고, 찾으면 링크 분석(하루 한도에 포함)으로 사진·사이즈표를 읽는다.
  * 실측 AI 추출은 하지 않는다(여러 건을 한꺼번에 돌리므로). 상품 카테고리로 옷인지 다시 판단한다.
+ * roast: true면 주문내역 훈수용이다. 하루 분석 한도 대신 안전 상한만 보고, 결과의 popularity(하트·후기 수)를 쓴다.
  */
 export const maxDuration = 30;
 
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
   const user = supabase ? await getActiveUser(supabase) : null;
   if (!supabase || !user) return Response.json({ error: "signed_out" }, { status: 401 });
 
-  const body = (await request.json().catch(() => ({}))) as { brand?: unknown; name?: unknown; goodsNo?: unknown };
+  const body = (await request.json().catch(() => ({}))) as { brand?: unknown; name?: unknown; goodsNo?: unknown; roast?: unknown };
   const brand = typeof body.brand === "string" ? body.brand.slice(0, 100) : "";
   const name = typeof body.name === "string" ? body.name.slice(0, 200) : "";
   const given = typeof body.goodsNo === "string" && /^\d{1,12}$/.test(body.goodsNo) ? body.goodsNo : null;
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
   const goodsNo = given ?? (await searchMusinsa({ brand, name })).best?.goodsNo ?? null;
   if (!goodsNo) return Response.json({ goodsNo: null, via: null, outcome: null, verdict: null } satisfies OrderItemResult);
 
-  const outcome = await runImport(supabase, user.id, `https://www.musinsa.com/products/${goodsNo}`, "wardrobe", undefined, { photosOnly: true, kind: "order" });
+  const outcome = await runImport(supabase, user.id, `https://www.musinsa.com/products/${goodsNo}`, "wardrobe", undefined, { photosOnly: true, kind: body.roast === true ? "roast" : "order" });
   if (outcome.product) outcome.product = { ...outcome.product, diagnostics: undefined };
   const verdict = outcome.product ? garmentFromCategoryPath(outcome.product.categoryPath) : null;
   return Response.json({ goodsNo, via: given ? "bookmark" : "search", outcome, verdict } satisfies OrderItemResult);

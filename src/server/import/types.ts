@@ -24,6 +24,11 @@ export interface RawSizeChart {
   rows: string[][];
 }
 
+export interface ProductPopularity {
+  likes: number | null;
+  reviews: number | null;
+}
+
 export interface RawProduct {
   brand?: string;
   productName?: string;
@@ -37,6 +42,8 @@ export interface RawProduct {
   sizeChart?: RawSizeChart;
   /** AI 추출 fallback용 정제 텍스트 */
   detailText?: string;
+  /** 쇼핑몰의 상품 인기(무신사 하트·후기 수). 주문내역 훈수에서 쓴다. */
+  popularity?: ProductPopularity;
   /** 필드별 출처(generic parser처럼 한 parser 안에서 출처가 섞일 때). 없으면 parser 종류를 쓴다. */
   fieldSources?: Partial<Record<RawField, ExtractedSource>>;
   /** 어떤 경로로 값을 얻었는지(화면에는 안 보이고 product_imports.result에만 남는다) */
@@ -104,6 +111,8 @@ export interface NormalizedProduct {
   sizeChart: NormalizedSizeChart | null;
   /** 쇼핑몰이 붙인 카테고리 경로(넓은 것 → 좁은 것). 주문내역 가져오기에서 옷이 아닌 상품을 거를 때 쓴다. */
   categoryPath?: string[];
+  /** 상품 하트·후기 수(무신사만, 못 읽으면 없음) */
+  popularity?: ProductPopularity;
   warnings: ImportWarning[];
   /** parser 진단 정보(화면에 안 보임) */
   diagnostics?: Record<string, unknown>;

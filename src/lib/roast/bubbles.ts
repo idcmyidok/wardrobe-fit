@@ -23,6 +23,8 @@ export function isBubbleKey(key: string): boolean {
     /^questions\.[^.]+\.(lead|react\.[^.]+)$/.test(key) ||
     /^quiz\.[^.]+\.(correct|wrong)$/.test(key) ||
     key === "screen.OPENING" ||
+    key === "orders.screen.OPENING" ||
+    /^orders\.common\.(SCAN_OPEN|WRAP_UP)$/.test(key) ||
     /^common\.(SCAN_OPEN|NAME_GREETING|THINKING|MID_REMARKS|FEW_PATTERNS|WRAP_UP|QUIZ_CORRECT|QUIZ_WRONG)$/.test(key)
   );
 }

@@ -1,6 +1,6 @@
 import { load } from "cheerio";
 import { textOrUndefined } from "../normalize/text";
-import type { ParseContext, ProductParser, RawProduct, RawSizeChart } from "../types";
+import type { ParseContext, ProductParser, ProductPopularity, RawProduct, RawSizeChart } from "../types";
 import { blockText, findSizeTable, imagesIn } from "./helpers";
 import { sizeChartFromText } from "./size-text";
 
@@ -200,12 +200,56 @@ export function actualSizeToChart(json: unknown): RawSizeChart | undefined {
   return { headers: ["사이즈", ...headers], rows };
 }
 
+/** 하트(좋아요) 수로 보는 키. 무신사 페이지 모양을 확인하지 못해 넓게 받는다. */
+const LIKE_KEYS = /^(likeCount|likesCount|goodsLikeCount|likeCnt|heartCount|wishCount|interestCount|count)$/i;
+const REVIEW_KEYS = /^(reviewCount|totalReviewCount|reviewCnt|goodsReviewCount|estimateCount|totalCount)$/i;
+const toCount = (v: unknown): number | null => {
+  const n = typeof v === "number" ? v : typeof v === "string" && /^\d[\d,]*$/.test(v.trim()) ? Number(v.replace(/,/g, "")) : NaN;
+  return Number.isFinite(n) && n >= 0 && n < 1e9 ? Math.floor(n) : null;
+};
+
+/**
+ * 상품 JSON에서 하트·후기 수를 찾는다. 키 이름에 like·review가 든 객체 안의 수 칸, 또는 이름 자체가 likeCount·reviewCount인 칸.
+ * found에는 값을 찾은 경로를 남긴다(진단용).
+ */
+export function popularityIn(node: unknown): ProductPopularity & { found: string[] } {
+  const out: ProductPopularity & { found: string[] } = { likes: null, reviews: null, found: [] };
+  const walk = (n: unknown, path: string, ctx: "like" | "review" | null, depth: number) => {
+    if (depth > 10 || (out.likes != null && out.reviews != null)) return;
+    if (Array.isArray(n)) {
+      n.slice(0, 50).forEach((x, i) => walk(x, `${path}[${i}]`, ctx, depth + 1));
+      return;
+    }
+    if (!isObj(n)) return;
+    for (const [k, v] of Object.entries(n)) {
+      const p = path ? `${path}.${k}` : k;
+      // 브랜드 좋아요 수를 상품 하트로 읽지 않게 브랜드 칸은 건너뛴다.
+      if (/brand|store|shop/i.test(k)) continue;
+      const inner: typeof ctx = /like|heart|wish/i.test(k) ? "like" : /review|estimate/i.test(k) ? "review" : ctx;
+      const c = toCount(v);
+      if (c != null) {
+        const isLike = /^(likeCount|likesCount|goodsLikeCount|likeCnt|heartCount|wishCount|interestCount)$/i.test(k) || (inner === "like" && LIKE_KEYS.test(k));
+        const isReview = /^(reviewCount|totalReviewCount|reviewCnt|goodsReviewCount)$/i.test(k) || (inner === "review" && REVIEW_KEYS.test(k));
+        if (isLike && out.likes == null) {
+          out.likes = c;
+          out.found.push(`likes:${p}`);
+        } else if (isReview && out.reviews == null) {
+          out.reviews = c;
+          out.found.push(`reviews:${p}`);
+        }
+      } else walk(v, p, inner, depth + 1);
+    }
+  };
+  walk(node, "", null, 0);
+  return out;
+}
+
 const API_HOST = "https://goods-detail.musinsa.com";
 const actualSizeUrls = (no: string) => [`${API_HOST}/api2/goods/${no}/actual-size`, `${API_HOST}/api2/goods/${no}/v2/actual-size`];
 
 export const musinsaParser: ProductParser = {
   id: "musinsa",
-  version: "v1",
+  version: "v2",
   kind: "site",
   matches: (url) => /(^|\.)musinsa\.com$/i.test(url.hostname),
   async parse(ctx: ParseContext): Promise<RawProduct> {
@@ -268,6 +312,22 @@ export const musinsaParser: ProductParser = {
       }
     }
     diagnostics.actualSize = tried;
+
+    // 하트·후기 수: 상태 JSON·상품 JSON에서 찾고, 하트가 없으면 좋아요 API를 한 번 물어본다(주문내역 훈수용).
+    const pop = popularityIn([state ?? stateJson, goodsJson]);
+    if (goodsNo && pop.likes == null) {
+      const likeUrl = `https://like.musinsa.com/like/api/v2/liketypes/goods/counts?relationIds=${goodsNo}`;
+      try {
+        const liked = popularityIn({ like: await ctx.fetchJson(likeUrl) });
+        if (liked.likes != null) {
+          pop.likes = liked.likes;
+          pop.found.push(`likes:likeApi.${liked.found[0] ?? ""}`);
+        } else pop.found.push("likeApi:no_count");
+      } catch (e) {
+        pop.found.push(`likeApi:${e instanceof Error ? e.message.slice(0, 80) : "error"}`);
+      }
+    }
+    diagnostics.popularity = pop.found;
     if (!sizeChart) {
       for (const $c of contentDocs) {
         sizeChart = findSizeTable($c) ?? sizeChartFromText(blockText($c));
@@ -286,6 +346,7 @@ export const musinsaParser: ProductParser = {
       sizeChart,
       sizeOptions: sizeChart?.rows.map((r) => r[0]).filter(Boolean),
       detailText: contentDocs.map(($c) => blockText($c)).join("\n").slice(0, 15_000) || undefined,
+      popularity: pop.likes != null || pop.reviews != null ? { likes: pop.likes, reviews: pop.reviews } : undefined,
       diagnostics,
     };
   },

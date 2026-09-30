@@ -8,9 +8,12 @@ import { buttonClassName } from "@/components/ui/button";
 import { MIN_CLOTHES, ROAST_COPY, tooFew, type RoastCopy } from "@/lib/roast/copy";
 import { bubblesOf } from "@/lib/roast/bubbles";
 import { wardrobeHash } from "@/lib/roast/hash";
-import type { RoastQuestion, RoastReport, RoastResult, RoastScript } from "@/lib/roast/types";
+import type { RoastFinish, RoastQuestion, RoastReport, RoastResult, RoastScript, RoastStart } from "@/lib/roast/types";
 import { notifyUsageChanged } from "@/lib/usage";
 import { finishRoast, startRoast } from "@/server/roast/actions";
+import { finishOrderRoast, startOrderRoast } from "@/server/roast/order-actions";
+import type { OrderRoastItem } from "@/server/roast/orders/input";
+import { OrderPaste, type OrderCopy } from "./order-roast";
 import "./roast.css";
 
 /**
@@ -55,11 +58,18 @@ function writePreview(r: RoastResult) {
 const koreanDate = (iso: string) =>
   new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric" }).format(new Date(iso));
 
-export function RoastView({ initialResult, copy = ROAST_COPY }: { initialResult: RoastResult | null; copy?: RoastCopy }) {
+/**
+ * orders가 있으면 무신사 주문내역 훈수(숨은 주소 /roast/orders): 이름·나이 → 주문내역 붙여넣기·상품 읽기 → 대화 → 결과.
+ * 주문내역 훈수는 옷장을 보지 않고, 결과도 저장하지 않는다(새로고침하면 처음부터).
+ */
+export function RoastView({ initialResult, copy = ROAST_COPY, orders }: { initialResult: RoastResult | null; copy?: RoastCopy; orders?: OrderCopy }) {
   const { garments, signedIn } = useWardrobe();
-  const clothes = garments.filter((g) => g.categoryId !== "hat" && g.categoryId !== "shoes").length;
+  const clothes = orders ? MIN_CLOTHES : garments.filter((g) => g.categoryId !== "hat" && g.categoryId !== "shoes").length;
   const [result, setResult] = useState<RoastResult | null>(initialResult);
-  const [mode, setMode] = useState<"result" | "intro" | "name" | "chat">(initialResult ? "result" : "intro");
+  const [mode, setMode] = useState<"result" | "intro" | "name" | "paste" | "chat">(initialResult ? "result" : "intro");
+  // 주문내역 훈수: 붙여 넣은 주문과 상품 정보(화면에만 둔다)
+  const [orderItems, setOrderItems] = useState<OrderRoastItem[]>([]);
+  const [orderNote, setOrderNote] = useState<string | null>(null);
   // 이름은 이번 결과에만 쓰고 다음 분석 때 미리 채우지 않는다.
   const [name, setName] = useState<string | null>(null);
   // 나이도 이번 계산에만 쓰고 결과·저장소 어디에도 남기지 않는다.
@@ -70,21 +80,36 @@ export function RoastView({ initialResult, copy = ROAST_COPY }: { initialResult:
 
   // 미리보기 모드: 결과는 브라우저 저장소에 있다.
   useEffect(() => {
-    if (signedIn || initialResult) return;
+    if (signedIn || initialResult || orders) return;
     const saved = readPreview();
     if (saved) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage는 hydration 뒤에만 읽을 수 있다
       setResult(saved);
       setMode("result");
     }
-  }, [signedIn, initialResult]);
+  }, [signedIn, initialResult, orders]);
 
   const photoOf = useCallback(
     (id: string) => {
+      // 주문내역 훈수의 옷 id는 "o{목록 번호}"
+      if (orders) return result?.garments[id]?.imageUrl ?? orderItems[Number(id.slice(1))]?.image ?? null;
       const g = garments.find((x) => x.id === id);
       return result?.garments[id]?.imageUrl ?? g?.thumbUrl ?? g?.imageUrl ?? null;
     },
-    [garments, result],
+    [garments, result, orders, orderItems],
+  );
+  const runner = useMemo<Runner>(
+    () =>
+      orders
+        ? {
+            start: (name, age) => startOrderRoast({ name, age, items: orderItems }),
+            finish: (seed, name, age, answers) => finishOrderRoast({ seed, name, age, answers, items: orderItems }),
+          }
+        : {
+            start: (name, age) => startRoast({ name, age, preview: signedIn ? undefined : garments }),
+            finish: (seed, name, age, answers) => finishRoast({ seed, name, age, answers, preview: signedIn ? undefined : garments }),
+          },
+    [orders, orderItems, signedIn, garments],
   );
 
   return (
@@ -92,29 +117,45 @@ export function RoastView({ initialResult, copy = ROAST_COPY }: { initialResult:
       <main className="mx-auto max-w-200 px-[clamp(16px,3vw,32px)] pt-6 pb-20">
         <div className="flex flex-wrap items-end justify-between gap-3 border-b border-text pb-4">
           <div className="flex flex-col gap-1">
-            <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700 uppercase">Wardrobe roast</span>
-            <h1 className="text-title">내 옷장 훈수</h1>
+            <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700 uppercase">{orders ? "Order roast" : "Wardrobe roast"}</span>
+            <h1 className="text-title">{orders ? "무신사 주문내역 훈수" : "내 옷장 훈수"}</h1>
           </div>
-          {signedIn && <UsageNote kind="roast" />}
+          {signedIn && !orders && <UsageNote kind="roast" />}
         </div>
 
         {mode === "result" && result ? (
           <ResultView
             result={result}
-            changed={wardrobeHash(garments) !== result.wardrobeHash}
+            subject={orders ? "주문내역" : "옷장"}
+            changed={!orders && wardrobeHash(garments) !== result.wardrobeHash}
             photoOf={photoOf}
             onRetry={() => setMode("name")}
           />
+        ) : mode === "paste" && orders ? (
+          <div className="roast-mono roast-log mt-8">
+            <OrderPaste
+              copy={orders}
+              onReady={(items, note) => {
+                setOrderItems(items);
+                setOrderNote(note);
+                setRun((x) => x + 1);
+                setMode("chat");
+              }}
+            />
+          </div>
         ) : mode === "chat" ? (
           <>
+            {orderNote && <p className="mt-6 text-sm text-neutral-700">{orderNote}</p>}
             <Chat
               key={run}
               name={name}
               age={age}
-              preview={signedIn ? undefined : garments}
+              runner={runner}
               photoOf={photoOf}
               onDone={(r) => {
-                if (!signedIn) writePreview(r);
+                if (orders) {
+                  // 주문내역 훈수 결과는 저장하지 않는다.
+                } else if (!signedIn) writePreview(r);
                 else notifyUsageChanged();
                 setResult(r);
                 setFresh(r);
@@ -124,6 +165,7 @@ export function RoastView({ initialResult, copy = ROAST_COPY }: { initialResult:
               <FreshResult>
                 <ResultView
                   result={fresh}
+                  subject={orders ? "주문내역" : "옷장"}
                   changed={false}
                   photoOf={photoOf}
                   onRetry={() => {
@@ -142,8 +184,11 @@ export function RoastView({ initialResult, copy = ROAST_COPY }: { initialResult:
               setName(n);
               setAge(ag);
               setFresh(null);
-              setRun((x) => x + 1);
-              setMode("chat");
+              if (orders) setMode("paste");
+              else {
+                setRun((x) => x + 1);
+                setMode("chat");
+              }
             }}
           />
         )}
@@ -386,16 +431,22 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
   );
 }
 
+/** 대화 시작·결과 서버 액션(옷장 훈수 또는 주문내역 훈수) */
+interface Runner {
+  start: (name: string | null, age: number | null) => Promise<RoastStart>;
+  finish: (seed: number, name: string | null, age: number | null, answers: Record<string, string>) => Promise<RoastFinish>;
+}
+
 function Chat({
   name,
   age,
-  preview,
+  runner,
   photoOf,
   onDone,
 }: {
   name: string | null;
   age: number | null;
-  preview: unknown;
+  runner: Runner;
   photoOf: (id: string) => string | null;
   onDone: (r: RoastResult) => void;
 }) {
@@ -460,7 +511,7 @@ function Chat({
     started.current = true;
     void (async () => {
       // 분석을 준비하는 동안 첫 멘트를 먼저 띄운다.
-      const starting = startRoast({ name, age, preview });
+      const starting = runner.start(name, age);
       if (copy.OPENING.length) {
         await think(700);
         await sayBubbles(copy.OPENING[Math.floor(Math.random() * copy.OPENING.length)]);
@@ -475,7 +526,7 @@ function Chat({
       const answers = await play(start.script);
       push({ kind: "status", text: copy.WRITING, gap: true });
       const dots = push({ kind: "dots" });
-      const done = await finishRoast({ seed: start.script.seed, name, age, answers, preview });
+      const done = await runner.finish(start.script.seed, name, age, answers);
       remove(dots);
       if (!done.ok) {
         setError(done.message);
@@ -540,7 +591,7 @@ function Chat({
       }
       return answers;
     }
-  }, [name, age, preview, onDone, push, say, think, copy]);
+  }, [name, age, runner, onDone, push, say, think, copy]);
 
   const onTyped = useCallback((id: number) => {
     setTypedIds((s) => new Set(s).add(id));
@@ -627,11 +678,13 @@ function Chat({
 
 function ResultView({
   result,
+  subject = "옷장",
   changed,
   photoOf,
   onRetry,
 }: {
   result: RoastResult;
+  subject?: string;
   changed: boolean;
   photoOf: (id: string) => string | null;
   onRetry: () => void;
@@ -649,7 +702,7 @@ function ResultView({
         </div>
       )}
       <header className="flex flex-col gap-2">
-        {result.name && <span className="text-md">{result.name}님의 옷장</span>}
+        {result.name && <span className="text-md">{result.name}님의 {subject}</span>}
         <span className="text-sm text-neutral-700">
           {date} · 옷 {result.garmentCount}벌 기준
         </span>

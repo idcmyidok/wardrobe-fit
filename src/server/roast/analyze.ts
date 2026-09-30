@@ -1,4 +1,5 @@
 import "server-only";
+import type { OrderContext } from "./orders/context";
 import { SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { findColorFamily } from "@/lib/constants/colors";
 import type { FitKind, FitLevel } from "@/lib/constants/body";
@@ -109,6 +110,8 @@ export interface Analysis {
   basicIds: string[];
   /** 무지 티까지 포함한 모든 옷(코디 조합 수처럼 실제 벌 수가 필요한 계산에만) */
   allItems: Item[];
+  /** 주문내역 훈수일 때만: 주문 건수·반품·취소·상품 하트 수(orders/context.ts) */
+  orders?: OrderContext;
 }
 
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
@@ -272,11 +275,19 @@ export function isBasicTee(i: Item): boolean {
   return Boolean(i.brand?.tags.some((t) => t === "베이직" || t === "미니멀"));
 }
 
-export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: number, now = new Date(), rules?: Partial<ScoreRules>): Analysis {
+export function analyze(
+  garments: Garment[],
+  body: BodyProfile | null,
+  usdRate: number,
+  now = new Date(),
+  rules?: Partial<ScoreRules>,
+  /** 주문내역 훈수는 무지 티도 빼지 않는다(무신사 스탠다드 기본템을 사는 습관이 곧 평가 대상) */
+  { keepBasics = false }: { keepBasics?: boolean } = {},
+): Analysis {
   const prepared = prepare(garments, body, usdRate);
   const clothesTotal = prepared.filter((i) => !i.accessory).length;
   // 무지 티는 5벌까지 취향 분석에서 뺀다(5벌을 넘는 것은 그대로 본다). 벌 수를 말할 때는 clothesTotal을 쓴다.
-  const basicIds = prepared.filter(isBasicTee).slice(0, BASIC_TEE_SKIP).map((i) => i.id);
+  const basicIds = keepBasics ? [] : prepared.filter(isBasicTee).slice(0, BASIC_TEE_SKIP).map((i) => i.id);
   const items = prepared.filter((i) => !basicIds.includes(i.id));
   const clothes = items.filter((i) => !i.accessory);
   const P: Pattern[] = [];
