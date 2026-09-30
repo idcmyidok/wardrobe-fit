@@ -1,7 +1,7 @@
 import { WEARABLE_LEVELS, fitLevelName, type FitKind, type FitLevel } from "@/lib/constants/body";
 import { formatNum } from "@/lib/constants/measurements";
 import { cn } from "@/lib/cn";
-import { WAIST, WAIST_STATE_NAME, signed, type BodyFitDimension, type BodyFitReason } from "@/lib/fit/body-fit";
+import { signed, type BodyFitDimension, type BodyFitReason } from "@/lib/fit/body-fit";
 import { FIT_COLOR } from "./fit-meter";
 
 /**
@@ -31,8 +31,7 @@ const bodyName = (d: BodyFitDimension) => (d.key === "shoulder" ? "어깨너비"
 
 function DimensionCard({ d, kind, verdict }: { d: BodyFitDimension; kind: FitKind; verdict: string }) {
   const girth = Math.round(d.garmentValue * 20) / 10;
-  // 허리는 핏 단계가 아니라 크기(작음·적정·큼)로 보여 준다.
-  const levelName = d.waist ? WAIST_STATE_NAME[d.waist] : fitLevelName(d.level, kind);
+  const levelName = fitLevelName(d.level, kind);
   return (
     <div className="flex flex-col gap-3 border border-neutral-300 p-3">
       <div className="flex items-baseline justify-between gap-2">
@@ -76,12 +75,7 @@ interface Segment {
 /** 여유(ease) 구간을 옷 실측 단위 막대로. 옷 ▼, 내 몸(여유 0) 점선. */
 function RangeBar({ d, kind }: { d: BodyFitDimension; kind: FitKind }) {
   const toGarment = (e: number) => (d.half ? Math.round(((e + d.bodyValue) / 2) * 2) / 2 : Math.round((e + d.bodyValue) * 10) / 10);
-  const segs: Segment[] = d.bands
-    ? WEARABLE_LEVELS.map((l) => ({ level: l, from: d.bands![l][0], to: d.bands![l][1], label: fitLevelName(l, kind) }))
-    : [
-        { level: "slim", from: WAIST.tooSmall, to: (d.waistBand ?? WAIST.fit)[0], label: WAIST_STATE_NAME.small },
-        { level: "regular", from: (d.waistBand ?? WAIST.fit)[0], to: (d.waistBand ?? WAIST.fit)[1], label: WAIST_STATE_NAME.fit },
-      ];
+  const segs: Segment[] = WEARABLE_LEVELS.map((l) => ({ level: l, from: d.bands[l][0], to: d.bands[l][1], label: fitLevelName(l, kind) }));
   const lo0 = Math.min(...segs.map((s) => s.from));
   const hi0 = Math.max(...segs.map((s) => s.to));
   const pad = Math.max((hi0 - lo0) * 0.12, 2);

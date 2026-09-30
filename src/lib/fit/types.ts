@@ -55,7 +55,8 @@ export interface RangeStat {
 
 export type Verdict = "within" | "above" | "below" | "unknown";
 /** within 비슷함 · caution 주의 · weak 후기 없이 수치만 비교 · none 비교 불가 */
-export type DimensionTag = "within" | "caution" | "weak" | "none";
+/** excluded: 값은 보여 주지만 핏 판단에는 쓰지 않는 치수(하의 허리) */
+export type DimensionTag = "within" | "caution" | "weak" | "none" | "excluded";
 
 export interface Anchor {
   garmentId: string;
