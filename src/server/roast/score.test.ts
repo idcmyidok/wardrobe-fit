@@ -93,4 +93,13 @@ describe("옷장 점수(점수 계획서)", () => {
     const half = scoreWardrobe(a, { age: 32, musinsaLinkOnly: true });
     expect(half.score).toBeGreaterThanOrEqual(full.score);
   });
+
+  it("핏: 슬림·레귤러 위주는 가점, 오버 위주는 감점, 결과에 핏 문단이 생긴다", () => {
+    const list = (fit: "slim" | "over") => Array.from({ length: 10 }, (_, i) => g(i, { userFit: fit }));
+    const trim = analyze(list("slim"), null, 1360, now);
+    const big = analyze(list("over"), null, 1360, now);
+    expect(scoreWardrobe(trim, { age: null }).parts.find((p) => p.id === "fit_trim")?.delta).toBe(3);
+    expect(scoreWardrobe(big, { age: null }).parts.find((p) => p.id === "fit_big")?.delta).toBe(-2);
+    expect(buildReport(trim, null, 1, REPORT_TEXT).points.map((p) => p.id)).toContain("fit");
+  });
 });

@@ -1,7 +1,7 @@
 import "server-only";
 import { CATEGORY_NAME } from "@/lib/constants/categories";
 import type { CategoryId } from "@/lib/types/domain";
-import type { Analysis, Item, Pattern } from "./analyze";
+import { fitSummary, type Analysis, type Item, type Pattern } from "./analyze";
 import { familyName, type FamilyId } from "./keywords";
 import { pickQuiz } from "./quiz";
 import { MissingVar, won, type Rng, type Vars } from "./text";
@@ -173,8 +173,13 @@ export const QUESTIONS: QuestionDef[] = [
       const max = Math.max(...list.map((i) => i.price!));
       return max >= 200_000 ? { maxWon: won(max), max } : null;
     } },
-  { id: "fit_choice", bucket: "fit", pattern: "fit_bias", base: 0.6, options: ["comfy", "awkward", "have_others"],
-    when: (a) => stats(pat(a, "fit_bias")) },
+  { id: "fit_choice", bucket: "fit", base: 0.6, options: ["intended", "comfy", "dunno"],
+    when: (a) => {
+      const f = fitSummary(a.clothes);
+      if (f.fitted.length < 5) return null;
+      const trim = f.all.trimShare >= f.all.bigShare;
+      return { n: f.fitted.length, pct: Math.round((trim ? f.all.trimShare : f.all.bigShare) * 100), fit: trim ? "슬림·레귤러" : "세미오버·오버" };
+    } },
   { id: "style_self", bucket: "style", pattern: "tag_bias", base: 0.6, options: ["yes", "no", "none"],
     when: (a) => stats(pat(a, "tag_bias")) },
   { id: "brand_pick", bucket: "style", pattern: "same_color", base: 0.6, options: ["design", "price", "vibe"],
@@ -712,20 +717,21 @@ export const Q_TEXT: Record<string, QuestionText> = {
     },
   },
   fit_choice: {
-    lead: [],
-    text: "{fit} 핏만 고르는 건 의도한 건가요?",
-    options: { comfy: "이게 제일 편함", awkward: "다른 핏은 어색함", have_others: "다른 핏도 있는데?" },
+    lead: ["핏을 아는 옷 {n}벌 중 {pct}%가 {fit}입니다."],
+    text: "일부러 이렇게 입는 건가요?",
+    options: { intended: "의도한 실루엣", comfy: "편해서", dunno: "사이즈 잘 모름" },
     react: {
-      comfy: ["편한 핏을 찾았다면 반은 성공입니다.", "편함은 타협할 수 없는 가치죠."],
-      awkward: ["어색함을 피하다 보니 {n}벌이 같아졌군요.", "한 번쯤 어색해 보는 것도 나쁘지 않습니다."],
-      have_others: ["있긴 합니다. {pct}%가 {fit}인 옷장에서요.", "맞습니다. 소수 의견도 존중합니다."],
+      intended: ["실루엣을 생각하고 산다니, 일단 믿어 보겠습니다.", "의도했다는 말, 결과에서 확인해 보죠."],
+      comfy: ["편한 게 최고죠. 거울 앞에서만 빼고요.", "편함은 타협할 수 없는 가치죠."],
+      dunno: ["사이즈를 모르는데 {pct}%가 한 핏이면, 운도 실력입니다.", "모르고 샀는데 이렇게 됐다니 더 흥미롭네요."],
     },
     roast: {
-      comfy: ["그 핏이 제일 편해서라고 하셨습니다. 편한 걸 찾은 건 축하할 일이지만, 옷장 전체가 같은 실루엣이면 매일 같은 사람처럼 보입니다.", "편함은 타협할 수 없다는 원칙, 확실히 지켜졌습니다. 그 핏만 고른 이 옷장은 편함과 단 한 번도 타협하지 않은 결과물입니다."],
-      awkward: ["다른 핏은 어색해서라고 하셨습니다. 입어 본 적이 없으니 어색한 게 당연한데, 그 어색함을 평생 피하실 계획인가 봅니다.", "익숙함에 갇힌 옷장은 안전하지만 놀라울 만큼 지루합니다. 다른 핏이 어색하다면 더욱 그렇습니다. 거울도 이제 새로운 모습을 기다리다 지쳤을 겁니다."],
-      have_others: ["다른 핏도 있다고 반박하셨습니다. 있긴 있습니다. 다수당 옆에서 목소리를 거의 못 내는 소수 의견처럼요.", "다른 핏도 있긴 있습니다. 그 옷들을 옷장 구석에서 찾아내는 데 꽤 오래 걸렸다는 것만 말씀드리겠습니다."],
+      intended: ["의도한 실루엣이라고 하셨습니다. 의도가 있었다는 건 알겠고, 그 의도가 먹혔는지는 옷장이 대신 말해 줍니다.", "실루엣을 생각하고 샀다는 대답, 옷장 숫자와 맞춰 보니 거짓말은 아닌 것 같습니다."],
+      comfy: ["편해서라고 하셨습니다. 편함을 찾다 여기까지 왔다면, 스타일은 편함 다음 순번이었나 봅니다.", "편한 옷만 고른 결과가 이 핏입니다. 몸은 편했고, 보는 사람은 그렇게 편하지 않았을 수 있습니다."],
+      dunno: ["사이즈를 잘 모른다고 하셨습니다. 옷장에 치수가 다 적혀 있는데도요.", "자기 사이즈를 모르는 사람의 옷장치고는 핏이 너무 한쪽으로 몰려 있습니다. 모르는 게 아니라 안 보는 겁니다."],
     },
   },
+
   style_self: {
     lead: [],
     text: "스스로 생각하는 스타일이 {tag} 쪽인가요?",

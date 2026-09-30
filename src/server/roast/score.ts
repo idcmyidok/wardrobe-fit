@@ -1,6 +1,6 @@
 import "server-only";
 import { FOUR_SEASONS, wearsInSeason } from "@/lib/constants/seasons";
-import { colorCounted, type Analysis, type Item } from "./analyze";
+import { colorCounted, fitSummary, type Analysis, type Item } from "./analyze";
 import { brandLabels, MUSINSA_POPULAR } from "./brands";
 import { AGE_BANDS, AGE_RULES, SCORE_RULES, type ScoreRules } from "./score-deltas";
 
@@ -178,8 +178,16 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
     [...groupBy(clothes.filter((i) => i.sub && i.color), (i) => `${i.sub}|${i.color}`).values()].reduce((n, l) => n + Math.max(0, l.length - 2), 0) +
     [...groupBy(items, (i) => (i.g.productName ? `${i.brandLabel}|${i.g.productName}|${i.color ?? ""}`.toLowerCase() : null)).values()].reduce((n, l) => n + Math.max(0, l.length - 1), 0);
   add("dup", -Math.min(R.dup_max, copies * R.dup_each));
-  const misfit = clothes.filter((i) => i.fit && (i.fit.level === "too_small" || i.fit.level === "too_big")).length;
-  add("misfit", -Math.min(R.misfit_max, misfit * R.misfit_each));
+  const fit = fitSummary(clothes);
+  add("misfit", -Math.min(R.misfit_max, fit.misfit.length * R.misfit_each));
+  if (fit.fitted.length >= R.fit_min) {
+    // 상의·하의 중 3벌 이상인 쪽만 본다(둘 다 적으면 전체로)
+    const sides = [fit.top, fit.bottom].filter((p) => p.n >= 3);
+    const look = sides.length ? sides : [fit.all];
+    if (look.some((p) => p.trimShare * 100 >= R.fit_trim_pct)) add("fit_trim", R.fit_trim);
+    else if (look.some((p) => p.bigShare * 100 >= R.fit_big_pct)) add("fit_big", -R.fit_big);
+    if (fitContrast(fit)) add("fit_contrast", R.fit_contrast);
+  }
   if (clothes.length && share(clothes, isLogo) * 100 >= R.logo_pct) add("logo", -R.logo);
   const seasoned = items.filter((i) => i.seasons.length);
   if (seasoned.length >= 8) {
@@ -224,6 +232,12 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
 }
 
 /** 그 옷을 산 때 나이(구매일이 없으면 지금 나이) */
+/** 위아래 실루엣 대비: 한쪽은 슬림·레귤러, 다른 쪽은 오버·와이드가 절반 이상(각각 3벌 이상) */
+export function fitContrast(f: ReturnType<typeof fitSummary>): boolean {
+  if (f.top.n < 3 || f.bottom.n < 3) return false;
+  return (f.top.trimShare >= 0.5 && f.bottom.bigShare >= 0.5) || (f.top.bigShare >= 0.5 && f.bottom.trimShare >= 0.5);
+}
+
 export function ageAt(age: number, i: Item, now: number): number {
   if (!i.date) return age;
   const t = Date.parse(i.date);

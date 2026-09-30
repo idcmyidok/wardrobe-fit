@@ -1,14 +1,14 @@
 import "server-only";
 import { CATEGORY_NAME } from "@/lib/constants/categories";
 import type { RoastReport } from "@/lib/roast/types";
-import { colorCounted, type Analysis, type Item } from "./analyze";
+import { colorCounted, fitSummary, type Analysis, type Item } from "./analyze";
 import { MUSINSA_POPULAR } from "./brands";
 import { quotesAnswer } from "./compose";
 import type { AskedQuestion } from "./questions";
 import { fill, MissingVar, rng, won, type Rng, type Vars } from "./text";
 import type { ReportTexts } from "./report-text";
 import type { ScoreRules } from "./score-deltas";
-import { scoreWardrobe } from "./score";
+import { fitContrast, scoreWardrobe } from "./score";
 import { findColorFamily } from "@/lib/constants/colors";
 
 /**
@@ -233,17 +233,6 @@ export function buildReport(
   // 핏(4.15~4.16): 핏을 아는 옷(내 치수로 계산했거나 직접 "내 핏"을 적은 옷)
   const fitted = clothes.filter((i) => i.fit && i.fit.level !== "too_small" && i.fit.level !== "too_big");
   const big = fitted.filter((i) => i.fit!.level === "semi_over" || i.fit!.level === "over");
-  const trim = fitted.filter((i) => i.fit!.level === "slim" || i.fit!.level === "regular");
-  if (fitted.length >= 5) {
-    if (big.length / fitted.length >= 0.6) add({ id: "fit", side: "high", strength: clamp((big.length / fitted.length - 0.5) / 0.5) * 0.8, value: `세미오버 이상 ${pct(big.length, fitted.length)}%`, vars: { pct: pct(big.length, fitted.length) }, photos: photosOf(big) });
-    else if (trim.length / fitted.length >= 0.75) add({ id: "fit", side: "low", strength: 0.35, value: `슬림·레귤러 ${pct(trim.length, fitted.length)}%`, vars: { pct: pct(trim.length, fitted.length) } });
-    const tops = fitted.filter((i) => i.fit!.kind === "top");
-    const bottoms = fitted.filter((i) => i.fit!.kind === "bottom");
-    const topOver = tops.filter((i) => i.fit!.level === "over" || i.fit!.level === "semi_over").length / Math.max(tops.length, 1);
-    const bottomTrim = bottoms.filter((i) => i.fit!.level === "slim" || i.fit!.level === "regular").length / Math.max(bottoms.length, 1);
-    if (tops.length >= 3 && bottoms.length >= 3 && topOver >= 0.6 && bottomTrim >= 0.7)
-      add({ id: "silhouette", side: "high", strength: 0.7, value: `상의 오버 ${Math.round(topOver * 100)}% · 하의 슬림 ${Math.round(bottomTrim * 100)}%`, vars: { topPct: Math.round(topOver * 100), bottomPct: Math.round(bottomTrim * 100) } });
-  }
 
   // 구매처(4.21)
   const linked = items.filter((i) => i.shop);
@@ -310,6 +299,22 @@ export function buildReport(
     if (first) colorPoint = { id: "color", ...splitLead([first, extra].filter(Boolean).join(" ")), photos: photosOf(ap >= 50 ? achro : chroma) };
   }
 
+  // 핏 한마디: 주력 핏으로 한 문장, 눈에 띄는 경우가 있으면 한 문장 더
+  let fitPoint: RoastReport["points"][number] | null = null;
+  const fs = fitSummary(clothes);
+  if (fs.fitted.length >= 5) {
+    const F = R.fit;
+    const trimMain = fs.all.trimShare >= 0.6;
+    const bigMain = !trimMain && fs.all.bigShare >= 0.6;
+    const main = trimMain ? F.trim : bigMain ? F.big : F.even;
+    const first = tryFill(r, main, { pct: pct((trimMain ? fs.all.trim : fs.all.big).length, fs.fitted.length) });
+    const extra =
+      (fitContrast(fs) ? tryFill(r, F.contrast, {}) : null) ??
+      (fs.top.n >= 3 && fs.bottom.n >= 3 && fs.top.bigShare >= 0.6 && fs.bottom.bigShare >= 0.6 ? tryFill(r, F.all_big, {}) : null) ??
+      (fs.misfit.length >= 3 ? tryFill(r, F.misfit, { n: fs.misfit.length }) : null);
+    if (first) fitPoint = { id: "fit", ...splitLead([first, extra].filter(Boolean).join(" ")), photos: photosOf(trimMain ? fs.all.trim : bigMain ? fs.all.big : fs.fitted) };
+  }
+
   // 비싸게 산 옷과 싸게 산 옷의 브랜드 비교(가격과 브랜드 정보가 있는 옷 8벌 이상, 위아래 4분의 1씩)
   let walletPoint: RoastReport["points"][number] | null = null;
   const pricedKnown = items.filter((i) => i.brand && i.price != null && i.price > 0).sort((x, y) => y.price! - x.price!);
@@ -340,7 +345,7 @@ export function buildReport(
     if (quotesAnswer(text)) quoted.v = true;
     return text;
   };
-  const targets = new Set([...picked.map((d) => d.id), ...(colorPoint ? ["color"] : [])]);
+  const targets = new Set([...picked.map((d) => d.id), ...(colorPoint ? ["color"] : []), ...(fitPoint ? ["fit"] : [])]);
   const quoted = { v: false };
   const pointAnswers = new Map<string, string>();
   let extra: string | null = null;
@@ -371,6 +376,7 @@ export function buildReport(
     return [withAnswer({ id: d.id, ...splitLead(full), ...(d.photos.length ? { photos: d.photos.slice(0, 20) } : {}) })];
   });
   if (colorPoint) points.splice(Math.min(1, points.length), 0, withAnswer(colorPoint));
+  if (fitPoint) points.splice(Math.min(colorPoint ? 2 : 1, points.length), 0, withAnswer(fitPoint));
   if (walletPoint) points.push(walletPoint);
   // 숨은 원석(자료에 없는 브랜드), 빈티지·구제, 나이 한마디(점수와 별개로 한 문단씩)
   const unknownN = branded.filter((i) => i.brandKind === "unknown").length;

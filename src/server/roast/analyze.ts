@@ -522,6 +522,26 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
 }
 
 /** 핏을 아는 옷이 5벌 이상일 때 가장 많은 핏 */
+/** 핏 분포: 직접 고른 핏이 있으면 그 핏, 없으면 예상 핏. 안 맞는 옷(작은·큰 핏)은 따로 센다. 고른 핏의 개수·비율은 쓰지 않는다. */
+export function fitSummary(clothes: Item[]) {
+  const fitted = clothes.filter((i) => i.fit && i.fit.level !== "too_small" && i.fit.level !== "too_big");
+  const isTrim = (i: Item) => i.fit!.level === "slim" || i.fit!.level === "regular";
+  const tops = fitted.filter((i) => i.fit!.kind === "top");
+  const bottoms = fitted.filter((i) => i.fit!.kind === "bottom");
+  const part = (list: Item[]) => {
+    const trim = list.filter(isTrim);
+    const big = list.filter((i) => !isTrim(i));
+    return { n: list.length, trim, big, trimShare: list.length ? trim.length / list.length : 0, bigShare: list.length ? big.length / list.length : 0 };
+  };
+  return {
+    fitted,
+    all: part(fitted),
+    top: part(tops),
+    bottom: part(bottoms),
+    misfit: clothes.filter((i) => i.fit && (i.fit.level === "too_small" || i.fit.level === "too_big")),
+  };
+}
+
 function fitted0(clothes: Item[]) {
   const fitted = clothes.filter((i) => i.fit && i.fit.level !== "too_small" && i.fit.level !== "too_big");
   if (fitted.length < 5) return null;

@@ -118,7 +118,7 @@ export const QUESTION_COND: Record<string, string> = {
   splurge_q: "저가·중저가 브랜드에서 30만 원 이상",
   subcat_spend_q: "한 세부분류에 3벌 이상, 50만 원 이상, 쓴 돈의 25% 이상",
   max_budget: "가격 적은 옷 5벌 이상이고 그중 가장 비싼 옷이 20만 원 이상. 반응: 고른 한도가 가장 비싼 옷보다 낮음 / 같거나 높음 / 한도 없음",
-  fit_choice: "핏 아는 옷 중 한 핏 50% 이상",
+  fit_choice: "핏 아는 옷(직접 고른 핏 우선, 없으면 예상 핏) 5벌 이상",
   style_self: "한 스타일 40% 이상",
   brand_pick: "브랜드는 다양한데 색·핏·스타일이 결국 비슷함",
   old_trust: "50년 넘은 브랜드 60% 이상",
@@ -218,6 +218,24 @@ const COLOR_NAME: Record<string, string> = {
   recent: "덧붙임: 최근 6개월에도 무채색 60% 이상",
 };
 
+const FIT_NAME: Record<string, string> = {
+  trim: "슬림·레귤러 60% 이상",
+  big: "세미오버·오버(와이드) 60% 이상",
+  even: "고루 섞임",
+  contrast: "덧붙임: 위아래 핏이 엇갈림",
+  all_big: "덧붙임: 위아래 모두 크게",
+  misfit: "덧붙임: 치수에 안 맞는 옷 3벌 이상",
+};
+
+const AGE_REMARK_NAME: Record<string, string> = {
+  street: "나이에 비해 스트릿이 많음",
+  musinsa: "나이에 비해 무신사 인기 브랜드가 많음",
+  mature: "나이에 맞게 성숙한 옷장",
+  formal: "나이에 비해 포멀·럭셔리가 많음",
+  lux: "나이에 비해 럭셔리가 많음",
+  young_street: "어린 나이에 스트릿",
+};
+
 const WALLET_NAME: Record<string, string> = {
   heritage: "비싼 옷일수록 헤리티지 브랜드",
   luxury: "싼 옷은 자잘하게, 비싼 옷은 럭셔리·디자이너",
@@ -278,6 +296,12 @@ const RULE_NAME: Record<string, string> = {
   dup_max: "복붙 중복: 최대 감점",
   scattered_pct: "스타일 없음: 1위 스타일이 이 비율(%) 미만",
   scattered: "스타일 없음: 감점",
+  fit_min: "핏: 핏을 아는 옷이 이 벌 수 이상일 때만",
+  fit_trim_pct: "핏: 슬림·레귤러 가점 기준(%)",
+  fit_trim: "핏: 슬림·레귤러 위주 가점",
+  fit_big_pct: "핏: 오버·와이드 감점 기준(%)",
+  fit_big: "핏: 오버·와이드 위주 감점",
+  fit_contrast: "핏: 위아래 실루엣 대비 가점",
   misfit_each: "치수에 안 맞는 옷: 한 벌당 감점",
   misfit_max: "치수에 안 맞는 옷: 최대 감점",
   gap_months: "구매 공백: 연속으로 안 산 달 기준",
@@ -331,6 +355,10 @@ const REPORT_NAME: Record<string, string> = {
   DUP_RECENT: "같은 옷을 최근에도 또 샀을 때(중복 문단 뒤)",
   BRAND_RECENT: "같은 브랜드를 최근에도 또 샀을 때(브랜드 문단 뒤)",
   color: "컬러 한마디",
+  fit: "핏 한마디",
+  GEM: "브랜드 자료에 없는 브랜드가 많을 때(숨은 원석)",
+  VINTAGE: "브랜드를 빈티지·구제로 적은 옷이 많을 때",
+  age: "나이 한마디(나이를 적었을 때)",
   wallet: "비싼 옷과 싼 옷의 브랜드 비교",
   DNA_LEAD: "옷장 DNA 앞 굵은 말",
   BASIS_BRAND: "기준 안내(브랜드 정보)",
@@ -387,6 +415,8 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
     if (p[1] === "character") return last === "name" ? "캐릭터 이름(한 줄 정의 앞쪽)" : "한 줄 정의 뒤쪽·\"> \" 문장에 들어가는 말";
     if (p[1] === "HEADLINE" || p[1] === "TOTAL") return last === "b90" ? "90점 이상" : last === "b0" ? "10점 미만" : `${last.slice(1)}~${Number(last.slice(1)) + 9}점`;
     if (p[1] === "color") return `${COLOR_NAME[last] ?? last} (하나 고름)`;
+    if (p[1] === "fit") return `${FIT_NAME[last] ?? last} (하나 고름)`;
+    if (p[1] === "age") return `${AGE_REMARK_NAME[last] ?? last} (하나 고름)`;
     if (p[1] === "wallet") return `${WALLET_NAME[last] ?? last} (하나 고름)`;
     if (p[1] === "dna") return `${last} (하나 고름)`;
     if (p[1] === "suspicious") return `${SUSPICIOUS_NAME[last] ?? last} (하나 고름)`;
