@@ -131,7 +131,7 @@ export async function finishRoast(input: { seed: number; name: string | null; an
 
     // 결과에 나온 옷의 브랜드·제품명·사진 경로를 복사해 둔다(옷을 지워도 문장은 남는다).
     const ids = [
-      ...new Set([...written.paragraphs.flatMap((p) => p.photos), ...report.shelf]),
+      ...new Set([...written.paragraphs.flatMap((p) => p.photos), ...report.points.flatMap((p) => p.photos ?? [])]),
     ];
     const paths = new Map<string, { image: string | null; thumb: string | null }>();
     if (s.supabase && ids.length) {

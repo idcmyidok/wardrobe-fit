@@ -63,6 +63,9 @@ const pricedPhotos = (a: Analysis, ids: string[]) =>
     .slice(0, 8)
     .map((i) => ({ id: i.id, amount: amountLabel(i.price!) }));
 
+/** 구매 링크가 그 쇼핑몰인 옷 */
+export const fromShop = (a: Analysis, shop: string) => a.items.filter((i) => i.shop === shop);
+
 export const QUESTIONS: QuestionDef[] = [
   { id: "odd_photo", bucket: "odd", pattern: "odd_one", base: 0.9, options: ["mine", "gift", "dunno"],
     when: (a) => (a.oddOne?.item.hasPhoto ? { brand: a.oddOne.item.brandLabel || "이 옷", name: a.oddOne.item.g.productName, reason: a.oddOne.reason || "다른 옷들과 거의 안 겹치는 점" } : null),
@@ -204,6 +207,13 @@ export const QUESTIONS: QuestionDef[] = [
     when: (a) => stats(pat(a, "musinsa_kr")) },
   { id: "shop_q", bucket: "shop", pattern: "shop_focus", base: 0.6, options: ["points", "habit", "best"],
     when: (a) => stats(pat(a, "shop_focus")) },
+  // 중고 거래 앱 구매 링크가 3개 이상
+  { id: "fruits_q", bucket: "used", base: 0.8, options: ["vintage", "price", "resell"],
+    when: (a) => (fromShop(a, "후르츠패밀리").length >= 3 ? { n: fromShop(a, "후르츠패밀리").length } : null),
+    photos: (a) => photoIds(a, fromShop(a, "후르츠패밀리").map((i) => i.id)) },
+  { id: "bunjang_q", bucket: "used", base: 0.8, options: ["deal", "rare", "regret"],
+    when: (a) => (fromShop(a, "번개장터").length >= 3 ? { n: fromShop(a, "번개장터").length } : null),
+    photos: (a) => photoIds(a, fromShop(a, "번개장터").map((i) => i.id)) },
   // 옷장과 상관없이 누구에게나 물을 수 있는 질문. 관련 패턴이 있으면 조금 더 자주 나온다.
   { id: "vintage_q", bucket: "self", base: 0.35, options: ["often", "browse", "no_used"],
     when: (a) => ({ boost: has(a, "old_brands") || has(a, "trait_heritage") || has(a, "group_jp_denim") || has(a, "group_heritage") ? 1 : 0 }) },
@@ -962,6 +972,36 @@ export const Q_TEXT: Record<string, QuestionText> = {
       points: ["적립금이 아까워서 {shop|을} 떠나지 못한다고 하셨죠. 적립금을 쓰려고 산 옷이 또 적립금을 만드는 구조, 쇼핑몰이 가장 좋아하는 고객입니다.", "적립금 때문에 {shop}에 묶여 있다는 답은 이 옷장을 가장 정확하게 설명합니다. 옷장이 아니라 포인트 통장입니다."],
       habit: ["그냥 습관이라고 하셨습니다. 습관으로 모은 옷장은 습관처럼 생겼습니다. 새로운 곳을 한 번쯤 둘러보는 것도 나쁘지 않습니다.", "{shop}에 들어가는 게 습관이라니, 손가락이 옷장을 채우고 있었던 셈입니다."],
       best: ["{shop|이} 제일 좋다고 하셨죠. 제일 좋은 곳 하나만 다니면 제일 비슷한 옷장이 됩니다.", "{shop}에 대한 믿음이 확고하십니다. 그 믿음의 결과가 지금 이 옷장입니다."],
+    },
+  },
+  fruits_q: {
+    lead: ["후르츠패밀리에서 산 옷이 {n}벌입니다."],
+    text: "빈티지를 사랑하는 건가요, 정가를 미워하는 건가요?",
+    options: { vintage: "빈티지 감성이 좋아서", price: "정가 주고 사기 아까워서", resell: "입다가 다시 팔려고" },
+    react: {
+      vintage: ["감성은 좋습니다. 전 주인의 감성까지 딸려 왔겠지만요.", "빈티지라고 부르면 다 멋있어 보이긴 합니다."],
+      price: ["정가를 미워하는 마음, 이해합니다. 옷장은 그 마음을 {n}번 증명했습니다.", "아낀 돈으로 또 샀다면 아낀 게 아닙니다."],
+      resell: ["옷장이 아니라 재고 창고였군요.", "되팔 생각으로 사는 옷은 대체로 되팔리지 않습니다."],
+    },
+    roast: {
+      vintage: ["빈티지 감성이 좋아서 후르츠패밀리를 쓴다고 하셨습니다. 감성은 인정하지만, 남이 입던 옷 {n}벌이면 감성보다 이력이 더 두꺼운 옷장입니다.", "빈티지는 멋이지만 남이 입던 옷 {n}벌은 옷장이 아니라 중고 매장 진열대입니다. 감성은 전 주인과 나눠 가지셨습니다."],
+      price: ["정가 주고 사기 아깝다고 하셨습니다. 그 아까운 마음이 {n}번 반복되면서, 아낀 돈보다 쌓인 옷이 더 눈에 띄게 됐습니다.", "정가를 피해 다닌 덕분에 옷은 싸게 샀지만, 그 싼 옷이 {n}벌이면 결국 정가 한 벌 값은 넘었을 겁니다."],
+      resell: ["입다가 다시 팔 생각이라고 하셨습니다. 그런데 옷장에 아직 다 남아 있는 걸 보면, 판매 계획은 계속 다음 시즌으로 미뤄지고 있습니다.", "되팔 옷은 대개 되팔리지 않습니다. 옷장은 지금 재고 창고 역할을 성실하게 하고 있습니다."],
+    },
+  },
+  bunjang_q: {
+    lead: ["번개장터에서 산 옷이 {n}벌입니다."],
+    text: "번개처럼 사는 건가요, 번개처럼 후회하는 건가요?",
+    options: { deal: "싸게 잘 샀음", rare: "구하기 힘든 거라서", regret: "솔직히 후회한 적 있음" },
+    react: {
+      deal: ["잘 샀다는 말은 판 사람도 똑같이 합니다.", "싸게 산 옷이 {n}벌이면 싼 게 아닙니다."],
+      rare: ["구하기 힘든 옷은 입기도 아까워지는 법입니다.", "희귀템 사냥꾼이시군요."],
+      regret: ["솔직해서 좋습니다. 다시 번개장터에 올리면 되니까요.", "후회까지 중고로 넘기면 됩니다."],
+    },
+    roast: {
+      deal: ["번개장터에서 싸게 잘 샀다고 하셨습니다. 한 벌이면 득템이지만 {n}벌이면 그건 득템이 아니라 생활 습관입니다.", "싸게 산 옷이 {n}벌이면 그건 절약이 아니라 취미입니다. 판매자들이 당신을 기억할 겁니다."],
+      rare: ["구하기 힘든 옷이라서 번개장터를 뒤진다고 하셨습니다. 희귀한 옷을 찾는 집념은 대단하지만, 그 옷들이 옷장에서 희귀하게 입히는 것도 사실입니다.", "희귀템 사냥은 끝이 없습니다. 구하기 힘들게 산 옷일수록 입기 아까워서 옷장에서만 빛납니다."],
+      regret: ["번개장터 구매를 후회한 적이 있다고 하셨습니다. 그래도 {n}벌을 샀다는 건, 후회보다 알림이 더 빨랐다는 뜻입니다.", "후회는 번개처럼 오고 알림은 더 번개처럼 옵니다. {n}벌이 그 경주의 기록입니다."],
     },
   },
   fashionable_q: {

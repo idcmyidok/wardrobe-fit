@@ -159,6 +159,8 @@ const SHOPS: [RegExp, string][] = [
   [/(^|\.)zara\.com$/, "자라"],
   [/(^|\.)cos\.com$/, "COS"],
   [/(^|\.)nike\.com$/, "나이키"],
+  [/(^|\.)fruitsfamily\.com$/, "후르츠패밀리"],
+  [/(^|\.)bunjang\.co\.kr$/, "번개장터"],
 ];
 
 export function shopOf(url: string | null | undefined): string | null {
@@ -392,8 +394,11 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
       if (near.length > bestCluster.length) bestCluster = near;
     }
   }
-  if (bestCluster.length >= 3)
-    add("measure_repeat", ramp(bestCluster.length, 3, 6), 0.75, { sub: bestCluster[0].subName ?? "옷", n: bestCluster.length }, bestCluster);
+  // 실측이 비슷해도 색이 제각각이면 덜 뚜렷하게 본다(색까지 같아야 비꼬기 좋다, 사용자 요청).
+  if (bestCluster.length >= 3) {
+    const sameColor = Math.max(...[...countBy(bestCluster, (i) => i.color ?? "-").values()].map((l) => l.length)) / bestCluster.length;
+    add("measure_repeat", ramp(bestCluster.length, 3, 6) * (0.4 + 0.6 * sameColor), sameColor >= 0.6 ? 0.8 : 0.5, { sub: bestCluster[0].subName ?? "옷", n: bestCluster.length }, bestCluster);
+  }
 
   if (fitted.length >= 5) {
     const [lv, lvList] = top(countBy(fitted, (i) => i.fit!.level)) ?? [null, []];

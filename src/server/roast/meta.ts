@@ -86,6 +86,8 @@ export const PATTERN_COND: Record<string, string> = {
 };
 
 export const QUESTION_COND: Record<string, string> = {
+  fruits_q: "구매 링크가 후르츠패밀리인 옷 3벌 이상",
+  bunjang_q: "구매 링크가 번개장터인 옷 3벌 이상",
   odd_photo: "튀는 옷이 있고 사진이 있을 때",
   justify_combo: "세부분류+색+핏이 같은 옷 3벌 이상",
   color_taste: "무채색 60% 이상",
@@ -195,31 +197,84 @@ export interface TextGroupMeta {
 }
 
 const SUSPICIOUS_NAME: Record<string, string> = {
-  dup_recent: "이미 많은 옷을 최근에도 또 샀을 때",
-  color_recent: "무채색을 최근에도 계속 샀을 때",
-  brand_recent: "한 브랜드를 최근에도 계속 샀을 때",
-  top_item: "위가 없을 때: 가장 비싼 항목",
+  top_item: "다른 문단에 걸리는 게 없을 때: 가장 비싼 항목",
+};
+
+const COLOR_NAME: Record<string, string> = {
+  achro_85: "무채색 85% 이상",
+  achro_70: "무채색 70~84%",
+  achro_50: "무채색 50~69%",
+  balanced: "무채색 30~49%",
+  colorful: "무채색 30% 미만",
+  black: "덧붙임: 검정이 40% 이상",
+  white: "덧붙임: 흰색 계열이 25% 이상",
+  earth: "덧붙임: 베이지·브라운·카키가 35% 이상",
+  blue: "덧붙임: 네이비·데님이 30% 이상",
+  one_chroma: "덧붙임: 유채색 중 한 계열이 절반 이상",
+  vivid: "덧붙임: 원색이 25% 이상",
+  pastel: "덧붙임: 파스텔 톤 3벌 이상",
+  many: "덧붙임: 색 계열 9가지 이상",
+  few: "덧붙임: 색 계열 3가지 이하",
+  recent: "덧붙임: 최근 6개월에도 무채색 60% 이상",
+};
+
+const WALLET_NAME: Record<string, string> = {
+  heritage: "비싼 옷일수록 헤리티지 브랜드",
+  luxury: "싼 옷은 자잘하게, 비싼 옷은 럭셔리·디자이너",
+  style: "싼 옷과 비싼 옷의 스타일이 다름",
+};
+
+const RULE_NAME: Record<string, string> = {
+  base: "기본 점수",
+  designer_max: "디자이너·컨템포러리 비율: 최대 가점",
+  designer_full: "디자이너·컨템포러리 비율: 최대 가점이 되는 비율(%)",
+  niche_max: "아는 사람만 아는 브랜드: 최대 가점",
+  niche_full: "아는 사람만 아는 브랜드: 최대 가점이 되는 비율(%)",
+  style_mid_pct: "뚜렷한 스타일: 1단계 비율(%)",
+  style_mid: "뚜렷한 스타일: 1단계 가점",
+  style_high_pct: "뚜렷한 스타일: 2단계 비율(%)",
+  style_high: "뚜렷한 스타일: 2단계 가점",
+  taste_max: "헤리티지·일본 데님·워크웨어: 최대 가점",
+  taste_full: "헤리티지·일본 데님·워크웨어: 최대 가점이 되는 비율(%)",
+  digging: "후르츠패밀리·번개장터 3벌 이상: 가점",
+  accent: "무채색 위주 + 포인트 컬러 1~3벌: 가점",
+  mass_from: "SPA 비율: 감점이 시작되는 비율(%)",
+  mass_per10: "SPA 비율: 10%p마다 감점",
+  mass_max: "SPA 비율: 최대 감점",
+  musinsa_from: "무신사 인기 브랜드: 감점이 시작되는 비율(%)",
+  musinsa_per10: "무신사 인기 브랜드: 10%p마다 감점",
+  musinsa_max: "무신사 인기 브랜드: 최대 감점",
+  trendy_pct: "유행 따라가기: 기준 비율(%)",
+  trendy: "유행 따라가기: 감점",
+  dup_each: "복붙 중복: 한 벌당 감점",
+  dup_max: "복붙 중복: 최대 감점",
+  scattered_pct: "스타일 없음: 1위 스타일이 이 비율(%) 미만",
+  scattered: "스타일 없음: 감점",
+  misfit_each: "치수에 안 맞는 옷: 한 벌당 감점",
+  misfit_max: "치수에 안 맞는 옷: 최대 감점",
 };
 
 const REPORT_NAME: Record<string, string> = {
-  HEADLINE_TWO: "한 줄 정의(캐릭터 둘)",
-  HEADLINE_ONE: "한 줄 정의(캐릭터 하나)",
-  HEADLINE_PLAIN: "한 줄 정의(캐릭터 없음)",
+  HEADLINE: "첫 줄: 총점 구간별 평가",
   INTRO_THANKS: "\"> \" 첫 문장(뚜렷한 특징 둘)",
   INTRO_THANKS_ONE: "\"> \" 첫 문장(뚜렷한 특징 하나)",
+  INTRO_CHAR_TWO: "\"> \" 캐릭터 문장(캐릭터 둘)",
+  INTRO_CHAR_ONE: "\"> \" 캐릭터 문장(캐릭터 하나)",
   INTRO_ALSO: "\"> \" 캐릭터가 셋일 때 앞 문장",
   INTRO_SECOND: "\"> \" 캐릭터가 셋일 때 세 번째 캐릭터",
   INTRO_MORE: "\"> \" 마지막 문장(진단 문단 앞)",
   LIST_DUP: "목록 제목: 많이 가진 옷",
   LIST_BRAND: "목록 제목: 많이 산 브랜드",
   TOTAL_LEAD: "총 옷장 점수(굵게)",
-  TOTAL_HIGH: "총점 70점 이상일 때 한마디",
-  TOTAL_MID: "총점 40~69점일 때 한마디",
-  TOTAL_LOW: "총점 40점 미만일 때 한마디",
+  TOTAL: "총점 구간별 한마디",
+  DUP_RECENT: "같은 옷을 최근에도 또 샀을 때(중복 문단 뒤)",
+  BRAND_RECENT: "같은 브랜드를 최근에도 또 샀을 때(브랜드 문단 뒤)",
+  color: "컬러 한마디",
+  wallet: "비싼 옷과 싼 옷의 브랜드 비교",
   DNA_LEAD: "옷장 DNA 앞 굵은 말",
   BASIS_BRAND: "기준 안내(브랜드 정보)",
-  dna: "옷장 DNA 칩",
-  suspicious: "가장 수상한 부분",
+  dna: "옷장 DNA 문장",
+  suspicious: "마지막 문단",
 };
 
 export function textGroups(): TextGroupMeta[] {
@@ -233,6 +288,7 @@ export function textGroups(): TextGroupMeta[] {
   for (const [k, name] of Object.entries(REPORT_NAME)) out.push({ id: `report.${k}`, kind: "report", title: name, when: "" });
   for (const [k, v] of Object.entries(REPORT_TEXT.diag)) out.push({ id: `report.diag.${k}`, kind: "report", title: `진단: ${v.title}`, when: k });
   for (const [k, v] of Object.entries(REPORT_TEXT.character)) out.push({ id: `report.character.${k}`, kind: "report", title: `캐릭터: ${v.name}`, when: k });
+  out.push({ id: "score.rules", kind: "score", title: "총 옷장 점수 기준", when: "기본 점수에서 더하고 빼는 기준(비율은 %, 점수는 정수 0~100)" });
   for (const qid of Object.keys(SCORE_DELTAS))
     out.push({ id: `score.${qid}`, kind: "score", title: qid === "quiz" ? "패션 퀴즈" : Q_TEXT[qid]?.text || qid, when: `${qid} · 답에 따라 총 옷장 점수에 더하는 값(-20~20)` });
   return out;
@@ -249,6 +305,7 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
     if (p[2] === "head") return "헤드라인 앞절 + 뒷절(두 패턴을 이을 때 앞 패턴은 앞절, 뒤 패턴은 뒷절을 씀)";
   }
   if (p[0] === "score") {
+    if (p[1] === "rules") return RULE_NAME[p[2]] ?? p[2];
     if (p[1] === "quiz") return p[2] === "right" ? "맞혔을 때" : "틀렸을 때";
     return REACT_NAME[p[2]] ?? optionLabel?.(p[1], p[2]) ?? p[2];
   }
@@ -261,7 +318,10 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
       return last === "high" ? "뚜렷할 때(하나 고름, 첫 문장은 굵게)" : "반대쪽으로 뚜렷할 때(하나 고름, 첫 문장은 굵게)";
     }
     if (p[1] === "character") return last === "name" ? "캐릭터 이름(한 줄 정의 앞쪽)" : "한 줄 정의 뒤쪽·\"> \" 문장에 들어가는 말";
-    if (p[1] === "dna") return `칩: ${last}`;
+    if (p[1] === "HEADLINE" || p[1] === "TOTAL") return last === "b90" ? "90점 이상" : last === "b0" ? "10점 미만" : `${last.slice(1)}~${Number(last.slice(1)) + 9}점`;
+    if (p[1] === "color") return `${COLOR_NAME[last] ?? last} (하나 고름)`;
+    if (p[1] === "wallet") return `${WALLET_NAME[last] ?? last} (하나 고름)`;
+    if (p[1] === "dna") return `${last} (하나 고름)`;
     if (p[1] === "suspicious") return `${SUSPICIOUS_NAME[last] ?? last} (하나 고름)`;
     return "문장들(하나 고름)";
   }

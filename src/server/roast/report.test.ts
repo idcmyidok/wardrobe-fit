@@ -44,7 +44,6 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     for (const p of report.points) expect(p.lead).toMatch(/[.!?]$/);
     expect(report.lists[0]?.items[0]).toBe("블랙 반소매 티셔츠 7벌");
     expect(report.dna.length).toBeGreaterThan(0);
-    expect(report.shelf.length).toBeLessThanOrEqual(12);
   });
 
   it("총 옷장 점수는 0~100이고, 질문·퀴즈 답의 증감을 더한다", () => {
@@ -68,9 +67,22 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     expect(right.total.score - base.total.score).toBe(Math.min(4, 100 - base.total.score));
   });
 
-  it("이미 많은 옷을 최근에도 또 샀으면 수상한 부분을 문단으로 쓴다", () => {
-    const p = report.points.find((x) => x.id === "suspicious");
-    expect(`${p?.lead} ${p?.text}`).toContain("최근 6개월에도 2벌");
+  it("이미 많은 옷을 최근에도 또 샀으면 중복 문단 하나에 이어 쓴다", () => {
+    const dups = report.points.filter((x) => `${x.lead} ${x.text}`.includes("블랙 반소매 티셔츠"));
+    expect(dups).toHaveLength(1);
+    expect(dups[0].text).toContain("최근 6개월에도 2벌");
+    expect(dups[0].photos?.length).toBeGreaterThan(0);
+  });
+
+  it("첫 줄은 총점 구간 문장, 컬러 한마디는 늘 들어간다", () => {
+    expect(report.headline).toContain("세현님의 옷장");
+    expect(report.points.some((x) => x.id === "color")).toBe(true);
+  });
+
+  it("점수 기준(rules)을 바꾸면 총점이 바뀐다", () => {
+    const up = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base: 60 } });
+    const base = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, {});
+    expect(up.total.score - base.total.score).toBe(Math.min(10, 100 - base.total.score));
   });
 
   it("핏은 치수가 없어도 직접 적은 핏이 5벌 이상이면 진단한다", () => {

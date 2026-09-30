@@ -256,30 +256,7 @@
   line-height: 1.85;
   word-break: keep-all;
 }
-/* 결과 페이지: How Bad Is Your Spotify처럼 글 위주. 맨 위에 옷 사진이 선반에 꽂혀 있다. */
-.roast .roast-shelf {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  overflow: hidden;
-  padding: 0 4px;
-  border-bottom: 8px solid var(--text);
-  box-shadow: 0 6px 0 -2px var(--n-300, #bbb);
-}
-.roast .roast-shelf img {
-  flex: none;
-  width: clamp(64px, 16vw, 92px);
-  aspect-ratio: 4 / 5;
-  object-fit: cover;
-  border: 1px solid var(--divider);
-  transform-origin: bottom center;
-}
-.roast .roast-shelf img:nth-child(3n + 2) {
-  transform: rotate(-3deg);
-}
-.roast .roast-shelf img:nth-child(4n + 3) {
-  transform: rotate(2deg) translateY(-2px);
-}
+/* 결과 페이지: How Bad Is Your Spotify처럼 글 위주 */
 .roast .roast-report {
   display: flex;
   flex-direction: column;
@@ -307,6 +284,51 @@
   padding-left: 12px;
   border-left: 3px solid var(--text);
 }
+/* 결과 문단 사진 줄: 스크롤바는 숨기고 양옆 화살표로 넘긴다 */
+.roast .roast-row {
+  position: relative;
+}
+.roast .roast-row-track {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  cursor: grab;
+  user-select: none;
+}
+.roast .roast-row-track::-webkit-scrollbar {
+  display: none;
+}
+.roast .roast-row-track img {
+  flex: none;
+  width: 96px;
+  height: 120px;
+  object-fit: cover;
+  border: 1px solid var(--divider);
+  scroll-snap-align: start;
+}
+.roast .roast-row-btn {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  transform: translateY(-50%);
+  border: 1px solid var(--text);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+}
+.roast .roast-row-prev {
+  left: -6px;
+}
+.roast .roast-row-next {
+  right: -6px;
+}
+
 .roast .roast-result .roast-last {
   font-weight: 700;
 }

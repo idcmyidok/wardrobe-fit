@@ -54,8 +54,59 @@ export const SCORE_DELTAS: Record<string, Record<string, number>> = {
   hat_sub_q: { face: 1, safe: 0, different: -1 },
   jjanggu_q: { yes: -2, liked: 0, laundry: 1 },
   musinsa_q: { ranking: -3, sale: 0, convenient: 1, not_me: -1 },
+  fruits_q: { vintage: 0, price: -1, resell: -2 },
+  bunjang_q: { deal: -1, rare: 0, regret: -2 },
   shop_q: { points: -1, habit: -2, best: 1 },
   vintage_q: { often: 2, browse: 0, no_used: -1 },
   influencer_q: { daily: -2, sometimes: 0, never: 1 },
   fashionable_q: { yes: -2, normal: 0, no: 1, others_say: -1 },
 };
+
+/**
+ * 총 옷장 점수 기준("얼마나 힙한가", 사용자 요청: 다양하다고 좋은 게 아니라 힙하고 패셔너블할수록 높게).
+ * 기본 점수에서 더하고 빼고, 질문·퀴즈 증감(SCORE_DELTAS)을 더한 뒤 0~100으로 자른다. 가격은 넣지 않는다.
+ * 비율 기준은 %(0~100), 점수는 정수. 관리자 문장 편집의 "점수" 탭(score.rules)에서 고친다.
+ */
+export const SCORE_RULES = {
+  base: 50,
+  /** 디자이너·하이엔드·컨템포러리·럭셔리 브랜드 비율이 designer_full%면 +designer_max */
+  designer_max: 20,
+  designer_full: 80,
+  /** 대중성 낮은 브랜드(대중성 2 이하) 비율이 niche_full%면 +niche_max */
+  niche_max: 10,
+  niche_full: 60,
+  /** 1위 스타일 태그 비율 */
+  style_mid_pct: 50,
+  style_mid: 5,
+  style_high_pct: 65,
+  style_high: 10,
+  /** 헤리티지·일본 데님·워크웨어 브랜드 비율이 taste_full%면 +taste_max */
+  taste_max: 5,
+  taste_full: 50,
+  /** 후르츠패밀리·번개장터 구매 3벌 이상 */
+  digging: 3,
+  /** 무채색이 60% 이상인데 유채색이 1~3벌 */
+  accent: 3,
+  /** SPA·매스마켓 비율이 mass_from%를 넘는 10%p마다 -mass_per10(최대 mass_max) */
+  mass_from: 20,
+  mass_per10: 4,
+  mass_max: 20,
+  /** 무신사 인기 브랜드 비율 */
+  musinsa_from: 50,
+  musinsa_per10: 3,
+  musinsa_max: 10,
+  /** 하이프 4 이상이고 대중성 4 이상인 브랜드가 trendy_pct% 이상 */
+  trendy_pct: 50,
+  trendy: 5,
+  /** 세부분류·색이 같은 묶음의 3벌째부터, 제품명이 같은 옷의 2벌째부터 한 벌당 */
+  dup_each: 3,
+  dup_max: 15,
+  /** 1위 스타일 태그가 scattered_pct% 미만이고 브랜드가 문어발 */
+  scattered_pct: 25,
+  scattered: 5,
+  /** 내 치수 기준 너무 작거나 큰 옷 한 벌당 */
+  misfit_each: 2,
+  misfit_max: 10,
+};
+
+export type ScoreRules = typeof SCORE_RULES;

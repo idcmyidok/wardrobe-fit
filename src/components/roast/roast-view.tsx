@@ -638,22 +638,10 @@ function ResultView({
   );
 }
 
-/** 결과 페이지: How Bad Is Your Spotify처럼 글 위주(사진 선반 → 한 줄 정의 → "> " 문장 → 목록 → 총점 → 진단 문단 → DNA) */
+/** 결과 페이지: How Bad Is Your Spotify처럼 글 위주(총점 평가 → "> " 문장 → 목록 → 총점 → 진단 문단·사진 줄 → DNA) */
 function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string) => string | null }) {
-  const shelf = report.shelf.flatMap((id) => {
-    const url = photoOf(id);
-    return url ? [{ id, url }] : [];
-  });
   return (
     <div className="roast-report">
-      {shelf.length > 0 && (
-        <div className="roast-shelf" aria-hidden>
-          {shelf.map((x) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={x.id} src={x.url} alt="" />
-          ))}
-        </div>
-      )}
       <h2 className="roast-headline">
         <span className="roast-prompt">&gt;</span>
         {report.headline}
@@ -689,11 +677,12 @@ function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string
             <b>{p.lead}</b> {p.text}
           </p>
           {p.answer && <p className="roast-answer">{p.answer}</p>}
+          <PhotoRow ids={p.photos} photoOf={photoOf} />
         </div>
       ))}
       {report.dna.length > 0 && (
         <p>
-          <b>{report.dnaLead}</b> {report.dna.join(" · ")}
+          <b>{report.dnaLead}</b> {report.dna.join(" ")}
         </p>
       )}
       {report.notes.map((n) => (
@@ -701,6 +690,57 @@ function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string
           {n}
         </p>
       ))}
+    </div>
+  );
+}
+
+/** 결과 문단 사진 줄: 양옆 화살표로 넘기고, 손가락으로 밀거나 마우스로 끌어도 된다. */
+function PhotoRow({ ids, photoOf }: { ids?: string[]; photoOf: (id: string) => string | null }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; left: number } | null>(null);
+  const [edge, setEdge] = useState({ start: true, end: false });
+  const shown = (ids ?? []).flatMap((id) => {
+    const url = photoOf(id);
+    return url ? [{ id, url }] : [];
+  });
+  const update = () => {
+    const el = ref.current;
+    if (el) setEdge({ start: el.scrollLeft <= 2, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 });
+  };
+  useEffect(update, [shown.length]);
+  if (!shown.length) return null;
+  const move = (dir: 1 | -1) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.8, behavior: "smooth" });
+  return (
+    <div className="roast-row mt-3">
+      {!edge.start && (
+        <button type="button" className="roast-row-btn roast-row-prev" aria-label="이전 사진" onClick={() => move(-1)}>
+          ‹
+        </button>
+      )}
+      <div
+        ref={ref}
+        className="roast-row-track"
+        onScroll={update}
+        onPointerDown={(e) => {
+          if (e.pointerType !== "mouse") return;
+          drag.current = { x: e.clientX, left: e.currentTarget.scrollLeft };
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          if (drag.current) e.currentTarget.scrollLeft = drag.current.left - (e.clientX - drag.current.x);
+        }}
+        onPointerUp={() => (drag.current = null)}
+        onPointerCancel={() => (drag.current = null)}
+      >
+        {shown.map((x) => (
+          <img key={x.id} src={x.url} alt="" draggable={false} />
+        ))}
+      </div>
+      {!edge.end && (
+        <button type="button" className="roast-row-btn roast-row-next" aria-label="다음 사진" onClick={() => move(1)}>
+          ›
+        </button>
+      )}
     </div>
   );
 }

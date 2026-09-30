@@ -57,9 +57,7 @@ export interface RoastParagraph {
 
 /** 결과 페이지(옷장 진단 리포트). 예전 결과에는 없고, 그때는 headline·paragraphs(긴 훈수 글)를 보여 준다. */
 export interface RoastReport {
-  /** 맨 위 옷 사진 줄(옷 id) */
-  shelf: string[];
-  /** 한 줄 정의 */
+  /** 첫 줄: 총점 구간별 평가 */
   headline: string;
   /** "> "로 시작하는 짧은 문장들 */
   intro: string[];
@@ -67,9 +65,9 @@ export interface RoastReport {
   lists: { title: string; items: string[] }[];
   /** 총 옷장 점수(0~100, 질문·퀴즈 답이 더하거나 뺀다) */
   total: { score: number; lead: string; text: string };
-  /** 진단 문단: lead는 굵게, answer는 관련 질문 답에 붙는 한 줄 */
-  points: { id: string; lead: string; text: string; answer?: string }[];
-  /** 옷장 DNA: 굵은 앞말 + 칩 */
+  /** 진단 문단: lead는 굵게, answer는 관련 질문 답에 붙는 한 줄, photos는 옆으로 넘기는 사진 줄 */
+  points: { id: string; lead: string; text: string; answer?: string; photos?: string[] }[];
+  /** 옷장 DNA: 굵은 앞말 + 문장들 */
   dnaLead: string;
   dna: string[];
   /** 기준 안내(예: 브랜드 정보가 있는 옷 수) */
