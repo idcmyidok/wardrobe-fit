@@ -72,7 +72,7 @@ export const PATTERN_COND: Record<string, string> = {
   month_binge: "연도와 상관없이 같은 달(예: 9월)에 산 옷이 4벌 이상이고 달 평균의 2배 이상",
   avg_price: "구매가 있는 옷 5벌 이상, 평균 8만 원 이상",
   top_item: "최고가가 가운데 가격의 3배 이상",
-  category_spend: "한 대분류의 금액 비중이 벌 수 비중보다 15%p 이상 높음",
+  category_spend: "한 대분류(아우터·신발 제외)의 금액 비중이 벌 수 비중보다 15%p 이상 높음",
   subcategory_spend: "한 세부분류에 3벌 이상, 50만 원 이상, 쓴 돈의 25% 이상",
   brand_spend: "1위 브랜드 금액이 30% 이상",
   sale_luxury: "초고가 브랜드를 30만 원 미만에 산 옷 2벌 이상",

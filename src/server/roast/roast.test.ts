@@ -334,6 +334,17 @@ describe("말풍선 나누기", () => {
   });
 });
 
+describe("지출 비중 패턴", () => {
+  it("아우터에 돈이 몰린 건 당연하니 '벌 수보다 돈이 크다' 패턴을 내지 않는다", () => {
+    const wardrobe = [
+      ...Array.from({ length: 3 }, (_, i) => g(i, { categoryId: "outer", subcategoryId: null, purchasePrice: 400000 })),
+      ...Array.from({ length: 9 }, (_, i) => g(i + 10, { purchasePrice: 20000 })),
+    ];
+    const a = analyze(wardrobe, null, 1360, new Date("2026-09-29T12:00:00+09:00"));
+    expect(a.patterns.some((p) => p.id === "category_spend" && p.stats.cat === "outer")).toBe(false);
+  });
+});
+
 describe("무신사 패턴", () => {
   it("무신사 옷장이면 가진 브랜드 중 요즘 뜨는 브랜드 이름을 세 개까지 읊는다", () => {
     const pop = [...BRANDS].filter((b) => b.country === "한국" && brandLabels(b.name).includes(MUSINSA_POPULAR)).slice(0, 4);

@@ -441,7 +441,8 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
     if (max.price! >= median * 3)
       add("top_item", ramp(max.price! / median, 3, 10), 0.75, { price: max.price!, ratio: Math.round((max.price! / median) * 10) / 10, brand: max.brandLabel, name: max.g.productName }, [max]);
 
-    const catSpend = [...countBy(priced, (i) => i.cat)].map(([c, list]) => ({
+    // 아우터·신발은 원래 비싸서 돈이 몰려도 당연하니 뺀다.
+    const catSpend = [...countBy(priced, (i) => i.cat)].filter(([c]) => c !== "outer" && c !== "shoes").map(([c, list]) => ({
       c,
       list,
       spend: list.reduce((a, i) => a + i.price!, 0) / total,
