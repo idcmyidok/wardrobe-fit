@@ -113,10 +113,7 @@ export const QUESTIONS: QuestionDef[] = [
       const p = pat(a, "category_bias");
       return p ? { ...p.stats, catName: CATEGORY_NAME[p.stats.cat as CategoryId] } : null;
     } },
-  { id: "subcat_known", bucket: "count", pattern: "subcategory_bias", base: 0.65, options: ["exact", "roughly", "no"],
-    when: (a) => stats(pat(a, "subcategory_bias")),
-    photos: (a) => photoIds(a, pat(a, "subcategory_bias")?.garmentIds ?? []) },
-  { id: "count_guess", bucket: "count", base: 0.6, options: [], when: (a) => (a.clothes.length >= 20 ? { n: a.clothes.length } : null) },
+  // 몇 벌인지 맞히는 질문(subcat_known, count_guess)은 묻지 않는다(사용자 요청, 2026-09-30).
   { id: "few_clothes", bucket: "count", pattern: "count_small", base: 0.5, options: ["minimal", "not_yet", "thats_all"],
     when: (a) => stats(pat(a, "count_small")) },
   { id: "many_clothes_wear", bucket: "count", pattern: "count_many", base: 0.65, options: ["most", "half", "few", "same"],

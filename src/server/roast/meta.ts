@@ -102,8 +102,6 @@ export const QUESTION_COND: Record<string, string> = {
   black_why: "검정 35% 이상",
   chroma_love: "한 유채색 25% 이상",
   category_why: "한 대분류 50% 이상",
-  subcat_known: "같은 세부분류 4벌 이상이고 20% 이상",
-  count_guess: "모자·신발 뺀 옷 20벌 이상. 선택지는 정답과 적당히 떨어진 숫자 셋(예: 40·60·90벌). 반응: 실제보다 적게 / 정답 / 많게",
   few_clothes: "옷 10~19벌",
   many_clothes_wear: "옷 60벌 이상",
   trend_source: "요즘 뜨는 브랜드 편중",

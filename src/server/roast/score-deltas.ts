@@ -3,26 +3,24 @@ import "server-only";
 /**
  * 총 옷장 점수에 더하거나 빼는 값(질문·퀴즈 답별). 관리자 문장 편집의 "점수" 탭에서 고칠 수 있다(texts.ts의 score).
  * 키는 질문 id → 선택지 id. 선택지를 코드가 만드는 질문은 반응 종류로 쓴다
- * (퀴즈 right/wrong, 비싼 옷 버리기 most/mid/least, 브랜드 셋 spend/count/recent/spend2, 벌 수 맞히기 under/right/over).
+ * (퀴즈 right/wrong, 비싼 옷 버리기 most/mid/least, 브랜드 셋 spend/count/recent/spend2).
  * 점수는 옷장 수치로 낸 기본 점수에 이 값을 더한 뒤 0~100으로 자른다.
  */
 export const SCORE_DELTAS: Record<string, Record<string, number>> = {
   quiz: { right: 5, wrong: -5 },
   drop_item: { most: 0, mid: 0, least: 0 },
   brand_best: { spend: 1, count: 1, recent: -1, spend2: -2 },
-  count_guess: { under: -2, right: 3, over: 1 },
   odd_photo: { mine: 1, gift: 0, dunno: -2 },
   justify_combo: { different: -2, similar: 1, dunno: -1 },
   color_taste: { black_easy: -1, just_happens: -2, have_colors: 1 },
   brand_employee: { love: 0, sale: 1, didnt_know: -2 },
   food_vs_clothes: { food: 2, clothes: -2, both: -1 },
-  golden_spoon: { no: 0, yes: -1, skip: 0 },
+  golden_spoon: { no: 0, yes: 0, skip: 0 },
   rationalize: { none: -2, some: 1, why: -1 },
-  extreme_one: { of_course: -1, no: 1, already: -2 },
+  extreme_one: { of_course: 0, no: 0, already: 0 },
   black_why: { matches: 0, no_thinking: -2, charcoal: -1 },
   chroma_love: { love: 1, suits: 2, didnt_know: -1 },
   category_why: { wear_most: 1, cant_stop: -2, elsewhere: 0 },
-  subcat_known: { exact: 2, roughly: 0, no: -2 },
   few_clothes: { minimal: 2, not_yet: 0, thats_all: 1 },
   many_clothes_wear: { most: 3, half: 0, few: -2, same: -3 },
   trend_source: { sns: -1, friends: 0, first: 1 },
@@ -46,7 +44,7 @@ export const SCORE_DELTAS: Record<string, Record<string, number>> = {
   niche_known: { nobody: 0, those_who_know: -1, rather_not: -1 },
   formal_job: { yes: 1, no: -1, like: 1 },
   same_outfit_street: { often: -2, sometimes: -1, not_yet: 1 },
-  brand_alert: { on: -2, off: 1, no_need: -3 },
+  brand_alert: { on: 0, off: 0, no_need: 0 },
   brand_spend_q: { knew: 1, less: -1, dont_tell: -2 },
   shoes_q: { all_wear: 2, collect: -2, one_pair: -2 },
   shoe_sub_q: { two: 1, mood: 0, different: -1 },

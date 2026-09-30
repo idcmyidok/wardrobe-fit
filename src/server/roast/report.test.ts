@@ -61,9 +61,9 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
   });
 
   it("선택지를 코드가 만드는 질문(퀴즈 등)은 반응 종류로 증감을 찾는다", () => {
-    const q = { id: "count_guess", text: "", options: [{ id: "7", label: "7" }], reactions: {}, roast: {}, photos: [], scoreKey: { "7": "right" } } as unknown as AskedQuestion;
-    const base = buildReport(a, null, 3, REPORT_TEXT, [q], { count_guess: "7" }, {});
-    const right = buildReport(a, null, 3, REPORT_TEXT, [q], { count_guess: "7" }, { count_guess: { right: 4 } });
+    const q = { id: "quiz", text: "", options: [{ id: "2", label: "2" }], reactions: {}, roast: {}, photos: [], scoreKey: { "2": "right" } } as unknown as AskedQuestion;
+    const base = buildReport(a, null, 3, REPORT_TEXT, [q], { quiz: "2" }, {});
+    const right = buildReport(a, null, 3, REPORT_TEXT, [q], { quiz: "2" }, { quiz: { right: 4 } });
     expect(right.total.score - base.total.score).toBe(Math.min(4, 100 - base.total.score));
   });
 

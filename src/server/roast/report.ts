@@ -68,7 +68,6 @@ const ANSWER_TO: Record<string, string[]> = {
   trend_source: ["hype", "musinsa"],
   hype_alarm: ["hype"],
   category_why: ["subcat", "category"],
-  subcat_known: ["subcat", "category"],
   fit_choice: ["fit"],
   shop_q: ["shop"],
   country_q: ["country", "country_kr"],
