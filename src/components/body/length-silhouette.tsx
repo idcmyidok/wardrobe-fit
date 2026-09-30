@@ -9,6 +9,7 @@ export const MALE_BODY_RATIO = {
   shoulderY: 0.17,
   armpitY: 0.235,
   waistY: 0.38,
+  pantsWaistY: 0.44, // 바지 허리선(밑단 비교 기준). 배꼽 아래, 골반 바로 위
   pelvisY: 0.46,
   crotchY: 0.53,
   kneeY: 0.74,
@@ -27,6 +28,7 @@ export function getMaleBody(height: number) {
     shoulderY: height * r.shoulderY,
     armpitY: height * r.armpitY,
     waistY: height * r.waistY,
+    pantsWaistY: height * r.pantsWaistY,
     pelvisY: height * r.pelvisY,
     crotchY: height * r.crotchY,
     kneeY: height * r.kneeY,
@@ -53,7 +55,7 @@ export function getTshirt(height: number, length: number) {
     shoulderWidth: body.shoulderWidth * 1.08,
     chestWidth: body.chestWidth * 1.06,
     sleeveLength: height * 0.12,
-    diffFromCrotch: hemY - body.crotchY,
+    diffFromWaist: hemY - body.pantsWaistY,
   };
 }
 
@@ -62,6 +64,7 @@ const CANVAS_H = 212;
 const GROUND_Y = 202; // 발이 닿는 바닥선(아래에 여백 10cm)
 const CANVAS_W = 128;
 const BODY = "#9a9a93";
+const PANTS_FILL = "#4a4f57";
 const SHIRT_FILL = "#3d5a80";
 const SHIRT_LINE = "#2a4262";
 
@@ -156,17 +159,37 @@ export function LengthSilhouette({
   const collarLine = `M${cx - collar} ${neckY} Q${cx} ${neckY + H * 0.05} ${cx + collar} ${neckY}`;
   const stroke = H * 0.004;
 
+  // ---- 바지: 일반적인 스트레이트 핏을 고정으로 겹쳐 그려 밑단과 허리선을 비교한다 ----
+  const pw = b.pantsWaistY;
+  const pantsHemY = H * 0.965; // 발목 위까지
+  const pantsCrotchY = b.crotchY + H * 0.02;
+  const pants = [
+    `M${cx - hh * 1.04} ${pw}`,
+    `L${cx + hh * 1.04} ${pw}`,
+    `L${cx + hh * 1.08} ${b.pelvisY}`,
+    `L${cx + H * 0.088} ${b.kneeY}`,
+    `L${cx + H * 0.074} ${pantsHemY}`,
+    `L${cx + H * 0.016} ${pantsHemY}`,
+    `L${cx + H * 0.02} ${b.kneeY}`,
+    `L${cx} ${pantsCrotchY}`,
+    `L${cx - H * 0.02} ${b.kneeY}`,
+    `L${cx - H * 0.016} ${pantsHemY}`,
+    `L${cx - H * 0.074} ${pantsHemY}`,
+    `L${cx - H * 0.088} ${b.kneeY}`,
+    `L${cx - hh * 1.08} ${b.pelvisY}`,
+    "Z",
+  ].join(" ");
+
   const marks = Array.from({ length: 21 }, (_, i) => i * 10); // 0~200cm, 10cm마다
   const guides: [string, number][] = [
     ["어깨", b.shoulderY],
-    ["허리", b.waistY],
-    ["골반", b.pelvisY],
+    ["바지 허리선", b.pantsWaistY],
     ["사타구니", b.crotchY],
     ["무릎", b.kneeY],
   ];
-  const diff = t.diffFromCrotch;
+  const diff = t.diffFromWaist;
   const diffText =
-    Math.abs(diff) < 0.5 ? "사타구니와 거의 같은 높이" : `사타구니보다 약 ${Math.abs(diff).toFixed(1).replace(/\.0$/, "")}cm ${diff > 0 ? "아래" : "위"}`;
+    Math.abs(diff) < 0.5 ? "바지 허리선과 거의 같은 높이" : `바지 허리선보다 약 ${Math.abs(diff).toFixed(1).replace(/\.0$/, "")}cm ${diff > 0 ? "아래" : "위"}`;
 
   return (
     <figure className="flex items-start gap-4" data-testid="length-silhouette">
@@ -192,15 +215,15 @@ export function LengthSilhouette({
           </g>
           <line x1={0} x2={W} y1={top} y2={top} stroke="#8a8a83" strokeWidth={0.3} strokeDasharray="1.5 1.5" />
           <g transform={`translate(0 ${top})`}>
-            {/* 신체 기준선(어깨·허리·골반·사타구니·무릎) */}
+            {/* 신체 기준선(어깨·바지 허리선·사타구니·무릎) */}
             <g stroke="#7d8f7a" strokeWidth={0.3} strokeDasharray="0.8 1.2">
               {guides.map(([name, y]) => (
-                <line key={name} x1={0} x2={W} y1={y} y2={y} />
+                <line key={name} x1={0} x2={W} y1={y} y2={y} stroke={name === "바지 허리선" ? "#c2410c" : undefined} strokeWidth={name === "바지 허리선" ? 0.5 : undefined} />
               ))}
             </g>
             <g fill="#5f7a5b" fontSize={3.4} textAnchor="end">
               {guides.map(([name, y]) => (
-                <text key={name} x={W - 1} y={y - 0.8}>
+                <text key={name} x={W - 1} y={y - 0.8} fill={name === "바지 허리선" ? "#c2410c" : undefined}>
                   {name}
                 </text>
               ))}
@@ -215,17 +238,27 @@ export function LengthSilhouette({
               <polygon points={pts(leg(1))} />
               <polygon points={pts(leg(-1))} />
             </g>
+            {/* 바지(고정 스트레이트 핏) */}
+            <path d={pants} fill={PANTS_FILL} fillOpacity={0.72} stroke={PANTS_FILL} strokeWidth={stroke} strokeLinejoin="round" />
+            <line x1={cx - hh * 1.04} x2={cx + hh * 1.04} y1={pw + H * 0.008} y2={pw + H * 0.008} stroke="#2f333a" strokeWidth={stroke * 0.8} />
             {/* 티셔츠: 반투명이라 뒤의 몸이 비친다 */}
             <path d={shirt} fill={SHIRT_FILL} fillOpacity={0.62} stroke={SHIRT_LINE} strokeWidth={stroke} strokeLinejoin="round" />
             <path d={collarLine} fill="none" stroke={SHIRT_LINE} strokeWidth={stroke * 2} strokeLinecap="round" />
-            <line x1={cx + chestHalf + H * 0.015} x2={W} y1={hemY} y2={hemY} stroke="#111" strokeWidth={stroke} strokeDasharray={`${H * 0.02} ${H * 0.012}`} />
           </g>
         </svg>
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
       <p className="text-sm font-medium">{diffText}</p>
-      <figcaption className="text-xs leading-relaxed text-pretty text-neutral-700">
-        키 {height}cm 평균 성인 남자 실루엣에, 이 옷과 같은 총장({length}cm, 목 옆 어깨점에서 밑단까지)의 반팔 티셔츠를 입힌 모습이에요. 실제 어깨·가슴·소매 치수에 따라 착용감은 달라질 수 있으니 길이 느낌만 참고하세요.
+      <figcaption className="flex flex-col gap-1.5">
+        <span className="text-xs leading-relaxed text-pretty text-neutral-700 md:text-sm">
+          키 {height}cm 평균 성인 남자 실루엣에 총장 {length}cm 반팔 티셔츠와 일반적인 스트레이트 바지를 입힌 모습이에요.
+        </span>
+        <span className="text-2xs leading-relaxed text-pretty text-neutral-500 md:text-xs">
+          실제 어깨·가슴·소매 치수에 따라 착용감은 달라질 수 있으니 길이 느낌만 참고하세요.
+        </span>
+        <span className="text-2xs leading-relaxed text-pretty text-neutral-500 md:text-xs">
+          바지를 허리선에 맞춰 입은 경우의 예시예요. 바지를 내려 입거나 새깅하면 바지가 표시된 허리선보다 아래에 있어, 티셔츠 밑단과의 차이도 달라져요.
+        </span>
       </figcaption>
       </div>
     </figure>
