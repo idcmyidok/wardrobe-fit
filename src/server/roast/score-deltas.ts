@@ -8,6 +8,10 @@ import "server-only";
  */
 export const SCORE_DELTAS: Record<string, Record<string, number>> = {
   quiz: { right: 5, wrong: -5 },
+  /** 밴드 퀴즈: 패션 퀴즈와 같은 증감(사용자 요청) */
+  band_quiz: { right: 5, wrong: -5 },
+  /** 3대 500: 넘음·곧 넘음은 가점, 나머지는 0점(사용자 요청) */
+  three_500: { over: 3, soon: 1, dots: 0, comfy: 0 },
   drop_item: { most: 0, mid: 0, least: 0 },
   brand_best: { spend: 1, count: 1, recent: -1, spend2: -2 },
   odd_photo: { mine: 1, gift: 0, dunno: -2 },

@@ -12,7 +12,7 @@ const g = (i: number, over: Partial<Garment> = {}): Garment =>
     categoryId: "top",
     subcategoryId: "top.short_tee",
     brand: "COS",
-    productName: `티셔츠 ${i}`,
+    productName: `프린트 티셔츠 ${i}`, // 무지 티(분석에서 빠짐)가 아니게
     sizeLabel: "M",
     colorName: "블랙",
     seasons: [],

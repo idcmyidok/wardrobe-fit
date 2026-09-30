@@ -3,6 +3,7 @@ import { CATEGORY_NAME } from "@/lib/constants/categories";
 import type { CategoryId } from "@/lib/types/domain";
 import { fitSummary, type Analysis, type Item, type Pattern } from "./analyze";
 import { familyName, type FamilyId } from "./keywords";
+import { findBand } from "./bands";
 import { pickQuiz } from "./quiz";
 import { MissingVar, won, type Rng, type Vars } from "./text";
 import type { RoastTexts } from "./texts";
@@ -113,6 +114,12 @@ export const QUESTIONS: QuestionDef[] = [
     },
     photos: (a) => photoIds(a, pat(a, "family_repeat")?.garmentIds ?? []) },
   { id: "quiz", bucket: "quiz", base: 0.85, options: [], when: (a) => (a.brandNames.length ? {} : null) },
+  // 옷 이름·브랜드에 밴드 이름이 있으면 꼭 낸다(사용자 요청)
+  { id: "band_quiz", bucket: "band", base: 0.9, options: [], when: (a) => (findBand(a) ? { band: findBand(a)!.band.name } : null) },
+  // 언더아머 옷이 있으면 꼭 묻는다(사용자 요청)
+  { id: "three_500", bucket: "ua", base: 0.9, options: ["over", "soon", "dots", "comfy"],
+    when: (a) => (a.items.some((i) => i.brand?.name === "Under Armour") ? {} : null),
+    photos: (a) => photoIds(a, a.items.filter((i) => i.brand?.name === "Under Armour").map((i) => i.id)).slice(0, 3) },
   { id: "black_why", bucket: "color", pattern: "black_bias", base: 0.8, options: ["matches", "no_thinking", "charcoal"],
     when: (a) => stats(pat(a, "black_bias")) },
   { id: "chroma_love", bucket: "color", pattern: "chroma_bias", base: 0.75, options: ["love", "suits", "didnt_know"],
@@ -387,6 +394,37 @@ export const Q_TEXT: Record<string, QuestionText> = {
       of_course: ["평생 한 종류의 {kind}만 입으라고 해도 같은 걸 고르겠다고 하셨습니다. 결정 장애가 없는 건 좋은데, 옷장은 이미 그 미래를 미리 살고 있습니다.", "고민도 없이 나온 '당연하죠'. 사실 그 질문은 선택이 아니라 확인이었습니다. 옷장이 한참 전에 답을 정해 뒀거든요."],
       no: ["평생 그것만 입는 건 좀 싫다고 하셨습니다. 그렇게 싫다는 운명을 향해 옷장은 이미 한 벌씩 성실하게 걸어가고 있습니다.", "평생 한 종류는 싫다는 말, 믿고 싶습니다. 그런데 매번 같은 걸 집어 오는 손이 있습니다. 그 손과 한번 진지하게 대화를 나눠 보시길 권합니다."],
       already: ["이미 그렇게 살고 있다고 하셨습니다. 자각이 있다니 다행이지만, 자각만 있고 변화가 없다는 게 이 옷장의 핵심 문제입니다.", "교복을 벗은 지 한참인데 스스로 교복을 다시 맞춘 셈입니다. 이미 한 종류로 살고 있다는 고백이니, 더 설득할 필요도 없겠네요."],
+    },
+  },
+  band_quiz: {
+    // {band}가 처음 나오는 문장에 그 밴드 옷 사진을 붙인다. 문제·선택지는 bands.ts에 있다.
+    lead: ["잠깐만요.", "{band} 옷이 있네요.", "팬이라면 이 정도는 알겠죠."],
+    text: "다음 중 {band}의 노래가 아닌 것은?",
+    options: {},
+    react: {
+      right: ["정답입니다. {wrong}은 {wrongBy}의 곡이죠. 티셔츠만 산 팬은 아니네요.", "맞습니다. {wrong}은 {wrongBy} 노래입니다. 입을 자격은 증명하셨습니다."],
+      wrong: ["{wrong}이 {wrongBy}의 곡입니다. 티셔츠가 먼저였군요.", "아쉽네요. {wrongBy}의 {wrong}이 정답이었습니다. 로고가 예뻐서 산 것도 이유는 됩니다."],
+    },
+    roast: {
+      right: ["{band} 옷을 입을 자격은 증명하셨습니다. 노래 제목까지 아는 사람이 입으면 그건 팬심이고, 모르는 사람이 입으면 그냥 프린트 티니까요.", "밴드 티를 입는 사람 중 노래를 아는 사람은 생각보다 적습니다. 적어도 {band} 앞에서는 그 소수에 드는군요."],
+      wrong: ["{band} 옷을 입고 다니시면서 노래 문제는 틀리셨습니다. 길에서 진짜 팬이 말을 걸면 그냥 고개만 끄덕이세요.", "{band} 티셔츠는 음악보다 로고가 먼저였던 것 같습니다. 괜찮습니다. 밴드 티의 절반은 그렇게 팔립니다."],
+    },
+  },
+  three_500: {
+    lead: ["언더아머가 보이네요."],
+    text: "혹시 3대 500인가요?",
+    options: { over: "넘음", soon: "곧 넘음", dots: ".........", comfy: "그냥 편해서 삼" },
+    react: {
+      over: ["인정합니다. 그 옷은 입을 자격이 있습니다.", "역시. 옷이 먼저 알고 있었네요."],
+      soon: ["곧이라는 말, 헬스장에서 가장 자주 듣는 말이죠.", "응원합니다. 옷은 이미 500입니다."],
+      dots: ["......네. 더 묻지 않겠습니다.", "침묵이 대답이군요. 옷만 벌크업했습니다."],
+      comfy: ["솔직해서 좋습니다. 언더아머는 원래 편하긴 하죠.", "그럼요. 편한 게 최고입니다. 오해는 주변 사람 몫이고요."],
+    },
+    roast: {
+      over: ["언더아머를 입을 자격이 있는 3대 500이라고 하셨습니다. 옷장보다 헬스장 기록이 더 인상적인 사람입니다.", "3대 500이면 언더아머는 옷이 아니라 유니폼입니다. 옷장 점수보다 몸이 먼저 설명해 줍니다."],
+      soon: ["3대 500이 ‘곧’이라고 하셨습니다. 그 ‘곧’이 몇 년째인지는 묻지 않겠습니다.", "언더아머는 이미 500을 들 준비가 되어 있습니다. 이제 사람만 따라가면 됩니다."],
+      dots: ["3대 500이냐는 질문에 점만 찍으셨습니다. 언더아머가 대신 운동해 주진 않습니다.", "침묵도 대답입니다. 언더아머는 오늘도 주인 대신 근육을 연기하고 있습니다."],
+      comfy: ["언더아머를 편해서 입는다고 하셨습니다. 맞는 말인데, 입은 모습을 본 사람들은 대개 3대부터 궁금해합니다.", "편해서 고른 언더아머, 합리적입니다. 다만 그 로고는 보는 사람에게 늘 3대부터 묻게 만듭니다."],
     },
   },
   quiz: {
@@ -1143,7 +1181,7 @@ function countChoices(n: number, r: Rng): number[] {
 
 const BUDGET: Record<string, number> = { b10: 100_000, b30: 300_000, b100: 1_000_000 };
 
-const ALWAYS_ASK = new Set(["quiz", "drop_item", "brand_best"]);
+const ALWAYS_ASK = new Set(["quiz", "drop_item", "brand_best", "band_quiz", "three_500"]);
 
 export function pickQuestions(a: Analysis, r: Rng, fill: (t: string, v: Vars) => string, T: RoastTexts, tier: "high" | "mid" | "low" = "mid"): AskedQuestion[] {
   const candidates = QUESTIONS.filter((q) => !APPENDED.includes(q.id))
@@ -1242,6 +1280,29 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
       ),
       roast: roastMap(ids.map((id) => [id, quizRoast(Number(id) === quiz.answer)])),
       scoreKey: Object.fromEntries(ids.map((id) => [id, Number(id) === quiz.answer ? "right" : "wrong"])),
+      photos: [],
+    };
+  }
+  if (q.id === "band_quiz") {
+    const found = findBand(a);
+    if (!found) return null;
+    const { band } = found;
+    const v = { band: band.name, wrong: band.wrong, wrongBy: band.wrongBy };
+    const labels = [...band.songs, band.wrong];
+    const ids = labels.map((_, i) => String(i));
+    const answer = String(labels.length - 1);
+    const bandPhotos = photoIds(a, found.items.map((i) => i.id)).slice(0, 3);
+    const photoAt = tx.lead.findIndex((l) => l.includes("{band"));
+    return {
+      ...base,
+      lead: tx.lead.map((l) => fill(l, v)),
+      leadPhotos: bandPhotos.length && photoAt >= 0 ? { [photoAt]: bandPhotos } : undefined,
+      text: fill(tx.text, v),
+      options: r.shuffle(ids).map((id) => ({ id, label: labels[Number(id)] })),
+      answer,
+      reactions: Object.fromEntries(ids.map((id) => [id, fill(r.pick(tx.react[id === answer ? "right" : "wrong"]), v)])),
+      roast: roastMap(ids.map((id) => [id, roastOf(id === answer ? "right" : "wrong", v)])),
+      scoreKey: Object.fromEntries(ids.map((id) => [id, id === answer ? "right" : "wrong"])),
       photos: [],
     };
   }

@@ -164,7 +164,8 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
   if (jpN >= R.jp_n) add("jp", R.jp, `일본 브랜드 ${jpN}벌 (${R.jp_n}벌 이상)`);
   const repro = items.filter(isRepro).length;
   if (repro) add("repro", repro >= R.repro_many_n ? R.repro_many : R.repro, `일본 데님·리바이스 빈티지 ${repro}벌 (${R.repro_many_n}벌 이상이면 +${R.repro_many})`);
-  const foreign = share(known, (i) => i.brand!.country !== "한국" && !i.groups.includes("mass"));
+  // 국가를 모르는 브랜드(편집숍 입점 소규모 브랜드 등)는 해외로 치지 않는다.
+  const foreign = share(known, (i) => Boolean(i.brand!.country) && i.brand!.country !== "한국" && !i.groups.includes("mass"));
   if (enough && foreign * 100 >= R.foreign_pct) add("foreign", R.foreign, `해외 브랜드(SPA·대중 제외) ${P(foreign)} (${R.foreign_pct}% 이상)`);
   const boldN = items.filter((i) => (i.price ?? 0) >= R.bold_won * 10_000).length;
   if (boldN) add("bold", R.bold, `${R.bold_won}만 원 이상 옷 ${boldN}벌`);

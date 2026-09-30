@@ -99,6 +99,8 @@ export const QUESTION_COND: Record<string, string> = {
   rationalize: "치수가 거의 같은 옷 또는 같은 제품군 4벌 이상. 해당 옷 사진을 모두 가로로 보여 줌",
   extreme_one: "같은 제품군 5벌 이상. 해당 옷 사진을 모두 가로로 보여 줌",
   quiz: "옷장에 퀴즈가 있는 브랜드가 하나라도 있을 때, 그 브랜드 문제",
+  band_quiz: "옷 이름·브랜드에 밴드 이름이 있을 때 꼭(흔한 단어 이름은 밴드·투어·티셔츠 같은 말이 같이 있을 때만). 문제는 bands.ts",
+  three_500: "언더아머 옷이 있을 때 꼭",
   black_why: "검정 35% 이상",
   chroma_love: "한 유채색 25% 이상",
   category_why: "한 대분류 50% 이상",

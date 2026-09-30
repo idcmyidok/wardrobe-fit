@@ -101,6 +101,12 @@ export interface Analysis {
   /** 가진 브랜드(브랜드 자료 이름). 퀴즈는 이 중 문제가 있는 브랜드로 낸다. */
   brandNames: string[];
   now: Date;
+  /** 모자·신발을 뺀 전체 벌 수(분석에서 뺀 무지 티 포함). 10벌 조건·옷장 크기·"N벌 기준"에 쓴다. */
+  clothesTotal: number;
+  /** 분석에서 뺀 무채색 무지·베이직 티(최대 BASIC_TEE_SKIP벌) */
+  basicIds: string[];
+  /** 무지 티까지 포함한 모든 옷(코디 조합 수처럼 실제 벌 수가 필요한 계산에만) */
+  allItems: Item[];
 }
 
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
@@ -249,8 +255,27 @@ export function similarMeasure(a: Item, b: Item): boolean {
   return measureGap(a, b) <= MEASURE_TOLERANCE;
 }
 
+/** 분석에서 빼는 무지 티 최대 벌 수(사용자 요청: 너무 기본 필수템이라 5벌까지는 취향으로 보지 않는다) */
+export const BASIC_TEE_SKIP = 5;
+const BASIC_WORDS = /무지|솔리드|베이직|에센셜|데일리|팩티|[23] ?팩|[23]p\b|solid|basic|plain|essential|blank|pack/i;
+const PRINT_WORDS = /그래픽|로고|프린트|레터링|아트웍|자수|graphic|logo|print|lettering|artwork|embroider/i;
+
+/** 무채색(블랙·화이트·그레이) 반팔·긴팔 티 중 무지·베이직 이름이거나, 프린트 없이 베이직·미니멀 브랜드인 옷 */
+export function isBasicTee(i: Item): boolean {
+  if (i.sub !== "top.short_tee" && i.sub !== "top.long_tee") return false;
+  if (!i.achromatic) return false;
+  const name = i.g.productName;
+  if (PRINT_WORDS.test(name) || i.families.includes("graphic")) return false;
+  if (BASIC_WORDS.test(name)) return true;
+  return Boolean(i.brand?.tags.some((t) => t === "베이직" || t === "미니멀"));
+}
+
 export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: number, now = new Date()): Analysis {
-  const items = prepare(garments, body, usdRate);
+  const prepared = prepare(garments, body, usdRate);
+  const clothesTotal = prepared.filter((i) => !i.accessory).length;
+  // 무지 티는 5벌까지 취향 분석에서 뺀다(5벌을 넘는 것은 그대로 본다). 벌 수를 말할 때는 clothesTotal을 쓴다.
+  const basicIds = prepared.filter(isBasicTee).slice(0, BASIC_TEE_SKIP).map((i) => i.id);
+  const items = prepared.filter((i) => !basicIds.includes(i.id));
   const clothes = items.filter((i) => !i.accessory);
   const P: Pattern[] = [];
   const add = (id: string, strength: number, interest: number, stats: Record<string, Stat>, list: Item[]) =>
@@ -259,10 +284,11 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
   const N = clothes.length;
   const all = items.length;
 
-  // 옷장 크기와 구성 ---------------------------------------------------------
-  if (N < 20) add("count_small", 0.5, 0.35, { n: N }, []);
-  else if (N >= 100) add("count_huge", ramp(N, 100, 200), 0.7, { n: N }, []);
-  else if (N >= 60) add("count_many", ramp(N, 60, 100), 0.55, { n: N }, []);
+  // 옷장 크기와 구성: 벌 수는 무지 티까지 센다 -------------------------------------
+  const T = clothesTotal;
+  if (T < 20) add("count_small", 0.5, 0.35, { n: T }, []);
+  else if (T >= 100) add("count_huge", ramp(T, 100, 200), 0.7, { n: T }, []);
+  else if (T >= 60) add("count_many", ramp(T, 60, 100), 0.55, { n: T }, []);
 
   const byCat = countBy(clothes, (i) => i.cat);
   const [cat, catList] = top(byCat) ?? [null, []];
@@ -332,7 +358,7 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
   }
 
   if (K >= 5) {
-    const [country, cList] = top(countBy(known, (i) => i.brand!.country)) ?? [null, []];
+    const [country, cList] = top(countBy(known, (i) => i.brand!.country || null)) ?? [null, []];
     if (country && cList.length / K >= 0.6) add("country_bias", ramp(cList.length / K, 0.6, 0.95), 0.55, { country, n: cList.length, pct: pct(cList.length, K) }, cList);
 
     const avg = (f: (b: BrandInfo) => number) => known.reduce((a, i) => a + f(i.brand!), 0) / K;
@@ -539,7 +565,7 @@ export function analyze(garments: Garment[], body: BodyProfile | null, usdRate: 
 
   const brandNames = [...new Set(known.map((i) => i.brand!.name))];
 
-  return { items, clothes, patterns: P, oddOne, topSpendBrands, brandNames, now };
+  return { items, clothes, patterns: P, oddOne, topSpendBrands, brandNames, now, clothesTotal, basicIds, allItems: prepared };
 }
 
 /** 핏을 아는 옷이 5벌 이상일 때 가장 많은 핏 */
