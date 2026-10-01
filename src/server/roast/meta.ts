@@ -383,6 +383,7 @@ const RULE_NAME: Record<string, string> = {
   lux_mismatch: "스타일 모르고 산 명품: 감점",
   shoes_few_n: "신발이 적음: 이 켤레 수 이하",
   sneakers_only: "신발이 적거나 전부 운동화: 감점",
+  lift: "최종 점수 보정: 낮은 점수일수록 더 올림 (0~1, 점수+(100-점수)×이 값)",
   thin_n: "옷이 적음: 모자·신발 뺀 옷이 이 벌 수 이하",
   thin: "옷이 적음: 감점",
   logo_pct: "로고 과다: 기준 비율(%)",

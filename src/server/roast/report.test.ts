@@ -55,9 +55,9 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     const plan = buildScript(a, 3, null);
     const q = plan.asked.find((x) => x.options.length && !x.scoreKey)!;
     const opt = q.options[0].id;
-    const base = buildReport(a, null, 3, REPORT_TEXT, plan.asked, { [q.id]: opt }, {});
-    const plus = buildReport(a, null, 3, REPORT_TEXT, plan.asked, { [q.id]: opt }, { [q.id]: { [opt]: 5 } });
-    const minus = buildReport(a, null, 3, REPORT_TEXT, plan.asked, { [q.id]: opt }, { [q.id]: { [opt]: -5 } });
+    const base = buildReport(a, null, 3, REPORT_TEXT, plan.asked, { [q.id]: opt }, { rules: { lift: 0 } });
+    const plus = buildReport(a, null, 3, REPORT_TEXT, plan.asked, { [q.id]: opt }, { rules: { lift: 0 }, [q.id]: { [opt]: 5 } });
+    const minus = buildReport(a, null, 3, REPORT_TEXT, plan.asked, { [q.id]: opt }, { rules: { lift: 0 }, [q.id]: { [opt]: -5 } });
     expect(plus.total.score - base.total.score).toBe(Math.min(5, 100 - base.total.score));
     expect(base.total.score - minus.total.score).toBe(Math.min(5, base.total.score));
   });
@@ -82,8 +82,8 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
   });
 
   it("점수 기준(rules)을 바꾸면 총점이 바뀐다", () => {
-    const up = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base: 60 } });
-    const base = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, {});
+    const up = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base: 60, lift: 0 } });
+    const base = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { lift: 0 } });
     expect(up.total.score - base.total.score).toBe(Math.min(15, 100 - base.total.score));
   });
 
@@ -160,7 +160,7 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     const d = report.scoreDetail!;
     expect(d.base).toBe(45);
     const sum = d.base + d.items.reduce((x, i) => x + i.delta, 0);
-    expect(Math.max(0, Math.min(100, Math.round(sum)))).toBe(report.total.score);
+    expect(Math.abs(Math.max(0, Math.min(100, sum)) - report.total.score)).toBeLessThanOrEqual(1);
     for (const i of d.items) {
       expect(i.label).not.toMatch(/^[a-z_]+$/);
       // 항목마다 실제로 적용된 판단 기준(숫자 포함)이 붙는다

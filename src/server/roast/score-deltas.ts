@@ -181,6 +181,8 @@ export const SCORE_RULES = {
   shoes_few_n: 2,
   sneakers_only: 5,
   /** 모자·신발 뺀 옷이 이 벌 수 이하: 감점 */
+  /** 최종 점수 보정: 낮을수록 더 올려 줌 (점수 + (100-점수)×이 값). 옷장·주문내역 공통 */
+  lift: 0.12,
   thin_n: 20,
   thin: 4,
   logo_pct: 20,
