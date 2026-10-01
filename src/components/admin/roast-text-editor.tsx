@@ -8,12 +8,11 @@ import { cn } from "@/lib/cn";
 import { isBubbleKey, joinBubbles, splitSentences } from "@/lib/roast/bubbles";
 import { deleteRoastQuiz, saveRoastQuiz, saveRoastUnits } from "@/server/roast/admin-actions";
 
-type Pair = [string, string];
-type UnitValue = string | string[] | Pair[];
+type UnitValue = string | string[];
 
 export interface EditorUnit {
   key: string;
-  kind: "text" | "list" | "pairs" | "number";
+  kind: "text" | "list" | "number";
   label: string;
   /** DB에 저장된 값(없으면 코드의 처음 문장) */
   value: UnitValue | number;
@@ -78,10 +77,10 @@ function fromDisplay(text: string, vars: Vars): { text: string } | { error: stri
   return unknown.length ? { error: `모르는 자리입니다: ${unknown.join(", ")}` } : { text: out };
 }
 
-/** 값 전체를 화면용으로(문장·목록·앞뒤절 모두) */
+/** 값 전체를 화면용으로(문장·목록 모두) */
 function mapText<T extends UnitValue>(v: T, f: (s: string) => string): T {
   if (typeof v === "string") return f(v) as T;
-  return (v as (string | Pair)[]).map((x) => (Array.isArray(x) ? [f(x[0]), f(x[1])] : f(x))) as T;
+  return (v as string[]).map(f) as T;
 }
 
 const colLabel = "font-mono text-label font-medium tracking-[0.08em] text-neutral-700";
@@ -401,10 +400,8 @@ function UnitField({ unit, value, onChange }: { unit: EditorUnit; value: UnitVal
       <legend className="mb-1 text-sm font-medium">{unit.label}</legend>
       {unit.kind === "text" ? (
         <textarea aria-label={unit.label} rows={rowsFor(value as string)} className={areaClass} value={value as string} onChange={(e) => onChange(e.target.value)} />
-      ) : unit.kind === "list" ? (
-        <ListRows items={value as string[]} onChange={onChange} label={unit.label} bubbles={isBubbleKey(unit.key)} />
       ) : (
-        <PairRows items={value as Pair[]} onChange={onChange} label={unit.label} />
+        <ListRows items={value as string[]} onChange={onChange} label={unit.label} bubbles={isBubbleKey(unit.key)} />
       )}
     </fieldset>
   );
@@ -465,31 +462,6 @@ function ListRows({
       <div>
         <Button size="sm" variant="secondary" onClick={() => onChange([...items, ""])}>
           + 문장 추가
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function PairRows({ items, onChange, label }: { items: Pair[]; onChange: (v: Pair[]) => void; label: string }) {
-  const set = (i: number, k: 0 | 1, v: string) => onChange(items.map((p, j) => (j === i ? ((k === 0 ? [v, p[1]] : [p[0], v]) as Pair) : p)));
-  return (
-    <div className="flex flex-col gap-3">
-      {items.map((p, i) => (
-        <div key={i} className="flex items-start gap-2">
-          <span className="min-w-5 pt-2 text-sm text-neutral-700">{i + 1}</span>
-          <div className="flex flex-1 flex-col gap-1">
-            <textarea aria-label={`${label} ${i + 1} 앞절`} rows={rowsFor(p[0])} className={areaClass} placeholder="앞절" value={p[0]} onChange={(e) => set(i, 0, e.target.value)} />
-            <textarea aria-label={`${label} ${i + 1} 뒷절`} rows={rowsFor(p[1])} className={areaClass} placeholder="뒷절" value={p[1]} onChange={(e) => set(i, 1, e.target.value)} />
-          </div>
-          <Button size="sm" variant="ghost" aria-label={`${label} ${i + 1} 빼기`} onClick={() => onChange(items.filter((_, k) => k !== i))}>
-            빼기
-          </Button>
-        </div>
-      ))}
-      <div>
-        <Button size="sm" variant="secondary" onClick={() => onChange([...items, ["", ""]])}>
-          + 헤드라인 추가
         </Button>
       </div>
     </div>

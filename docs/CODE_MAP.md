@@ -13,7 +13,7 @@
 | `src/app/(app)/roast/fonts/*.woff2` | | 폰트, 무시 |
 
 ## 핵심 영역 길잡이
-- **훈수(/roast)**: 화면 `src/components/roast/roast-view.tsx`(839), 서버 `src/server/roast/`. 점수 `score.ts`(`scoreWardrobe`)·점수 규칙값 `score-deltas.ts`·등급 `bands.ts`; 분석 `analyze.ts`; 문장 조립 `compose.ts`(`composeResult`)·`report.ts`(`buildReport`)·문장 원문 `lines.ts`/`report-text.ts`; 질문 `questions.ts`(1355, `QUESTIONS`/`pickQuestions`), 퀴즈 `quiz.ts`(`QUIZ`); 관리자 편집 단위·조건 `meta.ts`(`textGroups`)·`texts.ts`(저장된 문구 덮어쓰기 `DEFAULT_TEXTS`); 서버 액션 `actions.ts`(`startRoast`/`finishRoast`), 관리자 저장 `admin-actions.ts`; AI 문장 `ai.ts`.
+- **훈수(/roast)**: 화면 `src/components/roast/roast-view.tsx`(914), 서버 `src/server/roast/`. 점수 `score.ts`(`scoreWardrobe`)·점수 규칙값 `score-deltas.ts`·등급 `bands.ts`; 분석 `analyze.ts`; 대화 조립 `compose.ts`(`buildScript`, 결과 마무리 `composeResult`)·결과 본문 `report.ts`(`buildReport`)·문장 원문 `lines.ts`(대화 문장 say만)/`report-text.ts`; 질문 `questions.ts`(1295, `QUESTIONS`/`pickQuestions`), 퀴즈 `quiz.ts`(`QUIZ`); 관리자 편집 단위·조건 `meta.ts`(`textGroups`)·`texts.ts`(저장된 문구 덮어쓰기 `DEFAULT_TEXTS`); 서버 액션 `actions.ts`(`startRoast`/`finishRoast`), 관리자 저장 `admin-actions.ts`. 훈수에는 AI 글쓰기가 없다(2026-10-01 제거; 옛 저장 결과 `headline`/`paragraphs`는 report 없는 결과를 열 때만 쓰임).
 - **무신사 주문내역 훈수(/roast/orders, 메뉴 없음)**: 화면 `src/app/(app)/roast/orders/page.tsx` → `roast-view.tsx`(`orders` prop) + 붙여넣기·로딩 `src/components/roast/order-roast.tsx`(`OrderPaste`, 북마크 안내는 주문 가져오기와 같은 `garment-form/order-guide.tsx`의 `OrderGuide`, 사진은 `/api/imports/{id}/image` 프록시 주소). 서버 액션 `src/server/roast/order-actions.ts`(`startOrderRoast`/`finishOrderRoast`, 저장·AI 없음). 주문내역 전용 `src/server/roast/orders/`: 입력 `input.ts`(`toGarments`), 분석 `analysis.ts`(`analyzeOrders`), 수치 `metrics.ts`(랭킹템·스탠다드·반품), 점수 `score.ts`(`scoreOrders`)·기준값 `rules.ts`(`ORDER_RULES`/`ORDER_AGE_RULES`/`ORDER_DELTAS`), 질문 `questions.ts`(`ORDER_QUESTIONS`), 결과 문단 `report.ts`(`orderOverride` → `buildReport`의 override), 문장 `texts.ts`. 관리자 편집은 "주문내역 훈수" 탭(`meta.ts` textGroups의 kind "orders"). 상품 하트·후기 수는 `parsers/musinsa.ts`(`popularityIn`), 주문 나누기는 `musinsa-orders.ts`(`parseOrdersForRoast`), 상품 읽기 API `/api/order-imports/item`(`roast: true`면 kind "roast"로 하루 분석 한도 대신 `ORDER_ROAST_DAILY_CAP`, 기록은 parser_version 끝 `ORDER_ROAST_SUFFIX`). 메뉴·노트 공개는 `src/lib/features.ts`의 `orderRoastMenu`.
 - **관리자 점수/결과 구성 탭**: `src/components/admin/roast-text-editor.tsx`(`RoastTextEditor`), 페이지 `src/app/(app)/admin/roast-texts/`, 저장 `src/server/roast/admin-actions.ts`. 기본값 없음: 저장된 값(DB)이 기준이고 묶음(`GroupBlock`·`QuizForm`) 단위로 입력 1초 뒤·칸을 벗어날 때 자동 저장(`useAutosave`, 서버 `saveRoastUnits`/`saveRoastQuiz`). 코드 문장은 DB에 값이 없는 칸의 처음 값으로만 쓰임.
 - **브랜드 데이터**: csv → `scripts/build-brands.mjs` → `brands.json` → `src/server/roast/brands.ts`(`findBrand`, `normalizeBrand`, `BRAND_GROUPS`). 무신사 수집 스크립트 `scripts/musinsa/`.
@@ -187,7 +187,7 @@
 
 ### src/components/roast
 - `order-roast.tsx` (198줄) OrderCopy:21 OrderPaste:45
-- `roast-view.tsx` (893줄) RoastView:65
+- `roast-view.tsx` (914줄) RoastView:65
 
 ### src/components/settings
 - `settings-view.tsx` (64줄) SettingsView:11
@@ -199,7 +199,7 @@
 - `price-input.tsx` (61줄) PriceInput:11
 
 ### src/components/usage
-- `usage-note.tsx` (65줄) UsageNote:10
+- `usage-note.tsx` (63줄) UsageNote:10
 
 ### src/components/wardrobe
 - `filter-state.ts` (207줄) SortableColumn:8 SortDirection:9 ColumnSort:10 WardrobeFilters:19 DEFAULT_SORT:29 DEFAULT_FILTERS:31 isFiltered:40 nextSort:52 …
@@ -285,7 +285,7 @@
 - `domain.ts` (49줄) CategoryId:6 FitCategoryId:8 Season:10 Measurements:13 Garment:16 GarmentListItem:48
 
 ### src/server
-- `usage.ts` (40줄) getUsage:16
+- `usage.ts` (36줄) getUsage:16
 
 ### src/server/account
 - `actions.ts` (39줄) DeleteAccountState:12 deleteMyAccount:18
@@ -355,20 +355,19 @@
 - `actions.ts` (138줄) ReleaseNoteEditResult:22 getReleaseNoteEdits:32 saveReleaseNoteEdit:63 resetReleaseNoteEdit:80 getReleaseNoteImages:92 ReleaseNoteImageResult:104 saveReleaseNoteImage:107 removeReleaseNoteImage:126
 
 ### src/server/roast
-- `actions.ts` (211줄) startRoast:90 finishRoast:109
+- `actions.ts` (178줄) startRoast:77 finishRoast:96
 - `admin-actions.ts` (~115줄) RoastTextResult:14 saveRoastUnits deleteRoastQuiz saveRoastQuiz
-- `ai.ts` (274줄) ROAST_AI_DAILY_LIMIT:19 ROAST_PROMPT_VERSION:20 AiInput:121 buildAiInput:130 resolveAiText:217 AiWritten:232 writeWithAi:238
 - `analyze.ts` (678줄) ACHROMATIC:20 MIN_GARMENTS:21 FIT_WORD:24 Item:34 brandKindOf:70 colorCounted:80 Stat:82 Pattern:84 …
 - `bands.ts` (104줄) Band:11 BANDS:23 bandOf:80 findBand:92
 - `brands.ts` (191줄) BrandInfo:9 BRANDS:46 MUSINSA_POPULAR:48 musinsaLikesCut:54 BrandGroup:59 BRAND_GROUPS:72 GROUP_WORD:87 normalizeBrand:102 isTrueHeritage:187(진짜 헤리티지 판정) …
-- `compose.ts` (365줄) varsOf:29 arrangeBlocks:107(질문 섹션 EXTRA_QUESTION_SECTION, 주문내역 질문 포함) Plan:129 quotesAnswer:137 buildScript:145 asOrders:262 outfitCounts:276 Composed:295 …
+- `compose.ts` (289줄) varsOf:29 arrangeBlocks:107(질문 섹션 EXTRA_QUESTION_SECTION, 주문내역 질문 포함) Plan:129 quotesAnswer:137 buildScript:145 asOrders:262 Composed:275 composeResult:283(마무리 문장·뚜렷한 패턴만, 결과 본문은 report.ts)
 - `keywords.ts` (50줄) FAMILIES:4 FamilyId:33 FAMILY_IDS:34 familyName:35 productFamilies:40
-- `lines.ts` (506줄) Section:13 PatternLines:30 COMMON:38 LINE_SECTION:118 LINE_TEXT:183
-- `meta.ts` (561줄) VAR_LABEL:15 SECTION_NAME:24 PATTERN_COND:28 QUESTION_COND:93 REACT_NAME:147 SCREEN_NAME:154 COMMON_NAME:172 varLabel:193 …
+- `lines.ts` (357줄) Section:13 PatternLines:28 COMMON:34 LINE_SECTION:98 LINE_TEXT:162
+- `meta.ts` (555줄) VAR_LABEL:15 SECTION_NAME:24 PATTERN_COND:28 QUESTION_COND:93 REACT_NAME:147 SCREEN_NAME:154 COMMON_NAME:172 varLabel:188 …
 - `order-actions.ts` (162줄) beginOrderRoast:60 orderRoastUsed:78 startOrderRoast:86 finishOrderRoast:102 (하루 1회: 붙여넣기 직후 beginOrderRoast가 roast_runs kind='orders'에 기록, 관리자·테스터 예외, 상품 읽기 API도 기록 없으면 403)
 - `order-limit.ts` (31줄) kstDayStart:14 orderRoastUsedToday:19 (한국 시간 0시 기준 하루 1회)
 - `queries.ts` (57줄) getLatestRoast:12 signGarments:27 getRoastTextEdits:43 getRoastTexts:54
-- `questions.ts` (1366줄) QuestionDef:19 QuestionText:34 chimchakItems:69(침착맨 질문 조건) fromShop:78 QUESTIONS:80 Q_TEXT:246 AskedQuestion:1111 brandTrio:1133 …
+- `questions.ts` (1295줄) QuestionDef:19 QuestionText:34 chimchakItems:69(침착맨 질문 조건) fromShop:78 QUESTIONS:80 Q_TEXT:243 AskedQuestion:1063 brandTrio:1085 …
 - `quiz.ts` (680줄) QuizEntry:14 QUIZ:24 PickedQuiz:668 pickQuiz:673
 - `report-text.ts` (308줄) REPORT_TEXT:12 ReportTexts:307
 - `report.ts` (657줄) ReportOverride:89 buildReport:102 limitPhotos:621 splitLead:642 tryFill:647
@@ -376,7 +375,7 @@
 - `score.ts` (385줄) ScorePart:16 WardrobeScore:25 ScoreOptions:33 isTopDesigner:44 isMidTier:46 isHeritage:48 isGood:50 isNice:52 isFormalLux:55 isRepro:56 monthIndex:59(판정 함수는 주문내역 점수도 씀) scoreWardrobe:64 fitContrast:302 ageAt:307 bandName:314 bandOf:322 …
 - `shift.ts` (64줄) ShiftRules:3 TasteShift:9 detectTasteShift:40
 - `text.ts` (119줄) josa:56 won:66 Vars:75 MissingVar:78 fill:80 varsOf:91 rng:94 Rng:118
-- `texts.ts` (284줄) DEFAULT_TEXTS:40 RoastTexts:50 ROAST_TEXT_MAX:52 CUSTOM_QUIZ_ID:55 UnitKind:57 UnitValue:58 TextUnit:60 unitsOf:69 …
+- `texts.ts` (266줄) DEFAULT_TEXTS:40 RoastTexts:50 ROAST_TEXT_MAX:52 CUSTOM_QUIZ_ID:55 UnitKind:57 UnitValue:58 TextUnit:60 unitsOf:69 …
 
 ### src/server/roast/orders
 - `analysis.ts` (17줄) analyzeOrders:11

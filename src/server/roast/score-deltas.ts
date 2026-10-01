@@ -27,7 +27,6 @@ export const SCORE_DELTAS: Record<string, Record<string, number>> = {
   category_why: { wear_most: 1, cant_stop: -2, elsewhere: 0 },
   few_clothes: { minimal: 2, not_yet: 0, thats_all: 1 },
   many_clothes_wear: { most: 3, half: 0, few: -2, same: -3 },
-  trend_source: { sns: -1, friends: 0, first: 1 },
   timeless_q: { never: 1, bit: 0, comes_back: -1 },
   hype_alarm: { yes: -2, no: 1, secret: -1 },
   country_q: { intended: 1, quality: 1, didnt_know: -1 },

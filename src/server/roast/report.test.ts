@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Garment } from "@/lib/types/domain";
 import { analyze } from "./analyze";
-import { buildScript } from "./compose";
+import { buildScript, quotesAnswer } from "./compose";
 import type { AskedQuestion } from "./questions";
 import { buildReport } from "./report";
 import { REPORT_TEXT } from "./report-text";
@@ -180,5 +180,19 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     const pats = analyze([...denim, ...tees], null, 1360, now).patterns;
     expect(pats.some((p) => p.id === "subcategory_bias" && p.stats.sub === "데님 팬츠")).toBe(true);
     expect(pats.some((p) => p.id === "family_repeat" && p.stats.family === "denim")).toBe(false);
+  });
+
+  it("답을 옮겨 말하며 시작하는 문장(\"~라고 하셨죠.\")은 결과에서 한 번만 쓴다", () => {
+    const w = Array.from({ length: 14 }, (_, i) => g(i, { productName: i < 3 ? "그래픽 반팔 티셔츠" : `프린트 옷${i}`, colorName: i < 3 ? "화이트" : "블랙", purchasePrice: 10000 * (i + 1) }));
+    const wa = analyze(w, null, 1360, now);
+    for (let seed = 0; seed < 40; seed++) {
+      const plan = buildScript(wa, seed, null);
+      for (const pick of [0, 1, 2]) {
+        const answers = Object.fromEntries(plan.asked.map((q) => [q.id, q.options[Math.min(pick, q.options.length - 1)].id]));
+        const r = buildReport(wa, null, seed, REPORT_TEXT, plan.asked, answers);
+        const lines = [...r.points.map((p) => p.answer), ...r.points.filter((p) => p.id === "answer").map((p) => p.text)].filter((x): x is string => Boolean(x));
+        expect(lines.filter(quotesAnswer).length).toBeLessThanOrEqual(1);
+      }
+    }
   });
 });
