@@ -45,18 +45,18 @@ export const isTopDesigner = (i: Item) => i.groups.includes("luxury") || (i.grou
 /** 중고가 가점(1벌당 +1): 디자이너 중고가, 컨템포러리·스트릿 중고가(4) 이상. 위 디자이너 가점과 겹치지 않는다. */
 export const isMidTier = (i: Item) =>
   !isTopDesigner(i) && notPopular(i) && ((i.groups.includes("designer") && priceOf(i) === 4) || ((i.groups.includes("contemporary") || i.groups.includes("street")) && priceOf(i) >= 4));
-const isHeritage = (i: Item) => Boolean(i.brand && isTrueHeritage(i.brand));
+export const isHeritage = (i: Item) => Boolean(i.brand && isTrueHeritage(i.brand));
 /** 좋은 브랜드(디자이너 가점·중고가 가점·진짜 헤리티지) */
-const isGood = (i: Item) => isTopDesigner(i) || isMidTier(i) || isHeritage(i);
+export const isGood = (i: Item) => isTopDesigner(i) || isMidTier(i) || isHeritage(i);
 /** 고급 브랜드: 컨템포러리 이상 포지션이거나 중고가 이상(기본색뿐인 옷장 감점용) */
 export const isNice = (i: Item) => i.groups.some((g) => g === "designer" || g === "luxury" || g === "contemporary") || priceOf(i) >= 4;
 const isStreet = (i: Item) => i.groups.includes("street") || (i.brand?.hype ?? 0) >= 4;
 const isMature = (i: Item) => i.groups.includes("contemporary") || (i.brand?.heritage ?? 0) >= 4 || (i.brand?.formal ?? 0) >= 3.5;
-const isFormalLux = (i: Item) => i.groups.includes("luxury") || (i.brand?.formal ?? 0) >= 3.5;
-const isRepro = (i: Item) => i.groups.includes("jp_denim") || /levi'?s vintage|lvc/i.test(`${i.brand?.name ?? ""} ${i.brandLabel}`);
+export const isFormalLux = (i: Item) => i.groups.includes("luxury") || (i.brand?.formal ?? 0) >= 3.5;
+export const isRepro = (i: Item) => i.groups.includes("jp_denim") || /levi'?s vintage|lvc/i.test(`${i.brand?.name ?? ""} ${i.brandLabel}`);
 const isLogo = (i: Item) => /로고|logo/i.test(i.g.productName);
 const itemLabel = (i: Item) => `${i.brandLabel} ${i.g.productName}`.trim() || i.subName || "이름 없는 옷";
-const monthIndex = (t: number) => {
+export const monthIndex = (t: number) => {
   const d = new Date(t);
   return d.getFullYear() * 12 + d.getMonth();
 };

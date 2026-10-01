@@ -194,6 +194,23 @@ describe("주문내역 훈수 목록 → 분석", () => {
     }
   });
 
+  it("질문이 대화 끝에 몰리지 않고 분석 문장 사이에 섞인다", () => {
+    const a = run();
+    let early = 0;
+    let total = 0;
+    for (let seed = 1; seed < 30; seed++) {
+      const steps = buildScript(a, seed, null, DEFAULT_TEXTS, 34).script.steps;
+      const lastSay = steps.findLastIndex((s) => s.t === "say" && "photos" in s && Boolean(s.photos?.length));
+      // 마지막 분석 문장(사진이 붙은 말)보다 앞에 나온 질문 수
+      steps.forEach((s, k) => {
+        if (s.t !== "ask") return;
+        total++;
+        if (k < lastSay) early++;
+      });
+    }
+    expect(early / total).toBeGreaterThan(0.4);
+  });
+
   it("결과: 주문내역 문단과 주문내역 점수를 쓴다", () => {
     const a = run();
     const seed = 7;
