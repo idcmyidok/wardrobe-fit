@@ -212,7 +212,7 @@ export const LAYOUT_SECTION: Record<string, { name: string; how: string }> = {
   summary: { name: "요약 한 문장(제목 바로 아래)", how: "가장 뚜렷한 옷장 특징 세 개(모자라면 두 개)를 서로 다른 종류(색·브랜드·스타일·핏 등)에서 골라 한 문장으로 잇습니다." },
   lists: { name: "목록 두 개", how: "많이 가진 옷(세부분류 + 색 + 핏이 같은 옷 3벌 이상, 없으면 뺌)과 많이 산 브랜드(옷장 대비 %, 1위가 기준 미만이면 뺌). 제목은 고정 문구입니다." },
   total: { name: "총점", how: "옷장 점수(점수 탭 기준) + 질문·퀴즈 답의 증감. 한마디는 총점 구간별 문장에서 고릅니다." },
-  points: { name: "진단 문단들", how: "아래 \"진단 문단 순서\"대로 이어집니다." },
+  points: { name: "진단 문단들", how: "아래 \"진단 문단 순서\"대로 이어집니다. 문단마다 조건이 안 맞으면 저절로 빠지고, 사진과 질문 답은 아래 \"개수\" 설정에 따라 붙습니다." },
   notes: { name: "안내 문구", how: "브랜드 정보가 있는 옷 수 같은 기준 안내입니다." },
 };
 export const LAYOUT_POINT: Record<string, { name: string; how: string }> = {
@@ -226,16 +226,16 @@ export const LAYOUT_POINT: Record<string, { name: string; how: string }> = {
   last: { name: "마지막 문단", how: "따로 붙일 곳이 없는 질문 답, 없으면 가장 비싼 옷" },
 };
 const LAYOUT_COUNT: Record<string, string> = {
-  diag_min: "진단 문단 최소 개수",
-  diag_max: "진단 문단 최대 개수",
-  list_rows: "많이 가진 옷 목록 줄 수",
-  dup_min: "많이 가진 옷: 같은 옷이 이 벌 수 이상일 때만 목록에 넣음",
-  brand_rows: "브랜드 목록 줄 수",
-  brand_top_pct: "브랜드 목록: 1위 브랜드가 이 % 이상일 때만 보여 줌",
-  brand_row_pct: "브랜드 목록: 이 % 이상인 브랜드만 넣음",
-  photos: "사진 줄 하나의 사진 수",
-  photo_blocks: "사진을 넣는 문단 수(가장 특이한 문단부터)",
-  answers: "문단에 붙는 질문 답 수",
+  diag_min: "진단 문단 최소 개수 — 뚜렷한 진단이 이보다 적어도 덜 뚜렷한(반대쪽) 진단으로 채워 이 수까지 맞춥니다",
+  diag_max: "진단 문단 최대 개수 — 뚜렷한 진단이 많아도 이 수까지만 씁니다(첫 진단 + 나머지 진단 합계)",
+  list_rows: "\"이런 옷을 너무 많이 가지고 있습니다\" 목록의 최대 줄 수(같은 옷이 많은 순서)",
+  dup_min: "같은 옷(세부분류·색·핏이 모두 같음)이 이 벌 수 이상일 때만 \"많이 가진 옷\" 목록에 넣습니다. 하나도 없으면 목록 자체를 뺍니다",
+  brand_rows: "\"불편할 정도로 좋아하는 브랜드\" 목록의 최대 줄 수(많이 산 순서)",
+  brand_top_pct: "브랜드 목록은 1위 브랜드가 브랜드를 적은 옷의 몇 % 이상일 때만 보여 줍니다(브랜드를 적은 옷이 8벌 미만이면 목록 자체를 뺌)",
+  brand_row_pct: "브랜드 목록에는 브랜드를 적은 옷 중 이 % 이상이면서 2벌 이상인 브랜드만 넣습니다",
+  photos: "문단 하나에 붙일 수 있는 옷 사진의 최대 장수(한 줄 사진)",
+  photo_blocks: "사진을 보여 줄 문단의 최대 수 — 사진이 있는 문단이 더 많으면 사진 우선순위가 높은 문단부터 이 수만큼만 남기고 나머지는 글만 나옵니다",
+  answers: "질문에 답한 내용을 문단에 덧붙이는 최대 개수(앞에서 물은 질문 순서대로, 붙일 문단이 없는 답은 마지막 문단 하나로만)",
 };
 /** 결과 구성 탭에 같이 보여 주는 고정 문구(결과 페이지 탭과 같은 값) */
 const LAYOUT_FIXED = ["LIST_DUP", "LIST_BRAND", "TOTAL_LEAD", "INTRO_MORE", "BASIS_BRAND"];
@@ -479,7 +479,7 @@ export function textGroups(): TextGroupMeta[] {
   out.push({ id: "report.layout.show", kind: "layout", title: "섹션 켜기·끄기", when: "1이면 보이고 0이면 뺍니다." });
   out.push({ id: "report.layout.point_order", kind: "layout", title: "진단 문단 순서", when: "작은 숫자가 위(1~20). 조건이 안 맞는 문단은 저절로 빠집니다." });
   out.push({ id: "report.layout.point_show", kind: "layout", title: "진단 문단 켜기·끄기", when: "1이면 보이고 0이면 뺍니다." });
-  out.push({ id: "report.layout.count", kind: "layout", title: "개수", when: "0~40" });
+  out.push({ id: "report.layout.count", kind: "layout", title: "개수", when: "0~40 정수. 아래 각 칸의 설명대로 결과 문단·목록·사진·질문 답이 몇 개까지 나올지 정합니다." });
   for (const k of LAYOUT_FIXED) out.push({ id: `report.${k}`, kind: "layout", title: `고정 문구: ${REPORT_NAME[k]}`, when: "결과 페이지 탭의 같은 문구와 함께 바뀝니다." });
   out.push({ id: "score.rules", kind: "score", title: "총 옷장 점수 기준", when: "기본 점수에서 더하고 빼는 기준(비율은 %, 금액은 만 원, 감점도 양수로)" });
   out.push({ id: "score.age", kind: "score", title: "나이에 맞는 옷", when: "옷을 산 때 나이 구간별 기준(비율은 %, 감점도 양수로)" });

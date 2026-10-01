@@ -200,8 +200,8 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
   let nameUsed = greet;
   let prevSec: Section | null = null;
   blocks.forEach((b, idx) => {
-    // 이야기 사이에 가끔 혼잣말을 끼운다.
-    if (idx > 0 && r.next() < 0.2) {
+    // 이야기 사이에 가끔 혼잣말을 끼운다. 질문 바로 앞(분석 문장과 질문 사이)에는 끼우지 않는다.
+    if (idx > 0 && b.kind !== "ask" && r.next() < 0.2) {
       const text = fresh(C.MID_REMARKS);
       if (text) steps.push({ t: "say", text, gap: true });
     }
