@@ -64,7 +64,7 @@ const koreanDate = (iso: string) =>
  * orders가 있으면 무신사 주문내역 훈수(숨은 주소 /roast/orders): 이름·나이 → 주문내역 붙여넣기·상품 읽기 → 대화 → 결과.
  * 주문내역 훈수는 옷장을 보지 않고, 결과도 저장하지 않는다(새로고침하면 처음부터).
  */
-export function RoastView({ initialResult, copy = ROAST_COPY, orders }: { initialResult: RoastResult | null; copy?: RoastCopy; orders?: OrderCopy }) {
+export function RoastView({ initialResult, copy = ROAST_COPY, orders, ordersUsed = false }: { initialResult: RoastResult | null; copy?: RoastCopy; orders?: OrderCopy; ordersUsed?: boolean }) {
   const router = useRouter();
   const { garments, signedIn } = useWardrobe();
   const clothes = orders ? MIN_CLOTHES : garments.filter((g) => g.categoryId !== "hat" && g.categoryId !== "shoes").length;
@@ -191,6 +191,8 @@ export function RoastView({ initialResult, copy = ROAST_COPY, orders }: { initia
             clothes={clothes}
             skipIntro={mode === "name"}
             orders={!!orders}
+            dailyNotice={orders ? String(orders.DAILY_NOTICE) : null}
+            dailyUsed={orders && ordersUsed ? String(orders.DAILY_USED) : null}
             onStart={(n, ag) => {
               setName(n);
               setAge(ag);
@@ -359,7 +361,7 @@ function Photos({
   );
 }
 
-function Intro({ clothes, skipIntro, orders, onStart }: { clothes: number; skipIntro: boolean; orders: boolean; onStart: (name: string | null, age: number | null) => void }) {
+function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: { clothes: number; skipIntro: boolean; orders: boolean; dailyNotice: string | null; dailyUsed: string | null; onStart: (name: string | null, age: number | null) => void }) {
   const copy = useContext(CopyContext);
   // 다시 분석할 때도 소개 문구부터 타이핑한다.
   const [typed, setTyped] = useState(false);
@@ -389,7 +391,17 @@ function Intro({ clothes, skipIntro, orders, onStart }: { clothes: number; skipI
           <Typed text={copy.CRITERIA} onDone={() => setCriteriaDone(true)} />
         </p>
       )}
-      {typed && enough && !asking && !picking && (!criteria || criteriaDone) && (
+      {typed && dailyUsed && (
+        <p className="roast-ai">
+          <Typed text={dailyUsed} />
+        </p>
+      )}
+      {typed && !dailyUsed && dailyNotice && (
+        <p className="roast-ai">
+          <Typed text={dailyNotice} />
+        </p>
+      )}
+      {typed && enough && !dailyUsed && !asking && !picking && (!criteria || criteriaDone) && (
         <>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="roast-choice" onClick={() => (orders ? setAsking(true) : setPicking(true))}>

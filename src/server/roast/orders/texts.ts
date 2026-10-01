@@ -15,6 +15,8 @@ export const ORDER_SCREEN = {
   PASTE_GUIDE: "위 방법대로 복사한 주문내역을 아래 칸에 붙여 넣어 주세요. 붙여 넣은 글은 이번 훈수에만 쓰고 저장하지 않습니다.",
   PASTE_EMPTY: "주문을 찾지 못했습니다. 무신사 주문내역 화면 전체를 복사해 붙여 넣어 주세요.",
   PASTE_LABEL: "훈수 받기",
+  DAILY_NOTICE: "주문내역 훈수는 한 계정당 하루에 한 번만 할 수 있습니다. 중간에 그만둬도 오늘 횟수는 사라지니 처음부터 끝까지 해 주세요.",
+  DAILY_USED: "오늘은 이미 주문내역 훈수를 하셨습니다. 내일(한국 시간 0시 이후) 다시 해보세요.",
   TOO_FEW: "주문내역에서 옷(모자·신발 제외)이 10벌 이상일 때 훈수할 수 있습니다. (현재 {n}벌)",
   /** 상품을 읽는 동안 점 위에 계속 보여 주는 안내 */
   LOADING_WAIT: "주문내역을 분석하느라 시간이 좀 걸립니다. 조금만 기다려 주세요.",
@@ -517,6 +519,8 @@ export const ORDER_SCREEN_NAME: Record<string, string> = {
   PASTE_GUIDE: "주문내역 붙여넣기 안내(방법)",
   PASTE_EMPTY: "주문을 못 찾았을 때",
   PASTE_LABEL: "붙여넣은 뒤 버튼",
+  DAILY_NOTICE: "시작 전 하루 1회 안내",
+  DAILY_USED: "오늘 이미 했을 때 안내(시작 막힘)",
   TOO_FEW: "옷이 10벌 미만일 때",
   LOADING_WAIT: "상품 읽는 동안 점 위에 계속 보이는 안내",
   LOADING: "상품 읽는 동안 번갈아 보여 주는 문장",

@@ -1,6 +1,8 @@
 import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
 import { garmentFromCategoryPath } from "@/server/import/musinsa-orders";
 import { searchMusinsa } from "@/server/import/musinsa-search";
+import { getQuotaExemption } from "@/server/admin/is-admin";
+import { orderRoastUsedToday } from "@/server/roast/order-limit";
 import { runImport, type ImportOutcome } from "@/server/import/service";
 
 /**
@@ -33,6 +35,11 @@ export async function POST(request: Request) {
   const name = typeof body.name === "string" ? body.name.slice(0, 200) : "";
   const given = typeof body.goodsNo === "string" && /^\d{1,12}$/.test(body.goodsNo) ? body.goodsNo : null;
   if (!name && !given) return Response.json({ error: "invalid" }, { status: 400 });
+
+  // 주문내역 훈수는 하루 한 번: 시작 기록(beginOrderRoast)이 오늘 없으면 상품을 읽어 주지 않는다. 관리자·테스터는 예외.
+  if (body.roast === true && !(await getQuotaExemption(supabase, user.id)) && (await orderRoastUsedToday(supabase, user.id)) === false) {
+    return Response.json({ error: "not_started" }, { status: 403 });
+  }
 
   const goodsNo = given ?? (await searchMusinsa({ brand, name })).best?.goodsNo ?? null;
   if (!goodsNo) return Response.json({ goodsNo: null, via: null, outcome: null, verdict: null } satisfies OrderItemResult);

@@ -365,7 +365,8 @@
 - `keywords.ts` (50줄) FAMILIES:4 FamilyId:33 FAMILY_IDS:34 familyName:35 productFamilies:40
 - `lines.ts` (506줄) Section:13 PatternLines:30 COMMON:38 LINE_SECTION:118 LINE_TEXT:183
 - `meta.ts` (561줄) VAR_LABEL:15 SECTION_NAME:24 PATTERN_COND:28 QUESTION_COND:93 REACT_NAME:147 SCREEN_NAME:154 COMMON_NAME:172 varLabel:193 …
-- `order-actions.ts` (131줄) startOrderRoast:54 finishOrderRoast:70
+- `order-actions.ts` (162줄) beginOrderRoast:60 orderRoastUsed:78 startOrderRoast:86 finishOrderRoast:102 (하루 1회: 붙여넣기 직후 beginOrderRoast가 roast_runs kind='orders'에 기록, 관리자·테스터 예외, 상품 읽기 API도 기록 없으면 403)
+- `order-limit.ts` (31줄) kstDayStart:14 orderRoastUsedToday:19 (한국 시간 0시 기준 하루 1회)
 - `queries.ts` (57줄) getLatestRoast:12 signGarments:27 getRoastTextEdits:43 getRoastTexts:54
 - `questions.ts` (1366줄) QuestionDef:19 QuestionText:34 chimchakItems:69(침착맨 질문 조건) fromShop:78 QUESTIONS:80 Q_TEXT:246 AskedQuestion:1111 brandTrio:1133 …
 - `quiz.ts` (680줄) QuizEntry:14 QUIZ:24 PickedQuiz:668 pickQuiz:673
