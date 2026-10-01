@@ -479,7 +479,7 @@ const PICKED = 2;
 
 function RoastDemo() {
   return (
-    <DemoFrame title="내 옷장 훈수">
+    <DemoFrame title="내 패션 훈수">
       <div className="flex flex-col items-start gap-2">
         <div className={`fs-in ${BUBBLE}`} style={at(0.2)}>
           <span className="mb-1 flex gap-0.5">
@@ -578,7 +578,7 @@ const FEATURES: Feature[] = [
   },
   {
     id: "roast",
-    label: "옷장 훈수",
+    label: "패션 훈수",
     title: "옷 사는 습관에 훈수를 둡니다",
     body: "옷장을 훑어본 뒤 몇 가지 질문을 하고, 브랜드가 한쪽에 몰렸는지, 같은 옷을 또 샀는지, 언제 옷값을 많이 썼는지 짚어 줍니다. 말투가 꽤 직설적입니다.",
     seconds: 8,
