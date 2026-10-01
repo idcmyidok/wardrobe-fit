@@ -410,12 +410,7 @@ export function buildReport(
   put("color", colorPoint && withAnswer(colorPoint));
   put("fit", fitPoint && withAnswer(fitPoint));
   put("wallet", walletPoint);
-  // 숨은 원석(자료에 없는 브랜드), 빈티지·구제, 나이 한마디(점수와 별개로 한 문단씩)
-  const unknownN = branded.filter((i) => i.brandKind === "unknown").length;
-  if (unknownN >= 3 && unknownN / branded.length >= 0.3) {
-    const t = tryFill(r, R.GEM, { pct: pct(unknownN, branded.length), n: unknownN });
-    if (t) put("gem", { id: "gem", ...splitLead(t), photos: photosOf(branded.filter((i) => i.brandKind === "unknown")) });
-  }
+  // 빈티지·구제, 나이 한마디(점수와 별개로 한 문단씩)
   const vintage = items.filter((i) => i.brandKind === "vintage");
   if (vintage.length >= 3) {
     const t = tryFill(r, R.VINTAGE, { n: vintage.length });
@@ -432,7 +427,6 @@ export function buildReport(
     ? { ...override.score, age: null }
     : scoreWardrobe(a, {
         age,
-        musinsaLinkOnly: answers.musinsa_link_q === "link_only",
         rules: deltas.rules as Partial<ScoreRules> | undefined,
         ageRules: (score.age as Record<string, Record<string, number>> | undefined) ?? undefined,
       });
@@ -468,7 +462,6 @@ export function buildReport(
   const fsum = fitSummary(clothes);
   const designerShareAll = known.filter((i) => i.groups.includes("designer") || i.groups.includes("luxury") || i.groups.includes("contemporary")).length / Math.max(K, 1);
   const massShare = known.filter((i) => i.groups.includes("mass")).length / Math.max(K, 1);
-  const unknownShare = branded.filter((i) => i.brandKind === "unknown").length / Math.max(branded.length, 1);
   const oldShareAll = dated.length ? dated.filter((i) => now - Date.parse(i.date!) >= 3 * 365 * DAY).length / dated.length : 0;
   const colorAp = colored.length ? achro.length / colored.length : 0;
   const blackShare = colored.length ? colored.filter((i) => findColorFamily(i.color) === "블랙").length / colored.length : 0;
@@ -480,7 +473,6 @@ export function buildReport(
     { kind: "brand", key: "musinsa", s: branded.length >= 8 && musinsaShare >= 0.5 ? clamp((musinsaShare - 0.4) / 0.5) : 0 },
     { kind: "brand", key: "designer", s: enough && designerShareAll >= 0.35 ? clamp((designerShareAll - 0.25) / 0.5) : 0 },
     { kind: "brand", key: "mass", s: enough && massShare >= 0.4 ? clamp((massShare - 0.3) / 0.5) : 0 },
-    { kind: "brand", key: "gem", s: branded.length >= 8 && unknownShare >= 0.3 ? clamp((unknownShare - 0.2) / 0.5) : 0 },
     { kind: "brand", key: "hype", s: enough && hype >= 3.6 ? clamp((hype - 3.3) / 1.2) : 0 },
     { kind: "brand", key: "heritage", s: enough && heritage >= 3.8 ? clamp((heritage - 3.5) / 1.2) : 0 },
     { kind: "brand", key: "country", s: enough && country && countryShare >= 0.45 ? clamp((countryShare - 0.4) / 0.5) * 0.8 : 0, vars: { country: country ?? "" } },
@@ -617,7 +609,7 @@ export function buildReport(
  * 결과에서는 사진을 문단마다 넣지 않고, 가장 특이한 문단 max개에만 넣는다(그 문단 안에서는 여러 장도 된다, 사용자 요청).
  * 특이한 순서: 같은 옷·가장 비싼 옷·비슷한 옷처럼 옷 자체가 증거인 문단부터.
  */
-const PHOTO_PRIORITY = ["identical", "top_item", "similar", "duplicate", "gem", "vintage", "fruits", "bunjang", "binge", "wallet", "polar", "subcat", "country", "country_kr", "brand", "musinsa", "burst", "category", "color", "fit"];
+const PHOTO_PRIORITY = ["identical", "top_item", "similar", "duplicate", "vintage", "fruits", "bunjang", "binge", "wallet", "polar", "subcat", "country", "country_kr", "brand", "musinsa", "burst", "category", "color", "fit"];
 export function limitPhotos<P extends { id: string; photos?: string[] }>(points: P[], max: number): P[] {
   const rank = (id: string) => {
     const k = PHOTO_PRIORITY.indexOf(id);

@@ -173,5 +173,19 @@ export function brandLabels(input: string | null | undefined): string[] {
   return findBrand(input)?.labels ?? LABELED.get(normalizeBrand(input ?? "")) ?? [];
 }
 
+/** 너무 유명해서(또는 명품 하우스라서) 헤리티지 가점에서 뺀 브랜드 */
+const NOT_HERITAGE = new Set(
+  [
+    "adidas", "Nike", "Puma", "New Balance", "Converse", "Vans", "Champion", "Carhartt", "Dickies", "Ben Davis", "Wrangler", "Fred Perry",
+    "Clarks", "Hush Puppies", "Keds", "Starter", "Mitchell & Ness", "Onitsuka Tiger", "L.L.Bean", "Stone Island", "Ferragamo",
+    "Giorgio Armani", "Max Mara", "Brooks Brothers", "Coach", "Diadora", "Blundstone", "Hunter", "Superga", "Palladium",
+    "Chanel", "Hermès", "Louis Vuitton", "Dior", "Gucci",
+  ].map(normalizeBrand),
+);
+
+/** 진짜 헤리티지: 헤리티지 성향 높음 이상, 1990년 이전 설립, 매우 대중적이지 않고, 너무 유명한 브랜드가 아님(빈티지 분위기만 내는 새 브랜드 제외) */
+export const isTrueHeritage = (b: BrandInfo) =>
+  b.heritage >= 4 && b.founded != null && b.founded <= 1990 && b.pop < 5 && !NOT_HERITAGE.has(normalizeBrand(b.name));
+
 /** 트렌드 표시: 하이프 성향 높음 이상 */
 export const isTrendBrand = (b: BrandInfo) => b.hype >= 4;

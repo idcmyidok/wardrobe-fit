@@ -17,8 +17,8 @@ export const REPORT_TEXT = {
   layout: {
     order: { intro: 1, lists: 2, total: 3, points: 4, notes: 5 },
     show: { summary: 1, intro: 1, lists: 1, notes: 1 },
-    point_order: { diag_lead: 1, color: 2, fit: 3, diag: 4, wallet: 5, gem: 6, vintage: 7, age: 8, last: 9 },
-    point_show: { color: 1, fit: 1, wallet: 1, gem: 1, vintage: 1, age: 1, last: 1 },
+    point_order: { diag_lead: 1, color: 2, fit: 3, diag: 4, wallet: 5, vintage: 6, age: 7, last: 8 },
+    point_show: { color: 1, fit: 1, wallet: 1, vintage: 1, age: 1, last: 1 },
     count: { diag_min: 3, diag_max: 5, list_rows: 3, dup_min: 3, brand_rows: 3, brand_top_pct: 15, brand_row_pct: 8, photos: 20, photo_blocks: 2, answers: 3 },
   },
   /** 한 줄 정의: 총점 구간별(b90 = 90점 이상, b80 = 80~89점 …) */
@@ -73,7 +73,6 @@ export const REPORT_TEXT = {
     country: ["{country} 브랜드 중심"],
     designer: ["디자이너 브랜드 중심"],
     mass: ["대중 브랜드 중심"],
-    gem: ["잘 알려지지 않은 브랜드 위주"],
     hype: ["요즘 뜨는 브랜드 위주"],
     heritage: ["역사 깊은 브랜드 위주"],
     style: ["{tag} 스타일 위주"],
@@ -122,7 +121,6 @@ export const REPORT_TEXT = {
   },
 
   /** 브랜드 자료에 없는 이름이 많을 때(브랜드를 적은 옷의 30% 이상, 3벌 이상). 점수와 상관없음 */
-  GEM: ["브랜드를 적은 옷의 {pct}%가 브랜드 자료 1,700개에도 없는 이름입니다. DB에도 없는 숨은 원석을 찾아다니는 사람이거나, 브랜드 이름을 직접 지어내는 사람입니다."],
   /** 브랜드를 빈티지·구제로 적은 옷이 3벌 이상. 점수와 상관없음 */
   VINTAGE: ["브랜드 칸에 빈티지·구제라고 적은 옷이 {n}벌입니다. 이 옷들의 전생은 아무도 모르지만, 지금 주인의 안목은 조금 알 것 같습니다."],
   /** 나이 한마디: 나이 기준에서 가장 크게 걸린 것 */
