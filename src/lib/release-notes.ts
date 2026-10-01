@@ -393,9 +393,13 @@ export function groupByMajor(notes: ReleaseNote[] = RELEASE_NOTES): { major: str
 
 /**
  * 관리자가 화면에서 고친 노트. DB(release_note_edits.body)에 신규 기능·변경 내용·수정사항을 JSON으로 저장하고,
- * 있으면 코드의 노트 대신 같은 모양으로 보여 준다. 버전과 날짜는 코드의 노트를 따른다.
+ * 있으면 코드의 노트 대신 같은 모양으로 보여 준다. 날짜·시각도 고쳤다면 같이 저장한다(버전은 코드를 따른다).
  */
-export type ReleaseNoteContent = Pick<ReleaseNote, "features" | "changes" | "fixes">;
+export type ReleaseNoteContent = Pick<ReleaseNote, "features" | "changes" | "fixes"> & {
+  /** 관리자가 고친 날짜(YYYY-MM-DD)·시각(HH:mm). 있으면 코드의 값 대신 보여 준다. */
+  date?: string;
+  time?: string;
+};
 export type ReleaseNoteEdits = Record<string, ReleaseNoteContent>;
 
 /** 수정 칸 세 개의 글. 한 줄이 한 항목이고, 신규 기능은 "제목: 설명"으로 쓴다. */
@@ -403,12 +407,21 @@ export interface ReleaseNoteDraft {
   features: string;
   changes: string;
   fixes: string;
+  /** YYYY-MM-DD, 비어 있으면 코드의 날짜 */
+  date: string;
+  /** HH:mm, 비어 있으면 코드의 시각(없으면 시각 없음) */
+  time: string;
 }
+
+export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+export const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export const RELEASE_NOTE_BODY_MAX = 20000;
 
-export function noteToDraft(note: ReleaseNoteContent): ReleaseNoteDraft {
+export function noteToDraft(note: ReleaseNoteContent & { date: string; time?: string }): ReleaseNoteDraft {
   return {
+    date: note.date,
+    time: note.time ?? "",
     features: note.features.map((f) => (f.description ? `${f.title}: ${f.description}` : f.title)).join("\n"),
     changes: note.changes.join("\n"),
     fixes: note.fixes.join("\n"),
@@ -430,7 +443,10 @@ export function splitFeatureLine(line: string): ReleaseFeature {
 }
 
 export function draftToContent(draft: ReleaseNoteDraft): ReleaseNoteContent {
-  return { features: lines(draft.features).map(splitFeatureLine), changes: lines(draft.changes), fixes: lines(draft.fixes) };
+  const content: ReleaseNoteContent = { features: lines(draft.features).map(splitFeatureLine), changes: lines(draft.changes), fixes: lines(draft.fixes) };
+  if (DATE_RE.test(draft.date)) content.date = draft.date;
+  if (TIME_RE.test(draft.time)) content.time = draft.time;
+  return content;
 }
 
 /** DB에 저장된 글을 읽는다. 모양이 맞지 않으면 null(코드의 노트를 보여 준다). */
@@ -441,7 +457,10 @@ export function parseEditBody(body: string): ReleaseNoteContent | null {
     const feats = (a: unknown): a is ReleaseFeature[] =>
       Array.isArray(a) && a.every((x) => x && typeof x.title === "string" && typeof x.description === "string");
     if (!feats(v.features) || !strs(v.changes) || !strs(v.fixes)) return null;
-    return { features: v.features, changes: v.changes, fixes: v.fixes };
+    const content: ReleaseNoteContent = { features: v.features, changes: v.changes, fixes: v.fixes };
+    if (typeof v.date === "string" && DATE_RE.test(v.date)) content.date = v.date;
+    if (typeof v.time === "string" && TIME_RE.test(v.time)) content.time = v.time;
+    return content;
   } catch {
     return null;
   }

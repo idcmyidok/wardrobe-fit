@@ -170,9 +170,9 @@ function NoteItem({
       <header className="flex items-baseline justify-between gap-3">
         <h3 className="text-lg font-semibold">{note.version} 패치노트</h3>
         <div className="flex items-baseline gap-3">
-          <time dateTime={note.time ? `${note.date}T${note.time}+09:00` : note.date} className="font-mono text-sm text-neutral-700 tabular-nums">
-            {formatDate(note.date)}
-            {note.time && ` ${note.time}`}
+          <time dateTime={shown.time ? `${shown.date}T${shown.time}+09:00` : shown.date} className="font-mono text-sm text-neutral-700 tabular-nums">
+            {formatDate(shown.date)}
+            {shown.time && ` ${shown.time}`}
           </time>
           {admin && !draft && (
             <button
@@ -199,6 +199,16 @@ function NoteItem({
             }
           }}
         >
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              날짜
+              <input type="date" className="input" value={draft.date} disabled={pending} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              시각 (한국시간)
+              <input type="time" className="input" value={draft.time} disabled={pending} onChange={(e) => setDraft({ ...draft, time: e.target.value })} />
+            </label>
+          </div>
           <PhotoField version={note.version} image={image} disabled={pending} onImage={onImage} />
           <DraftField
             label="신규 기능"
