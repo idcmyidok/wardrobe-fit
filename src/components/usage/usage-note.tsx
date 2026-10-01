@@ -56,7 +56,7 @@ export function UsageNote({ kind, className }: { kind: "import" | "fit" | "roast
     <p className={base}>
       <span>오늘 사용량(24시간 기준)</span>
       {kind !== "roast" && line("링크 분석", usage.imports)}
-      {kind === "roast" && usage.roast && line("내 옷장 훈수", usage.roast)}
+      {kind === "roast" && usage.roast && line("내 패션 훈수", usage.roast)}
       {kind === "fit" && line("구매 판단", usage.fits)}
       {kind === "fit" && line("AI 요약", usage.ai)}
     </p>

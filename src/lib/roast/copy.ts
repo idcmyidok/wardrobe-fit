@@ -4,9 +4,12 @@
  */
 export const ROAST_COPY = {
   INTRO:
-    "안녕하세요. Wardrobe Fit의 전문 옷장분석팀 AI 입니다. 저장된 옷장 정보를 바탕으로, 당신의 옷 취향이 얼마나 끔찍한지 알아보겠습니다.",
+    "안녕하세요. Wardrobe Fit의 전문 옷장분석팀 AI 입니다. 시간을 조금만 내주시면, 당신의 옷 취향이 얼마나 끔찍한지 알아보겠습니다.",
   CREDIT: "How Bad Is Your Spotify에서 영감을 받았습니다.",
   START_LABEL: "까짓거 한 번 해보죠",
+  PICK_ASK: "어떤 기준으로 평가해드릴까요? 더 자신있는 쪽으로 고르시죠.",
+  PICK_CLOSET: "내 옷장 정보로 훈수받기",
+  PICK_ORDERS: "무신사 주문내역으로 훈수받기",
   CRITERIA_LABEL: "어떤 기준으로 평가하나요?",
   CRITERIA:
     "브랜드·스타일·핏·구매 습관을 봅니다. 중간 질문의 답도 반영됩니다.",
