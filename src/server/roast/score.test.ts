@@ -82,16 +82,31 @@ describe("옷장 점수(점수 계획서)", () => {
     const a = analyze(Array.from({ length: 10 }, (_, i) => g(i)), null, 1360, now);
     const s = scoreWardrobe(a, { age: null });
     const s2 = scoreWardrobe(a, { age: null, rules: { base: 60 } });
-    expect(s2.score - s.score).toBe(10);
+    expect(s2.score - s.score).toBe(15);
     const r = buildReport(a, null, 1, REPORT_TEXT, [], {}, { rules: { base: 500 } });
     expect(r.total.score).toBe(100);
   });
 
-  it("\"링크만 무신사\"를 고르면 무신사 감점이 줄어든다", () => {
-    const a = analyze(Array.from({ length: 12 }, (_, i) => g(i, { brand: "무신사 스탠다드" })), null, 1360, now);
-    const full = scoreWardrobe(a, { age: 32 });
-    const half = scoreWardrobe(a, { age: 32, musinsaLinkOnly: true });
-    expect(half.score).toBeGreaterThanOrEqual(full.score);
+  it("중고가 가점: 스트릿·컨템포러리 중고가는 하나당 +1(최대 +5), 대중적 브랜드는 제외", () => {
+    const part = (brand: string, n: number) => {
+      const a = analyze(Array.from({ length: n }, (_, i) => g(i, { brand })), null, 1360, now);
+      return scoreWardrobe(a, { age: null }).parts.find((p) => p.id === "mid")?.delta;
+    };
+    expect(part("Pop Trading Company", 2)).toBe(2);
+    expect(part("Pop Trading Company", 8)).toBe(5);
+    expect(part("COS", 6)).toBeUndefined();
+  });
+
+  it("인기 대중 브랜드(좋아요 5만 이상, 고가 미만, 대중적) 40%를 넘으면 10%p마다 -5", () => {
+    const a = analyze(Array.from({ length: 10 }, (_, i) => g(i, { brand: "무신사 스탠다드" })), null, 1360, now);
+    const p = scoreWardrobe(a, { age: null }).parts.find((x) => x.id === "popular");
+    expect(p?.delta).toBeLessThan(0);
+    expect(p?.delta).toBeGreaterThanOrEqual(-20);
+  });
+
+  it("빈티지·구제는 헤리티지 취향 점수에 들어가지 않는다", () => {
+    const a = analyze(Array.from({ length: 10 }, (_, i) => g(i, { brand: i < 5 ? "빈티지" : "COS" })), null, 1360, now);
+    expect(scoreWardrobe(a, { age: null }).parts.find((p) => p.id === "taste")).toBeUndefined();
   });
 
   it("핏: 슬림·레귤러 위주는 가점, 오버 위주는 감점, 결과에 핏 문단이 생긴다", () => {

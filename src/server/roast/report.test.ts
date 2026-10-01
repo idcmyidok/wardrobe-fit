@@ -84,7 +84,7 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
   it("점수 기준(rules)을 바꾸면 총점이 바뀐다", () => {
     const up = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base: 60 } });
     const base = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, {});
-    expect(up.total.score - base.total.score).toBe(Math.min(10, 100 - base.total.score));
+    expect(up.total.score - base.total.score).toBe(Math.min(15, 100 - base.total.score));
   });
 
   it("핏은 치수가 없어도 직접 적은 핏이 5벌 이상이면 진단한다", () => {
@@ -158,7 +158,7 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
 
   it("점수 풀이: 기본 점수 + 항목별 증감이 총점과 맞는다", () => {
     const d = report.scoreDetail!;
-    expect(d.base).toBe(50);
+    expect(d.base).toBe(45);
     const sum = d.base + d.items.reduce((x, i) => x + i.delta, 0);
     expect(Math.max(0, Math.min(100, Math.round(sum)))).toBe(report.total.score);
     for (const i of d.items) {
