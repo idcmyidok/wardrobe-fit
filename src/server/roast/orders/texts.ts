@@ -5,6 +5,19 @@ import type { QuestionText } from "../questions";
  * {자리}는 값으로 채우고, {자리|을}처럼 쓰면 받침에 맞춰 조사를 붙인다.
  */
 
+/** 주문내역에서는 말이 안 되는 옷장 패턴(옷장 크기, 쇼핑몰 쏠림 = 전부 무신사, 계절·실측·핏 기반). 분석에서 빼고, 문장 전용 칸도 두지 않는다. */
+export const ORDER_SKIP_PATTERNS = new Set(["count_small", "count_many", "count_huge", "shop_focus", "musinsa_kr", "season_bias", "measure_repeat", "fit_bias", "same_fit"]);
+
+/**
+ * 주문내역 훈수 전용 칸으로 따로 복사해 두는 옷장 훈수 문장(texts.ts의 ORDER_MIRROR). 처음 값은 옷장 쪽 문장이고,
+ * 주문내역 쪽 DB 값이 없으면 옷장 쪽 값을 따라간다.
+ * 화면: 주문내역 화면에서 보이는데 ORDER_SCREEN에 없던 문구 / 질문: 옷장 훈수와 같이 쓰던 질문(퀴즈 앞 멘트·밥과 옷·패셔너블)
+ * 결과: 주문내역에서 나올 수 없는 것(결과 구성·첫 줄·총점 첫 줄은 따로 있음, 핏·나이·빈티지)은 뺀다.
+ */
+export const ORDER_MIRROR_SCREEN = ["CREDIT", "NAME_HINT", "AGE_HINT", "WRITING"] as const;
+export const ORDER_MIRROR_QUESTIONS = ["quiz", "food_vs_clothes", "fashionable_q"] as const;
+export const ORDER_MIRROR_REPORT_SKIP = ["layout", "HEADLINE", "TOTAL_LEAD", "fit", "age", "VINTAGE"] as const;
+
 /** 화면 문구: 옷장 훈수 화면 문구(screen) 위에 덮어쓴다. PASTE_*·LOADING은 주문내역 훈수에만 있다. */
 export const ORDER_SCREEN = {
   INTRO: "안녕하세요. Wardrobe Fit의 전문 옷장분석팀 AI 입니다. 이번엔 옷장 말고 무신사 주문내역만 봅니다. 영수증은 거짓말을 안 하거든요.",
