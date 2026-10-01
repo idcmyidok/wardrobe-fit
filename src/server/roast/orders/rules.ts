@@ -54,7 +54,7 @@ export const ORDER_RULES = {
   foreign_price: 4,
   foreign_pct: 30,
   foreign: 2,
-  bold_won: 50,
+  bold_won: 30,
   bold: 2,
   regular_n: 3,
   regular: 2,
@@ -68,25 +68,19 @@ export const ORDER_RULES = {
   spend_top_won: 25,
   spend_top: 2,
   // 빼는 점수
-  rank_from: 30,
-  rank_per10: 3,
-  rank_max: 12,
   /** 무신사 좋아요 이 값 × 10,000 이상·고가 미만·대중적~매우 대중적 브랜드(무신사 스탠다드는 따로 셈) 비율 */
   popular_likes_10k: 5,
   /** 이 가격 레벨 미만만 센다(4 = 중고가: 중고가 미만) */
   popular_price: 4,
+  /** 인기 쏠림(랭킹템 + 인기 대중 브랜드 + 무신사 인기 브랜드를 한 항목으로): 이 % 넘는 10%p마다 감점, 최대 */
   popular_from: 40,
   popular_per10: 3,
   popular_max: 12,
+  /** 쏠림 감점(인기 쏠림·스탠다드·한 브랜드 몰빵·유행 브랜드) 합계가 이 값을 넘지 않게 자름 */
+  pile_max: 25,
   /** 하이프·대중성 모두 높은 브랜드 비율 */
   trendy_pct: 50,
-  trendy: 15,
-  musinsa_from: 60,
-  musinsa_per10: 3,
-  musinsa_max: 9,
-  /** musinsa_young_age세 이하에 산 옷은 무신사 인기 브랜드 쏠림에서 1/musinsa_young_div만 센다 */
-  musinsa_young_age: 24,
-  musinsa_young_div: 3,
+  trendy: 10,
   standard_a_pct: 25,
   standard_a: 3,
   standard_b_pct: 40,
@@ -102,7 +96,7 @@ export const ORDER_RULES = {
   cheap: 4,
   /** 같은 옷 반복: 같은 상품을 같은 실측(없으면 같은 사이즈)으로 다른 주문에서 또 산 것 */
   dup_each: 3,
-  dup_max: 15,
+  dup_max: 9,
   return_high_pct: 25,
   return_high: 3,
   cancel_pct: 20,
@@ -117,8 +111,8 @@ export const ORDER_RULES = {
   basic_mass: 12,
   basic_full_pct: 95,
   basic_mass_mid: 6,
-  /** 디자이너·명품 1~2벌의 스타일이 나머지 주력 스타일과 안 겹침 */
-  lux_mismatch: 10,
+  /** 명품 하우스 1~2벌의 스타일이 나머지 주력 스타일과 안 겹침 */
+  lux_mismatch: 5,
   /** 구매 공백: 최근 24개월 중 gap_months개월 이상 연속으로 안 산 기간 1개월당 −1, 최대 */
   gap_months: 4,
   gap_max: 12,
@@ -132,6 +126,11 @@ export const ORDER_RULES = {
   /** 기본 상의만: 반팔·긴팔 티, 맨투맨, 후드가 옷의 basic_tops_pct% 이상 */
   basic_tops_pct: 50,
   basic_tops: 4,
+  /** 새 브랜드 탐색: 최근 explore_months개월 안에 처음 산 브랜드가 브랜드 전체(explore_min_brands곳 이상일 때)의 explore_pct% 이상 */
+  explore_months: 6,
+  explore_pct: 30,
+  explore_min_brands: 5,
+  explore: 2,
   spend_a_won: 15,
   spend_a: 2,
   spend_b_won: 10,
@@ -149,8 +148,8 @@ export type OrderRules = typeof ORDER_RULES;
  * formal: 포멀·럭셔리(옷장 훈수와 같은 값), rank: 랭킹템(하트·후기 많은 상품), standard: 무신사 스탠다드, street: 스트릿·하이프, mature: 컨템포러리·헤리티지·포멀, lux_n: 럭셔리 벌 수
  */
 export const ORDER_AGE_RULES: Record<string, Record<string, number>> = {
-  b0: { street_plus_pct: 40, street_plus: 2, formal_pct: 40, formal_minus: 6, lux_n: 2, lux_minus: 6 },
-  b20: { street_plus_pct: 40, street_plus: 2, formal_pct: 40, formal_minus: 4 },
+  b0: { street_plus_pct: 40, street_plus: 2 },
+  b20: { street_plus_pct: 40, street_plus: 2 },
   b24: { rank_pct: 60, rank_minus: 2 },
   b27: { mature_pct: 30, mature_plus: 2, rank_pct: 50, rank_minus: 4, standard_pct: 40, standard_minus: 2 },
   b30: { mature_pct: 30, mature_plus: 2, rank_pct: 40, rank_minus: 6, standard_pct: 30, standard_minus: 4, street_pct: 70, street_minus: 4 },

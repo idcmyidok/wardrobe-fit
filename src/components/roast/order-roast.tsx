@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { buttonClassName } from "@/components/ui/button";
 import type { OrderItemResult } from "@/app/api/order-imports/item/route";
 import { OrderGuide } from "@/components/garment-form/order-guide";
-import { beginOrderRoast } from "@/server/roast/order-actions";
+import { MIN_CLOTHES } from "@/lib/roast/copy";
+import { beginOrderRoast, commitOrderRoast } from "@/server/roast/order-actions";
 import { importImageUrl } from "@/lib/import/client";
 import { lookupOf, saveOrderHandoff, type OrderLookup } from "@/lib/import/order-handoff";
 import { matchSizeRow, parseOrdersForRoast } from "@/server/import/musinsa-orders";
@@ -57,7 +58,7 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
     }
     setError(null);
     setProgress(0);
-    // 하루 한 번: 상품을 읽기 전에 오늘 횟수를 쓴다(중간에 나가도 소진). 이미 했으면 여기서 막는다.
+    // 하루 한 번: 오늘 이미 했으면 여기서 막는다. 횟수는 읽은 옷이 20벌 이상일 때 쓴다(아래 commitOrderRoast).
     const begun = await beginOrderRoast();
     if (!begun.ok) {
       setError(begun.used ? text(copy.DAILY_USED) : begun.message);
@@ -88,6 +89,8 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
     // 가진 옷(구매 확정·교환)의 주문만 상품 페이지를 읽는다. 반품·취소는 주문내역 글만으로 본다.
     const targets = [...new Set(items.filter((x) => x.status === "kept" || x.status === "exchanged").map((x) => x.order))];
     const dropped = new Set<number>();
+    /** 상품 페이지를 읽었고 옷으로 확인된 주문 */
+    const found = new Set<number>();
     /** "주문내역으로 추가" 화면에 넘길 읽은 결과(주문 순서별) */
     const lookups: Record<number, OrderLookup> = {};
     let failed = 0;
@@ -119,6 +122,7 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
       if (!product) failed++;
       else if (result?.verdict === "not_garment") dropped.add(order);
       else {
+        found.add(order);
         // 사진은 무신사 주소를 바로 쓰면 사이트 보안 정책(CSP)에 막혀 깨진다. 분석 기록의 이미지 프록시로 받는다.
         const at = product.imageUrls.findIndex((u) => u.startsWith("https://image.msscdn.net/"));
         const image = result?.outcome?.importId && at >= 0 ? importImageUrl(result.outcome.importId, at) : null;
@@ -144,6 +148,19 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
     }
     setProgress(100);
     saveOrderHandoff({ text: value, lookups });
+    // 훈수는 읽은 옷(가진 것만, 모자·신발·못 찾은 상품·옷이 아닌 상품 제외)이 20벌 이상일 때만. 모자라면 횟수를 쓰지 않고 안내한다(1년치만 복사했을 수 있어서).
+    const real = items.filter((x) => (x.status === "kept" || x.status === "exchanged") && found.has(x.order) && !dropped.has(x.order) && x.categoryId !== "hat" && x.categoryId !== "shoes").length;
+    if (real < MIN_CLOTHES) {
+      setError(text(copy.TOO_FEW).replace(/\{n\}/g, String(real)));
+      setProgress(null);
+      return;
+    }
+    const committed = await commitOrderRoast();
+    if (!committed.ok) {
+      setError(committed.used ? text(copy.DAILY_USED) : committed.message);
+      setProgress(null);
+      return;
+    }
     await sleep(300);
     onReady(items.filter((x) => !dropped.has(x.order)), failed || stop ? text(copy.LOADING_FAIL) : null);
   }

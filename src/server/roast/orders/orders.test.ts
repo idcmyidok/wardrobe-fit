@@ -127,11 +127,11 @@ describe("주문내역 훈수 목록 → 분석", () => {
     expect(isRanking(a, a.items[0], ORDER_RULES)).toBe(brandLikes >= ORDER_RULES.rank_brand_10k * 10_000);
   });
 
-  it("점수: 랭킹템 쏠림·스탠다드 감점, 나이 기준이 들어간다", () => {
+  it("점수: 인기 쏠림·스탠다드 감점, 나이 기준이 들어간다", () => {
     const a = run();
-    const s = scoreOrders(a, { age: 38 });
+    const s = scoreOrders(a, { age: 38, rules: { popular_from: 10 } });
     const ids = s.parts.map((p) => p.id);
-    expect(ids).toContain("rank");
+    expect(ids).toContain("popular");
     expect(ids).toContain("standard");
     expect(ids.some((id) => id.startsWith("age_"))).toBe(true);
     expect(s.age).not.toBeNull();
@@ -216,7 +216,7 @@ describe("주문내역 훈수 목록 → 분석", () => {
     const seed = 7;
     const plan = buildScript(a, seed, "세현", DEFAULT_TEXTS, 38);
     const answers = Object.fromEntries(plan.asked.map((q) => [q.id, q.options[0].id]));
-    const score = scoreOrders(a, { age: 38 });
+    const score = scoreOrders(a, { age: 38, rules: { popular_from: 10 } });
     const report = buildReport(a, "세현", seed, DEFAULT_TEXTS.report, plan.asked, answers, DEFAULT_TEXTS.score, 38, orderOverride(a, seed, DEFAULT_TEXTS, score));
     const ids = report.points.map((p) => p.id);
     expect(ids).toContain("o_popularity");
@@ -224,10 +224,32 @@ describe("주문내역 훈수 목록 → 분석", () => {
     expect(ids).toContain("o_cancel");
     expect(ids).toContain("o_age");
     expect(report.headline).toContain("주문내역");
-    expect(report.scoreDetail?.items.some((x) => x.label === "랭킹템 쏠림")).toBe(true);
+    expect(report.scoreDetail?.items.some((x) => x.label === "인기 쏠림")).toBe(true);
     if (process.env.PRINT_ORDER_ROAST) {
       console.log(plan.script.steps.map((s) => ("text" in s ? s.text : s.t === "ask" ? `[질문 ${plan.asked[s.q].text}]` : "")).filter(Boolean).join("\n"));
       console.log(JSON.stringify(report, null, 1));
     }
+  });
+  it("인기 쏠림: 랭킹템·인기 대중 브랜드·무신사 인기 브랜드를 한 항목으로 센다(스탠다드는 제외)", () => {
+    const part = (brand: string, likes: number) => {
+      seq = 0;
+      const { garments, ctx } = toGarments(Array.from({ length: 10 }, (_, k) => item({ brand, name: `상품 ${k}`, likes, reviews: 1 })));
+      return scoreOrders(analyzeOrders(garments, ctx, 1360, now), { age: null }).parts.find((p) => p.id === "popular")?.delta;
+    };
+    expect(part("커버낫", 100)).toBe(-12);
+    expect(part("아더에러", 20_000)).toBe(-12); // 브랜드는 인기 아니어도 랭킹템이면 센다
+    expect(part("무신사 스탠다드", 20_000)).toBeUndefined();
+  });
+
+  it("새 브랜드 탐색: 최근 6개월 안에 처음 산 브랜드가 30% 이상이면 +2", () => {
+    const part = (recent: number) => {
+      seq = 0;
+      const brands = ["커버낫", "아더에러", "디스이즈네버댓", "나이키", "아디다스", "스투시"];
+      const list = brands.flatMap((b, k) => [item({ brand: b, name: `${b} 하나`, date: "2024-01-10" }), item({ brand: b, name: `${b} 둘`, date: k < recent ? "2026-08-01" : "2024-02-01" })]);
+      const { garments, ctx } = toGarments(list.map((x, i) => (i % 2 === 0 && i / 2 < recent ? { ...x, date: "2026-08-01" } : x)));
+      return scoreOrders(analyzeOrders(garments, ctx, 1360, now), { age: null }).parts.find((p) => p.id === "explore")?.delta;
+    };
+    expect(part(2)).toBe(2);
+    expect(part(1)).toBeUndefined();
   });
 });

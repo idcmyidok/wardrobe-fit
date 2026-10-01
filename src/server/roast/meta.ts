@@ -162,7 +162,7 @@ export const SCREEN_NAME: Record<string, string> = {
   ASK_NAME: "이름·나이 묻기",
   NAME_HINT: "이름·나이 입력칸 아래 안내",
   AGE_HINT: "한국식 나이로 적으라는 안내 + 나이를 저장하지 않는다는 안내",
-  TOO_FEW: "옷이 10벌보다 적을 때",
+  TOO_FEW: "옷이 20벌보다 적을 때",
   OPENING: "분석 시작 전 첫 멘트",
   WRITING: "결과를 쓰는 중",
   DISCLAIMER: "결과 맨 아래 안내",

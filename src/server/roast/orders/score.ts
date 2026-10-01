@@ -171,34 +171,43 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
     );
   }
 
+  // 새 브랜드 탐색: 최근 explore_months개월 안에 처음 산 브랜드가 전체 브랜드의 explore_pct% 이상
+  if (byBrand.size >= R.explore_min_brands) {
+    const since = now - R.explore_months * 30.44 * 86_400_000;
+    const firstOf = (l: Item[]) => Math.min(...l.map((i) => (i.date ? Date.parse(i.date) : now)));
+    const fresh = [...byBrand.values()].filter((l) => firstOf(l) >= since);
+    if ((fresh.length / byBrand.size) * 100 >= R.explore_pct)
+      add("explore", R.explore, `최근 ${R.explore_months}개월 안에 처음 산 브랜드 ${fresh.length}곳 / 전체 ${byBrand.size}곳 (${R.explore_pct}% 이상)`, fresh.flat());
+  }
+
   // 2. 빼는 점수 --------------------------------------------------------------
-  const rankList = items.filter(ranking);
-  const rankShare = items.length ? rankList.length / items.length : 0;
-  add("rank", -over(rankShare, R.rank_from, R.rank_per10, R.rank_max), `랭킹템(하트 ${(R.rank_likes_k * 1000).toLocaleString()}개·후기 ${(R.rank_reviews_h * 100).toLocaleString()}개 이상) ${P(rankShare)} (${R.rank_from}% 넘는 10%마다 −${R.rank_per10}, 최대 −${R.rank_max})`, rankList);
+  // 인기 쏠림: 랭킹템(하트·후기 많은 상품), 인기 대중 브랜드(좋아요 많음·중고가 미만·대중적, 또는 가격 레벨 3 이하 SPA), 무신사 인기 브랜드를 한 항목으로 센다(스탠다드는 따로 감점).
+  const isPopularBrand = (i: Item) =>
+    Boolean(i.brand) &&
+    !isStandard(i) &&
+    (((i.brand!.likes ?? 0) >= R.popular_likes_10k * 10_000 && i.brand!.price < R.popular_price && i.brand!.pop >= 4) || (i.brand!.positions.includes("SPA") && i.brand!.price <= 3) || isMusinsa(i));
+  const isPopular = (i: Item) => !isStandard(i) && (ranking(i) || isPopularBrand(i));
+  const popularList = items.filter(isPopular);
+  const popularShare = items.length ? popularList.length / items.length : 0;
+  add(
+    "popular",
+    -over(popularShare, R.popular_from, R.popular_per10, R.popular_max),
+    `인기 쏠림(랭킹템·인기 대중 브랜드·무신사 인기 브랜드) ${P(popularShare)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max}). 랭킹템 = 하트 ${(R.rank_likes_k * 1000).toLocaleString()}개·후기 ${(R.rank_reviews_h * 100).toLocaleString()}개 이상`,
+    popularList,
+  );
   if (enough) {
-    // 무신사 좋아요가 많고 고가 미만이면서 대중적인 브랜드 쏠림(무신사 스탠다드는 따로 감점하므로 뺀다)
-    const isPopular = (i: Item) =>
-      !isStandard(i) && (((i.brand!.likes ?? 0) >= R.popular_likes_10k * 10_000 && i.brand!.price < R.popular_price && i.brand!.pop >= 4) || (i.brand!.positions.includes("SPA") && i.brand!.price <= 3));
-    const popular = share(known, isPopular);
-    add("popular", -over(popular, R.popular_from, R.popular_per10, R.popular_max), `좋아요 ${(R.popular_likes_10k * 10_000).toLocaleString()} 이상·가격 레벨 ${R.popular_price} 미만(중고가 미만)·대중적 브랜드, 또는 가격 레벨 3 이하 SPA(좋아요 상관없음, 스탠다드 제외) ${P(popular)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max})`, known.filter(isPopular));
     const isTrendy = (i: Item) => i.brand!.hype >= 4 && i.brand!.pop >= 4;
     const trendy = share(known, isTrendy);
     if (trendy * 100 >= R.trendy_pct) add("trendy", -R.trendy, `하이프·대중성 모두 높은 브랜드 ${P(trendy)} (${R.trendy_pct}% 이상)`, known.filter(isTrendy));
-    // 스타일 모르고 산 명품: 디자이너·럭셔리가 1~2벌뿐인데 그 스타일이 나머지 주문의 주력 스타일(상위 2개)과 안 겹침
-    const lux = known.filter((i) => i.groups.includes("designer") || i.groups.includes("luxury"));
+    // 스타일 모르고 산 명품: 명품 하우스가 1~2벌뿐인데 그 스타일이 나머지 주문의 주력 스타일(상위 2개)과 안 겹침
+    const lux = known.filter((i) => i.groups.includes("luxury"));
     if (lux.length >= 1 && lux.length <= 2) {
       const rest = new Map<string, number>();
       for (const i of known.filter((x) => !lux.includes(x))) for (const t of new Set(i.brand!.tags)) rest.set(t, (rest.get(t) ?? 0) + 1);
       const main = [...rest.entries()].sort((x, y) => y[1] - x[1]).slice(0, 2).map(([t]) => t);
       if (main.length && lux.every((i) => !i.brand!.tags.some((t) => main.includes(t))))
-        add("lux_mismatch", -R.lux_mismatch, `디자이너·명품 ${lux.length}벌의 스타일이 주력 스타일(${main.join("·")})과 안 겹침`, lux);
+        add("lux_mismatch", -R.lux_mismatch, `명품 하우스 ${lux.length}벌의 스타일이 주력 스타일(${main.join("·")})과 안 겹침`, lux);
     }
-  }
-  if (named.length >= 8) {
-    const w = (i: Item) => (opts.age != null && ageAt(opts.age, i, now) <= R.musinsa_young_age ? 1 / Math.max(R.musinsa_young_div, 1) : 1);
-    const list = named.filter(isMusinsa);
-    const m = list.reduce((s, i) => s + w(i), 0) / named.length;
-    add("musinsa", -over(m, R.musinsa_from, R.musinsa_per10, R.musinsa_max), `무신사 인기 브랜드(스탠다드·SPA 제외) ${P(m)} (${R.musinsa_from}% 넘는 10%마다 −${R.musinsa_per10}, 최대 −${R.musinsa_max}${opts.age != null ? `, ${R.musinsa_young_age}세 이하에 산 옷은 1/${R.musinsa_young_div}로 셈` : ""})`, list);
   }
   const standard = clothes.filter(isStandard);
   const standardShare = clothes.length ? standard.length / clothes.length : 0;
@@ -207,6 +216,9 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   const [, brandTop] = [...byBrand.entries()].sort((x, y) => y[1].length - x[1].length)[0] ?? [null, []];
   if (named.length >= R.one_brand_n && brandTop.length / named.length >= R.one_brand_pct / 100)
     add("one_brand", -R.one_brand, `${brandTop[0].brandLabel} ${brandTop.length}벌, ${P(brandTop.length / named.length)} (${R.one_brand_pct}% 이상)`, brandTop);
+  // 쏠림 계열(인기 쏠림·스탠다드·한 브랜드 몰빵·유행 브랜드) 감점 합계 상한
+  const pileSum = parts.filter((p) => ["popular", "standard", "one_brand", "trendy"].includes(p.id)).reduce((t, p) => t + p.delta, 0);
+  if (pileSum < -R.pile_max) add("pile_cap", -R.pile_max - pileSum, `쏠림 감점 합계 ${Math.round(pileSum)}점이 상한(−${R.pile_max}점)을 넘어 ${Math.round(-R.pile_max - pileSum)}점 돌려줌`);
   const month = busiestMonth(a);
   if (month && month.pct >= R.sale_month_pct) add("sale_month", -R.sale_month, `해마다 ${month.month}월에 산 옷 ${month.pct}% (${R.sale_month_pct}% 이상)`, month.list);
   const avg = avgPrice(clothes);
