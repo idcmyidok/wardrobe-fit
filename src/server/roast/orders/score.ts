@@ -228,7 +228,7 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   if (shoes.length >= 3 && shoes.every((i) => i.sub === "shoes.sneakers" || i.sub === "shoes.sports")) add("sneakers_only", -R.sneakers_only, `신발 ${shoes.length}켤레가 모두 스니커즈·스포츠화`, shoes);
   // 무채색뿐인데 고급 브랜드가 없음(데님은 색에서 뺀다)
   if (colored.length >= 5 && basic * 100 >= R.basic_pct && enough && !known.some(isNice))
-    add("basic_mass", -R.basic_mass, `무채색 ${P(basic)} (${R.basic_pct}% 이상) + 고급 브랜드(컨템포러리 이상이거나 중고가 이상) 0벌`, known);
+    add("basic_mass", -(basic * 100 >= R.basic_full_pct ? R.basic_mass : R.basic_mass_mid), `무채색 ${P(basic)} (${R.basic_pct}% 이상 -${R.basic_mass_mid}, ${R.basic_full_pct}% 이상 -${R.basic_mass}) + 고급 브랜드(컨템포러리 이상이거나 중고가 이상) 0벌`, known);
   // 새 감점(주문내역에만 있는 정보)
   // 몰아 사기 날: 하루에 서로 다른 주문으로 옷 binge_n벌 이상(팩은 한 벌로)
   const byDay = groupBy(items, (i) => i.date);

@@ -111,10 +111,12 @@ export const ORDER_RULES = {
   scattered: 5,
   logo_pct: 20,
   logo: 15,
-  sneakers_only: 7,
+  sneakers_only: 5,
   /** 무채색 basic_pct% 이상인데 고급 브랜드(컨템포러리 이상 또는 중고가 이상)가 한 벌도 없음 */
   basic_pct: 85,
   basic_mass: 12,
+  basic_full_pct: 95,
+  basic_mass_mid: 6,
   /** 디자이너·명품 1~2벌의 스타일이 나머지 주력 스타일과 안 겹침 */
   lux_mismatch: 10,
   /** 구매 공백: 최근 24개월 중 gap_months개월 이상 연속으로 안 산 기간 1개월당 −1, 최대 */

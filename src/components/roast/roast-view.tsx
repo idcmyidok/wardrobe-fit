@@ -440,6 +440,7 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
             onStart(name.trim() || null, ageNum);
           }}
         >
+          {copy.START_NOTE && <p className="roast-ai">{copy.START_NOTE}</p>}
           <p className="roast-ai">
             <Typed text={copy.ASK_NAME} />
           </p>
