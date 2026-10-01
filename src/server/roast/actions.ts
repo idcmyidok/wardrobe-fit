@@ -34,6 +34,7 @@ const nameSchema = z
 
 /** 나이는 이번 계산에만 쓰고 어디에도 저장하지 않는다. */
 const ageSchema = z.number().int().min(10).max(99).nullable();
+const AGE_REQUIRED = "나이를 입력해 주세요.";
 
 /** 미리보기 모드에서 화면이 보내는 옷장(브라우저 저장소). 계산에 쓰는 칸만 느슨하게 확인한다. */
 const previewSchema = z
@@ -77,6 +78,7 @@ export async function startRoast(input: { name: string | null; age?: number | nu
     if ("error" in s) return { ok: false, code: "error", message: s.error };
     const name = nameSchema.safeParse(input.name).data ?? null;
     const age = ageSchema.safeParse(input.age ?? null).data ?? null;
+    if (age == null) return { ok: false, code: "error", message: AGE_REQUIRED };
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
     const texts = await getRoastTexts(s.supabase);
     const a = analyze(s.garments, body, usdRate, new Date(), texts.score.rules as Partial<ScoreRules> | undefined);
@@ -96,6 +98,7 @@ export async function finishRoast(input: { seed: number; name: string | null; ag
     if ("error" in s) return { ok: false, message: s.error };
     const name = nameSchema.safeParse(input.name).data ?? null;
     const age = ageSchema.safeParse(input.age ?? null).data ?? null;
+    if (age == null) return { ok: false, message: AGE_REQUIRED };
     const seed = z.number().int().nonnegative().safeParse(input.seed).data ?? 0;
     const answers = z.record(z.string().max(60), z.string().max(200)).safeParse(input.answers).data ?? {};
 

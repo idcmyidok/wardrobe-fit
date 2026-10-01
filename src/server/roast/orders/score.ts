@@ -110,8 +110,8 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   if (["shoes.sneakers", "shoes.sports", "shoes.dress", "shoes.boots", "shoes.sandals"].every((s) => shoeSubs.has(s))) add("shoe_set", R.shoe_set, "스니커즈·스포츠화·구두·부츠·샌들이 다 있음", shoes);
   const krNew = known.filter((i) => i.brand!.country === "한국" && (i.brand!.founded ?? 0) >= a.now.getFullYear() - R.kr_new_age && (isTopDesigner(i) || isMidTier(i)) && i.brand!.pop <= 2);
   if (krNew.length >= R.kr_new_n) add("kr_new", R.kr_new, `설립 ${R.kr_new_age}년 이내 국내 디자이너 브랜드(대중성 낮음) ${krNew.length}벌 (${R.kr_new_n}벌 이상)`, krNew);
-  const jpList = known.filter((i) => i.brand!.country === "일본");
-  if (jpList.length >= R.jp_n) add("jp", R.jp, `일본 브랜드 ${jpList.length}벌 (${R.jp_n}벌 이상)`, jpList);
+  const jpList = known.filter((i) => i.brand!.country === "일본" && i.brand!.price >= R.foreign_price);
+  if (jpList.length >= R.jp_n) add("jp", R.jp, `일본 중고가 이상 브랜드 ${jpList.length}벌 (${R.jp_n}벌 이상)`, jpList);
   const reproList = items.filter(isRepro);
   if (reproList.length) add("repro", reproList.length >= R.repro_many_n ? R.repro_many : R.repro, `일본 데님·리바이스 빈티지 ${reproList.length}벌 (${R.repro_many_n}벌 이상이면 +${R.repro_many})`, reproList);
   // 국가를 모르는 브랜드는 해외로 치지 않는다.
@@ -177,9 +177,10 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   add("rank", -over(rankShare, R.rank_from, R.rank_per10, R.rank_max), `랭킹템(하트 ${(R.rank_likes_k * 1000).toLocaleString()}개·후기 ${(R.rank_reviews_h * 100).toLocaleString()}개 이상) ${P(rankShare)} (${R.rank_from}% 넘는 10%마다 −${R.rank_per10}, 최대 −${R.rank_max})`, rankList);
   if (enough) {
     // 무신사 좋아요가 많고 고가 미만이면서 대중적인 브랜드 쏠림(무신사 스탠다드는 따로 감점하므로 뺀다)
-    const isPopular = (i: Item) => !isStandard(i) && (i.brand!.likes ?? 0) >= R.popular_likes_10k * 10_000 && i.brand!.price < R.popular_price && i.brand!.pop >= 4;
+    const isPopular = (i: Item) =>
+      !isStandard(i) && (((i.brand!.likes ?? 0) >= R.popular_likes_10k * 10_000 && i.brand!.price < R.popular_price && i.brand!.pop >= 4) || (i.brand!.positions.includes("SPA") && i.brand!.price <= 3));
     const popular = share(known, isPopular);
-    add("popular", -over(popular, R.popular_from, R.popular_per10, R.popular_max), `좋아요 ${(R.popular_likes_10k * 10_000).toLocaleString()} 이상·가격 레벨 ${R.popular_price} 미만(중고가 미만)·대중적 브랜드(스탠다드 제외) ${P(popular)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max})`, known.filter(isPopular));
+    add("popular", -over(popular, R.popular_from, R.popular_per10, R.popular_max), `좋아요 ${(R.popular_likes_10k * 10_000).toLocaleString()} 이상·가격 레벨 ${R.popular_price} 미만(중고가 미만)·대중적 브랜드, 또는 가격 레벨 3 이하 SPA(좋아요 상관없음, 스탠다드 제외) ${P(popular)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max})`, known.filter(isPopular));
     const isTrendy = (i: Item) => i.brand!.hype >= 4 && i.brand!.pop >= 4;
     const trendy = share(known, isTrendy);
     if (trendy * 100 >= R.trendy_pct) add("trendy", -R.trendy, `하이프·대중성 모두 높은 브랜드 ${P(trendy)} (${R.trendy_pct}% 이상)`, known.filter(isTrendy));

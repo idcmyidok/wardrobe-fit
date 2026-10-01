@@ -18,16 +18,16 @@ export const ORDER_RULES = {
   hidden_brand_k: 10,
   // 더하는 점수(옷장 훈수 점수 기준 v4와 같은 것은 같은 값)
   designer_each: 2,
-  designer_max: 10,
+  designer_max: 6,
   /** 컨템포러리·디자이너·스트릿 중고가(대중적 제외): 1벌당 가점, 최대 */
   mid_each: 1,
-  mid_max: 5,
+  mid_max: 3,
   style_mid_pct: 40,
   style_mid: 2,
   style_high_pct: 60,
   style_high: 4,
   taste_full: 20,
-  taste_max: 5,
+  taste_max: 3,
   /** 시기별 비교: 오래된 1/3과 최근 1/3이 각각 이 벌 수 이상일 때만 */
   shift_min_n: 4,
   hipper_pp: 15,
@@ -49,7 +49,7 @@ export const ORDER_RULES = {
   jp: 2,
   repro: 2,
   repro_many_n: 3,
-  repro_many: 4,
+  repro_many: 3,
   /** 해외 브랜드 가점은 이 가격 레벨(4 = 중고가) 이상만 센다 */
   foreign_price: 4,
   foreign_pct: 30,
@@ -64,9 +64,9 @@ export const ORDER_RULES = {
   basic_lux_n: 3,
   basic_lux: 4,
   steady_gap: 3,
-  steady: 2,
+  steady: 1,
   spend_top_won: 25,
-  spend_top: 3,
+  spend_top: 2,
   // 빼는 점수
   rank_from: 30,
   rank_per10: 3,
@@ -76,8 +76,8 @@ export const ORDER_RULES = {
   /** 이 가격 레벨 미만만 센다(4 = 중고가: 중고가 미만) */
   popular_price: 4,
   popular_from: 40,
-  popular_per10: 5,
-  popular_max: 20,
+  popular_per10: 3,
+  popular_max: 12,
   /** 하이프·대중성 모두 높은 브랜드 비율 */
   trendy_pct: 50,
   trendy: 15,
@@ -114,7 +114,7 @@ export const ORDER_RULES = {
   sneakers_only: 7,
   /** 무채색 basic_pct% 이상인데 고급 브랜드(컨템포러리 이상 또는 중고가 이상)가 한 벌도 없음 */
   basic_pct: 85,
-  basic_mass: 8,
+  basic_mass: 12,
   /** 디자이너·명품 1~2벌의 스타일이 나머지 주력 스타일과 안 겹침 */
   lux_mismatch: 10,
   /** 구매 공백: 최근 24개월 중 gap_months개월 이상 연속으로 안 산 기간 1개월당 −1, 최대 */

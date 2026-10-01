@@ -35,6 +35,7 @@ const nameSchema = z
   .transform((s) => s.replace(/[<>{}]/g, "") || null)
   .nullable();
 const ageSchema = z.number().int().min(10).max(99).nullable();
+const AGE_REQUIRED = "나이를 입력해 주세요.";
 
 async function prepare(items: unknown): Promise<{ a: Analysis; T: RoastTexts; signedIn: boolean; userId: string | null } | { error: string }> {
   const parsed = orderListSchema.safeParse(items);
@@ -90,6 +91,7 @@ export async function startOrderRoast(input: { name: string | null; age?: number
     if (p.a.clothesTotal < MIN_GARMENTS) return { ok: false, code: "too_few", count: p.a.clothesTotal };
     const name = nameSchema.safeParse(input.name).data ?? null;
     const age = ageSchema.safeParse(input.age ?? null).data ?? null;
+    if (age == null) return { ok: false, code: "error", message: AGE_REQUIRED };
     const seed = Math.floor(Math.random() * 2 ** 31);
     const { script } = buildScript(p.a, seed, name, p.T, age);
     return { ok: true, script };
@@ -107,6 +109,7 @@ export async function finishOrderRoast(input: { seed: number; name: string | nul
     if (a.clothesTotal < MIN_GARMENTS) return { ok: false, message: fill(T.orders.screen.TOO_FEW, { n: a.clothesTotal }) };
     const name = nameSchema.safeParse(input.name).data ?? null;
     const age = ageSchema.safeParse(input.age ?? null).data ?? null;
+    if (age == null) return { ok: false, message: AGE_REQUIRED };
     const seed = z.number().int().nonnegative().safeParse(input.seed).data ?? 0;
     const answers = z.record(z.string().max(60), z.string().max(200)).safeParse(input.answers).data ?? {};
 

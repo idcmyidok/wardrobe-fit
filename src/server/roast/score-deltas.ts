@@ -7,9 +7,10 @@ import "server-only";
  * 점수는 옷장 수치로 낸 기본 점수에 이 값을 더한 뒤 0~100으로 자른다.
  */
 export const SCORE_DELTAS: Record<string, Record<string, number>> = {
-  quiz: { right: 3, wrong: -9 },
+  /** 퀴즈: 맞혀도 가점 없음, 틀리면 감점만(사용자 요청 2026-10-01) */
+  quiz: { right: 0, wrong: -9 },
   /** 밴드 퀴즈: 패션 퀴즈와 같은 증감(사용자 요청) */
-  band_quiz: { right: 3, wrong: -9 },
+  band_quiz: { right: 0, wrong: -9 },
   /** 3대 500: 넘음·곧 넘음은 가점, 나머지는 0점(사용자 요청) */
   three_500: { over: 3, soon: 1, dots: 0, comfy: 0 },
   drop_item: { most: 0, mid: 0, least: 0 },
@@ -88,18 +89,18 @@ export const SCORE_RULES = {
   base: 45,
   // 더하는 점수
   designer_each: 2,
-  designer_max: 10,
+  designer_max: 6,
   /** 컨템포러리·디자이너·스트릿 중고가(대중적 제외): 하나당 가점, 합쳐서 최대 */
   mid_each: 1,
-  mid_max: 5,
+  mid_max: 3,
   style_mid_pct: 40,
   style_mid: 2,
   style_high_pct: 60,
   style_high: 4,
   taste_full: 20,
-  taste_max: 5,
+  taste_max: 3,
   fruits_n: 3,
-  fruits: 5,
+  fruits: 3,
   accent_basic_pct: 70,
   accent_max_n: 4,
   accent: 3,
@@ -109,7 +110,7 @@ export const SCORE_RULES = {
   /** 해외 브랜드 가점은 이 가격 레벨(4 = 중고가) 이상만 센다 */
   foreign_price: 4,
   steady_gap: 3,
-  steady: 2,
+  steady: 1,
   good_outer: 2,
   leather_shoes: 2,
   kr_new_age: 5,
@@ -119,7 +120,7 @@ export const SCORE_RULES = {
   jp: 2,
   repro: 2,
   repro_many_n: 3,
-  repro_many: 4,
+  repro_many: 3,
   foreign_pct: 30,
   foreign: 2,
   bold_won: 50,
@@ -128,16 +129,16 @@ export const SCORE_RULES = {
   regular: 2,
   shoe_set: 3,
   spend_top_won: 30,
-  spend_top: 3,
+  spend_top: 2,
   /** 무신사 좋아요 수가 없는데 중고가 이상인 브랜드: 하나당 가점, 최대 */
   nolikes_each: 2,
-  nolikes_max: 6,
+  nolikes_max: 3,
   // 빼는 점수
   /** 무신사 좋아요 ≥ popular_likes, 가격이 고가 미만, 대중성이 대중적~매우 대중적인 브랜드 비율 */
   popular_likes: 50000,
   popular_from: 40,
-  popular_per10: 5,
-  popular_max: 20,
+  popular_per10: 3,
+  popular_max: 12,
   musinsa_from: 60,
   musinsa_per10: 3,
   musinsa_max: 9,
@@ -171,7 +172,7 @@ export const SCORE_RULES = {
   misfit_max: 10,
   gap_months: 4,
   gap_max: 12,
-  basic_mass: 8,
+  basic_mass: 12,
   lux_mismatch: 10,
   sneakers_only: 7,
   logo_pct: 20,
