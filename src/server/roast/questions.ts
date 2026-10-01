@@ -1205,8 +1205,8 @@ export function pickQuestions(
     .sort((x, y) => y.score - x.score);
   const asked: AskedQuestion[] = [];
   const buckets = new Set<string>();
-  // 질문은 최대 8개(후보가 많으면 6~8개)
-  const want = Math.min(candidates.length, 6 + Math.floor(r.next() * 3));
+  // 질문은 최대 10개(후보가 많으면 8~10개)
+  const want = Math.min(candidates.length, 8 + Math.floor(r.next() * 3));
   for (const c of candidates) {
     if (asked.length >= want) break;
     if (buckets.has(c.q.bucket)) continue;
@@ -1334,8 +1334,8 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
       ...(b.amount > 0 ? { amount: amountLabel(b.amount) } : {}),
     }));
     const reactions = Object.fromEntries(trio.map((b) => [b.label, f(r.pick(tx.react[b.kind]), { count: b.count })]));
-    const roast = roastMap(trio.map((b) => [b.label, roastOf(b.kind, { count: b.count, brand: b.label })]));
-    return { ...base, options: r.shuffle(options), reactions, roast, scoreKey: Object.fromEntries(trio.map((b) => [b.label, b.kind])) };
+    // 좋아하는 브랜드를 고른 답은 결과 글에 넣지 않는다(즉석 반응만).
+    return { ...base, options: r.shuffle(options), reactions, roast: {}, scoreKey: Object.fromEntries(trio.map((b) => [b.label, b.kind])) };
   }
   if (q.id === "count_guess") {
     const n = Number(vars.n);

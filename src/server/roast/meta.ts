@@ -332,7 +332,7 @@ const RULE_NAME: Record<string, string> = {
   steady: "꾸준한 구매: 가점",
   good_outer: "좋은 아우터 하나: 가점",
   leather_shoes: "가죽 신발: 가점",
-  kr_new_year: "국내 신진 디자이너: 설립 연도 기준",
+  kr_new_age: "국내 신진 디자이너: 설립 후 년 수(이내)",
   kr_new_n: "국내 신진 디자이너: 기준 벌 수",
   kr_new: "국내 신진 디자이너: 가점",
   jp_n: "일본 브랜드: 기준 벌 수",
