@@ -154,7 +154,6 @@ export function buildReport(
   // 데님은 색 계산에서 뺀다(청바지를 무채색·유채색으로 세지 않게).
   const colored = items.filter(colorCounted);
   const achro = colored.filter((i) => i.achromatic);
-  const achroShare = achro.length / Math.max(colored.length, 1);
 
   // 브랜드 편중(4.4): 적힌 브랜드 이름 기준
   const branded = items.filter((i) => i.brandKind === "known" || i.brandKind === "unknown");
@@ -247,8 +246,6 @@ export function buildReport(
   }
 
   // 핏(4.15~4.16): 핏을 아는 옷(내 치수로 계산했거나 직접 "내 핏"을 적은 옷)
-  const fitted = clothes.filter((i) => i.fit && i.fit.level !== "too_small" && i.fit.level !== "too_big");
-  const big = fitted.filter((i) => i.fit!.level === "semi_over" || i.fit!.level === "over");
 
   // 구매처(4.21)
   const linked = items.filter((i) => i.shop);
@@ -276,7 +273,7 @@ export function buildReport(
   }
 
   // 진단 문단: 문장이 있는 것만, 뚜렷한 순서로 3~5개(뚜렷하지 않은 "반대쪽"은 모자랄 때만)
-  const texts = R.diag as Record<string, { title: string; fact: string; factLow?: string; high: string[]; low?: string[] }>;
+  const texts = R.diag as Record<string, { title: string; high: string[]; low?: string[] }>;
   const withText = diags.filter((d) => (texts[d.key]?.[d.side] ?? []).length && !override?.skipDiags.includes(d.id));
   const rank = (d: Diag) => d.strength + (tails.has(d.id) ? 1 : 0);
   const strong = withText.filter((d) => d.strength >= 0.3).sort((x, y) => rank(y) - rank(x));
@@ -416,11 +413,6 @@ export function buildReport(
     const t = tryFill(r, R.VINTAGE, { n: vintage.length });
     if (t) put("vintage", { id: "vintage", ...splitLead(t), photos: photosOf(vintage) });
   }
-  const facts = picked.flatMap((d) => {
-    const t = d.side === "high" ? texts[d.key].fact : texts[d.key].factLow;
-    const f = t ? tryFill(r, [t], d.vars) : null;
-    return f ? [f] : [];
-  });
 
   // 총 옷장 점수: 옷장 점수(score.ts) + 질문·퀴즈 답별 증감
   const wardrobe: Pick<WardrobeScore, "score" | "parts" | "age"> = override
@@ -506,42 +498,6 @@ export function buildReport(
   const scoreSay = tryFill(r, R.SCORE_SAY, { score: totalScore });
   const summary = [summaryBase, scoreSay].filter(Boolean).join(" ") || null;
 
-  // 캐릭터(6): 조건이 맞는 것 중 뚜렷한 순서로 세 개. "> " 문장에 들어간다.
-  const C = R.character as Record<string, { name: string; who: string }>;
-  const outerShare = clothes.filter((i) => i.cat === "outer").length / Math.max(clothes.length, 1);
-  const designerShare = known.filter((i) => i.groups.includes("designer") || i.groups.includes("luxury")).length / Math.max(K, 1);
-  const saleN = a.patterns.find((p) => p.id === "sale_luxury")?.garmentIds.length ?? 0;
-  const oldShare = dated.length ? dated.filter((i) => now - Date.parse(i.date!) >= 3 * 365 * DAY).length / dated.length : 0;
-  const cand: [string, number][] = [
-    ["musinsa", branded.length >= 8 && musinsaShare >= 0.5 ? musinsaShare : 0],
-    ["duplicate", dup.length >= 4 ? clamp(dup.length / 7) : 0],
-    ["outer", outerShare >= 0.4 ? outerShare : 0],
-    ["over", fitted.length >= 5 && big.length / fitted.length >= 0.6 ? big.length / fitted.length : 0],
-    ["mono_brand", branded.length >= 8 && brandShare >= 0.3 ? brandShare + 0.2 : 0],
-    ["octopus", branded.length >= 10 && byBrand.length / branded.length >= 0.75 ? byBrand.length / branded.length - 0.1 : 0],
-    ["achromatic", colored.length >= 5 && achroShare >= 0.7 ? achroShare - 0.05 : 0],
-    ["hype", enough && hype >= 3.8 ? hype / 5 : 0],
-    ["no_trend", enough && hype <= 2.2 ? (5 - hype) / 5 - 0.1 : 0],
-    ["heritage", enough && heritage >= 3.8 ? heritage / 5 - 0.1 : 0],
-    ["func", enough && func >= 3.6 ? func / 5 - 0.1 : 0],
-    ["sale", saleN >= 2 ? clamp(saleN / 5) : 0],
-    ["new_addict", dated.length >= 8 && recentShare >= 0.5 ? recentShare : 0],
-    ["long_tenure", dated.length >= 8 && oldShare >= 0.4 ? oldShare : 0],
-    ["binge", dated.length >= 8 && binList.length >= 5 && binList.length / dated.length >= 0.3 ? binList.length / dated.length + 0.2 : 0],
-    ["jp", enough && country === "일본" && countryShare >= 0.35 ? countryShare + 0.1 : 0],
-    ["designer", enough && designerShare >= 0.35 ? designerShare : 0],
-  ];
-  const chars = cand
-    .filter(([id, s]) => s > 0 && C[id])
-    .sort((x, y) => y[1] - x[1])
-    .slice(0, 3)
-    .flatMap(([id]) => {
-      const v = { what };
-      const nm = tryFill(r, [C[id].name], v);
-      const who = tryFill(r, [C[id].who], v);
-      return nm && who ? [{ name: nm, who }] : [];
-    });
-
   // 마지막 문단: 따로 붙일 곳이 없는 질문 답, 없으면 가장 비싼 항목
   const top = a.patterns.find((p) => p.id === "top_item");
   if (extra) put("last", { id: "answer", ...splitLead(extra) });
@@ -554,15 +510,9 @@ export function buildReport(
   const pointShown = (k: string) => (L.point_show as Record<string, number>)[k] !== 0;
   const points = limitPhotos([...(override?.points.map(withAnswer) ?? []), ...pointOrder.filter(pointShown).flatMap((k) => slot[k] ?? [])], L.count.photo_blocks);
 
-  // 첫 줄(총점 평가)과 "> " 문장들
+  // 첫 줄(총점 평가)
   const owner = name ? `${name}님의` : "당신의";
   const headline = tryFill(r, override?.headline[band] ?? R.HEADLINE[band], { owner, score: totalScore }) ?? `${owner} ${override ? "주문내역" : "옷장"}은 별로입니다.`;
-  const intro = [
-    facts.length >= 2 ? tryFill(r, R.INTRO_THANKS, { fact1: facts[0], fact2: facts[1] }) : facts.length ? tryFill(r, R.INTRO_THANKS_ONE, { fact1: facts[0] }) : null,
-    chars.length >= 2 ? tryFill(r, R.INTRO_CHAR_TWO, { first: chars[0].name, who2: chars[1].who }) : chars.length ? tryFill(r, R.INTRO_CHAR_ONE, { who1: chars[0].who }) : null,
-    ...(chars.length >= 3 ? [r.pick(R.INTRO_ALSO), tryFill(r, R.INTRO_SECOND, { who3: chars[2].who })] : []),
-    points.length ? r.pick(R.INTRO_MORE) : null,
-  ].filter((t): t is string => Boolean(t));
 
   // 목록: 많이 가진 옷, 많이 산 브랜드(사용자 요청).
   // - 많이 가진 옷: 세부분류 + 색 + 핏이 같은 옷이 dup_min벌(3벌) 이상인 것만. 2벌은 중복으로 보지 않고, 없으면 목록을 뺀다.
@@ -600,7 +550,6 @@ export function buildReport(
   const order = Object.entries(L.order).sort((x, y) => x[1] - y[1]).map(([k]) => k);
   return {
     headline,
-    intro: show("intro") ? intro : [],
     lists: show("lists") ? lists : [],
     total,
     points,

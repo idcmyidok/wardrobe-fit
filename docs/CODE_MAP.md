@@ -363,15 +363,15 @@
 - `compose.ts` (289줄) varsOf:29 arrangeBlocks:107(질문 섹션 EXTRA_QUESTION_SECTION, 주문내역 질문 포함) Plan:129 quotesAnswer:137 buildScript:145 asOrders:262 Composed:275 composeResult:283(마무리 문장·뚜렷한 패턴만, 결과 본문은 report.ts)
 - `keywords.ts` (50줄) FAMILIES:4 FamilyId:33 FAMILY_IDS:34 familyName:35 productFamilies:40
 - `lines.ts` (357줄) Section:13 PatternLines:28 COMMON:34 LINE_SECTION:98 LINE_TEXT:162
-- `meta.ts` (555줄) VAR_LABEL:15 SECTION_NAME:24 PATTERN_COND:28 QUESTION_COND:93 REACT_NAME:147 SCREEN_NAME:154 COMMON_NAME:172 varLabel:188 …
+- `meta.ts` (549줄) VAR_LABEL:15 SECTION_NAME:24 PATTERN_COND:28 QUESTION_COND:92 REACT_NAME:145 SCREEN_NAME:152 COMMON_NAME:171 varLabel:187 …
 - `order-actions.ts` (162줄) beginOrderRoast:60 orderRoastUsed:78 startOrderRoast:86 finishOrderRoast:102 (하루 1회: 붙여넣기 직후 beginOrderRoast가 roast_runs kind='orders'에 기록, 관리자·테스터 예외, 상품 읽기 API도 기록 없으면 403)
 - `order-limit.ts` (31줄) kstDayStart:14 orderRoastUsedToday:19 (한국 시간 0시 기준 하루 1회)
 - `react-when.ts` (~75줄) WhenDef WHEN_DEFS checkWhen whenMatches reactPool (반응별 조건)
 - `queries.ts` (57줄) getLatestRoast:12 signGarments:27 getRoastTextEdits:43 getRoastTexts:54
 - `questions.ts` (1295줄) QuestionDef:19 QuestionText:34 chimchakItems:69(침착맨 질문 조건) fromShop:78 QUESTIONS:80 Q_TEXT:243 AskedQuestion:1063 brandTrio:1085 …
 - `quiz.ts` (680줄) QuizEntry:14 QUIZ:24 PickedQuiz:668 pickQuiz:673
-- `report-text.ts` (308줄) REPORT_TEXT:12 ReportTexts:307
-- `report.ts` (657줄) ReportOverride:89 buildReport:102 limitPhotos:621 splitLead:642 tryFill:647
+- `report-text.ts` (246줄) REPORT_TEXT:10 ReportTexts:246
+- `report.ts` (603줄) ReportOverride:89 buildReport:102 limitPhotos:568 splitLead:589 tryFill:594
 - `score-deltas.ts` (249줄) SCORE_DELTAS:9 SCORE_RULES:88 ScoreRules:184 AGE_RULES:191 AGE_BANDS:238
 - `score.ts` (385줄) ScorePart:16 WardrobeScore:25 ScoreOptions:33 isTopDesigner:44 isMidTier:46 isHeritage:48 isGood:50 isNice:52 isFormalLux:55 isRepro:56 monthIndex:59(판정 함수는 주문내역 점수도 씀) scoreWardrobe:64 fitContrast:302 ageAt:307 bandName:314 bandOf:322 …
 - `shift.ts` (64줄) ShiftRules:3 TasteShift:9 detectTasteShift:40

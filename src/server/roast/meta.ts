@@ -14,7 +14,7 @@ import { ORDER_AGE_KEY_NAME, ORDER_COMMON, ORDER_QUESTION_COND, ORDER_REPORT_NAM
 /** {자리} → 사람이 읽는 이름 */
 export const VAR_LABEL: Record<string, string> = {
   n: "개수", pct: "비율%", brand: "브랜드", brands: "브랜드 수", names: "브랜드 이름들(쉼표로)", catName: "대분류", sub: "세부분류", color: "색", colorful: "유채색 벌 수",
-  country: "나라", tag: "스타일", fit: "핏", fitPhrase: "핏(알 때만 '○○ 핏 ')", familyName: "제품군", owner: "호칭('○○님의' 또는 '당신의')", first: "첫째 캐릭터 이름", who1: "첫째 캐릭터 한 줄 정의", who2: "둘째 캐릭터 한 줄 정의", what: "반복되는 옷(예: 블랙 반팔 티셔츠)", colorPct: "유채색 비율%", tag1: "스타일 1위", tag2: "스타일 2위", tag3: "스타일 3위", cheapCat: "평균가 가장 낮은 종류", cheapWon: "그 평균 금액", pricyCat: "평균가 가장 높은 종류", pricyWon: "그 평균 금액", minWon: "최저 구매가", months: "평균 보유 개월", year: "브랜드 설립 연도 중간값", topPct: "상의 오버 비율%", bottomPct: "하의 슬림·레귤러 비율%", recent: "최근 6개월 구매 벌 수", recentPct: "최근 6개월 구매분 비율%", level: "낮음·중간·높음", position: "시장 포지션", itemName: "브랜드의 상품명", kind: "옷 종류(모두 하의면 '바지', 아니면 '옷')", month: "월",
+  country: "나라", tag: "스타일", fit: "핏", fitPhrase: "핏(알 때만 '○○ 핏 ')", familyName: "제품군", owner: "호칭('○○님의' 또는 '당신의')", what: "반복되는 옷(예: 블랙 반팔 티셔츠)", colorPct: "유채색 비율%", tag1: "스타일 1위", tag2: "스타일 2위", tag3: "스타일 3위", cheapCat: "평균가 가장 낮은 종류", cheapWon: "그 평균 금액", pricyCat: "평균가 가장 높은 종류", pricyWon: "그 평균 금액", minWon: "최저 구매가", months: "평균 보유 개월", year: "브랜드 설립 연도 중간값", topPct: "상의 오버 비율%", bottomPct: "하의 슬림·레귤러 비율%", recent: "최근 6개월 구매 벌 수", recentPct: "최근 6개월 구매분 비율%", level: "낮음·중간·높음", position: "시장 포지션", itemName: "브랜드의 상품명", kind: "옷 종류(모두 하의면 '바지', 아니면 '옷')", month: "월",
   most: "많은 계절", mostN: "많은 계절 벌 수", least: "적은 계절", leastN: "적은 계절 벌 수", avgWon: "평균 금액", priceWon: "금액", amountWon: "금액",
   ratio: "배수", name: "제품명", oldest: "가장 오래된 브랜드", maxWon: "최고 구매가", traitText: "다른 점(색, 종류 등)",
   spendPct: "금액 비중%", countPct: "벌 수 비중%", count: "벌 수", total: "전체 개수", shop: "쇼핑몰", krN: "국내 대중 브랜드 벌 수", krPct: "국내 대중 브랜드 비율%",
@@ -199,7 +199,6 @@ export interface TextGroupMeta {
 
 /** 결과 구성 탭: 섹션·문단 이름과 내용이 무엇으로 정해지는지 */
 export const LAYOUT_SECTION: Record<string, { name: string; how: string }> = {
-  intro: { name: "\"> \" 소개 문장", how: "뚜렷한 진단 두 개와 캐릭터(조건이 맞는 것 중 뚜렷한 순서로 셋)로 자동으로 정해집니다." },
   summary: { name: "요약 한 문장(제목 바로 아래)", how: "가장 뚜렷한 옷장 특징 세 개(모자라면 두 개)를 서로 다른 종류(색·브랜드·스타일·핏 등)에서 골라 한 문장으로 잇습니다." },
   lists: { name: "목록 두 개", how: "많이 가진 옷(세부분류 + 색 + 핏이 같은 옷 3벌 이상, 없으면 뺌)과 많이 산 브랜드(옷장 대비 %, 1위가 기준 미만이면 뺌). 제목은 고정 문구입니다." },
   total: { name: "총점", how: "옷장 점수(점수 탭 기준) + 질문·퀴즈 답의 증감. 한마디는 총점 구간별 문장에서 고릅니다." },
@@ -229,7 +228,7 @@ const LAYOUT_COUNT: Record<string, string> = {
   answers: "질문에 답한 내용을 문단에 덧붙이는 최대 개수(앞에서 물은 질문 순서대로, 붙일 문단이 없는 답은 마지막 문단 하나로만)",
 };
 /** 결과 구성 탭에 같이 보여 주는 고정 문구(결과 페이지 탭과 같은 값) */
-const LAYOUT_FIXED = ["LIST_DUP", "LIST_BRAND", "TOTAL_LEAD", "INTRO_MORE", "BASIS_BRAND"];
+const LAYOUT_FIXED = ["LIST_DUP", "LIST_BRAND", "TOTAL_LEAD", "BASIS_BRAND"];
 
 const SUMMARY_NAME: Record<string, string> = {
   achro: "무채색 60% 이상",
@@ -414,13 +413,6 @@ const AGE_KEY_NAME: Record<string, string> = {
 
 const REPORT_NAME: Record<string, string> = {
   HEADLINE: "첫 줄: 총점 구간별 평가",
-  INTRO_THANKS: "\"> \" 첫 문장(뚜렷한 특징 둘)",
-  INTRO_THANKS_ONE: "\"> \" 첫 문장(뚜렷한 특징 하나)",
-  INTRO_CHAR_TWO: "\"> \" 캐릭터 문장(캐릭터 둘)",
-  INTRO_CHAR_ONE: "\"> \" 캐릭터 문장(캐릭터 하나)",
-  INTRO_ALSO: "\"> \" 캐릭터가 셋일 때 앞 문장",
-  INTRO_SECOND: "\"> \" 캐릭터가 셋일 때 세 번째 캐릭터",
-  INTRO_MORE: "\"> \" 마지막 문장(진단 문단 앞)",
   LIST_DUP: "목록 제목: 많이 가진 옷",
   LIST_BRAND: "목록 제목: 많이 산 브랜드",
   TOTAL_LEAD: "총 옷장 점수(굵게)",
@@ -470,7 +462,6 @@ export function textGroups(): TextGroupMeta[] {
     out.push({ id: `questions.${q.id}`, kind: "questions", title: Q_TEXT[q.id]?.text || (q.id === "quiz" ? "패션 퀴즈(앞 멘트)" : q.id), when: `${q.id} · ${QUESTION_COND[q.id] ?? ""}` });
   for (const [k, name] of Object.entries(REPORT_NAME)) out.push({ id: `report.${k}`, kind: "report", title: name, when: "" });
   for (const [k, v] of Object.entries(REPORT_TEXT.diag)) out.push({ id: `report.diag.${k}`, kind: "report", title: `진단: ${v.title}`, when: k });
-  for (const [k, v] of Object.entries(REPORT_TEXT.character)) out.push({ id: `report.character.${k}`, kind: "report", title: `캐릭터: ${v.name}`, when: k });
   out.push({ id: "report.layout.order", kind: "layout", title: "섹션 순서", when: "작은 숫자가 위(1~20). 첫 줄(점수 평가)은 항상 맨 위입니다." });
   out.push({ id: "report.layout.show", kind: "layout", title: "섹션 켜기·끄기", when: "1이면 보이고 0이면 뺍니다." });
   out.push({ id: "report.layout.point_order", kind: "layout", title: "진단 문단 순서", when: "작은 숫자가 위(1~20). 조건이 안 맞는 문단은 저절로 빠집니다." });
@@ -530,11 +521,8 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
     }
     if (p[1] === "diag") {
       if (last === "title") return "이름(관리용)";
-      if (last === "fact") return "\"> \" 첫 문장에 들어가는 짧은 말";
-      if (last === "factLow") return "\"> \" 첫 문장에 들어가는 짧은 말(반대쪽)";
       return last === "high" ? "뚜렷할 때(하나 고름, 첫 문장은 굵게)" : "반대쪽으로 뚜렷할 때(하나 고름, 첫 문장은 굵게)";
     }
-    if (p[1] === "character") return last === "name" ? "캐릭터 이름(한 줄 정의 앞쪽)" : "한 줄 정의 뒤쪽·\"> \" 문장에 들어가는 말";
     if (p[1] === "HEADLINE" || p[1] === "TOTAL") return last === "b90" ? "90점 이상" : last === "b0" ? "10점 미만" : `${last.slice(1)}~${Number(last.slice(1)) + 9}점`;
     if (p[1] === "color") return `${COLOR_NAME[last] ?? last} (하나 고름)`;
     if (p[1] === "fit") return `${FIT_NAME[last] ?? last} (하나 고름)`;

@@ -113,8 +113,8 @@ export function unitAt(key: string): { kind: UnitKind; base: UnitValue | undefin
 
 /** 문장이 속한 묶음(같은 패턴·질문·퀴즈·공통 항목). 예: "lines.black_bias" */
 export function groupOf(key: string): string {
-  // 결과 페이지의 진단·점수·캐릭터는 항목마다 따로 묶는다(예: "report.diag.color").
-  if (/^report\.(diag|character|layout)\./.test(key)) return key.split(".").slice(0, 3).join(".");
+  // 결과 페이지의 진단·점수는 항목마다 따로 묶는다(예: "report.diag.color").
+  if (/^report\.(diag|layout)\./.test(key)) return key.split(".").slice(0, 3).join(".");
   // 주문내역 훈수의 화면·대화·결과 문장은 항목마다 따로 묶는다(예: "orders.report.shift").
   if (key.startsWith("orders.")) return key.split(".").slice(0, 3).join(".");
   return key.split(".").slice(0, 2).join(".");

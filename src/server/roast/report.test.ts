@@ -37,9 +37,8 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
   const a = analyze(wardrobe, null, 1360, now);
   const report = buildReport(a, "세현", 1, REPORT_TEXT);
 
-  it("한 줄 정의·요약 한 문장·\"> \" 문장·목록·진단 문단을 글로 채운다", () => {
+  it("한 줄 정의·요약 한 문장·목록·진단 문단을 글로 채운다", () => {
     expect(report.headline).toContain("세현님의 옷장");
-    expect(report.intro.length).toBeGreaterThan(0);
     expect(report.points.map((p) => p.id)).toContain("duplicate");
     for (const p of report.points) expect(p.lead).toMatch(/[.!?]$/);
     expect(report.lists[0]?.items[0]).toBe("블랙 반소매 티셔츠 7벌");
