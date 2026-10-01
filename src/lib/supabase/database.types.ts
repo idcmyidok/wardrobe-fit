@@ -589,18 +589,21 @@ export type Database = {
           ai_used: boolean
           created_at: string
           id: number
+          kind: string
           user_id: string
         }
         Insert: {
           ai_used?: boolean
           created_at?: string
           id?: never
+          kind?: string
           user_id: string
         }
         Update: {
           ai_used?: boolean
           created_at?: string
           id?: never
+          kind?: string
           user_id?: string
         }
         Relationships: []

@@ -6,6 +6,7 @@ import type { RoastFinish, RoastGarmentRef, RoastReport, RoastResult, RoastStart
 import { isAuthConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
 import { isAdmin } from "@/server/admin/guard";
+import { getQuotaExemption } from "@/server/admin/is-admin";
 import { getUsdRate } from "@/server/settings/queries";
 import { MIN_GARMENTS, type Analysis } from "./analyze";
 import { analyzeOrders } from "./orders/analysis";
@@ -14,6 +15,7 @@ import { orderListSchema, toGarments, type OrderRoastItem } from "./orders/input
 import { orderOverride } from "./orders/report";
 import type { OrderRules } from "./orders/rules";
 import { scoreOrders } from "./orders/score";
+import { orderRoastUsedToday } from "./order-limit";
 import { getRoastTexts } from "./queries";
 import { buildReport } from "./report";
 import type { ScoreRules } from "./score-deltas";
@@ -49,6 +51,36 @@ async function prepare(items: unknown): Promise<{ a: Analysis; T: RoastTexts; si
   const { garments, ctx } = toGarments(parsed.data as OrderRoastItem[]);
   const a = analyzeOrders(garments, ctx, usdRate, new Date(), T.score.rules as Partial<ScoreRules> | undefined);
   return { a, T, signedIn: Boolean(userId), userId };
+}
+
+/**
+ * 주문내역을 붙여 넣고 상품을 읽기 직전에 부른다. 하루 한 번만 시작할 수 있어서, 오늘 이미 시작했으면 막고
+ * 아니면 이 순간을 1회로 기록한다(중간에 나가도 소진). 관리자·테스터는 제한이 없다.
+ */
+export async function beginOrderRoast(): Promise<{ ok: true } | { ok: false; used: boolean; message: string }> {
+  if (!isAuthConfigured()) return { ok: true };
+  try {
+    const supabase = await createSupabaseServerClient();
+    const user = supabase ? await getActiveUser(supabase) : null;
+    if (!supabase || !user) return { ok: false, used: false, message: "로그인이 필요합니다. 다시 로그인해 주세요." };
+    if (await getQuotaExemption(supabase, user.id)) return { ok: true };
+    if (await orderRoastUsedToday(supabase, user.id)) return { ok: false, used: true, message: "" };
+    const { error } = await supabase.from("roast_runs").insert({ user_id: user.id, ai_used: false, kind: "orders" });
+    if (error) console.error("[order-roast] begin", error.code, error.message);
+    return { ok: true };
+  } catch (e) {
+    console.error("[order-roast] begin", e instanceof Error ? e.message : e);
+    return { ok: true };
+  }
+}
+
+/** 시작 화면용: 오늘 이미 했는지(관리자·테스터는 항상 false) */
+export async function orderRoastUsed(): Promise<boolean> {
+  if (!isAuthConfigured()) return false;
+  const supabase = await createSupabaseServerClient();
+  const user = supabase ? await getActiveUser(supabase) : null;
+  if (!supabase || !user || (await getQuotaExemption(supabase, user.id))) return false;
+  return (await orderRoastUsedToday(supabase, user.id)) === true;
 }
 
 export async function startOrderRoast(input: { name: string | null; age?: number | null; items: unknown }): Promise<RoastStart> {

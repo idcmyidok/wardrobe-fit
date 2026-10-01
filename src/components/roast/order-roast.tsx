@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { buttonClassName } from "@/components/ui/button";
 import type { OrderItemResult } from "@/app/api/order-imports/item/route";
 import { OrderGuide } from "@/components/garment-form/order-guide";
+import { beginOrderRoast } from "@/server/roast/order-actions";
 import { importImageUrl } from "@/lib/import/client";
 import { lookupOf, saveOrderHandoff, type OrderLookup } from "@/lib/import/order-handoff";
 import { matchSizeRow, parseOrdersForRoast } from "@/server/import/musinsa-orders";
@@ -56,6 +57,13 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
     }
     setError(null);
     setProgress(0);
+    // 하루 한 번: 상품을 읽기 전에 오늘 횟수를 쓴다(중간에 나가도 소진). 이미 했으면 여기서 막는다.
+    const begun = await beginOrderRoast();
+    if (!begun.ok) {
+      setError(begun.used ? text(copy.DAILY_USED) : begun.message);
+      setProgress(null);
+      return;
+    }
     const orderIndex = new Map(parsed.orders.map((o, i) => [o, i]));
     const items: OrderRoastItem[] = parsed.garments.map((g) => ({
       order: orderIndex.get(g.order) ?? 0,
