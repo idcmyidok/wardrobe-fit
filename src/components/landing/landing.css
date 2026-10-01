@@ -219,3 +219,33 @@
 .fs .fs-still * {
   animation: none !important;
 }
+
+/* — 로그인 화면 새 기능 배너: 지금 배너가 왼쪽으로 밀려 나가고 다음 배너가 오른쪽에서 들어온다 — */
+.pb-slide[data-state="idle"] {
+  visibility: hidden;
+}
+.pb-slide[data-state="current"][data-moved] {
+  animation: pb-in 0.55s cubic-bezier(0.3, 0.7, 0.2, 1) both;
+}
+.pb-slide[data-state="leaving"] {
+  pointer-events: none;
+  animation: pb-out 0.55s cubic-bezier(0.3, 0.7, 0.2, 1) both;
+}
+@keyframes pb-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes pb-out {
+  to {
+    transform: translateX(-100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pb-slide[data-state] {
+    animation: none !important;
+  }
+  .pb-slide[data-state="leaving"] {
+    visibility: hidden;
+  }
+}
