@@ -20,7 +20,7 @@ import { getRoastTexts } from "./queries";
 import { buildReport } from "./report";
 import type { ScoreRules } from "./score-deltas";
 import { fill } from "./text";
-import type { RoastTexts } from "./texts";
+import { forOrders, type RoastTexts } from "./texts";
 
 /**
  * 무신사 주문내역 훈수(숨은 주소 /roast/orders). 옷장 훈수 엔진을 주문내역 모드로 쓴다.
@@ -48,7 +48,8 @@ async function prepare(items: unknown): Promise<{ a: Analysis; T: RoastTexts; si
     if (!supabase || !user) return { error: "로그인이 필요합니다. 다시 로그인해 주세요." };
     userId = user.id;
   }
-  const [T, usdRate] = await Promise.all([getRoastTexts(supabase), userId ? getUsdRate() : DEFAULT_USD_KRW]);
+  const [texts, usdRate] = await Promise.all([getRoastTexts(supabase), userId ? getUsdRate() : DEFAULT_USD_KRW]);
+  const T = forOrders(texts);
   const { garments, ctx } = toGarments(parsed.data as OrderRoastItem[]);
   const a = analyzeOrders(garments, ctx, usdRate, new Date(), T.score.rules as Partial<ScoreRules> | undefined);
   return { a, T, signedIn: Boolean(userId), userId };

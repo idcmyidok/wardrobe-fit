@@ -19,12 +19,12 @@ export const bubblesOf = (s: string) =>
 /** 대화에 말풍선으로 나오는 문장(결과 글·질문 문장·선택지는 아니다) */
 export function isBubbleKey(key: string): boolean {
   return (
-    /^lines\.[^.]+\.say$/.test(key) ||
-    /^questions\.[^.]+\.(lead|react\.[^.]+)$/.test(key) ||
+    /^(orders\.)?lines\.[^.]+\.say$/.test(key) ||
+    /^(orders\.)?questions\.[^.]+\.(lead|react\.[^.]+)$/.test(key) ||
     /^quiz\.[^.]+\.(correct|wrong)$/.test(key) ||
     key === "screen.OPENING" ||
     key === "orders.screen.OPENING" ||
     /^orders\.common\.(SCAN_OPEN|WRAP_UP)$/.test(key) ||
-    /^common\.(SCAN_OPEN|NAME_GREETING|THINKING|MID_REMARKS|FEW_PATTERNS|WRAP_UP|QUIZ_CORRECT|QUIZ_WRONG)$/.test(key)
+    /^(orders\.)?common\.(SCAN_OPEN|NAME_GREETING|THINKING|MID_REMARKS|FEW_PATTERNS|WRAP_UP|QUIZ_CORRECT|QUIZ_WRONG)$/.test(key)
   );
 }

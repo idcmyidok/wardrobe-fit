@@ -10,7 +10,7 @@ import { REPORT_TEXT } from "./report-text";
 import { AGE_RULES, SCORE_DELTAS, SCORE_RULES } from "./score-deltas";
 import { varsOf } from "./text";
 import { ORDER_AGE_RULES, ORDER_DELTAS, ORDER_RULES } from "./orders/rules";
-import { ORDER_COMMON, ORDER_REPORT_TEXT, ORDER_SCREEN } from "./orders/texts";
+import { ORDER_COMMON, ORDER_MIRROR_QUESTIONS, ORDER_MIRROR_REPORT_SKIP, ORDER_MIRROR_SCREEN, ORDER_REPORT_TEXT, ORDER_SCREEN, ORDER_SKIP_PATTERNS } from "./orders/texts";
 
 /**
  * 내 옷장 훈수의 모든 문장(관리자 화면에서 고칠 수 있는 것). 조건·선택지 id는 코드에만 있다.
@@ -45,6 +45,34 @@ function withReactWhen(texts: Record<string, QuestionText>): Record<string, Ques
   );
 }
 
+/** 주문내역 훈수는 옷장 훈수 문장을 그대로 복사해 전용 칸(orders.*)으로 따로 둔다. 문장 속 "옷장"은 "주문내역"으로 바꿔 둔다. */
+const toOrders = <T,>(node: T): T => {
+  if (typeof node === "string") return node.replace(/옷장/g, "주문내역") as T;
+  if (Array.isArray(node)) return node.map(toOrders) as T;
+  if (node && typeof node === "object") return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, toOrders(v)])) as T;
+  return node;
+};
+const pick = <T,>(o: Record<string, T>, keys: readonly string[]): Record<string, T> => Object.fromEntries(Object.entries(o).filter(([k]) => keys.includes(k)));
+const omit = <T,>(o: Record<string, T>, keys: Iterable<string>): Record<string, T> => {
+  const gone = new Set(keys);
+  return Object.fromEntries(Object.entries(o).filter(([k]) => !gone.has(k)));
+};
+
+/**
+ * 주문내역 전용으로 복사해 둔 칸(처음 값 = 옷장 훈수 문장). DB에 전용 값이 없으면 옷장 쪽 값을 따라가고(applyTextEdits),
+ * 전용 칸을 고치면 그 값이 우선한다. 주문내역에서만 쓰는 문장(ORDER_COMMON·ORDER_REPORT_TEXT 등)은 여기 없다.
+ */
+const ORDER_MIRROR = toOrders({
+  screen: pick<unknown>(ROAST_COPY, ORDER_MIRROR_SCREEN),
+  common: omit<unknown>(COMMON, Object.keys(ORDER_COMMON)),
+  lines: omit<unknown>(LINE_TEXT, ORDER_SKIP_PATTERNS),
+  questions: withReactWhen(pick(Q_TEXT, ORDER_MIRROR_QUESTIONS)),
+  report: {
+    ...omit<unknown>(REPORT_TEXT, ORDER_MIRROR_REPORT_SKIP),
+    diag: omit<unknown>(REPORT_TEXT.diag, ["shop"]),
+  },
+});
+
 /**
  * 주문내역 훈수: 질문 문구는 questions(o_*), 답별 증감은 score(o_*), 점수 기준은 score.orules·score.oage,
  * 화면·대화·결과 문장은 orders.screen·orders.common·orders.report에 있다(관리자 "주문내역 훈수" 탭).
@@ -57,9 +85,39 @@ export const DEFAULT_TEXTS = splitChat({
   quiz: QUIZ,
   report: REPORT_TEXT,
   score: { ...SCORE_DELTAS, ...ORDER_DELTAS, rules: SCORE_RULES, age: AGE_RULES, orules: ORDER_RULES, oage: ORDER_AGE_RULES },
-  orders: { screen: ORDER_SCREEN, common: ORDER_COMMON, report: ORDER_REPORT_TEXT },
+  orders: {
+    screen: { ...ORDER_MIRROR.screen, ...ORDER_SCREEN },
+    common: { ...ORDER_MIRROR.common, ...ORDER_COMMON },
+    report: { ...ORDER_MIRROR.report, ...ORDER_REPORT_TEXT },
+    lines: ORDER_MIRROR.lines,
+    questions: ORDER_MIRROR.questions,
+  },
 });
 export type RoastTexts = typeof DEFAULT_TEXTS;
+
+let mirrorKeys: Set<string> | null = null;
+/** 주문내역 전용으로 복사해 둔 칸의 key("orders.…"). 값이 없으면 옷장 쪽 key(앞의 "orders." 뗀 것)를 따라간다. */
+export function orderMirrorKeys(): Set<string> {
+  mirrorKeys ??= new Set(unitsOf(ORDER_MIRROR, "orders").map((u) => u.key));
+  return mirrorKeys;
+}
+
+/**
+ * 주문내역 훈수가 쓰는 문장: 옷장 훈수 문장 위에 주문내역 전용 칸(orders.lines·questions·common·report)을 덮는다.
+ * 결과 본문·대화·마무리 모두 이 사본으로 만든다.
+ */
+export function forOrders(T: RoastTexts): RoastTexts {
+  const m = ORDER_MIRROR as unknown as Record<"lines" | "questions" | "common" | "report", Record<string, unknown>>;
+  const O = T.orders as unknown as Record<"lines" | "questions" | "common" | "report", Record<string, unknown>>;
+  const own = (g: "lines" | "questions" | "common" | "report") => pick<unknown>(O[g], Object.keys(m[g]));
+  return {
+    ...T,
+    lines: { ...T.lines, ...own("lines") } as RoastTexts["lines"],
+    questions: { ...T.questions, ...own("questions") } as RoastTexts["questions"],
+    common: { ...T.common, ...own("common") } as RoastTexts["common"],
+    report: { ...T.report, ...own("report") } as RoastTexts["report"],
+  };
+}
 
 export const ROAST_TEXT_MAX = 500;
 /** DB body 한 칸 최대 글자 수(마이그레이션 20) */
@@ -116,6 +174,7 @@ export function groupOf(key: string): string {
   // 결과 페이지의 진단·점수는 항목마다 따로 묶는다(예: "report.diag.color").
   if (/^report\.(diag|layout)\./.test(key)) return key.split(".").slice(0, 3).join(".");
   // 주문내역 훈수의 화면·대화·결과 문장은 항목마다 따로 묶는다(예: "orders.report.shift").
+  if (key.startsWith("orders.report.diag.")) return key.split(".").slice(0, 4).join(".");
   if (key.startsWith("orders.")) return key.split(".").slice(0, 3).join(".");
   return key.split(".").slice(0, 2).join(".");
 }
@@ -188,7 +247,7 @@ export function checkUnit(key: string, value: unknown): { value: UnitValue } | {
     return problem ? { error: problem } : { value: value.trim() };
   }
   if (!Array.isArray(value)) return { error: "목록이 아닙니다." };
-  const cond = key.match(/^questions\.[^.]+\.(when|result)\./)?.[1];
+  const cond = key.match(/^(?:orders\.)?questions\.[^.]+\.(when|result)\./)?.[1];
   if (cond) return checkReactWhen(key, cond, value);
   if (value.length < minItems(key, unit.base)) return { error: `${minItems(key, unit.base)}개 이상 남겨 주세요.` };
   if (value.length > 40) return { error: "40개까지만 넣을 수 있습니다." };
@@ -283,6 +342,18 @@ export function applyTextEdits(rows: Record<string, string>): RoastTexts {
       node = node[p] as Record<string, unknown>;
     }
     node[path[path.length - 1]] = checked.value;
+  }
+  // 주문내역 전용 칸에 DB 값이 없으면 옷장 쪽(고친 값 포함)을 따라간다.
+  for (const key of orderMirrorKeys()) {
+    if (key in edits) continue;
+    const from = key.slice("orders.".length).split(".");
+    let src: unknown = out;
+    for (const p of from) src = (src as Record<string, unknown> | undefined)?.[p];
+    if (src === undefined) continue;
+    const path = key.split(".");
+    let node = out as unknown as Record<string, unknown>;
+    for (const p of path.slice(0, -1)) node = (node[p] ??= {}) as Record<string, unknown>;
+    node[path[path.length - 1]] = toOrders(structuredClone(src));
   }
   for (const id of deleted) delete out.quiz[id];
   // 새 퀴즈는 칸이 다 있어야 쓴다. 정답 번호가 선택지 밖이면 뺀다.

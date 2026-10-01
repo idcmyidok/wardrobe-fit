@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 import { parseOrdersForRoast } from "@/server/import/musinsa-orders";
 import { buildScript } from "../compose";
 import { buildReport } from "../report";
-import { DEFAULT_TEXTS } from "../texts";
+import { LINE_TEXT } from "../lines";
+import { applyTextEdits, DEFAULT_TEXTS, forOrders, orderMirrorKeys, unitAt } from "../texts";
 import { analyzeOrders } from "./analysis";
 import { orderItemSchema, toGarments, type OrderRoastItem } from "./input";
 import { busiestMonth, isRanking, isStandard, returnStats } from "./metrics";
 import { orderOverride } from "./report";
 import { ORDER_RULES } from "./rules";
-import { ORDER_PART_NAME, ORDER_RULE_NAME } from "./texts";
+import { ORDER_PART_NAME, ORDER_RULE_NAME, ORDER_SKIP_PATTERNS } from "./texts";
 import { scoreOrders } from "./score";
 
 const now = new Date("2026-09-30T12:00:00+09:00");
@@ -270,5 +271,40 @@ describe("주문내역 훈수 목록 → 분석", () => {
     };
     expect(part(2)).toBe(2);
     expect(part(1)).toBeUndefined();
+  });
+});
+
+describe("주문내역 전용 문장 칸(옷장 훈수 문장 복사)", () => {
+  it("분석에 나올 수 있는 패턴·대화 공통 문구·공유 질문·결과 문단이 전용 칸으로 복사돼 있다", () => {
+    const O = DEFAULT_TEXTS.orders as unknown as Record<string, Record<string, unknown>>;
+    expect(Object.keys(O.lines).sort()).toEqual(Object.keys(LINE_TEXT).filter((id) => !ORDER_SKIP_PATTERNS.has(id)).sort());
+    expect(Object.keys(O.questions).sort()).toEqual(["fashionable_q", "food_vs_clothes", "quiz"]);
+    for (const k of ["NAME_GREETING", "SECTION_STATUS", "THINKING", "MID_REMARKS", "FEW_PATTERNS", "CLOSING"]) expect(O.common[k]).toBeDefined();
+    for (const k of ["TOTAL", "SCORE_SAY", "SUMMARY_3", "color", "wallet", "diag"]) expect(O.report[k]).toBeDefined();
+    // 주문내역에서 나오지 않는 것은 없다
+    expect(O.lines.count_small).toBeUndefined();
+    expect((O.report.diag as Record<string, unknown>).shop).toBeUndefined();
+    // 복사본의 "옷장"은 "주문내역"으로
+    expect(JSON.stringify(O.lines)).not.toContain("옷장");
+  });
+
+  it("전용 값이 DB에 없으면 옷장 쪽 고친 값을 따르고, 전용 값을 고치면 그 값이 우선한다", () => {
+    const follow = applyTextEdits({ "lines.avg_price.say": JSON.stringify(["수정 옷장 {avgWon}"]) });
+    expect((follow.orders as unknown as { lines: Record<string, { say: string[] }> }).lines.avg_price.say).toEqual(["수정 주문내역 {avgWon}"]);
+    expect(follow.lines.avg_price.say).toEqual(["수정 옷장 {avgWon}"]);
+    const own = applyTextEdits({ "lines.avg_price.say": JSON.stringify(["옷장용 {avgWon}"]), "orders.lines.avg_price.say": JSON.stringify(["주문용 {avgWon}"]) });
+    expect((own.orders as unknown as { lines: Record<string, { say: string[] }> }).lines.avg_price.say).toEqual(["주문용 {avgWon}"]);
+    expect(own.lines.avg_price.say).toEqual(["옷장용 {avgWon}"]);
+  });
+
+  it("주문내역 훈수는 전용 칸 문장을 쓴다", () => {
+    const T = forOrders(applyTextEdits({ "orders.lines.avg_price.say": JSON.stringify(["주문용 {avgWon}"]) }));
+    expect(T.lines.avg_price.say).toEqual(["주문용 {avgWon}"]);
+    expect(forOrders(DEFAULT_TEXTS).report.TOTAL.b50).toEqual(DEFAULT_TEXTS.report.TOTAL.b50.map((x) => x.replace(/옷장/g, "주문내역")));
+  });
+
+  it("전용 칸은 모두 고칠 수 있는 칸이고, 질문 반응 조건 칸도 있다", () => {
+    for (const k of orderMirrorKeys()) expect(unitAt(k)).not.toBeNull();
+    expect(unitAt("orders.questions.fashionable_q.when.high_yes") ?? unitAt("orders.questions.fashionable_q.react.high_yes")).not.toBeNull();
   });
 });

@@ -7,7 +7,7 @@ import { fieldLabel, LAYOUT_POINT, LAYOUT_SECTION, PATTERN_COND, SECTION_NAME, t
 import { getRoastTextEdits } from "@/server/roast/queries";
 import { WHEN_DEFS } from "@/server/roast/react-when";
 import { Q_TEXT } from "@/server/roast/questions";
-import { allowedVars, applyTextEdits, CUSTOM_QUIZ_ID, DEFAULT_TEXTS, fromRows, groupOf, unitsOf } from "@/server/roast/texts";
+import { allowedVars, applyTextEdits, CUSTOM_QUIZ_ID, DEFAULT_TEXTS, fromRows, groupOf, orderMirrorKeys, unitsOf } from "@/server/roast/texts";
 
 export const metadata = { title: "훈수 문장 · 관리자", robots: { index: false } };
 
@@ -17,6 +17,9 @@ export default async function RoastTextsPage() {
   const rows = await getRoastTextEdits(await createSupabaseServerClient());
   const edits = fromRows(rows);
   const units = unitsOf().filter((u) => !u.key.startsWith("quiz."));
+  // 주문내역 전용 칸에 저장값이 없으면 실제로 쓰이는 값(옷장 쪽을 따라간 값)을 보여 준다.
+  const mirror = orderMirrorKeys();
+  const followed = new Map(unitsOf(applyTextEdits(rows)).filter((u) => mirror.has(u.key)).map((u) => [u.key, u.value]));
   const optionLabel = (qid: string, opt: string) => Q_TEXT[qid]?.options[opt];
   const groups: EditorGroup[] = textGroups()
     .map((g) => ({
@@ -24,7 +27,7 @@ export default async function RoastTextsPage() {
       vars: allowedVars(`${g.id}.x`).map((v) => ({ key: v, label: varLabel(g.id, v) })),
       units: units
         .filter((u) => groupOf(u.key) === g.id)
-        .map((u) => ({ key: u.key, kind: u.kind, label: fieldLabel(u.key, optionLabel), value: edits[u.key] ?? u.value, base: u.value })),
+        .map((u) => ({ key: u.key, kind: u.kind, label: fieldLabel(u.key, optionLabel), value: edits[u.key] ?? followed.get(u.key) ?? u.value, base: u.value })),
     }))
     .filter((g) => g.units.length);
 

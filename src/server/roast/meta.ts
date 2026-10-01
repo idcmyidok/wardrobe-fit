@@ -5,6 +5,7 @@ import { REPORT_TEXT } from "./report-text";
 import { SCORE_DELTAS } from "./score-deltas";
 import { ORDER_QUESTIONS } from "./orders/questions";
 import { ORDER_DELTAS } from "./orders/rules";
+import { groupOf, orderMirrorKeys } from "./texts";
 import { ORDER_AGE_KEY_NAME, ORDER_COMMON, ORDER_QUESTION_COND, ORDER_REPORT_NAME, ORDER_RULE_NAME, ORDER_SCREEN_NAME } from "./orders/texts";
 
 /**
@@ -483,6 +484,17 @@ export function textGroups(): TextGroupMeta[] {
   out.push({ id: "score.oage", kind: "orders", title: `${O}나이에 맞는 주문`, when: "옷을 산 때 나이 구간별 기준(비율은 %, 감점도 양수로)" });
   for (const qid of Object.keys(ORDER_DELTAS))
     out.push({ id: `score.${qid}`, kind: "orders", title: `${O}점수: ${Q_TEXT[qid]?.text || qid}`, when: `${qid} · 답에 따라 총점에 더하는 값(-20~20)` });
+  // 옷장 훈수 문장을 주문내역 전용으로 따로 복사해 둔 칸(주문내역 쪽 값이 없으면 옷장 쪽을 따라간다)
+  for (const id of new Set([...orderMirrorKeys()].map(groupOf))) {
+    const [, kind, a, b] = id.split(".");
+    if (kind === "screen") out.push({ id, kind: "orders", title: `${O}화면: ${SCREEN_NAME[a] ?? a}`, when: "" });
+    else if (kind === "common") out.push({ id, kind: "orders", title: `${O}대화: ${COMMON_NAME[a] ?? a}`, when: "" });
+    else if (kind === "lines") out.push({ id, kind: "orders", title: `${O}${a} (${SECTION_NAME[LINE_SECTION[a]]})`, when: PATTERN_COND[a] ?? "" });
+    else if (kind === "questions")
+      out.push({ id, kind: "orders", title: `${O}질문: ${Q_TEXT[a]?.text || (a === "quiz" ? "패션 퀴즈(앞 멘트)" : a)}`, when: `${a} · ${QUESTION_COND[a] ?? ""}` });
+    else if (a === "diag") out.push({ id, kind: "orders", title: `${O}진단: ${REPORT_TEXT.diag[b as keyof typeof REPORT_TEXT.diag]?.title ?? b}`, when: b });
+    else out.push({ id, kind: "orders", title: `${O}결과: ${REPORT_NAME[a] ?? a}`, when: "" });
+  }
   return out;
 }
 
@@ -506,6 +518,7 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
     if (p[1] === "quiz") return p[2] === "right" ? "맞혔을 때" : "틀렸을 때";
     return REACT_NAME[p[2]] ?? optionLabel?.(p[1], p[2]) ?? p[2];
   }
+  if (p[0] === "orders" && orderMirrorKeys().has(key)) return fieldLabel(key.slice("orders.".length), optionLabel);
   if (p[0] === "orders") {
     const last = p[p.length - 1];
     if (p[1] === "report" && (p[2] === "HEADLINE")) return last === "b90" ? "90점 이상" : last === "b0" ? "10점 미만" : `${last.slice(1)}~${Number(last.slice(1)) + 9}점`;

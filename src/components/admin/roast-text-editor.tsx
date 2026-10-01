@@ -23,10 +23,10 @@ export interface EditorUnit {
 const isEdited = (value: EditorUnit["value"], base: EditorUnit["base"]) => JSON.stringify(value) !== JSON.stringify(base);
 
 /** 질문 반응마다 붙이는 조건 칸(questions.<질문>.when.<종류>)과 결과 글 칸(…result…). 반응 칸 안에서 함께 고친다. */
-const WHEN_KEY = /^questions\.[^.]+\.(when|result)\./;
+const WHEN_KEY = /^(?:orders\.)?questions\.[^.]+\.(when|result)\./;
 const companions = (key: string) => {
-  const m = key.match(/^questions\.([^.]+)\.react\.(.+)$/);
-  return m ? { when: `questions.${m[1]}.when.${m[2]}`, result: `questions.${m[1]}.result.${m[2]}` } : null;
+  const m = key.match(/^((?:orders\.)?questions\.[^.]+)\.react\.(.+)$/);
+  return m ? { when: `${m[1]}.when.${m[2]}`, result: `${m[1]}.result.${m[2]}` } : null;
 };
 
 /** 반응 조건 드롭다운에 나오는 준비된 경우. n이 있으면 경계 숫자를 고칠 수 있다. */
