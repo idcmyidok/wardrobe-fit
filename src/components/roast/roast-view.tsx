@@ -3,7 +3,6 @@
 /* eslint-disable @next/next/no-img-element -- 비공개 저장소의 임시 주소라 next/image 최적화를 쓰지 않는다(다른 화면과 같음). */
 import { useRouter } from "next/navigation";
 import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { UsageNote } from "@/components/usage/usage-note";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { buttonClassName } from "@/components/ui/button";
 import { MIN_CLOTHES, ROAST_COPY, tooFew, type RoastCopy } from "@/lib/roast/copy";
@@ -123,7 +122,6 @@ export function RoastView({ initialResult, copy = ROAST_COPY, orders }: { initia
             <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700 uppercase">{orders ? "Order roast" : "Wardrobe roast"}</span>
             <h1 className="text-title">{orders ? "무신사 주문내역 훈수" : "내 패션 훈수"}</h1>
           </div>
-          {signedIn && !orders && <UsageNote kind="roast" />}
         </div>
 
         {mode === "result" && result ? (
@@ -483,7 +481,6 @@ function Chat({
   const copy = useContext(CopyContext);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [noAi, setNoAi] = useState(false);
   const nextId = useRef(0);
   const typedWaiters = useRef(new Map<number, () => void>());
   const choiceWaiter = useRef<((id: string) => void) | null>(null);
@@ -552,7 +549,6 @@ function Chat({
         setError(start.code === "too_few" ? tooFew(copy, start.count) : start.message);
         return;
       }
-      if (start.aiLeft === 0) setNoAi(true);
       const answers = await play(start.script);
       push({ kind: "status", text: copy.WRITING, gap: true });
       const dots = push({ kind: "dots" });
@@ -631,7 +627,6 @@ function Chat({
 
   return (
     <div ref={logRef} className="roast-mono roast-log mt-8" aria-live="polite">
-      {noAi && <p className="roast-status">{copy.NO_AI_LEFT}</p>}
       {msgs.map((m) =>
         m.kind === "ai" ? (
           <div key={m.id} className="roast-ai" data-gap={m.gap ? "true" : undefined}>

@@ -1,6 +1,6 @@
 import "server-only";
 import { CATEGORY_NAME } from "@/lib/constants/categories";
-import type { RoastParagraph, RoastQuestion, RoastScript, RoastStep } from "@/lib/roast/types";
+import type { RoastQuestion, RoastScript, RoastStep } from "@/lib/roast/types";
 import type { CategoryId } from "@/lib/types/domain";
 import type { Analysis, Pattern } from "./analyze";
 import { familyName, type FamilyId } from "./keywords";
@@ -20,7 +20,7 @@ import { DEFAULT_TEXTS, type RoastTexts } from "./texts";
  */
 
 /** 관련 패턴이 없는 질문이 들어갈 자리 */
-const QUESTION_SECTION: Record<string, Section> = { quiz: "brand", brand_best: "brand", drop_item: "money", count_guess: "size", max_budget: "money", food_vs_clothes: "money", golden_spoon: "money" };
+const QUESTION_SECTION: Record<string, Section> = { quiz: "brand", brand_best: "brand", drop_item: "money", max_budget: "money", food_vs_clothes: "money", golden_spoon: "money" };
 
 /** 튀는 옷의 드문 특성 이름 */
 const TRAIT_WORD: Record<string, string> = { color: "색", group: "브랜드 결", sub: "종류", fit: "핏", season: "계절", family: "디자인" };
@@ -272,94 +272,18 @@ function askedAsOrders(q: AskedQuestion): AskedQuestion {
   };
 }
 
-/** 코디 조합 수: 기본(상의×하의×신발) × (1+아우터) × (1+모자). 아우터만·모자만·둘 다 얹은 경우를 기본에 더한 것과 같다. */
-export function outfitCounts(a: Analysis) {
-  // 코디 조합은 실제 벌 수로 센다(분석에서 뺀 무지 티 포함).
-  const n = (c: CategoryId) => a.allItems.filter((i) => i.cat === c).length;
-  const top = n("top"), bottom = n("bottom"), shoes = n("shoes"), outer = n("outer"), hat = n("hat");
-  const base = top * bottom * shoes;
-  return { top, bottom, shoes, outer, hat, base, combos: base * (1 + outer) * (1 + hat) };
-}
-
-function outfitText(a: Analysis, r: Rng, T: RoastTexts): string | null {
-  if (!a.allItems.length) return null;
-  const c = outfitCounts(a);
-  const num = (x: number) => x.toLocaleString("ko-KR");
-  if (!c.base) {
-    const missing = (["top", "bottom", "shoes"] as const).filter((k) => !c[k]).map((k) => CATEGORY_NAME[k]).join("·");
-    return tryFill(r, T.common.OUTFIT_NONE, { missing });
-  }
-  return tryFill(r, T.common.OUTFIT_COMBOS, { top: num(c.top), bottom: num(c.bottom), shoes: num(c.shoes), outer: num(c.outer), hat: num(c.hat), base: num(c.base), combos: num(c.combos) });
-}
-
 export interface Composed {
-  headline: string;
-  paragraphs: RoastParagraph[];
   closing: string[];
   used: Pattern[];
-  /** 코디 조합 문단(AI가 글을 써도 이 문단은 그대로 넣는다) */
-  outfit: string | null;
 }
 
 /**
- * 템플릿 결과 글. 뚜렷한 패턴 5개까지 문단으로 쓰고, 대화에서 받은 답은 숫자를 되풀이하지 않고
- * 답을 골랐다는 사실을 두고 한 번 더 비꼬는 문단(roast)으로 쓴다.
+ * 결과 맨 아래 마무리 문장과 결과에 저장해 두는 뚜렷한 패턴 5개. 결과 본문은 buildReport(report.ts)가 만든다.
  */
-export function composeResult(
-  a: Analysis,
-  name: string | null,
-  seed: number,
-  T: RoastTexts = DEFAULT_TEXTS,
-  asked: AskedQuestion[] = [],
-  answers: Record<string, string> = {},
-): Composed {
+export function composeResult(a: Analysis, seed: number, T: RoastTexts = DEFAULT_TEXTS): Composed {
   // 대화와 다른 순서로 뽑히지 않게 결과용 난수는 따로 만든다.
   const r = rng(seed ^ 0x5bd1e995);
-  const C = T.common;
   const used = rank(a, r, 5, T);
-
-  let headline: string;
-  if (used.length >= 2) {
-    const [h1] = r.shuffle(T.lines[used[0].id].head);
-    const [h2] = r.shuffle(T.lines[used[1].id].head);
-    const first = tryFill(r, [h1[0]], varsOf(used[0]));
-    const second = tryFill(r, [h2[1]], varsOf(used[1]));
-    headline = first && second ? `${first} ${second}` : (second ?? first ?? r.pick(C.PLAIN_HEADLINE));
-  } else if (used.length === 1) {
-    const pre = r.pick(C.HEAD_SINGLE_PREFIX) ?? "";
-    headline = (pre && !pre.endsWith(" ") ? `${pre} ` : pre) + (tryFill(r, [r.pick(T.lines[used[0].id].head)[1]], varsOf(used[0])) ?? r.pick(C.PLAIN_HEADLINE));
-  } else headline = r.pick(C.PLAIN_HEADLINE);
-
-  const paragraphs: RoastParagraph[] = [];
-  used.forEach((p, idx) => {
-    let text = tryFill(r, T.lines[p.id].para, varsOf(p));
-    if (!text) return;
-    // 첫 문단은 "그리고"로 시작하지 않게 한다(튀는 옷 문단).
-    if (idx === 0) text = text.replace(/^그리고 /, "");
-    if (idx === 0 && name) text = `${name}님, ${text}`;
-    paragraphs.push({ text, photos: NO_PHOTO.has(p.id) ? [] : photosOf(a, p) });
-  });
-  if (!paragraphs.length) paragraphs.push({ text: fill(r.pick(C.PLAIN_PARA), { n: a.clothesTotal }), photos: [] });
-  if (used.length < 2) paragraphs.push({ text: r.pick(C.FEW_PATTERNS), photos: [] });
-
-  const outfit = outfitText(a, r, T);
-  if (outfit) paragraphs.push({ text: outfit, photos: [] });
-
-  // 답을 두고 한 번 더(질문 순서대로, 네 개까지). "~라고 하셨죠."처럼 답을 옮겨 말하며 시작하는 문단은 한 번만 쓴다.
-  let roasts = 0;
-  let quoted = false;
-  for (const q of asked) {
-    if (roasts >= 4) break;
-    const picked = answers[q.id];
-    const list = picked ? (q.roast[picked] ?? []) : [];
-    if (!list.length) continue;
-    const plain = list.filter((t) => !quotesAnswer(t));
-    const text = r.pick(quoted && plain.length ? plain : list);
-    if (quotesAnswer(text)) quoted = true;
-    paragraphs.push({ text, photos: [] });
-    roasts++;
-  }
-
-  const closing = r.shuffle(C.CLOSING).slice(0, 2 + Math.floor(r.next() * 2));
-  return { headline, paragraphs, closing, used, outfit };
+  const closing = r.shuffle(T.common.CLOSING).slice(0, 2 + Math.floor(r.next() * 2));
+  return { closing, used };
 }

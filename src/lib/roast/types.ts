@@ -100,18 +100,17 @@ export interface RoastResult {
   paragraphs: RoastParagraph[];
   closing: string[];
   disclaimer: string;
-  /** 새 결과 페이지. 있으면 headline·paragraphs 대신 이걸 보여 준다(긴 훈수 글은 되돌릴 수 있게 계속 만들어 저장만 한다). */
+  /** 새 결과 페이지. 있으면 이걸 보여 준다. 없는 옛 결과(2026-09-30 이전 저장분)만 headline·paragraphs(긴 훈수 글)를 보여 주고, 새 결과는 이 둘을 비워 둔다. */
   report?: RoastReport;
   garments: Record<string, RoastGarmentRef>;
   answers: { id: string; question: string; answer: string }[];
   patterns: { id: string; stats: Record<string, string | number> }[];
-  aiUsed: boolean;
   /** 결과를 만든 때의 옷장 요약값(옷장 변화 안내용) */
   wardrobeHash: string;
 }
 
 export type RoastStart =
-  | { ok: true; script: RoastScript; aiLeft: number | null }
+  | { ok: true; script: RoastScript }
   | { ok: false; code: "too_few"; count: number }
   | { ok: false; code: "error"; message: string };
 

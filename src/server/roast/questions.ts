@@ -130,13 +130,10 @@ export const QUESTIONS: QuestionDef[] = [
       const p = pat(a, "category_bias");
       return p ? { ...p.stats, catName: CATEGORY_NAME[p.stats.cat as CategoryId] } : null;
     } },
-  // 몇 벌인지 맞히는 질문(subcat_known, count_guess)은 묻지 않는다(사용자 요청, 2026-09-30).
   { id: "few_clothes", bucket: "count", pattern: "count_small", base: 0.5, options: ["minimal", "not_yet", "thats_all"],
     when: (a) => stats(pat(a, "count_small")) },
   { id: "many_clothes_wear", bucket: "count", pattern: "count_many", base: 0.65, options: ["most", "half", "few", "same"],
     when: (a) => stats(pat(a, "count_huge") ?? pat(a, "count_many")) },
-  { id: "trend_source", bucket: "trend", pattern: "trend_brands", base: 0.7, options: ["sns", "friends", "first"],
-    when: (a) => stats(pat(a, "trend_brands")) },
   { id: "timeless_q", bucket: "trend", pattern: "trait_timeless", base: 0.6, options: ["never", "bit", "comes_back"],
     when: (a) => stats(pat(a, "trait_timeless")) },
   { id: "hype_alarm", bucket: "trend", pattern: "trait_hype", base: 0.65, options: ["yes", "no", "secret"],
@@ -237,7 +234,7 @@ export const QUESTIONS: QuestionDef[] = [
   { id: "vintage_q", bucket: "self", base: 0.35, options: ["often", "browse", "no_used"],
     when: (a) => ({ boost: has(a, "old_brands") || has(a, "trait_heritage") || has(a, "group_jp_denim") || has(a, "group_heritage") ? 1 : 0 }) },
   { id: "influencer_q", bucket: "self", base: 0.4, options: ["daily", "sometimes", "never"],
-    when: (a) => ({ boost: has(a, "trend_brands") || has(a, "trait_trendy") || has(a, "trait_hype") ? 1 : 0 }) },
+    when: (a) => ({ boost: has(a, "trait_trendy") || has(a, "trait_hype") ? 1 : 0 }) },
   // 아래 두 질문은 pickQuestions가 따로 붙인다(질문 수와 상관없이). 침착맨 질문 → 마지막 질문 순서.
   { id: "chimchak_q", bucket: "chimchak", base: 0, options: ["love", "sometimes", "clothes_only"], when: (a) => chimchakItems(a) },
   { id: "fashionable_q", bucket: "last", base: 0, options: ["yes", "normal", "no", "others_say"], when: () => ({}) },
@@ -479,36 +476,6 @@ export const Q_TEXT: Record<string, QuestionText> = {
       elsewhere: ["나머지 옷은 등록을 안 했다고 하셨습니다. 편리한 변명이지만, 그렇다면 굳이 등록할 만큼 자랑스러운 옷이 그것뿐이었다는 말도 됩니다.", "보여 준 게 절반뿐이라면 이야기가 달라집니다. 나머지는 안 올렸다는 그 옷들이, 보여 준 절반보다 더 궁금해지는 건 어쩔 수 없습니다."],
     },
   },
-  subcat_known: {
-    lead: [],
-    text: "{sub|이} 몇 벌인지 알고 있었나요?",
-    options: { exact: "정확히 앎", roughly: "대충 앎", no: "전혀 몰랐음" },
-    react: {
-      exact: ["{n}벌인 걸 알면서 계속 샀다는 뜻이군요.", "알고 있었다면, 그건 계획입니다."],
-      roughly: ["대충 생각한 숫자보다 많을 겁니다. {n}벌입니다.", "{n}벌입니다. 대충이 맞았는지 확인해 보세요."],
-      no: ["{n}벌입니다. 놀라셨다면 다행입니다.", "모르는 사이에 {n}벌. 옷장이 알아서 번식한 것 같네요."],
-    },
-    roast: {
-      exact: ["몇 벌인지 정확히 알고 있었다고 하셨습니다. 알면서도 계속 샀다면, 그건 충동이 아니라 계획범죄입니다.", "숫자를 정확히 안다는 게 오히려 문제입니다. 세어 가면서도 멈추지 않는 사람, 수집가와 사재기의 경계가 바로 거기에 있습니다."],
-      roughly: ["대충은 안다고 하셨습니다. 그 대충이 늘 실제보다 적다는 게 옷장 주인들의 공통된 비극이고, 당신도 예외는 아니었습니다.", "대충의 대가는 늘 정확합니다. 대충 알고 대충 사다 보니, 옷장만 아주 정확하고 성실하게 불어났습니다."],
-      no: ["전혀 몰랐다고 하셨습니다. 모르는 사이에 같은 종류가 이만큼 쌓였다면, 옷장이 스스로 번식하고 있는 게 틀림없습니다.", "몰랐다는 대답이 제일 솔직하고 제일 위험합니다. 세어 보지도 않고 사는 사람에게는 멈출 이유가 영영 생기지 않으니까요."],
-    },
-  },
-  count_guess: {
-    lead: ["숫자 하나 맞혀 보시겠어요?"],
-    text: "모자·신발 빼고, 옷장에 옷이 몇 벌 있을까요?",
-    options: {},
-    react: {
-      under: ["실제로는 {n}벌입니다. 생각보다 많죠.", "{n}벌입니다. 옷장은 늘 주인 생각보다 큽니다."],
-      right: ["정확합니다. 알면서도 계속 샀다는 뜻이네요.", "맞습니다. {n}벌. 숫자 감각은 확실하시네요. 절제 감각과는 별개로요."],
-      over: ["그보다는 적습니다. {n}벌입니다. 그렇게 느껴질 수는 있습니다.", "{n}벌입니다. 스스로에게 조금 엄격하시네요."],
-    },
-    roast: {
-      under: ["옷장 크기를 실제보다 작게 짐작하셨습니다. 머릿속 옷장과 진짜 옷장 사이에 꽤 넓은 창고가 하나 숨어 있었던 셈입니다.", "실제 숫자가 예상보다 많았습니다. 옷은 한 벌씩 들어와서 티가 안 나지만, 모아 놓으면 늘 주인의 예상을 가볍게 넘어섭니다."],
-      right: ["옷장 크기를 정확히 맞히셨습니다. 숫자 감각은 완벽한데, 그걸 다 알면서도 멈추지 않았다는 게 오히려 더 큰 문제입니다.", "숫자를 정확히 맞혔습니다. 다만 옷장을 그렇게 훤히 꿰고 있는 사람이 정리는 왜 안 하는지, 그게 이 글의 가장 큰 미스터리입니다."],
-      over: ["옷장 크기를 실제보다 크게 짐작하셨습니다. 스스로도 옷이 너무 많다고 느끼고 있었다는 뜻이니, 양심은 아직 살아 있습니다.", "실제보다 크게 부른 숫자에는 죄책감이 묻어 있습니다. 그 죄책감을 다음 결제 버튼 앞에서도 꼭 떠올려 주시길 바랍니다."],
-    },
-  },
   few_clothes: {
     lead: [],
     text: "옷이 적은 건 미니멀리즘인가요, 아직 다 안 넣은 건가요?",
@@ -539,21 +506,6 @@ export const Q_TEXT: Record<string, QuestionText> = {
       half: ["절반쯤 입는다고 하셨습니다. 나머지 절반은 유급 휴가 중인 셈인데, 그 휴가비는 전부 본인이 내고 있습니다.", "솔직해서 좋습니다. 절반만 입는다는 대답은 옷장의 반이 관상용이라는 고백이기도 한데, 이렇게 담담하게 말씀하시니 오히려 할 말을 잃었습니다."],
       few: ["실제로 입는 건 몇 벌 안 된다고 하셨습니다. 나머지는 옷장을 지키는 경비원인데, 경비원이 주민보다 훨씬 많습니다.", "대부분의 옷장이 이렇게 삽니다. 손이 가는 옷이 몇 벌뿐인 방식은 흔하지만, 동시에 가장 비싸게 사는 방식이기도 합니다."],
       same: ["매일 같은 옷만 입는다고 하셨습니다. 이만한 옷장을 두고 같은 옷을 고르는 건, 뷔페에 가서 물만 마시고 나오는 것과 같습니다.", "늘 같은 옷을 입는다면 나머지 옷들은 관람객도 없는 전시회에 영구 전시 중인 셈입니다. 입장료는 이미 다 내셨고요."],
-    },
-  },
-  trend_source: {
-    lead: [],
-    text: "요즘 뜨는 브랜드는 주로 어디서 알게 되나요?",
-    options: { sns: "인스타그램·유튜브", friends: "친구·지인", first: "원래 알던 게 뜬 거임" },
-    react: {
-      sns: ["알고리즘이 옷장을 꽤 많이 채웠네요.", "피드가 쇼핑 목록이 된 거군요. 흔한 일입니다."],
-      friends: ["친구분들 취향이 옷장에 {n}벌 남았네요.", "좋은 친구들입니다. 비싼 친구들이기도 하고요."],
-      first: ["원래 알던 거라고요. 다들 그렇게 말합니다.", "그렇다면 선구자시네요. 증명할 방법은 없지만요."],
-    },
-    roast: {
-      sns: ["요즘 뜨는 브랜드를 인스타그램과 유튜브에서 알게 된다고 하셨습니다. 옷장의 상당 부분은 본인이 아니라 알고리즘이 골라 준 셈입니다.", "스크롤 한 번이 결제 한 번으로 이어지는 구조입니다. 피드에서 브랜드를 알게 되는 고객이야말로 광고 담당자들이 가장 사랑하는 고객입니다."],
-      friends: ["친구와 지인에게서 알게 된다고 하셨습니다. 좋은 친구들이지만, 그 친구들의 취향이 당신 옷장에 세를 들어 살고 있습니다.", "친구 따라 강남 가는 건 옛말입니다. 주변에서 브랜드를 알게 되는 요즘은 친구 따라 결제합니다. 그 친구들은 아마 당신 덕분에 뿌듯해하고 있을 겁니다."],
-      first: ["원래 알던 브랜드가 뜬 거라고 하셨습니다. 뜨기 전부터 알았다는 말은 모두가 하지만, 그걸 증명한 사람은 아직 한 명도 못 봤습니다.", "내가 먼저 알았다는 주장이 사실이라면 선구자입니다. 아니라면 흔한 유행 탑승객이고, 옷장은 조용히 후자 쪽에 줄을 섰습니다."],
     },
   },
   timeless_q: {
@@ -1164,20 +1116,6 @@ export function brandTrio(a: Analysis): { kind: "spend" | "count" | "recent" | "
   ];
 }
 
-/** 옷장 벌 수 맞히기: 정답 하나와 적당히 떨어진 숫자 둘(예: 40·60·90) */
-function countChoices(n: number, r: Rng): number[] {
-  const shapes = [
-    [1, 1.5, 2.2],
-    [0.45, 0.7, 1],
-    [0.65, 1, 1.5],
-  ];
-  const round = (x: number) => (x >= 40 ? Math.round(x / 5) * 5 : Math.round(x));
-  const nums = r.pick(shapes).map((k) => (k === 1 ? n : round(n * k)));
-  const gap = Math.max(3, Math.round(n * 0.2));
-  const ok = nums.every((x, i) => i === 0 || x - nums[i - 1] >= gap);
-  return ok ? nums : [Math.max(1, n - 2 * gap), n, n + 2 * gap].map((x, i) => (i === 1 ? x : round(x)));
-}
-
 const BUDGET: Record<string, number> = { b10: 100_000, b30: 300_000, b100: 1_000_000 };
 
 const ALWAYS_ASK = new Set(["quiz", "drop_item", "brand_best", "band_quiz", "three_500"]);
@@ -1336,15 +1274,6 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
     const reactions = Object.fromEntries(trio.map((b) => [b.label, f(r.pick(tx.react[b.kind]), { count: b.count })]));
     // 좋아하는 브랜드를 고른 답은 결과 글에 넣지 않는다(즉석 반응만).
     return { ...base, options: r.shuffle(options), reactions, roast: {}, scoreKey: Object.fromEntries(trio.map((b) => [b.label, b.kind])) };
-  }
-  if (q.id === "count_guess") {
-    const n = Number(vars.n);
-    const nums = countChoices(n, r);
-    const options = nums.map((x) => ({ id: String(x), label: `${x}벌` }));
-    const kindOf = (x: number) => (x < n ? "under" : x === n ? "right" : "over");
-    const reactions = Object.fromEntries(nums.map((x) => [String(x), f(r.pick(tx.react[kindOf(x)]))]));
-    const roast = roastMap(nums.map((x) => [String(x), roastOf(kindOf(x))]));
-    return { ...base, options, reactions, roast, scoreKey: Object.fromEntries(nums.map((x) => [String(x), kindOf(x)])) };
   }
   const options = q.options.map((id) => ({ id, label: tx.options[id] ?? id }));
   const reactKey = (id: string) => {
