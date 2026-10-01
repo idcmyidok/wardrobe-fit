@@ -8,6 +8,7 @@ import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { buttonClassName } from "@/components/ui/button";
 import { MIN_CLOTHES, ROAST_COPY, tooFew, type RoastCopy } from "@/lib/roast/copy";
 import { bubblesOf } from "@/lib/roast/bubbles";
+import { hasOrderHandoff } from "@/lib/import/order-handoff";
 import { wardrobeHash } from "@/lib/roast/hash";
 import type { RoastFinish, RoastQuestion, RoastReport, RoastResult, RoastScript, RoastStart } from "@/lib/roast/types";
 import { notifyUsageChanged } from "@/lib/usage";
@@ -64,6 +65,7 @@ const koreanDate = (iso: string) =>
  * 주문내역 훈수는 옷장을 보지 않고, 결과도 저장하지 않는다(새로고침하면 처음부터).
  */
 export function RoastView({ initialResult, copy = ROAST_COPY, orders }: { initialResult: RoastResult | null; copy?: RoastCopy; orders?: OrderCopy }) {
+  const router = useRouter();
   const { garments, signedIn } = useWardrobe();
   const clothes = orders ? MIN_CLOTHES : garments.filter((g) => g.categoryId !== "hat" && g.categoryId !== "shoes").length;
   const [result, setResult] = useState<RoastResult | null>(initialResult);
@@ -174,6 +176,13 @@ export function RoastView({ initialResult, copy = ROAST_COPY, orders }: { initia
                     setMode("name");
                   }}
                 />
+                {orders && signedIn && hasOrderHandoff() && (
+                  <div className="mt-8 flex justify-center">
+                    <button type="button" className={buttonClassName({ variant: "primary", size: "lg" })} onClick={() => router.push("/wardrobe/import-orders?from=roast")}>
+                      분석한 제품 전부 옷장에 넣기
+                    </button>
+                  </div>
+                )}
               </FreshResult>
             )}
           </>
