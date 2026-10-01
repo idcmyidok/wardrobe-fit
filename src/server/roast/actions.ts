@@ -105,7 +105,7 @@ export async function finishRoast(input: { seed: number; name: string | null; ag
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
     const texts = await getRoastTexts(s.supabase);
     const a = analyze(s.garments, body, usdRate, new Date(), texts.score.rules as Partial<ScoreRules> | undefined);
-    if (a.clothesTotal < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 10개 이상일 때 분석할 수 있습니다." };
+    if (a.clothesTotal < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 20개 이상일 때 분석할 수 있습니다." };
     const plan = buildScript(a, seed, name, texts, age);
     const composed = composeResult(a, seed, texts);
     const report = buildReport(a, name, seed, texts.report, plan.asked, answers, texts.score, age);

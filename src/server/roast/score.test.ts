@@ -148,4 +148,36 @@ describe("옷장 점수(점수 계획서)", () => {
     expect(SCORE_DELTAS.quiz).toEqual({ right: 0, wrong: -9 });
     expect(SCORE_DELTAS.band_quiz).toEqual({ right: 0, wrong: -9 });
   });
+  it("무채색뿐인데 고급 브랜드 없음: 95% 이상 -12, 85~95% -6", () => {
+    const part = (colored: number) => {
+      const list = Array.from({ length: 20 }, (_, i) => g(i, { brand: "UNIQLO", colorName: i < colored ? "네이비" : "블랙" }));
+      return scoreWardrobe(analyze(list, null, 1360, now), { age: null }).parts.find((p) => p.id === "basic_mass")?.delta;
+    };
+    expect(part(0)).toBe(-12);
+    expect(part(2)).toBe(-6);
+    expect(part(5)).toBeUndefined();
+  });
+
+  it("옷이 20벌 이하면 -4, 신발이 2켤레 이하이거나 전부 운동화면 -5", () => {
+    const shoe = (i: number, sub = "shoes.sneakers") => g(100 + i, { categoryId: "shoes", subcategoryId: sub, productName: `신발 ${i}` });
+    const tops = (n: number) => Array.from({ length: n }, (_, i) => g(i));
+    const part = (list: Garment[], id: string) => scoreWardrobe(analyze(list, null, 1360, now), { age: null }).parts.find((p) => p.id === id)?.delta;
+    expect(part(tops(20), "thin")).toBe(-4);
+    expect(part(tops(21), "thin")).toBeUndefined();
+    expect(part([...tops(12), shoe(0), shoe(1)], "sneakers_only")).toBe(-5);
+    expect(part([...tops(12), shoe(0), shoe(1, "shoes.dress"), shoe(2)], "sneakers_only")).toBeUndefined();
+    expect(part([...tops(12), shoe(0), shoe(1), shoe(2)], "sneakers_only")).toBe(-5);
+  });
+
+  it("계절 구멍: 한 계절이라도 상의×하의×신발 코디가 12개 미만이면 -5(계절을 안 적은 옷은 사계절)", () => {
+    const set = (tops: number, bottoms: number, shoes: number, over: Partial<Garment> = {}) => [
+      ...Array.from({ length: tops }, (_, i) => g(i, over)),
+      ...Array.from({ length: bottoms }, (_, i) => g(50 + i, { categoryId: "bottom", subcategoryId: "bottom.chino", productName: `팬츠 ${i}`, ...over })),
+      ...Array.from({ length: shoes }, (_, i) => g(100 + i, { categoryId: "shoes", subcategoryId: i % 2 ? "shoes.dress" : "shoes.sneakers", productName: `신발 ${i}`, ...over })),
+    ];
+    const gap = (list: Garment[]) => scoreWardrobe(analyze(list, null, 1360, now), { age: null }).parts.find((p) => p.id === "season_gap")?.delta;
+    expect(gap(set(5, 2, 1))).toBe(-5); // 10코디
+    expect(gap(set(6, 2, 2))).toBeUndefined(); // 24코디
+    expect(gap(set(6, 2, 2, { seasons: ["summer"] }))).toBe(-5); // 여름 옷뿐이라 다른 계절은 0코디
+  });
 });

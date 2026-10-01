@@ -126,7 +126,7 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
       add("accent", R.accent, `무채색 ${P(basic)} (${R.accent_basic_pct}% 이상) + 유채색 ${accentN}벌 (1~${R.accent_max_n}벌)`, colored.filter((i) => !i.achromatic));
     if (basic * 100 >= R.basic_pct && luxN >= R.basic_lux_n) add("basic_lux", R.basic_lux, `무채색 ${P(basic)} (${R.basic_pct}% 이상) + 좋은 브랜드(디자이너·컨템포러리 중고가·진짜 헤리티지) ${luxN}벌 (${R.basic_lux_n}벌 이상)`, known.filter(isGood));
     if (basic * 100 >= R.basic_pct && enough && !known.some(isNice))
-      add("basic_mass", -R.basic_mass, `무채색 ${P(basic)} (${R.basic_pct}% 이상) + 고급 브랜드(컨템포러리 이상이거나 중고가 이상) 0벌`, known);
+      add("basic_mass", -(basic * 100 >= R.basic_full_pct ? R.basic_mass : R.basic_mass_mid), `무채색 ${P(basic)} (${R.basic_pct}% 이상 -${R.basic_mass_mid}, ${R.basic_full_pct}% 이상 -${R.basic_mass}) + 고급 브랜드(컨템포러리 이상이거나 중고가 이상) 0벌`, known);
   }
 
   // 구매 시기: 구매일을 적은 옷 8벌 이상일 때만
@@ -175,7 +175,9 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
   if (leather.length) add("leather_shoes", R.leather_shoes, `구두·부츠 ${leather.length}켤레`, leather);
   const shoeSubs = new Set(shoes.map((i) => i.sub));
   if (["shoes.sneakers", "shoes.sports", "shoes.dress", "shoes.boots", "shoes.sandals"].every((s) => shoeSubs.has(s))) add("shoe_set", R.shoe_set, "스니커즈·스포츠화·구두·부츠·샌들이 다 있음", shoes);
-  if (shoes.length >= 3 && shoes.every((i) => i.sub === "shoes.sneakers" || i.sub === "shoes.sports")) add("sneakers_only", -R.sneakers_only, `신발 ${shoes.length}켤레가 모두 스니커즈·스포츠화`, shoes);
+  const allSneakers = shoes.length > 0 && shoes.every((i) => i.sub === "shoes.sneakers" || i.sub === "shoes.sports");
+  if (shoes.length <= R.shoes_few_n || allSneakers) add("sneakers_only", -R.sneakers_only, shoes.length <= R.shoes_few_n ? `신발 ${shoes.length}켤레 (${R.shoes_few_n}켤레 이하)` : `신발 ${shoes.length}켤레가 모두 스니커즈·스포츠화`, shoes);
+  if (a.clothesTotal <= R.thin_n) add("thin", -R.thin, `모자·신발 뺀 옷 ${a.clothesTotal}벌 (${R.thin_n}벌 이하)`);
 
   const krNew = known.filter((i) => i.brand!.country === "한국" && (i.brand!.founded ?? 0) >= a.now.getFullYear() - R.kr_new_age && (isTopDesigner(i) || isMidTier(i)) && i.brand!.pop <= 2);
   if (krNew.length >= R.kr_new_n) add("kr_new", R.kr_new, `설립 ${R.kr_new_age}년 이내 국내 디자이너 브랜드(대중성 낮음) ${krNew.length}벌 (${R.kr_new_n}벌 이상)`, krNew);
@@ -253,15 +255,16 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
     const bigSide = look.find((p) => p.bigShare === bigMax)!;
     if (trimMax * 100 >= R.fit_trim_pct) add("fit_trim", R.fit_trim, `${side} 슬림·레귤러핏 ${P(trimMax)} (${R.fit_trim_pct}% 이상)`, trimSide.trim);
     else if (bigMax * 100 >= R.fit_big_pct) add("fit_big", -R.fit_big, `${side} 세미오버핏 이상 ${P(bigMax)} (${R.fit_big_pct}% 이상)`, bigSide.big);
-    if (fitContrast(fit)) add("fit_contrast", R.fit_contrast, "상의·하의 각 3벌 이상에서 한쪽은 슬림·레귤러, 한쪽은 큰 핏이 절반 이상", [...fit.top.trim, ...fit.top.big, ...fit.bottom.trim, ...fit.bottom.big]);
   }
   const logo = share(clothes, isLogo);
   if (clothes.length && logo * 100 >= R.logo_pct) add("logo", -R.logo, `제품명에 '로고'가 든 옷 ${P(logo)} (${R.logo_pct}% 이상)`, clothes.filter(isLogo));
-  const seasoned = items.filter((i) => i.seasons.length);
-  if (seasoned.length >= 8) {
-    const counts = FOUR_SEASONS.map((s) => seasoned.filter((i) => wearsInSeason(i.seasons, s.id)).length);
-    if (Math.min(...counts) * 100 < Math.max(...counts) * R.season_gap_pct)
-      add("season_gap", -R.season_gap, `가장 적은 계절 ${Math.min(...counts)}벌이 가장 많은 계절 ${Math.max(...counts)}벌의 ${R.season_gap_pct}% 미만`);
+  // 계절 구멍: 계절마다 입을 수 있는 코디(상의×하의×신발)가 season_combo_min개 미만이면 감점(계절을 안 적은 옷은 사계절)
+  const inSeason = (i: Item, s: (typeof FOUR_SEASONS)[number]) => !i.seasons.length || wearsInSeason(i.seasons, s.id);
+  const combos = FOUR_SEASONS.map((s) => ["top", "bottom", "shoes"].reduce((n, cat) => n * items.filter((i) => i.cat === cat && inSeason(i, s)).length, 1));
+  const fewest = Math.min(...combos);
+  if (fewest < R.season_combo_min) {
+    const worst = FOUR_SEASONS[combos.indexOf(fewest)];
+    add("season_gap", -R.season_gap, `${worst.name}에 입을 수 있는 코디(상의×하의×신발) ${fewest}개 (${R.season_combo_min}개 미만)`);
   }
 
   // 3. 나이에 맞는 옷: 옷마다 산 때 나이 구간으로 나눠 구간별로 규칙을 적용하고, 그 구간 옷 비중만큼 반영
@@ -360,7 +363,8 @@ export const SCORE_PART_NAME: Record<string, string> = {
   good_outer: "좋은 아우터",
   leather_shoes: "구두·부츠",
   shoe_set: "신발 구색",
-  sneakers_only: "운동화뿐",
+  sneakers_only: "신발이 적거나 운동화뿐",
+  thin: "옷이 적음",
   kr_new: "신생 국내 브랜드",
   jp: "일본 브랜드",
   repro: "복각 데님",
@@ -376,9 +380,8 @@ export const SCORE_PART_NAME: Record<string, string> = {
   misfit: "안 맞는 옷",
   fit_trim: "슬림·레귤러핏",
   fit_big: "큰 핏 쏠림",
-  fit_contrast: "위아래 핏 대비",
   logo: "로고 옷",
-  season_gap: "계절 불균형",
+  season_gap: "계절 코디 부족",
   age_street: "나이: 스트릿",
   age_young_street: "나이: 스트릿",
   age_mature: "나이: 성숙한 브랜드",

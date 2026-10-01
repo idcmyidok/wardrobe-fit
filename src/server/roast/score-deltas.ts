@@ -167,17 +167,27 @@ export const SCORE_RULES = {
   fit_trim: 3,
   fit_big_pct: 60,
   fit_big: 2,
-  fit_contrast: 2,
   misfit_each: 2,
   misfit_max: 10,
   gap_months: 4,
   gap_max: 12,
   basic_mass: 12,
+  /** 무채색이 basic_full_pct% 이상이면 basic_mass, basic_pct~그 미만이면 basic_mass_mid */
+  basic_full_pct: 95,
+  basic_mass_mid: 6,
   lux_mismatch: 10,
-  sneakers_only: 7,
+  /** 신발이 shoes_few_n켤레 이하이거나 전부 운동화·스포츠화: 감점 */
+  shoes_few_n: 2,
+  sneakers_only: 5,
+  /** 모자·신발 뺀 옷이 이 벌 수 이하: 감점 */
+  /** 최종 점수 보정: 낮을수록 더 올려 줌 (점수 + (100-점수)×이 값). 옷장·주문내역 공통 */
+  lift: 0.12,
+  thin_n: 20,
+  thin: 4,
   logo_pct: 20,
   logo: 15,
-  season_gap_pct: 25,
+  /** 계절 구멍: 한 계절이라도 입을 수 있는 코디(상의×하의×신발)가 이 수 미만이면 감점. 계절을 안 적은 옷은 사계절로 본다 */
+  season_combo_min: 12,
   season_gap: 5,
   spend_a_won: 20,
   spend_a: 2,
