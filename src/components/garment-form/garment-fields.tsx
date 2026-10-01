@@ -300,7 +300,7 @@ export function GarmentFields({
                   </div>
                 </div>}
                 <div className="field col-span-full">
-                  <label htmlFor={i("f-url")}>상품 링크</label>
+                  <label htmlFor={i("f-url")}>상품 링크 <span className="text-xs font-normal text-neutral-700">(가능한 실제 구매 링크를 적어주세요. 옷장 훈수에서 정확한 분석에 도움이 됩니다)</span></label>
                   <input id={i("f-url")} className="input text-neutral-800" placeholder="선택 입력" aria-invalid={Boolean(fieldErrors.productUrl)} aria-describedby={fieldErrors.productUrl ? i("e-productUrl") : undefined} value={form.url} onChange={(e) => update("url", e.target.value)} />
                   <FieldError id={i("e-productUrl")} message={fieldErrors.productUrl} />
                 </div>
