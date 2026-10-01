@@ -4,7 +4,7 @@ import type { Analysis, Item } from "../analyze";
 import { splitLead, tryFill, type ReportOverride } from "../report";
 import { rng, won } from "../text";
 import type { RoastTexts } from "../texts";
-import { avgPrice, busiestMonth, isHidden, isRanking, isStandard, likesOf, orderRules, returnStats, thirds, topTag } from "./metrics";
+import { avgPrice, busiestMonth, isHidden, isRanking, isStandard, likesOf, orderRules, returnStats, styleShiftOf, thirds } from "./metrics";
 import type { OrderRules } from "./rules";
 import type { OrderScore } from "./score";
 import { ORDER_PART_NAME } from "./texts";
@@ -62,15 +62,14 @@ export function orderOverride(a: Analysis, seed: number, T: RoastTexts, score: O
   // 시기별 변화(스타일 → 랭킹템 비율 → 가격대 중 뚜렷한 하나)
   const t = thirds(a, R.shift_min_n);
   if (t) {
-    const o = topTag(t.old);
-    const n = topTag(t.recent);
+    const shift = styleShiftOf(a, R.shift_min_n);
     const share = (list: Item[]) => pct(list.filter((i) => isRanking(a, i, R)).length, list.length);
     const oldPct = share(t.old);
     const newPct = share(t.recent);
     const oldAvg = avgPrice(t.old);
     const newAvg = avgPrice(t.recent);
     const base = { from: t.from, to: t.to };
-    if (o && n && o.tag !== n.tag) put("o_shift", O.shift.style, { ...base, old: o.tag, new: n.tag }, t.recent);
+    if (shift) put("o_shift", O.shift.style, { ...base, old: shift.old, new: shift.new }, t.recent);
     else if (oldPct - newPct >= R.hipper_pp) put("o_shift", O.shift.hipper, { ...base, oldPct, newPct }, t.recent);
     else if (newPct - oldPct >= R.mainstream_pp) put("o_shift", O.shift.mainstream, { ...base, oldPct, newPct }, t.recent);
     else if (oldAvg > 0 && newAvg >= oldAvg * (1 + R.pricier_pct / 100)) put("o_shift", O.shift.pricier, { ...base, oldWon: won(oldAvg), newWon: won(newAvg) });

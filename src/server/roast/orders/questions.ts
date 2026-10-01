@@ -2,7 +2,7 @@ import "server-only";
 import type { Analysis, Item } from "../analyze";
 import { QUESTIONS, type QuestionDef } from "../questions";
 import { won } from "../text";
-import { busiestMonth, isRanking, isStandard, likesOf, orderRules, recentItems, returnStats, thirds, topTag } from "./metrics";
+import { busiestMonth, isRanking, isStandard, likesOf, orderRules, recentItems, returnStats, styleShiftOf } from "./metrics";
 
 /**
  * 주문내역 훈수 질문. 조건은 여기, 문구는 orders/texts.ts(ORDER_Q_TEXT, 관리자 "주문내역 훈수" 탭)에 있다.
@@ -23,11 +23,8 @@ const brandVip = (a: Analysis) => {
 const cheapest = (a: Analysis) =>
   a.clothes.filter((i) => i.price != null && i.price >= 5_000 && i.price <= 20_000 && i.subName).sort((x, y) => x.price! - y.price!)[0] ?? null;
 const styleShift = (a: Analysis) => {
-  const t = thirds(a, R.shift_min_n);
-  if (!t) return null;
-  const o = topTag(t.old);
-  const n = topTag(t.recent);
-  return o && n && o.tag !== n.tag ? { old: o.tag, new: n.tag, list: t.recent } : null;
+  const s = styleShiftOf(a, R.shift_min_n);
+  return s ? { old: s.old, new: s.new, from: s.from, to: s.to, list: s.list } : null;
 };
 
 export const ORDER_QUESTIONS: QuestionDef[] = [
@@ -76,7 +73,7 @@ export const ORDER_QUESTIONS: QuestionDef[] = [
   { id: "o_shift", bucket: "o_shift", base: 0.8, options: ["taste", "trend", "both"],
     when: (a) => {
       const s = styleShift(a);
-      return s ? { old: s.old, new: s.new } : null;
+      return s ? { from: s.from, to: s.to, old: s.old, new: s.new } : null;
     },
     photos: (a) => photoIds(styleShift(a)?.list ?? []).slice(0, 6) },
   { id: "o_cheapest", bucket: "o_money", base: 0.6, options: ["wear", "once", "lost"],
@@ -85,8 +82,12 @@ export const ORDER_QUESTIONS: QuestionDef[] = [
       return i ? { sub: i.subName!, priceWon: won(i.price!) } : null;
     },
     photos: (a) => photoIds([cheapest(a)].filter((i): i is Item => Boolean(i))) },
-  { id: "o_grade", bucket: "o_shop", base: 0.55, options: ["top", "mid", "dont_care"],
-    when: (a) => ((a.orders?.orders ?? 0) >= 30 ? { orders: a.orders!.orders } : null) },
+  // 다른 옷과 결이 다른 옷(옷장 훈수의 odd_photo와 같은 고르기)을 그 이유와 함께 묻는다.
+  { id: "o_odd", bucket: "odd", base: 0.9, options: ["mine", "gift", "dunno"],
+    when: (a) => (a.oddOne?.item.hasPhoto ? { brand: a.oddOne.item.brandLabel || "이 옷", name: a.oddOne.item.g.productName, reason: a.oddOne.reason || "다른 옷들과 거의 안 겹치는 점" } : null),
+    photos: (a) => (a.oddOne ? [a.oddOne.item.id] : []) },
+  { id: "o_grade", bucket: "o_shop", base: 0.55, options: ["top", "mid", "low", "dont_care"],
+    when: (a) => ((a.orders?.orders ?? 0) >= 100 ? { orders: a.orders!.orders } : null) },
   // 옷장 훈수와 같은 질문
   ...QUESTIONS.filter((q) => q.id === "quiz" || q.id === "food_vs_clothes" || q.id === "fashionable_q"),
 ];

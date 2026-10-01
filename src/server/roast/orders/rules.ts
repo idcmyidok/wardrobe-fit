@@ -173,5 +173,5 @@ export const ORDER_DELTAS: Record<string, Record<string, number>> = {
   o_courier: { friends: -2, bundle: -1, just_now: 0 },
   o_shift: { taste: 1, trend: -2, both: 0 },
   o_cheapest: { wear: 1, once: -2, lost: -2 },
-  o_grade: { top: -2, mid: 0, dont_care: 1 },
+  o_grade: { top: -2, mid: 0, low: 1, dont_care: 1 },
 };
