@@ -29,14 +29,16 @@ export const orderItemSchema = z.object({
   likes: z.number().int().min(0).max(1e9).nullable(),
   reviews: z.number().int().min(0).max(1e9).nullable(),
   image: z.string().regex(IMAGE_RE).nullable(),
+  /** 산 사이즈의 실측(상품 사이즈표에서 찾은 값, "chest:55|length:70"). 같은 옷 반복 판단에만 쓴다. */
+  measure: z.string().regex(/^[a-zA-Z]+:\d{1,3}(\.\d)?(\|[a-zA-Z]+:\d{1,3}(\.\d)?){0,9}$/).nullable().default(null),
 });
-export type OrderRoastItem = z.infer<typeof orderItemSchema>;
+export type OrderRoastItem = z.input<typeof orderItemSchema>;
 export const orderListSchema = z.array(orderItemSchema).max(3000);
 
 /** 목록 → 분석용 옷과 주문내역 정보. 옷은 구매 확정·교환한 것 중 분류가 있는 것만. */
 export function toGarments(list: OrderRoastItem[]): { garments: Garment[]; ctx: OrderContext } {
   const garments: Garment[] = [];
-  const ctx: OrderContext = { orders: new Set(list.map((x) => x.order)).size, exchanged: 0, exchangedIds: [], events: [], pop: {} };
+  const ctx: OrderContext = { orders: new Set(list.map((x) => x.order)).size, exchanged: 0, exchangedIds: [], events: [], pop: {}, orderOf: {}, measure: {} };
   list.forEach((x, k) => {
     if (x.status === "returned" || x.status === "cancelled") {
       ctx.events.push({ brand: x.brand, name: x.name, price: x.price, date: x.date, status: x.status, categoryId: x.categoryId });
@@ -49,6 +51,8 @@ export function toGarments(list: OrderRoastItem[]): { garments: Garment[]; ctx: 
       ctx.exchangedIds.push(id);
     }
     ctx.pop[id] = { likes: x.likes, reviews: x.reviews };
+    ctx.orderOf[id] = x.order;
+    ctx.measure[id] = x.measure ?? null;
     garments.push({
       id,
       categoryId: x.categoryId,

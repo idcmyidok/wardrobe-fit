@@ -41,15 +41,15 @@ const priceOf = (i: Item) => i.brand?.price ?? 0;
 /** 대중성 1(컬트)~3(패션 관심층)만. 대중적(4)·매우 대중적(5)은 디자이너·컨템포러리·스트릿 가점에서 뺀다. */
 const notPopular = (i: Item) => (i.brand?.pop ?? 5) <= 3;
 /** 디자이너 가점(1벌당 +2): 명품, 또는 디자이너 포지션이면서 가격 고가(5) 이상 */
-const isTopDesigner = (i: Item) => i.groups.includes("luxury") || (i.groups.includes("designer") && priceOf(i) >= 5 && notPopular(i));
+export const isTopDesigner = (i: Item) => i.groups.includes("luxury") || (i.groups.includes("designer") && priceOf(i) >= 5 && notPopular(i));
 /** 중고가 가점(1벌당 +1): 디자이너 중고가, 컨템포러리·스트릿 중고가(4) 이상. 위 디자이너 가점과 겹치지 않는다. */
-const isMidTier = (i: Item) =>
+export const isMidTier = (i: Item) =>
   !isTopDesigner(i) && notPopular(i) && ((i.groups.includes("designer") && priceOf(i) === 4) || ((i.groups.includes("contemporary") || i.groups.includes("street")) && priceOf(i) >= 4));
 const isHeritage = (i: Item) => Boolean(i.brand && isTrueHeritage(i.brand));
 /** 좋은 브랜드(디자이너 가점·중고가 가점·진짜 헤리티지) */
 const isGood = (i: Item) => isTopDesigner(i) || isMidTier(i) || isHeritage(i);
 /** 고급 브랜드: 컨템포러리 이상 포지션이거나 중고가 이상(기본색뿐인 옷장 감점용) */
-const isNice = (i: Item) => i.groups.some((g) => g === "designer" || g === "luxury" || g === "contemporary") || priceOf(i) >= 4;
+export const isNice = (i: Item) => i.groups.some((g) => g === "designer" || g === "luxury" || g === "contemporary") || priceOf(i) >= 4;
 const isStreet = (i: Item) => i.groups.includes("street") || (i.brand?.hype ?? 0) >= 4;
 const isMature = (i: Item) => i.groups.includes("contemporary") || (i.brand?.heritage ?? 0) >= 4 || (i.brand?.formal ?? 0) >= 3.5;
 const isFormalLux = (i: Item) => i.groups.includes("luxury") || (i.brand?.formal ?? 0) >= 3.5;

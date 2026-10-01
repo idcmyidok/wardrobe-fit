@@ -1,14 +1,15 @@
 import "server-only";
-import type { Analysis, Item } from "../analyze";
+import { colorCounted, type Analysis, type Item } from "../analyze";
 import { brandLabels, MUSINSA_POPULAR, musinsaLikesCut } from "../brands";
-import { ageAt, bandName, bandOf, type ScorePart } from "../score";
+import { ageAt, bandName, bandOf, isMidTier, isNice, isTopDesigner, type ScorePart } from "../score";
 import { SCORE_RULES } from "../score-deltas";
 import { won } from "../text";
 import { avgPrice, busiestMonth, isHidden, isRanking, isStandard, orderRules, returnStats, thirds, topTag } from "./metrics";
 import { ORDER_AGE_RULES, type OrderRules } from "./rules";
 
 /**
- * 주문내역 훈수 점수(계획서 /mnt/project-files/roast/order-roast-plan.md). 옷장 훈수(score.ts)와 기준이 다르다.
+ * 주문내역 훈수 점수(점수 계산표 /mnt/project-files/roast/order-score-table.md). 옷장 훈수 점수 기준 v4(score.ts)를 바탕으로
+ * 주문내역에만 있는 것(상품 하트·후기, 반품·취소, 주문일)을 더했다.
  * 질문·퀴즈 답의 증감은 여기서 더하지 않는다(report.ts).
  */
 
@@ -22,7 +23,8 @@ export interface OrderScore {
   age: { kind: OrderAgeKind; pct: number; age: number } | null;
 }
 
-const isDesigner = (i: Item) => i.groups.some((g) => g === "designer" || g === "luxury" || g === "contemporary");
+/** 기본 상의: 반팔·긴팔 티, 맨투맨, 후드 */
+const BASIC_TOPS = new Set(["top.short_tee", "top.long_tee", "top.sweatshirt", "top.hoodie"]);
 const isStreet = (i: Item) => i.groups.includes("street") || (i.brand?.hype ?? 0) >= 4;
 const isMature = (i: Item) => i.groups.includes("contemporary") || (i.brand?.heritage ?? 0) >= 4 || (i.brand?.formal ?? 0) >= 3.5;
 const isLogo = (i: Item) => /로고|logo/i.test(i.g.productName);
@@ -66,8 +68,12 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   const byBrand = groupBy(named, (i) => i.brand?.name ?? i.brandLabel.toLowerCase());
 
   // 1. 더하는 점수 ------------------------------------------------------------
-  const designers = known.filter(isDesigner);
-  add("designer", Math.min(R.designer_max, designers.length * R.designer_each), `디자이너·명품·컨템포러리 ${designers.length}벌 × ${R.designer_each}점, 최대 ${R.designer_max}점`, designers);
+  const designers = known.filter(isTopDesigner);
+  add("designer", Math.min(R.designer_max, designers.length * R.designer_each), `명품·디자이너(가격 고가 이상, 대중적 제외) ${designers.length}벌 × ${R.designer_each}점, 최대 ${R.designer_max}점`, designers);
+  const midTiers = known.filter(isMidTier);
+  add("mid", Math.min(R.mid_max, midTiers.length * R.mid_each), `컨템포러리·디자이너·스트릿 중고가 이상(대중적 제외) ${midTiers.length}벌 × ${R.mid_each}점, 최대 ${R.mid_max}점`, midTiers);
+  const noLikes = known.filter((i) => !i.brand!.likes && i.brand!.price >= 4);
+  add("nolikes", Math.min(R.nolikes_max, noLikes.length * R.nolikes_each), `무신사 좋아요 없는 중고가 이상 브랜드 ${noLikes.length}벌 × ${R.nolikes_each}점, 최대 ${R.nolikes_max}점`, noLikes);
   const hiddenList = items.filter(hidden);
   const hiddenShare = items.length ? hiddenList.length / items.length : 0;
   add("hidden", upTo(hiddenShare, R.hidden_full, R.hidden_max), `숨은 상품(하트 ${R.hidden_likes_h * 100}개 미만) ${P(hiddenShare)}, ${R.hidden_full}%면 만점 ${R.hidden_max}점`, hiddenList);
@@ -120,11 +126,29 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   const rankList = items.filter(ranking);
   const rankShare = items.length ? rankList.length / items.length : 0;
   add("rank", -over(rankShare, R.rank_from, R.rank_per10, R.rank_max), `랭킹템(하트 ${(R.rank_likes_k * 1000).toLocaleString()}개·후기 ${(R.rank_reviews_h * 100).toLocaleString()}개 이상) ${P(rankShare)} (${R.rank_from}% 넘는 10%마다 −${R.rank_per10}, 최대 −${R.rank_max})`, rankList);
+  if (enough) {
+    // 무신사 좋아요가 많고 고가 미만이면서 대중적인 브랜드 쏠림(무신사 스탠다드는 따로 감점하므로 뺀다)
+    const isPopular = (i: Item) => !isStandard(i) && (i.brand!.likes ?? 0) >= R.popular_likes_10k * 10_000 && i.brand!.price < 5 && i.brand!.pop >= 4;
+    const popular = share(known, isPopular);
+    add("popular", -over(popular, R.popular_from, R.popular_per10, R.popular_max), `좋아요 ${(R.popular_likes_10k * 10_000).toLocaleString()} 이상·고가 미만·대중적 브랜드(스탠다드 제외) ${P(popular)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max})`, known.filter(isPopular));
+    const isTrendy = (i: Item) => i.brand!.hype >= 4 && i.brand!.pop >= 4;
+    const trendy = share(known, isTrendy);
+    if (trendy * 100 >= R.trendy_pct) add("trendy", -R.trendy, `하이프·대중성 모두 높은 브랜드 ${P(trendy)} (${R.trendy_pct}% 이상)`, known.filter(isTrendy));
+    // 스타일 모르고 산 명품: 디자이너·럭셔리가 1~2벌뿐인데 그 스타일이 나머지 주문의 주력 스타일(상위 2개)과 안 겹침
+    const lux = known.filter((i) => i.groups.includes("designer") || i.groups.includes("luxury"));
+    if (lux.length >= 1 && lux.length <= 2) {
+      const rest = new Map<string, number>();
+      for (const i of known.filter((x) => !lux.includes(x))) for (const t of new Set(i.brand!.tags)) rest.set(t, (rest.get(t) ?? 0) + 1);
+      const main = [...rest.entries()].sort((x, y) => y[1] - x[1]).slice(0, 2).map(([t]) => t);
+      if (main.length && lux.every((i) => !i.brand!.tags.some((t) => main.includes(t))))
+        add("lux_mismatch", -R.lux_mismatch, `디자이너·명품 ${lux.length}벌의 스타일이 주력 스타일(${main.join("·")})과 안 겹침`, lux);
+    }
+  }
   if (named.length >= 8) {
-    const w = (i: Item) => (opts.age != null && ageAt(opts.age, i, now) <= 26 ? 1 / Math.max(R.musinsa_young_div, 1) : 1);
+    const w = (i: Item) => (opts.age != null && ageAt(opts.age, i, now) <= R.musinsa_young_age ? 1 / Math.max(R.musinsa_young_div, 1) : 1);
     const list = named.filter(isMusinsa);
     const m = list.reduce((s, i) => s + w(i), 0) / named.length;
-    add("musinsa", -over(m, R.musinsa_from, R.musinsa_per10, R.musinsa_max), `무신사 인기 브랜드(스탠다드·SPA 제외) ${P(m)} (${R.musinsa_from}% 넘는 10%마다 −${R.musinsa_per10}, 최대 −${R.musinsa_max})`, list);
+    add("musinsa", -over(m, R.musinsa_from, R.musinsa_per10, R.musinsa_max), `무신사 인기 브랜드(스탠다드·SPA 제외) ${P(m)} (${R.musinsa_from}% 넘는 10%마다 −${R.musinsa_per10}, 최대 −${R.musinsa_max}${opts.age != null ? `, ${R.musinsa_young_age}세 이하에 산 옷은 1/${R.musinsa_young_div}로 셈` : ""})`, list);
   }
   const standard = clothes.filter(isStandard);
   const standardShare = clothes.length ? standard.length / clothes.length : 0;
@@ -137,11 +161,14 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   if (month && month.pct >= R.sale_month_pct) add("sale_month", -R.sale_month, `해마다 ${month.month}월에 산 옷 ${month.pct}% (${R.sale_month_pct}% 이상)`, month.list);
   const avg = avgPrice(clothes);
   if (avg > 0 && avg < R.cheap_won * 10_000) add("cheap", -R.cheap, `옷 한 벌 평균 ${won(avg)} (${R.cheap_won}만 원 미만)`);
-  // 같은 옷: 같은 상품(색만 다른 것 포함)의 3벌째부터, 세부분류·색이 같은 묶음의 3벌째부터
-  const sameProduct = [...groupBy(items, (i) => (i.g.productName ? `${i.brandLabel}|${i.g.productName}`.toLowerCase() : null)).values()].filter((l) => l.length > 2);
-  const sameKind = [...groupBy(clothes.filter((i) => i.sub && i.color), (i) => `${i.sub}|${i.color}`).values()].filter((l) => l.length > 2);
-  const copies = sameProduct.reduce((n, l) => n + l.length - 2, 0) + sameKind.reduce((n, l) => n + l.length - 2, 0);
-  add("dup", -Math.min(R.dup_max, copies * R.dup_each), `같은 상품 3벌째부터, 같은 종류·색 3벌째부터 ${copies}벌 × ${R.dup_each}점, 최대 ${R.dup_max}점`, [...new Set([...sameProduct.flat(), ...sameKind.flat()])]);
+  // 같은 옷 반복: 같은 상품(색만 다른 것 포함)을 같은 실측(실측을 못 찾으면 같은 사이즈)으로 다른 주문에서 또 산 것.
+  // 한 주문의 팩(2PACK 등)은 한 번으로 본다.
+  const fitKey = (i: Item) => a.orders?.measure[i.id] ?? (i.g.sizeLabel ? `size:${i.g.sizeLabel.toUpperCase().replace(/\s+/g, "")}` : null);
+  const sameProduct = [...groupBy(items, (i) => (i.g.productName && fitKey(i) ? `${i.brandLabel}|${i.g.productName}|${fitKey(i)}`.toLowerCase() : null)).values()]
+    .map((l) => [...groupBy(l, (i) => String(a.orders?.orderOf[i.id] ?? i.id)).values()].map((g) => g[0]))
+    .filter((l) => l.length > 1);
+  const copies = sameProduct.reduce((n, l) => n + l.length - 1, 0);
+  add("dup", -Math.min(R.dup_max, copies * R.dup_each), `같은 상품을 같은 실측(없으면 사이즈)으로 다른 주문에서 또 산 것 ${copies}벌 × ${R.dup_each}점, 최대 ${R.dup_max}점`, sameProduct.flat());
   if (rs.orders >= 8 && rs.returnPct >= R.return_high_pct) add("return_high", -R.return_high, `주문 ${rs.orders}건 중 반품 ${rs.returned}건·교환 ${rs.exchanged}건(${rs.returnPct}%, ${R.return_high_pct}% 이상)`);
   if (rs.orders >= 8 && rs.cancelPct >= R.cancel_pct) add("cancel", -R.cancel, `주문 ${rs.orders}건 중 취소 ${rs.cancelled}건(${rs.cancelPct}%, ${R.cancel_pct}% 이상)`);
   if (enough && styleTop * 100 < R.scattered_pct && named.length >= 8 && byBrand.size / named.length >= 0.7)
@@ -149,6 +176,26 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   const logo = share(clothes, isLogo);
   if (clothes.length && logo * 100 >= R.logo_pct) add("logo", -R.logo, `상품명에 '로고'가 든 옷 ${P(logo)} (${R.logo_pct}% 이상)`, clothes.filter(isLogo));
   if (shoes.length >= 3 && shoes.every((i) => i.sub === "shoes.sneakers" || i.sub === "shoes.sports")) add("sneakers_only", -R.sneakers_only, `신발 ${shoes.length}켤레가 모두 스니커즈·스포츠화`, shoes);
+  // 무채색뿐인데 고급 브랜드가 없음(데님은 색에서 뺀다)
+  const colored = items.filter(colorCounted);
+  const basic = share(colored, (i) => i.achromatic);
+  if (colored.length >= 5 && basic * 100 >= R.basic_pct && enough && !known.some(isNice))
+    add("basic_mass", -R.basic_mass, `무채색 ${P(basic)} (${R.basic_pct}% 이상) + 고급 브랜드(컨템포러리 이상이거나 중고가 이상) 0벌`, known);
+  // 새 감점(주문내역에만 있는 정보)
+  // 몰아 사기 날: 하루에 서로 다른 주문으로 옷 binge_n벌 이상(팩은 한 벌로)
+  const byDay = groupBy(items, (i) => i.date);
+  const bingeDays = [...byDay.values()].filter((l) => new Set(l.map((i) => a.orders?.orderOf[i.id] ?? i.id)).size >= R.binge_n);
+  if (bingeDays.length)
+    add("binge", -Math.min(R.binge_max, bingeDays.length * R.binge_each), `하루에 다른 주문으로 옷 ${R.binge_n}벌 이상 산 날 ${bingeDays.length}일 × ${R.binge_each}점, 최대 ${R.binge_max}점`, bingeDays.flat());
+  // 반품하고 또 사는 브랜드: 반품 2건 이상인 브랜드의 옷을 return_brand_n벌 이상 가지고 있음
+  if (rs.topBrand) {
+    const kept = items.filter((i) => i.brandLabel.toLowerCase() === rs.topBrand!.toLowerCase());
+    if (kept.length >= R.return_brand_n) add("return_brand", -R.return_brand, `${rs.topBrand} 반품 ${rs.topBrandN}건인데 가진 옷 ${kept.length}벌 (${R.return_brand_n}벌 이상)`, kept);
+  }
+  // 기본 상의만: 반팔·긴팔 티, 맨투맨, 후드 비율
+  const basicTops = clothes.filter((i) => i.sub != null && BASIC_TOPS.has(i.sub));
+  if (clothes.length >= 10 && basicTops.length / clothes.length >= R.basic_tops_pct / 100)
+    add("basic_tops", -R.basic_tops, `티셔츠·맨투맨·후드 ${basicTops.length}벌, ${P(basicTops.length / clothes.length)} (${R.basic_tops_pct}% 이상)`, basicTops);
 
   // 3. 나이에 맞는 주문: 산 때 나이 구간별로 그 구간 옷끼리 비율을 내고, 그 구간 비중만큼 반영
   let age: OrderScore["age"] = null;

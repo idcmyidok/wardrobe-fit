@@ -1,10 +1,10 @@
 /**
- * 주문내역 훈수 점수 기준(계획서 /mnt/project-files/roast/order-roast-plan.md). 관리자 "주문내역 훈수" 탭(orders.score)에서 고친다.
+ * 주문내역 훈수 점수 기준(점수 계산표 /mnt/project-files/roast/order-score-table.md, 옷장 훈수 기준 v4 바탕). 관리자 "주문내역 훈수" 탭(orders.score)에서 고친다.
  * 관리자 화면의 숫자 칸은 0~100 정수만 받으므로 큰 수(하트·후기·좋아요)는 단위를 붙여 적는다(_h: ×100, _k: ×1,000, _10k: ×10,000).
  * 비율은 %, 금액은 만 원, 점수는 정수(감점도 양수로 적는다).
  */
 export const ORDER_RULES = {
-  base: 50,
+  base: 45,
   // 랭킹템·숨은 상품 판단
   /** 상품 하트가 이 값 × 1,000 이상이면 랭킹템 */
   rank_likes_k: 10,
@@ -16,9 +16,15 @@ export const ORDER_RULES = {
   hidden_likes_h: 5,
   /** 하트를 못 읽은 상품: 브랜드 무신사 좋아요가 이 값 × 1,000 미만이면 숨은 상품 */
   hidden_brand_k: 10,
-  // 더하는 점수
+  // 더하는 점수(옷장 훈수 점수 기준 v4와 같은 것은 같은 값)
   designer_each: 2,
   designer_max: 10,
+  /** 컨템포러리·디자이너·스트릿 중고가(대중적 제외): 1벌당 가점, 최대 */
+  mid_each: 1,
+  mid_max: 5,
+  /** 무신사 좋아요 자료가 없는 중고가 이상 브랜드: 1벌당 가점, 최대 */
+  nolikes_each: 2,
+  nolikes_max: 6,
   hidden_full: 25,
   hidden_max: 8,
   style_mid_pct: 30,
@@ -37,15 +43,25 @@ export const ORDER_RULES = {
   return_low_pct: 5,
   return_low: 2,
   leather_shoes: 2,
-  spend_top_won: 30,
+  spend_top_won: 25,
   spend_top: 3,
   // 빼는 점수
   rank_from: 30,
   rank_per10: 3,
   rank_max: 12,
+  /** 무신사 좋아요 이 값 × 10,000 이상·고가 미만·대중적~매우 대중적 브랜드(무신사 스탠다드는 따로 셈) 비율 */
+  popular_likes_10k: 5,
+  popular_from: 40,
+  popular_per10: 5,
+  popular_max: 20,
+  /** 하이프·대중성 모두 높은 브랜드 비율 */
+  trendy_pct: 50,
+  trendy: 15,
   musinsa_from: 60,
   musinsa_per10: 3,
   musinsa_max: 9,
+  /** musinsa_young_age세 이하에 산 옷은 무신사 인기 브랜드 쏠림에서 1/musinsa_young_div만 센다 */
+  musinsa_young_age: 24,
   musinsa_young_div: 3,
   standard_a_pct: 25,
   standard_a: 3,
@@ -60,6 +76,7 @@ export const ORDER_RULES = {
   sale_month: 3,
   cheap_won: 3,
   cheap: 4,
+  /** 같은 옷 반복: 같은 상품을 같은 실측(없으면 같은 사이즈)으로 다른 주문에서 또 산 것 */
   dup_each: 3,
   dup_max: 15,
   return_high_pct: 25,
@@ -69,13 +86,28 @@ export const ORDER_RULES = {
   scattered_pct: 20,
   scattered: 5,
   logo_pct: 20,
-  logo: 3,
-  sneakers_only: 2,
-  spend_a_won: 20,
-  spend_a: 1,
+  logo: 15,
+  sneakers_only: 7,
+  /** 무채색 basic_pct% 이상인데 고급 브랜드(컨템포러리 이상 또는 중고가 이상)가 한 벌도 없음 */
+  basic_pct: 85,
+  basic_mass: 8,
+  /** 디자이너·명품 1~2벌의 스타일이 나머지 주력 스타일과 안 겹침 */
+  lux_mismatch: 10,
+  /** 몰아 사기 날: 하루에 서로 다른 주문으로 옷 binge_n벌 이상 산 날 1일당 감점, 최대 */
+  binge_n: 5,
+  binge_each: 2,
+  binge_max: 6,
+  /** 반품하고 또 사는 브랜드: 반품 2건 이상인 브랜드를 return_brand_n벌 이상 가지고 있음 */
+  return_brand_n: 3,
+  return_brand: 3,
+  /** 기본 상의만: 반팔·긴팔 티, 맨투맨, 후드가 옷의 basic_tops_pct% 이상 */
+  basic_tops_pct: 50,
+  basic_tops: 4,
+  spend_a_won: 15,
+  spend_a: 2,
   spend_b_won: 10,
-  spend_b: 3,
-  spend_c: 5,
+  spend_b: 6,
+  spend_c: 10,
   // 마지막 질문("스스로 패셔너블하다고 생각하나요?")의 점수 구간
   tier_high: 70,
   tier_low: 40,
@@ -84,18 +116,19 @@ export type OrderRules = typeof ORDER_RULES;
 
 /**
  * 나이에 맞는 주문: 옷을 산 때 나이 구간별 기준(옷장 훈수와 같은 구간). 구간마다 그 구간에 산 옷끼리 비율을 내고 그 구간 비중만큼 반영한다.
+ * 감점은 옷장 훈수 점수 기준 v4처럼 처음 값의 2배.
  * rank: 랭킹템(하트·후기 많은 상품), standard: 무신사 스탠다드, street: 스트릿·하이프, mature: 컨템포러리·헤리티지·포멀, lux_n: 럭셔리 벌 수
  */
 export const ORDER_AGE_RULES: Record<string, Record<string, number>> = {
-  b0: { street_plus_pct: 40, street_plus: 2, lux_n: 2, lux_minus: 3 },
+  b0: { street_plus_pct: 40, street_plus: 2, lux_n: 2, lux_minus: 6 },
   b20: { street_plus_pct: 40, street_plus: 2 },
-  b24: { rank_pct: 60, rank_minus: 1 },
-  b27: { mature_pct: 30, mature_plus: 2, rank_pct: 50, rank_minus: 2, standard_pct: 40, standard_minus: 1 },
-  b30: { mature_pct: 30, mature_plus: 2, rank_pct: 40, rank_minus: 3, standard_pct: 30, standard_minus: 2, street_pct: 70, street_minus: 2 },
-  b36: { mature_pct: 40, mature_plus: 3, rank_pct: 35, rank_minus: 4, standard_pct: 25, standard_minus: 3, street_pct: 60, street_minus: 4 },
-  b41: { mature_pct: 40, mature_plus: 4, rank_pct: 30, rank_minus: 5, standard_pct: 25, standard_minus: 4, street_pct: 50, street_minus: 5 },
-  b51: { mature_pct: 40, mature_plus: 5, rank_pct: 30, rank_minus: 6, standard_pct: 20, standard_minus: 5, street_pct: 40, street_minus: 6 },
-  b61: { mature_pct: 50, mature_plus: 5, rank_pct: 25, rank_minus: 6, standard_pct: 20, standard_minus: 5, street_pct: 30, street_minus: 7 },
+  b24: { rank_pct: 60, rank_minus: 2 },
+  b27: { mature_pct: 30, mature_plus: 2, rank_pct: 50, rank_minus: 4, standard_pct: 40, standard_minus: 2 },
+  b30: { mature_pct: 30, mature_plus: 2, rank_pct: 40, rank_minus: 6, standard_pct: 30, standard_minus: 4, street_pct: 70, street_minus: 4 },
+  b36: { mature_pct: 40, mature_plus: 3, rank_pct: 35, rank_minus: 8, standard_pct: 25, standard_minus: 6, street_pct: 60, street_minus: 8 },
+  b41: { mature_pct: 40, mature_plus: 4, rank_pct: 30, rank_minus: 10, standard_pct: 25, standard_minus: 8, street_pct: 50, street_minus: 10 },
+  b51: { mature_pct: 40, mature_plus: 5, rank_pct: 30, rank_minus: 12, standard_pct: 20, standard_minus: 10, street_pct: 40, street_minus: 12 },
+  b61: { mature_pct: 50, mature_plus: 5, rank_pct: 25, rank_minus: 12, standard_pct: 20, standard_minus: 10, street_pct: 30, street_minus: 14 },
 };
 
 /** 주문내역 전용 질문의 답별 증감(-20~20). 퀴즈·밥과 옷·패셔너블 질문은 옷장 훈수 점수 탭 값을 같이 쓴다. */

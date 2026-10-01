@@ -184,7 +184,7 @@
 - `outfit-view.tsx` (139줄) OutfitView:20
 
 ### src/components/roast
-- `order-roast.tsx` (184줄) OrderCopy:20 OrderPaste:33
+- `order-roast.tsx` (198줄) OrderCopy:21 OrderPaste:45
 - `roast-view.tsx` (893줄) RoastView:65
 
 ### src/components/settings
@@ -369,21 +369,21 @@
 - `report-text.ts` (308줄) REPORT_TEXT:12 ReportTexts:307
 - `report.ts` (657줄) ReportOverride:89 buildReport:102 limitPhotos:621 splitLead:642 tryFill:647
 - `score-deltas.ts` (249줄) SCORE_DELTAS:9 SCORE_RULES:88 ScoreRules:184 AGE_RULES:191 AGE_BANDS:238
-- `score.ts` (385줄) ScorePart:16 WardrobeScore:25 ScoreOptions:33 scoreWardrobe:64(isTopDesigner/isMidTier/isGood 판정은 파일 위쪽) fitContrast:302 ageAt:307 bandName:314 bandOf:322 …
+- `score.ts` (385줄) ScorePart:16 WardrobeScore:25 ScoreOptions:33 isTopDesigner:44 isMidTier:46 isNice:52(주문내역 점수도 씀) scoreWardrobe:64 fitContrast:302 ageAt:307 bandName:314 bandOf:322 …
 - `shift.ts` (64줄) ShiftRules:3 TasteShift:9 detectTasteShift:40
 - `text.ts` (119줄) josa:56 won:66 Vars:75 MissingVar:78 fill:80 varsOf:91 rng:94 Rng:118
 - `texts.ts` (284줄) DEFAULT_TEXTS:40 RoastTexts:50 ROAST_TEXT_MAX:52 CUSTOM_QUIZ_ID:55 UnitKind:57 UnitValue:58 TextUnit:60 unitsOf:69 …
 
 ### src/server/roast/orders
 - `analysis.ts` (17줄) analyzeOrders:11
-- `context.ts` (35줄) OrderPop:7 OrderEvent:14 OrderContext:23
-- `input.ts` (71줄) orderItemSchema:16 OrderRoastItem:33 orderListSchema:34 toGarments:37
+- `context.ts` (38줄) OrderPop:7 OrderEvent:14 OrderContext:23(orderOf·measure: 같은 옷 반복용)
+- `input.ts` (75줄) orderItemSchema:16 OrderRoastItem:35 orderListSchema:36 toGarments:39
 - `metrics.ts` (106줄) orderRules:8 isStandard:10 likesOf:13 reviewsOf:14 isRanking:17 isHidden:27 thirds:35 busiestMonth:50 …
 - `questions.ts` (92줄) ORDER_QUESTIONS:33
 - `report.ts` (105줄) orderOverride:29
-- `rules.ts` (116줄) ORDER_RULES:6 OrderRules:83 ORDER_AGE_RULES:89 ORDER_DELTAS:102
-- `score.ts` (192줄) OrderAgeKind:17 OrderScore:18 scoreOrders:40 orderTier:188
-- `texts.ts` (462줄) ORDER_SCREEN:9 ORDER_COMMON:41 ORDER_Q_TEXT:49 ORDER_REPORT_TEXT:248 ORDER_QUESTION_COND:299 ORDER_PART_NAME:316 ORDER_RULE_NAME:347 ORDER_AGE_KEY_NAME:415 …
+- `rules.ts` (149줄) ORDER_RULES:6 OrderRules:115 ORDER_AGE_RULES:122 ORDER_DELTAS:135
+- `score.ts` (238줄) OrderAgeKind:18 OrderScore:19 scoreOrders:42 orderTier:235 (점수 계산표 /mnt/project-files/roast/order-score-table.md)
+- `texts.ts` (492줄) ORDER_SCREEN:9 ORDER_COMMON:41 ORDER_Q_TEXT:49 ORDER_REPORT_TEXT:248 ORDER_QUESTION_COND:299 ORDER_PART_NAME:316 ORDER_RULE_NAME:356 ORDER_AGE_KEY_NAME:445 …
 
 ### src/server/security
 - `url-guard.ts` (89줄) isBlockedIp:56 ALLOWED_PORTS:67 UrlCheck:69 checkUrlShape:72

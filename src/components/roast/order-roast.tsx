@@ -5,7 +5,8 @@ import { buttonClassName } from "@/components/ui/button";
 import type { OrderItemResult } from "@/app/api/order-imports/item/route";
 import { OrderGuide } from "@/components/garment-form/order-guide";
 import { importImageUrl } from "@/lib/import/client";
-import { parseOrdersForRoast } from "@/server/import/musinsa-orders";
+import { matchSizeRow, parseOrdersForRoast } from "@/server/import/musinsa-orders";
+import type { NormalizedSizeChart } from "@/server/import/types";
 import type { OrderRoastItem } from "@/server/roast/orders/input";
 import type { ORDER_SCREEN } from "@/server/roast/orders/texts";
 
@@ -27,6 +28,17 @@ const LINE_MS = 2400;
 const text = (v: string | string[] | undefined) => (Array.isArray(v) ? (v[0] ?? "") : (v ?? ""));
 const list = (v: string | string[] | undefined) => (Array.isArray(v) ? v : v ? [v] : []);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** 산 사이즈의 실측(사이즈표에서 찾은 값)을 "chest:55|length:70"처럼 짧게. 같은 옷 반복 판단에만 쓴다. */
+function measureOf(chart: NormalizedSizeChart | null | undefined, size: string | null): string | null {
+  const row = chart ? matchSizeRow(chart.rows, size) : null;
+  if (!row) return null;
+  const parts = Object.entries(row.measurements)
+    .filter((e): e is [string, number] => typeof e[1] === "number" && e[1] > 0 && e[1] < 1000)
+    .sort(([x], [y]) => x.localeCompare(y))
+    .slice(0, 10)
+    .map(([k, v]) => `${k}:${Math.round(v * 10) / 10}`);
+  return parts.length ? parts.join("|") : null;
+}
 /** 상품 페이지에서 브랜드를 못 읽어 "undefined" 같은 글자가 오면 주문내역의 브랜드를 쓴다 */
 const brandOf = (v: string | null | undefined) => (v && !/^(undefined|null|none|-)$/i.test(v.trim()) ? v.trim() : null);
 
@@ -59,6 +71,7 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
       likes: null,
       reviews: null,
       image: null,
+      measure: null,
     }));
     /** 팩·셋업을 나눈 옷("1/2 · 상의")은 상품 카테고리로 분류를 덮지 않는다 */
     const split = parsed.garments.map((g) => Boolean(g.part));
@@ -111,6 +124,7 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
           x.likes = product.popularity?.likes ?? null;
           x.reviews = product.popularity?.reviews ?? null;
           x.image = image;
+          x.measure = measureOf(product.sizeChart, x.size);
         });
       }
       setProgress(Math.round(((n + 1) / Math.max(targets.length, 1)) * 100));
