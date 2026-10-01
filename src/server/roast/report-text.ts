@@ -3,10 +3,8 @@ import "server-only";
 /**
  * 결과 페이지(옷장 진단 리포트) 문장. 관리자 문장 편집에서 고칠 수 있다(texts.ts의 report).
  * 수치는 코드가 계산하고, 문장은 {자리}로 받는다. 목록은 하나를 골라 쓴다.
- * 결과는 How Bad Is Your Spotify처럼 글 위주로 쓴다(사용자 요청): 점수 평가 한 줄 → 요약 한 문장 → "> " 문장들 → 목록 → 점수 → 진단 문단.
- * - diag: 진단 문단. fact(낮은 쪽은 factLow)는 "> " 문장의 "{fact1}·{fact2}"에 들어가는 짧은 말.
- *   첫 문장은 굵게 나온다. high(쏠림이 큼)·low(반대쪽으로 뚜렷함) 중 해당하는 쪽 문장을 쓴다.
- * - character: 캐릭터. name·who는 "> " 문장에 들어가는 말.
+ * 결과는 How Bad Is Your Spotify처럼 글 위주로 쓴다(사용자 요청): 점수 평가 한 줄 → 요약 한 문장 → 목록 → 점수 → 진단 문단.
+ * - diag: 진단 문단. 첫 문장은 굵게 나온다. high(쏠림이 큼)·low(반대쪽으로 뚜렷함) 중 해당하는 쪽 문장을 쓴다.
  */
 
 export const REPORT_TEXT = {
@@ -15,8 +13,8 @@ export const REPORT_TEXT = {
    * order: 작은 숫자가 위. show: 1이면 보이고 0이면 뺀다. count: 개수.
    */
   layout: {
-    order: { intro: 1, lists: 2, total: 3, points: 4, notes: 5 },
-    show: { summary: 1, intro: 1, lists: 1, notes: 1 },
+    order: { lists: 1, total: 2, points: 3, notes: 4 },
+    show: { summary: 1, lists: 1, notes: 1 },
     point_order: { diag_lead: 1, color: 2, fit: 3, diag: 4, wallet: 5, vintage: 6, age: 7, last: 8 },
     point_show: { color: 1, fit: 1, wallet: 1, vintage: 1, age: 1, last: 1 },
     count: { diag_min: 3, diag_max: 5, list_rows: 3, dup_min: 3, brand_rows: 3, brand_top_pct: 15, brand_row_pct: 8, photos: 20, photo_blocks: 2, answers: 3 },
@@ -34,13 +32,6 @@ export const REPORT_TEXT = {
     b10: ["{owner} 옷장은 한여름 패딩만큼 별로네요."],
     b0: ["{owner} 옷장은 옷장이라고 부르기 미안할 만큼 별로네요."],
   },
-  INTRO_THANKS: ["{fact1|과} {fact2}에 대한 집착에 감사하세요.", "이게 다 {fact1|과} {fact2} 덕분입니다."],
-  INTRO_THANKS_ONE: ["이게 다 {fact1} 덕분입니다."],
-  INTRO_CHAR_TWO: ["‘{first}인데 {who2}’ 수준입니다.", "‘{first}인데 {who2}’ 급입니다."],
-  INTRO_CHAR_ONE: ["‘{who1}’ 수준입니다."],
-  INTRO_ALSO: ["옷장 데이터를 보니 이런 말도 할 수 있겠네요..."],
-  INTRO_SECOND: ["‘{who3}’ 수준이기도 합니다."],
-  INTRO_MORE: ["옷장에서 벌어지고 있는 일은 이렇습니다:", "옷장 속 사정을 좀 더 보죠:"],
   LIST_DUP: ["이런 옷을 너무 많이 가지고 있습니다:"],
   LIST_BRAND: ["이 브랜드들을 불편할 정도로 좋아합니다:"],
   TOTAL_LEAD: ["{owner} 옷장은 100점 만점에 {score}점입니다."],
@@ -145,157 +136,105 @@ export const REPORT_TEXT = {
   diag: {
     category: {
       title: "카테고리 편중",
-      fact: "{catName}",
       high: ["전체의 {pct}%가 {catName}입니다. 나머지 종류는 몇 벌로 돌려막고 있습니다.", "{catName}만 {n}벌. 옷장이 한쪽으로 기울어서 문이 잘 안 닫힐 것 같습니다."],
       low: ["종류별 수량은 놀랍도록 정상적입니다. 쇼핑하면서 최소한의 이성은 유지했습니다."],
     },
     duplicate: {
       title: "중복 구매",
-      fact: "{what}",
       high: ["{what|이} {n}벌 있습니다. 각각 분명 다른 옷이라는 주장은 존중하겠습니다.", "비슷한 {what|을} {n}벌 보유하고 있습니다. 백업 체계가 기업 서버 수준입니다."],
       low: ["같은 옷을 또 사는 버릇은 없습니다. 적어도 옷장 안에서는 기억력이 좋습니다."],
     },
     brand: {
       title: "브랜드 편중",
-      fact: "{brand}",
-      factLow: "브랜드 탐방",
       high: ["옷장의 {pct}%가 {brand}입니다. 그 브랜드 디자이너가 사실상 개인 스타일리스트입니다.", "{brand|이} {pct}%입니다. 옷장 운영을 한 브랜드에 외주 줬습니다."],
       low: ["브랜드가 {brands}개입니다. 취향보다 탐방 정신이 더 강합니다.", "브랜드는 {brands}개입니다. 충성심은 없고 결제 이력만 다양합니다."],
     },
     style: {
       title: "스타일 일관도",
-      fact: "{tag1} 스타일",
       high: ["{tag1} 브랜드가 {pct}%입니다. 어디서 샀는지는 달라도 사고 있는 옷은 대체로 같습니다."],
       low: ["{tag1}, {tag2}, {tag3|이} 비슷한 지분을 갖고 있습니다. 아직 옷장 내 합의가 끝나지 않았습니다."],
     },
     musinsa: {
       title: "무신사 동기화도",
-      fact: "무신사 랭킹",
-      factLow: "비주류 브랜드",
       high: ["브랜드 있는 옷의 {pct}%가 무신사 인기 브랜드입니다. 랭킹을 보는 게 아니라 랭킹 안에서 생활하고 있습니다.", "{pct}%가 무신사 인기 브랜드입니다. 추천 알고리즘이 뿌듯해할 옷장입니다."],
       low: ["무신사 인기 브랜드는 {pct}%뿐입니다. 유행을 안 보는 건지 이미 다음으로 간 건지는 모르겠습니다."],
     },
     hype: {
       title: "하이프 의존도",
-      fact: "지금 뜨는 브랜드",
-      factLow: "유행 무시",
       high: ["지금 화제성 높은 브랜드가 옷장의 상당 부분입니다. 취향과 알고리즘이 긴밀하게 협업하고 있습니다."],
       low: ["지금 뜨는 브랜드에는 크게 관심이 없습니다. 소신이 강하거나 업데이트 주기가 긴 편입니다."],
     },
     popularity: {
       title: "대중성",
-      fact: "안전한 브랜드",
-      factLow: "아무도 모르는 브랜드",
       high: ["브랜드 정보가 있는 옷의 {pct}%가 누구나 아는 대중 브랜드입니다. 검증된 이름만 고르니 실패는 적고, 기억에 남을 일도 적습니다."],
       low: ["남들이 알아보는지는 중요하지 않습니다. 본인이 알아보는 게 더 중요합니다."],
     },
     polar: {
       title: "가격 양극화",
-      fact: "극과 극의 가격",
-      factLow: "한결같은 가격대",
       high: ["{minWon}짜리와 {maxWon}짜리가 같은 옷장에 살고 있습니다. 내부 소득격차가 큽니다."],
       low: ["모든 옷이 비슷한 가격대입니다. 지출에도 일관된 세계관이 있습니다."],
     },
     burst: {
       title: "구매 폭주",
-      fact: "신상",
-      factLow: "옛날 옷",
       high: ["옷장의 {pct}%가 최근 6개월 안에 들어왔습니다. 옷장이 계속 신생아실 상태입니다.", "최근 6개월 구매가 {pct}%입니다. 옷장 회전율이 스타트업 수준입니다."],
       low: ["최근 6개월에 들어온 옷이 {pct}%뿐입니다. 쇼핑 앱 알림은 꺼 두셨나 봅니다."],
     },
     binge: {
       title: "한 달 몰아 사기",
-      fact: "{month}월의 쇼핑",
       high: ["{month}월에만 {n}벌을 샀습니다. 무슨 일이 있었는지는 묻지 않겠습니다. 카드 명세서가 이미 알고 있으니까요."],
     },
     age: {
       title: "옷장 연령",
-      fact: "오래된 옷",
-      factLow: "새 옷",
       high: ["3년 넘은 옷이 {pct}%입니다. 옷장에도 장기근속자가 많습니다."],
       low: ["옷들의 평균 근속기간이 {months}개월입니다. 옷장 이직률이 상당합니다."],
     },
     country: {
       title: "브랜드 국가",
-      fact: "{country} 브랜드",
       high: ["옷장의 {pct}%가 {country} 브랜드입니다. 사람은 한국에 있는데 옷장은 상당 부분 {country}에 있습니다."],
     },
     country_kr: {
       title: "브랜드 국가",
-      fact: "국내 브랜드",
       high: ["옷장의 {pct}%가 한국 브랜드입니다. 해외 직구보다는 배송 속도를 사랑합니다."],
     },
     heritage: {
       title: "브랜드 연식",
-      fact: "브랜드 역사",
-      factLow: "신생 브랜드",
       high: ["헤리티지 브랜드 비중이 높습니다. 새 옷을 사면서 브랜드 역사까지 같이 구매하는 편입니다."],
       low: ["브랜드 절반이 {year}년 이후에 생겼습니다. 오래 검증된 이름보다 지금 생기는 이름을 더 빨리 주워 옵니다."],
     },
     func: {
       title: "기능성 과몰입",
-      fact: "기능성 소재",
       high: ["기능성 브랜드 비중이 높습니다. 실제 일상보다 옷장이 더 험한 환경에 대비되어 있습니다."],
     },
     formal: {
       title: "포멀도",
-      fact: "포멀한 옷",
-      factLow: "편한 옷",
       high: ["옷장이 언제든 회의에 참석할 준비가 되어 있습니다."],
       low: ["편하게 입을 옷은 충분합니다. 갑자기 격식을 요구받으면 옷장이 긴장합니다."],
     },
     similar: {
       title: "비슷한 옷",
-      fact: "비슷한 {sub}",
-      factLow: "색만 다른 {sub}",
       high: ["실측이 거의 같은 {sub|이} {n}벌입니다. 옷을 사는 게 아니라 같은 옷을 백업하고 있습니다."],
       low: ["실측이 거의 같은 {sub} {n}벌을 색만 바꿔 샀습니다. 옷이 아니라 색상 옵션을 모으고 있습니다."],
     },
     identical: {
       title: "같은 옷",
-      fact: "{name}",
       high: ["똑같은 {name|이} {n}벌입니다. 짱구도 이 정도면 한 번쯤 다른 옷을 입습니다."],
     },
     subcat: {
       title: "같은 품목 반복",
-      fact: "{sub}",
       high: ["{sub}만 {n}벌입니다. 품목 하나로 옷장 {pct}%를 채웠습니다. 다른 품목들은 면접에서 떨어졌나 봅니다."],
     },
     fruits: {
       title: "후르츠패밀리",
-      fact: "후르츠패밀리",
       high: ["구매 링크 중 {n}개가 후르츠패밀리입니다. 옷장 일부는 남의 옷장에서 이사 온 옷입니다."],
     },
     bunjang: {
       title: "번개장터",
-      fact: "번개장터",
       high: ["구매 링크 중 {n}개가 번개장터입니다. 알림이 울리면 몸보다 손가락이 먼저 움직이는 타입입니다."],
     },
     shop: {
       title: "구매처 편중",
-      fact: "{shop}",
       high: ["구매 링크의 {pct}%가 {shop}입니다. 옷장을 만든 사람보다 {shop|이} 기여한 지분이 더 커 보입니다."],
     },
-  },
-
-  character: {
-    musinsa: { name: "무신사 인간 랭킹", who: "무신사 우등생" },
-    duplicate: { name: "같은 옷 수집가", who: "같은 옷을 자꾸 사는 사람" },
-    outer: { name: "아우터 재벌", who: "겨울이 1년 내내 온다고 믿는 사람" },
-    over: { name: "오버핏 신봉자", who: "몸보다 옷이 큰 사람" },
-    mono_brand: { name: "브랜드 일부일처제", who: "한 브랜드에 인생을 맡긴 사람" },
-    octopus: { name: "브랜드 문어발", who: "브랜드마다 한 벌씩 걸친 사람" },
-    achromatic: { name: "무채색 안전주의자", who: "색을 믿지 않는 사람" },
-    hype: { name: "하이프 우등생", who: "지금 뜨는 것만 입는 사람" },
-    no_trend: { name: "유행 불참자", who: "유행 알림을 꺼 둔 사람" },
-    heritage: { name: "헤리티지 수집가", who: "브랜드 역사까지 사는 사람" },
-    func: { name: "기능성 과몰입형", who: "출근길도 탐험으로 여기는 사람" },
-    sale: { name: "세일 냄새 탐지견", who: "비싼 브랜드를 싸게 사는 사람" },
-    new_addict: { name: "신상 중독형", who: "옷장을 계속 새로 고치는 사람" },
-    long_tenure: { name: "옷장 장기근속형", who: "옷과 오래 사귀는 사람" },
-    binge: { name: "월급날 폭주형", who: "한 달에 몰아 사는 사람" },
-    jp: { name: "일본 브랜드 유학생", who: "옷장만 도쿄에 사는 사람" },
-    designer: { name: "디자이너 브랜드 순례자", who: "디자이너 이름을 외우는 사람" },
   },
 
   /** 다른 문단에 걸리는 게 없을 때 마지막 문단 */

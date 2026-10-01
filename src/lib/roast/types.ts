@@ -59,8 +59,6 @@ export interface RoastParagraph {
 export interface RoastReport {
   /** 첫 줄: 총점 구간별 평가 */
   headline: string;
-  /** "> "로 시작하는 짧은 문장들 */
-  intro: string[];
   /** 굵은 제목 + 목록(많이 가진 옷, 좋아하는 브랜드) */
   lists: { title: string; items: string[] }[];
   /** 총 옷장 점수(0~100, 질문·퀴즈 답이 더하거나 뺀다) */
@@ -79,7 +77,7 @@ export interface RoastReport {
    * 일반 사용자의 결과에는 서버가 지우고 보낸다.
    */
   scoreDetail?: { base: number; items: { label: string; why: string; delta: number; garments?: string[] }[]; total: number };
-  /** 첫 줄 아래 섹션 순서(관리자 "결과 구성"). 없으면 intro·lists·total·points·dna·notes(dna는 예전 결과만) */
+  /** 첫 줄 아래 섹션 순서(관리자 "결과 구성"). 없으면 lists·total·points·dna·notes(dna는 예전 결과만) */
   order?: string[];
 }
 

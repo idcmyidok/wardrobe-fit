@@ -765,23 +765,13 @@ function ResultView({
   );
 }
 
-/** 결과 페이지: How Bad Is Your Spotify처럼 글 위주(총점 평가 → 요약 한 문장 → "> " 문장 → 목록 → 총점 → 진단 문단·사진 줄) */
-const REPORT_ORDER = ["intro", "lists", "total", "points", "dna", "notes"];
+/** 결과 페이지: How Bad Is Your Spotify처럼 글 위주(총점 평가 → 요약 한 문장 → 목록 → 총점 → 진단 문단·사진 줄) */
+const REPORT_ORDER = ["lists", "total", "points", "dna", "notes"];
 
 function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string) => string | null }) {
   // 첫 줄은 항상 맨 위, 나머지는 관리자 "결과 구성"의 순서(예전 결과는 기본 순서)
   const order = report.order?.length ? report.order : REPORT_ORDER;
   const sections: Record<string, ReactNode> = {
-    intro: report.intro.length > 0 && (
-      <div className="flex flex-col gap-1">
-        {report.intro.map((t, i) => (
-          <p key={i}>
-            <span className="roast-prompt">&gt;</span>
-            {t}
-          </p>
-        ))}
-      </div>
-    ),
     lists: report.lists.map((l) => (
       <div key={l.title}>
         <p>
