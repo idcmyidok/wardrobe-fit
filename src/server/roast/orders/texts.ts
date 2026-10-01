@@ -9,7 +9,6 @@ import type { QuestionText } from "../questions";
 export const ORDER_SCREEN = {
   INTRO: "안녕하세요. Wardrobe Fit의 전문 옷장분석팀 AI 입니다. 이번엔 옷장 말고 무신사 주문내역만 봅니다. 영수증은 거짓말을 안 하거든요.",
   START_LABEL: "영수증 까 보죠",
-  CRITERIA: "하트 많은 랭킹템 비율, 브랜드 쏠림, 가격대, 반품·취소, 구매 시기 변화를 봅니다. 중간 질문의 답도 반영됩니다.",
   START_NOTE: "무신사 주문내역만 보기 때문에 실제로 가진 모든 옷을 반영하지 못해, 결과가 정확하지 않을 수 있습니다. 신체 치수를 입력해 두셨다면 조금 더 정확해집니다.",
   ASK_NAME: "시작하기 전에, 뭐라고 부르면 될까요? 나이도 꼭 알려 주세요. 그 나이에 맞는 장바구니인지도 봐 드리죠.",
   PASTE_ASK: "이제 무신사 주문내역을 붙여 넣어 주세요.",
@@ -518,7 +517,6 @@ export const ORDER_REPORT_NAME: Record<string, string> = {
 export const ORDER_SCREEN_NAME: Record<string, string> = {
   INTRO: "첫 소개 문구",
   START_LABEL: "시작 버튼",
-  CRITERIA: "평가 기준 설명",
   START_NOTE: "이름·나이 묻기 위에 보이는 안내(결과 정확도에 대한 설명)",
   ASK_NAME: "이름·나이 묻기",
   PASTE_ASK: "주문내역 붙여넣기 안내(첫 줄)",

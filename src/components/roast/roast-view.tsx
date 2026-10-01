@@ -363,9 +363,6 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
   const copy = useContext(CopyContext);
   // 다시 분석할 때도 소개 문구부터 타이핑한다.
   const [typed, setTyped] = useState(false);
-  // 처음이든 다시 하기든 시작·평가 기준 버튼부터 보여 준다.
-  const [criteria, setCriteria] = useState(false);
-  const [criteriaDone, setCriteriaDone] = useState(false);
   const [asking, setAsking] = useState(false);
   // 옷장 훈수에서 시작 버튼을 누르면 바로 아래에서 평가 기준(옷장·주문내역)을 고르게 한다.
   const [picking, setPicking] = useState(false);
@@ -387,11 +384,6 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
           <Typed text={tooFew(copy, clothes)} />
         </p>
       )}
-      {typed && enough && criteria && (
-        <p className="roast-ai">
-          <Typed text={copy.CRITERIA} onDone={() => setCriteriaDone(true)} />
-        </p>
-      )}
       {typed && dailyUsed && (
         <p className="roast-ai">
           <Typed text={dailyUsed} />
@@ -402,17 +394,12 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
           <Typed text={dailyNotice} />
         </p>
       )}
-      {typed && enough && !dailyUsed && !asking && !picking && (!criteria || criteriaDone) && (
+      {typed && enough && !dailyUsed && !asking && !picking && (
         <>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="roast-choice" onClick={() => (orders ? setAsking(true) : setPicking(true))}>
               {copy.START_LABEL}
             </button>
-            {!criteria && (
-              <button type="button" className="roast-choice" onClick={() => setCriteria(true)}>
-                {copy.CRITERIA_LABEL}
-              </button>
-            )}
           </div>
         </>
       )}
