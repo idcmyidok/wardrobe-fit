@@ -550,7 +550,7 @@ export function buildReport(
 
   // 첫 줄(총점 평가)과 "> " 문장들
   const owner = name ? `${name}님의` : "당신의";
-  const headline = tryFill(r, override?.headline[band] ?? R.HEADLINE[band], { owner, score: totalScore }) ?? `${owner} ${override ? "주문내역" : "옷장"}은 ${totalScore}점입니다.`;
+  const headline = tryFill(r, override?.headline[band] ?? R.HEADLINE[band], { owner, score: totalScore }) ?? `${owner} ${override ? "주문내역" : "옷장"}은 별로입니다.`;
   const intro = [
     facts.length >= 2 ? tryFill(r, R.INTRO_THANKS, { fact1: facts[0], fact2: facts[1] }) : facts.length ? tryFill(r, R.INTRO_THANKS_ONE, { fact1: facts[0] }) : null,
     chars.length >= 2 ? tryFill(r, R.INTRO_CHAR_TWO, { first: chars[0].name, who2: chars[1].who }) : chars.length ? tryFill(r, R.INTRO_CHAR_ONE, { who1: chars[0].who }) : null,
