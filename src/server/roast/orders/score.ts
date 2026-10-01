@@ -1,10 +1,10 @@
 import "server-only";
 import { colorCounted, type Analysis, type Item } from "../analyze";
 import { brandLabels, MUSINSA_POPULAR, musinsaLikesCut } from "../brands";
-import { ageAt, bandName, bandOf, isMidTier, isNice, isTopDesigner, type ScorePart } from "../score";
+import { ageAt, bandName, bandOf, isFormalLux, isGood, isHeritage, isMidTier, isNice, isRepro, isTopDesigner, monthIndex, type ScorePart } from "../score";
 import { SCORE_RULES } from "../score-deltas";
 import { won } from "../text";
-import { avgPrice, busiestMonth, isHidden, isRanking, isStandard, orderRules, returnStats, thirds, topTag } from "./metrics";
+import { avgPrice, busiestMonth, isRanking, isStandard, orderRules, returnStats, thirds, topTag } from "./metrics";
 import { ORDER_AGE_RULES, type OrderRules } from "./rules";
 
 /**
@@ -15,7 +15,7 @@ import { ORDER_AGE_RULES, type OrderRules } from "./rules";
 
 const DAY = 86_400_000;
 
-export type OrderAgeKind = "rank" | "standard" | "street" | "mature" | "young_street" | "lux";
+export type OrderAgeKind = "rank" | "standard" | "street" | "mature" | "young_street" | "lux" | "formal";
 export interface OrderScore {
   score: number;
   parts: ScorePart[];
@@ -55,7 +55,6 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   const upTo = (s: number, fullPct: number, max: number) => Math.min(max, (s * 100 * max) / Math.max(fullPct, 1));
   const over = (s: number, fromPct: number, per10: number, max: number) => Math.min(max, (Math.max(0, s * 100 - fromPct) / 10) * per10);
   const ranking = (i: Item) => isRanking(a, i, R);
-  const hidden = (i: Item) => isHidden(a, i, R);
   const likesCut = musinsaLikesCut(SCORE_RULES.musinsa_likes_top);
   const isMusinsa = (i: Item) =>
     !i.groups.includes("mass") && !isStandard(i) && (brandLabels(i.g.brand).includes(MUSINSA_POPULAR) || (likesCut != null && (i.brand?.likes ?? 0) >= likesCut));
@@ -72,9 +71,6 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   add("designer", Math.min(R.designer_max, designers.length * R.designer_each), `명품·디자이너(가격 고가 이상, 대중적 제외) ${designers.length}벌 × ${R.designer_each}점, 최대 ${R.designer_max}점`, designers);
   const midTiers = known.filter(isMidTier);
   add("mid", Math.min(R.mid_max, midTiers.length * R.mid_each), `컨템포러리·디자이너·스트릿 중고가 이상(대중적 제외) ${midTiers.length}벌 × ${R.mid_each}점, 최대 ${R.mid_max}점`, midTiers);
-  const hiddenList = items.filter(hidden);
-  const hiddenShare = items.length ? hiddenList.length / items.length : 0;
-  add("hidden", upTo(hiddenShare, R.hidden_full, R.hidden_max), `숨은 상품(하트 ${R.hidden_likes_h * 100}개 미만) ${P(hiddenShare)}, ${R.hidden_full}%면 만점 ${R.hidden_max}점`, hiddenList);
   if (enough && style) {
     add(
       "style",
@@ -82,9 +78,10 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
       `가장 많은 스타일 '${style.tag}' ${P(styleTop)} (${R.style_high_pct}% 이상 +${R.style_high}, ${R.style_mid_pct}% 이상 +${R.style_mid})`,
       known.filter((i) => i.brand!.tags.includes(style.tag)),
     );
-    const isTaste = (i: Item) => i.groups.includes("jp_denim") || (i.brand?.heritage ?? 0) >= 4 || (i.brand?.tags ?? []).some((t) => /워크웨어|빈티지|아메카지/.test(t));
+    // 옷장 훈수와 같은 기준: 진짜 헤리티지(1990년 이전 설립, 너무 유명한 브랜드 제외)·워크웨어·일본 데님. 빈티지·아메카지는 뺀다.
+    const isTaste = (i: Item) => i.groups.includes("jp_denim") || isHeritage(i) || (i.brand?.tags ?? []).some((t) => /워크웨어/.test(t));
     const taste = share(known, isTaste);
-    add("taste", upTo(taste, R.taste_full, R.taste_max), `헤리티지·워크웨어·아메카지 ${P(taste)}, ${R.taste_full}%면 만점 ${R.taste_max}점`, known.filter(isTaste));
+    add("taste", upTo(taste, R.taste_full, R.taste_max), `진짜 헤리티지(1990년 이전 설립, 너무 유명한 브랜드 제외)·워크웨어·일본 데님 ${P(taste)}, ${R.taste_full}%면 만점 ${R.taste_max}점`, known.filter(isTaste));
   }
 
   // 시기별 변화: 오래된 1/3과 최근 1/3 비교
@@ -106,6 +103,60 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   const shoes = items.filter((i) => i.cat === "shoes");
   const leather = shoes.filter((i) => i.sub === "shoes.dress" || i.sub === "shoes.boots");
   if (leather.length) add("leather_shoes", R.leather_shoes, `구두·부츠 ${leather.length}켤레`, leather);
+  // 옷장 훈수와 같은 가점 -------------------------------------------------------
+  const goodOuters = clothes.filter((i) => i.cat === "outer" && (isTopDesigner(i) || isHeritage(i)));
+  if (goodOuters.length) add("good_outer", R.good_outer, `디자이너·명품·진짜 헤리티지 브랜드 아우터 ${goodOuters.length}벌`, goodOuters);
+  const shoeSubs = new Set(shoes.map((i) => i.sub));
+  if (["shoes.sneakers", "shoes.sports", "shoes.dress", "shoes.boots", "shoes.sandals"].every((s) => shoeSubs.has(s))) add("shoe_set", R.shoe_set, "스니커즈·스포츠화·구두·부츠·샌들이 다 있음", shoes);
+  const krNew = known.filter((i) => i.brand!.country === "한국" && (i.brand!.founded ?? 0) >= a.now.getFullYear() - R.kr_new_age && (isTopDesigner(i) || isMidTier(i)) && i.brand!.pop <= 2);
+  if (krNew.length >= R.kr_new_n) add("kr_new", R.kr_new, `설립 ${R.kr_new_age}년 이내 국내 디자이너 브랜드(대중성 낮음) ${krNew.length}벌 (${R.kr_new_n}벌 이상)`, krNew);
+  const jpList = known.filter((i) => i.brand!.country === "일본");
+  if (jpList.length >= R.jp_n) add("jp", R.jp, `일본 브랜드 ${jpList.length}벌 (${R.jp_n}벌 이상)`, jpList);
+  const reproList = items.filter(isRepro);
+  if (reproList.length) add("repro", reproList.length >= R.repro_many_n ? R.repro_many : R.repro, `일본 데님·리바이스 빈티지 ${reproList.length}벌 (${R.repro_many_n}벌 이상이면 +${R.repro_many})`, reproList);
+  // 국가를 모르는 브랜드는 해외로 치지 않는다.
+  const isForeign = (i: Item) => Boolean(i.brand!.country) && i.brand!.country !== "한국" && !i.groups.includes("mass") && i.brand!.price >= R.foreign_price;
+  const foreign = share(known, isForeign);
+  if (enough && foreign * 100 >= R.foreign_pct) add("foreign", R.foreign, `해외 브랜드(SPA·대중 제외, 가격 레벨 ${R.foreign_price} 이상) ${P(foreign)} (${R.foreign_pct}% 이상)`, known.filter(isForeign));
+  const boldList = items.filter((i) => (i.price ?? 0) >= R.bold_won * 10_000);
+  if (boldList.length) add("bold", R.bold, `${R.bold_won}만 원 이상 옷 ${boldList.length}벌`, boldList);
+  const regulars = [...byBrand.values()].filter((l) => l.length >= 2 && l.length <= 4 && !isMusinsa(l[0]) && !isStandard(l[0]) && !l[0].groups.includes("mass"));
+  if (regulars.length >= R.regular_n) add("regular", R.regular, `2~4벌씩 산 단골 브랜드(무신사 인기·스탠다드·대중 제외) ${regulars.length}곳 (${R.regular_n}곳 이상)`, regulars.flat());
+  // 색: 데님은 빼고 본다. 기본색 = 무채색
+  const colored = items.filter(colorCounted);
+  const basic = share(colored, (i) => i.achromatic);
+  const accentN = colored.filter((i) => !i.achromatic).length;
+  const goodN = known.filter(isGood).length;
+  if (colored.length >= 5) {
+    if (basic * 100 >= R.accent_basic_pct && accentN >= 1 && accentN <= R.accent_max_n)
+      add("accent", R.accent, `무채색 ${P(basic)} (${R.accent_basic_pct}% 이상) + 유채색 ${accentN}벌 (1~${R.accent_max_n}벌)`, colored.filter((i) => !i.achromatic));
+    if (basic * 100 >= R.basic_pct && goodN >= R.basic_lux_n)
+      add("basic_lux", R.basic_lux, `무채색 ${P(basic)} (${R.basic_pct}% 이상) + 좋은 브랜드(디자이너·컨템포러리 중고가·진짜 헤리티지) ${goodN}벌 (${R.basic_lux_n}벌 이상)`, known.filter(isGood));
+  }
+  // 구매 공백·꾸준한 구매: 구매일 있는 옷 8벌 이상일 때
+  const dated = items.filter((i) => i.date && Date.parse(i.date) <= now);
+  if (dated.length >= 8) {
+    const nowM = monthIndex(now);
+    const months = new Set(dated.map((i) => monthIndex(Date.parse(i.date!))));
+    const first = Math.max(nowM - 23, Math.min(...months));
+    let run = 0;
+    let gap = 0;
+    for (let m = first; m <= nowM; m++) {
+      if (months.has(m)) {
+        if (run >= R.gap_months) gap += run;
+        run = 0;
+      } else run++;
+    }
+    if (run >= R.gap_months) gap += run;
+    add("gap", -Math.min(R.gap_max, gap), `최근 24개월 중 ${R.gap_months}개월 이상 연속으로 안 산 기간 합계 ${gap}개월 × 1점, 최대 ${R.gap_max}점`);
+    let longest = 0;
+    run = 0;
+    for (let m = nowM - 11; m <= nowM; m++) {
+      run = months.has(m) ? 0 : run + 1;
+      longest = Math.max(longest, run);
+    }
+    if (longest < R.steady_gap) add("steady", R.steady, `최근 12개월 중 가장 오래 안 산 기간 ${longest}개월 (${R.steady_gap}개월 미만)`);
+  }
 
   // 소비액: 구매일·가격이 있는 옷 8벌 이상일 때, 최근 12개월 합계 / 4
   const datedPriced = items.filter((i) => i.date && Date.parse(i.date) <= now && i.price != null && i.price > 0);
@@ -126,9 +177,9 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   add("rank", -over(rankShare, R.rank_from, R.rank_per10, R.rank_max), `랭킹템(하트 ${(R.rank_likes_k * 1000).toLocaleString()}개·후기 ${(R.rank_reviews_h * 100).toLocaleString()}개 이상) ${P(rankShare)} (${R.rank_from}% 넘는 10%마다 −${R.rank_per10}, 최대 −${R.rank_max})`, rankList);
   if (enough) {
     // 무신사 좋아요가 많고 고가 미만이면서 대중적인 브랜드 쏠림(무신사 스탠다드는 따로 감점하므로 뺀다)
-    const isPopular = (i: Item) => !isStandard(i) && (i.brand!.likes ?? 0) >= R.popular_likes_10k * 10_000 && i.brand!.price < 5 && i.brand!.pop >= 4;
+    const isPopular = (i: Item) => !isStandard(i) && (i.brand!.likes ?? 0) >= R.popular_likes_10k * 10_000 && i.brand!.price < R.popular_price && i.brand!.pop >= 4;
     const popular = share(known, isPopular);
-    add("popular", -over(popular, R.popular_from, R.popular_per10, R.popular_max), `좋아요 ${(R.popular_likes_10k * 10_000).toLocaleString()} 이상·고가 미만·대중적 브랜드(스탠다드 제외) ${P(popular)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max})`, known.filter(isPopular));
+    add("popular", -over(popular, R.popular_from, R.popular_per10, R.popular_max), `좋아요 ${(R.popular_likes_10k * 10_000).toLocaleString()} 이상·가격 레벨 ${R.popular_price} 미만(중고가 미만)·대중적 브랜드(스탠다드 제외) ${P(popular)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max})`, known.filter(isPopular));
     const isTrendy = (i: Item) => i.brand!.hype >= 4 && i.brand!.pop >= 4;
     const trendy = share(known, isTrendy);
     if (trendy * 100 >= R.trendy_pct) add("trendy", -R.trendy, `하이프·대중성 모두 높은 브랜드 ${P(trendy)} (${R.trendy_pct}% 이상)`, known.filter(isTrendy));
@@ -175,8 +226,6 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   if (clothes.length && logo * 100 >= R.logo_pct) add("logo", -R.logo, `상품명에 '로고'가 든 옷 ${P(logo)} (${R.logo_pct}% 이상)`, clothes.filter(isLogo));
   if (shoes.length >= 3 && shoes.every((i) => i.sub === "shoes.sneakers" || i.sub === "shoes.sports")) add("sneakers_only", -R.sneakers_only, `신발 ${shoes.length}켤레가 모두 스니커즈·스포츠화`, shoes);
   // 무채색뿐인데 고급 브랜드가 없음(데님은 색에서 뺀다)
-  const colored = items.filter(colorCounted);
-  const basic = share(colored, (i) => i.achromatic);
   if (colored.length >= 5 && basic * 100 >= R.basic_pct && enough && !known.some(isNice))
     add("basic_mass", -R.basic_mass, `무채색 ${P(basic)} (${R.basic_pct}% 이상) + 고급 브랜드(컨템포러리 이상이거나 중고가 이상) 0벌`, known);
   // 새 감점(주문내역에만 있는 정보)
@@ -219,6 +268,7 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
       hit("mature", "mature_pct", "mature_plus", 1, isMature);
       hit("rank", "rank_pct", "rank_minus", -1, ranking);
       hit("standard", "standard_pct", "standard_minus", -1, isStandard);
+      hit("formal", "formal_pct", "formal_minus", -1, isFormalLux);
       const lux = list.filter((i) => i.groups.includes("luxury"));
       if (rule.lux_n != null && rule.lux_minus && lux.length >= rule.lux_n) {
         add("age_lux", -rule.lux_minus * weight, `${bandName(band)}에 산 명품 ${lux.length}벌 (${rule.lux_n}벌 이상) × −${rule.lux_minus}점 × 비중 ${P(weight)}`, lux);

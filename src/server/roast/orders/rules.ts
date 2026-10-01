@@ -22,12 +22,10 @@ export const ORDER_RULES = {
   /** 컨템포러리·디자이너·스트릿 중고가(대중적 제외): 1벌당 가점, 최대 */
   mid_each: 1,
   mid_max: 5,
-  hidden_full: 25,
-  hidden_max: 8,
-  style_mid_pct: 30,
-  style_mid: 4,
-  style_high_pct: 50,
-  style_high: 8,
+  style_mid_pct: 40,
+  style_mid: 2,
+  style_high_pct: 60,
+  style_high: 4,
   taste_full: 20,
   taste_max: 5,
   /** 시기별 비교: 오래된 1/3과 최근 1/3이 각각 이 벌 수 이상일 때만 */
@@ -40,6 +38,33 @@ export const ORDER_RULES = {
   return_low_pct: 5,
   return_low: 2,
   leather_shoes: 2,
+  // 옷장 훈수와 같은 가점
+  good_outer: 2,
+  shoe_set: 3,
+  /** 설립 kr_new_age년 이내 국내 디자이너 브랜드(대중성 낮음) kr_new_n벌 이상 */
+  kr_new_age: 5,
+  kr_new_n: 2,
+  kr_new: 3,
+  jp_n: 3,
+  jp: 2,
+  repro: 2,
+  repro_many_n: 3,
+  repro_many: 4,
+  /** 해외 브랜드 가점은 이 가격 레벨(4 = 중고가) 이상만 센다 */
+  foreign_price: 4,
+  foreign_pct: 30,
+  foreign: 2,
+  bold_won: 50,
+  bold: 2,
+  regular_n: 3,
+  regular: 2,
+  accent_basic_pct: 70,
+  accent_max_n: 4,
+  accent: 3,
+  basic_lux_n: 3,
+  basic_lux: 4,
+  steady_gap: 3,
+  steady: 2,
   spend_top_won: 25,
   spend_top: 3,
   // 빼는 점수
@@ -48,6 +73,8 @@ export const ORDER_RULES = {
   rank_max: 12,
   /** 무신사 좋아요 이 값 × 10,000 이상·고가 미만·대중적~매우 대중적 브랜드(무신사 스탠다드는 따로 셈) 비율 */
   popular_likes_10k: 5,
+  /** 이 가격 레벨 미만만 센다(4 = 중고가: 중고가 미만) */
+  popular_price: 4,
   popular_from: 40,
   popular_per10: 5,
   popular_max: 20,
@@ -90,6 +117,9 @@ export const ORDER_RULES = {
   basic_mass: 8,
   /** 디자이너·명품 1~2벌의 스타일이 나머지 주력 스타일과 안 겹침 */
   lux_mismatch: 10,
+  /** 구매 공백: 최근 24개월 중 gap_months개월 이상 연속으로 안 산 기간 1개월당 −1, 최대 */
+  gap_months: 4,
+  gap_max: 12,
   /** 몰아 사기 날: 하루에 서로 다른 주문으로 옷 binge_n벌 이상 산 날 1일당 감점, 최대 */
   binge_n: 5,
   binge_each: 2,
@@ -114,11 +144,11 @@ export type OrderRules = typeof ORDER_RULES;
 /**
  * 나이에 맞는 주문: 옷을 산 때 나이 구간별 기준(옷장 훈수와 같은 구간). 구간마다 그 구간에 산 옷끼리 비율을 내고 그 구간 비중만큼 반영한다.
  * 감점은 옷장 훈수 점수 기준 v4처럼 처음 값의 2배.
- * rank: 랭킹템(하트·후기 많은 상품), standard: 무신사 스탠다드, street: 스트릿·하이프, mature: 컨템포러리·헤리티지·포멀, lux_n: 럭셔리 벌 수
+ * formal: 포멀·럭셔리(옷장 훈수와 같은 값), rank: 랭킹템(하트·후기 많은 상품), standard: 무신사 스탠다드, street: 스트릿·하이프, mature: 컨템포러리·헤리티지·포멀, lux_n: 럭셔리 벌 수
  */
 export const ORDER_AGE_RULES: Record<string, Record<string, number>> = {
-  b0: { street_plus_pct: 40, street_plus: 2, lux_n: 2, lux_minus: 6 },
-  b20: { street_plus_pct: 40, street_plus: 2 },
+  b0: { street_plus_pct: 40, street_plus: 2, formal_pct: 40, formal_minus: 6, lux_n: 2, lux_minus: 6 },
+  b20: { street_plus_pct: 40, street_plus: 2, formal_pct: 40, formal_minus: 4 },
   b24: { rank_pct: 60, rank_minus: 2 },
   b27: { mature_pct: 30, mature_plus: 2, rank_pct: 50, rank_minus: 4, standard_pct: 40, standard_minus: 2 },
   b30: { mature_pct: 30, mature_plus: 2, rank_pct: 40, rank_minus: 6, standard_pct: 30, standard_minus: 4, street_pct: 70, street_minus: 4 },

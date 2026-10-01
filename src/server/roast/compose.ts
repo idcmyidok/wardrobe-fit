@@ -90,7 +90,11 @@ function sectionOfQuestion(id: string): Section | null {
 const SECTION_ORDER: Section[] = ["size", "category", "acc", "color", "brand", "group", "trait", "style", "shop", "repeat", "season", "timing", "money", "spend", "odd"];
 
 /** 관련 패턴이 없는 질문이 들어갈 섹션(QUESTION_SECTION에 없는 것) */
-const EXTRA_QUESTION_SECTION: Record<string, Section> = { band_quiz: "brand", rationalize: "spend", three_500: "money", fit_choice: "repeat", fruits_q: "shop", bunjang_q: "shop", vintage_q: "style", influencer_q: "style" };
+const EXTRA_QUESTION_SECTION: Record<string, Section> = { band_quiz: "brand", rationalize: "spend", three_500: "money", fit_choice: "repeat", fruits_q: "shop", bunjang_q: "shop", vintage_q: "style", influencer_q: "style",
+  // 주문내역 훈수 질문(관련 패턴이 없어 섹션이 없으면 모두 대화 끝에 몰린다)
+  o_only_musinsa: "category", o_ranking: "brand", o_brand_vip: "brand", o_standard: "group", o_review_read: "trait", o_review_write: "shop",
+  o_shift: "style", o_returns: "repeat", o_cancel: "repeat", o_sale_month: "timing", o_courier: "timing", o_cheapest: "money", o_grade: "spend",
+};
 
 /** 대화의 끝에 늘 붙는 질문(침착맨 → 패셔너블 순서. 패셔너블은 무조건 마지막) */
 const LAST_QUESTIONS = ["chimchak_q", "fashionable_q"];
