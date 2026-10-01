@@ -39,7 +39,7 @@ describe("무신사 인기 태그", () => {
   });
   it("태그만 있는 브랜드는 분석 자료에 넣지 않는다", () => {
     expect(brandLabels("레더리")).toContain(MUSINSA_POPULAR);
-    expect(findBrand("Leathery")).toBeNull();
+    expect(findBrand("SPLASH CODE")).toBeNull();
     expect(BRANDS.every((b) => typeof b.price === "number")).toBe(true);
   });
 });
