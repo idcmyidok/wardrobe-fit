@@ -113,7 +113,7 @@ export const SCORE_RULES = {
   steady: 2,
   good_outer: 2,
   leather_shoes: 2,
-  kr_new_year: 2015,
+  kr_new_age: 5,
   kr_new_n: 2,
   kr_new: 3,
   jp_n: 3,

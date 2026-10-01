@@ -175,8 +175,8 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
   if (["shoes.sneakers", "shoes.sports", "shoes.dress", "shoes.boots", "shoes.sandals"].every((s) => shoeSubs.has(s))) add("shoe_set", R.shoe_set, "스니커즈·스포츠화·구두·부츠·샌들이 다 있음", shoes);
   if (shoes.length >= 3 && shoes.every((i) => i.sub === "shoes.sneakers" || i.sub === "shoes.sports")) add("sneakers_only", -R.sneakers_only, `신발 ${shoes.length}켤레가 모두 스니커즈·스포츠화`, shoes);
 
-  const krNew = known.filter((i) => i.brand!.country === "한국" && (i.brand!.founded ?? 0) >= R.kr_new_year && (isTopDesigner(i) || isMidTier(i)) && i.brand!.pop <= 2);
-  if (krNew.length >= R.kr_new_n) add("kr_new", R.kr_new, `${R.kr_new_year}년 이후 생긴 국내 디자이너 브랜드(대중성 낮음) ${krNew.length}벌 (${R.kr_new_n}벌 이상)`, krNew);
+  const krNew = known.filter((i) => i.brand!.country === "한국" && (i.brand!.founded ?? 0) >= a.now.getFullYear() - R.kr_new_age && (isTopDesigner(i) || isMidTier(i)) && i.brand!.pop <= 2);
+  if (krNew.length >= R.kr_new_n) add("kr_new", R.kr_new, `설립 ${R.kr_new_age}년 이내 국내 디자이너 브랜드(대중성 낮음) ${krNew.length}벌 (${R.kr_new_n}벌 이상)`, krNew);
   const jpList = known.filter((i) => i.brand!.country === "일본");
   const jpN = jpList.length;
   if (jpN >= R.jp_n) add("jp", R.jp, `일본 브랜드 ${jpN}벌 (${R.jp_n}벌 이상)`, jpList);

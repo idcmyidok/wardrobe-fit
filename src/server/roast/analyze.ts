@@ -666,7 +666,8 @@ function findOddOne(clothes: Item[], achromaticShare: number): Analysis["oddOne"
   for (const i of clothes) {
     const traits = checks.filter(([, f]) => f(i)).map(([k]) => k);
     if (i.families.some((f) => (famCount.get(f) ?? 0) / n <= 0.12)) traits.push("family");
-    if (traits.length < 2) continue;
+    // 특색이 뚜렷하지 않으면(겹치지 않는 점 3개 미만) 특이한 옷으로 고르지 않는다.
+    if (traits.length < 3) continue;
     const score = traits.length + (achromaticShare >= 0.6 && i.color && !i.achromatic ? 1 : 0) + (i.hasPhoto ? 0.1 : 0);
     if (score > bestScore) {
       best = { item: i, traits, reason: oddReason(i, traits, famCount, n) };

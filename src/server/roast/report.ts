@@ -201,7 +201,7 @@ export function buildReport(
     const founded = known.map((i) => i.brand!.founded).filter((y): y is number => y != null);
     const midYear = median(founded);
     if (heritage >= 3.8) add({ id: "heritage", side: "high", strength: clamp((heritage - 3.5) / 1.2) * 0.8, value: "헤리티지 브랜드 중심", vars: {} });
-    else if (founded.length >= 5 && midYear >= 2012) add({ id: "heritage", side: "low", strength: 0.45, value: `절반이 ${midYear}년 이후 브랜드`, vars: { year: midYear } });
+    else if (founded.length >= 5 && midYear >= a.now.getFullYear() - 5) add({ id: "heritage", side: "low", strength: 0.45, value: `절반이 ${midYear}년 이후 브랜드`, vars: { year: midYear } });
     if (func >= 3.5) add({ id: "func", side: "high", strength: clamp((func - 3.2) / 1.3) * 0.8, value: "기능성 높음", vars: {} });
     if (formal >= 3.5) add({ id: "formal", side: "high", strength: clamp((formal - 3.2) / 1.3) * 0.7, value: "포멀도 높음", vars: {} });
     else if (formal <= 1.7) add({ id: "formal", side: "low", strength: clamp((2 - formal) / 1) * 0.5, value: "매우 캐주얼", vars: {} });
