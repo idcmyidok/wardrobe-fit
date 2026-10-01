@@ -316,7 +316,6 @@ export const ORDER_QUESTION_COND: Record<string, string> = {
 export const ORDER_PART_NAME: Record<string, string> = {
   designer: "디자이너 브랜드",
   mid: "중고가 브랜드",
-  nolikes: "좋아요 없는 중고가",
   hidden: "숨은 상품",
   style: "뚜렷한 스타일",
   taste: "헤리티지 취향",
@@ -364,8 +363,6 @@ export const ORDER_RULE_NAME: Record<string, string> = {
   designer_max: "명품·디자이너(고가 이상, 대중적 제외): 최대 가점",
   mid_each: "중고가 브랜드(대중적 제외): 1벌당 가점",
   mid_max: "중고가 브랜드(대중적 제외): 최대 가점",
-  nolikes_each: "좋아요 없는 중고가 이상 브랜드: 1벌당 가점",
-  nolikes_max: "좋아요 없는 중고가 이상 브랜드: 최대 가점",
   hidden_full: "숨은 상품: 만점 비율(%)",
   hidden_max: "숨은 상품: 최대 가점",
   style_mid_pct: "스타일 뚜렷함: 1단계 비율(%)",

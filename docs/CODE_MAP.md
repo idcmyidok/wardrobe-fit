@@ -381,9 +381,9 @@
 - `metrics.ts` (106줄) orderRules:8 isStandard:10 likesOf:13 reviewsOf:14 isRanking:17 isHidden:27 thirds:35 busiestMonth:50 …
 - `questions.ts` (92줄) ORDER_QUESTIONS:33
 - `report.ts` (105줄) orderOverride:29
-- `rules.ts` (149줄) ORDER_RULES:6 OrderRules:115 ORDER_AGE_RULES:122 ORDER_DELTAS:135
-- `score.ts` (238줄) OrderAgeKind:18 OrderScore:19 scoreOrders:42 orderTier:235 (점수 계산표 /mnt/project-files/roast/order-score-table.md)
-- `texts.ts` (492줄) ORDER_SCREEN:9 ORDER_COMMON:41 ORDER_Q_TEXT:49 ORDER_REPORT_TEXT:248 ORDER_QUESTION_COND:299 ORDER_PART_NAME:316 ORDER_RULE_NAME:356 ORDER_AGE_KEY_NAME:445 …
+- `rules.ts` (146줄) ORDER_RULES:6 OrderRules:112 ORDER_AGE_RULES:119 ORDER_DELTAS:132
+- `score.ts` (236줄) OrderAgeKind:18 OrderScore:19 scoreOrders:42 orderTier:233 (점수 계산표 /mnt/project-files/roast/order-score-table.md)
+- `texts.ts` (489줄) ORDER_SCREEN:9 ORDER_COMMON:41 ORDER_Q_TEXT:49 ORDER_REPORT_TEXT:248 ORDER_QUESTION_COND:299 ORDER_PART_NAME:316 ORDER_RULE_NAME:355 ORDER_AGE_KEY_NAME:442 …
 
 ### src/server/security
 - `url-guard.ts` (89줄) isBlockedIp:56 ALLOWED_PORTS:67 UrlCheck:69 checkUrlShape:72

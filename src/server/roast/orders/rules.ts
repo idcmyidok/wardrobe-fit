@@ -22,9 +22,6 @@ export const ORDER_RULES = {
   /** 컨템포러리·디자이너·스트릿 중고가(대중적 제외): 1벌당 가점, 최대 */
   mid_each: 1,
   mid_max: 5,
-  /** 무신사 좋아요 자료가 없는 중고가 이상 브랜드: 1벌당 가점, 최대 */
-  nolikes_each: 2,
-  nolikes_max: 6,
   hidden_full: 25,
   hidden_max: 8,
   style_mid_pct: 30,

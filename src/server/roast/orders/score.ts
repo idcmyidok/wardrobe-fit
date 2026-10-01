@@ -72,8 +72,6 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   add("designer", Math.min(R.designer_max, designers.length * R.designer_each), `명품·디자이너(가격 고가 이상, 대중적 제외) ${designers.length}벌 × ${R.designer_each}점, 최대 ${R.designer_max}점`, designers);
   const midTiers = known.filter(isMidTier);
   add("mid", Math.min(R.mid_max, midTiers.length * R.mid_each), `컨템포러리·디자이너·스트릿 중고가 이상(대중적 제외) ${midTiers.length}벌 × ${R.mid_each}점, 최대 ${R.mid_max}점`, midTiers);
-  const noLikes = known.filter((i) => !i.brand!.likes && i.brand!.price >= 4);
-  add("nolikes", Math.min(R.nolikes_max, noLikes.length * R.nolikes_each), `무신사 좋아요 없는 중고가 이상 브랜드 ${noLikes.length}벌 × ${R.nolikes_each}점, 최대 ${R.nolikes_max}점`, noLikes);
   const hiddenList = items.filter(hidden);
   const hiddenShare = items.length ? hiddenList.length / items.length : 0;
   add("hidden", upTo(hiddenShare, R.hidden_full, R.hidden_max), `숨은 상품(하트 ${R.hidden_likes_h * 100}개 미만) ${P(hiddenShare)}, ${R.hidden_full}%면 만점 ${R.hidden_max}점`, hiddenList);
