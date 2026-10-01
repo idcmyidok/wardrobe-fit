@@ -1,0 +1,221 @@
+/*
+ * 첫 화면(로그인) 왼쪽 소개 전용 움직임. 기능 소개 규칙은 모두 .fs 안에만 건다.
+ * 요소의 기본 스타일이 "다 움직인 뒤" 모습이고, 애니메이션은 --d만큼 기다렸다가 처음 모습에서 그 모습으로 간다.
+ * 그래서 애니메이션을 끄면(움직임 줄이기 설정, 가려진 탭) 곧바로 완성된 화면이 보인다.
+ */
+.lp-rise {
+  animation: lp-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) var(--rise, 0s) both;
+}
+
+@keyframes lp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* — 탭과 화면 전환 — */
+.fs .fs-card,
+.fs .fs-copy {
+  visibility: hidden;
+}
+.fs .fs-card[data-active="true"],
+.fs .fs-copy[data-active="true"] {
+  visibility: visible;
+}
+.fs [data-active="false"] * {
+  animation: none !important;
+}
+
+/* 자동 넘김 막대. 다 차면(animationend) 다음 기능으로 넘어간다. */
+.fs .fs-progress {
+  transform-origin: left center;
+  animation: fs-progress 7s linear both;
+}
+@media (hover: hover) {
+  .fs:hover .fs-progress {
+    animation-play-state: paused;
+  }
+}
+.fs:has(:focus-visible) .fs-progress {
+  animation-play-state: paused;
+}
+/* 화면 밖에 있을 때는 멈췄다가 보이면 이어서 움직인다(모바일에서는 로그인 아래에 있다). */
+.fs[data-offscreen] * {
+  animation-play-state: paused !important;
+}
+
+@keyframes fs-progress {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* — 미리보기 조각 — */
+.fs .fs-in {
+  animation: fs-in 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) var(--d, 0s) both;
+}
+@keyframes fs-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.fs .fs-pop {
+  animation: fs-pop 0.4s cubic-bezier(0.3, 1.5, 0.5, 1) var(--d, 0s) both;
+}
+@keyframes fs-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+/* 링크 입력: 글자 수(--n)만큼 한 칸씩 늘어난다. 고정폭 글꼴이라 1ch가 한 글자다. */
+.fs .fs-type {
+  width: calc(var(--n) * 1ch);
+  animation: fs-type 1.3s steps(var(--n), end) var(--d, 0s) both;
+}
+@keyframes fs-type {
+  from {
+    width: 0;
+  }
+}
+
+.fs .fs-caret {
+  opacity: 0;
+  animation: fs-caret 0.6s steps(1, end) var(--d, 0s) 4 both;
+}
+@keyframes fs-caret {
+  0% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* 버튼 누름. 끝나면 원래 모습이라 채우기(fill)가 없다. */
+.fs .fs-press {
+  animation: fs-press 0.4s ease var(--d, 0s);
+}
+@keyframes fs-press {
+  40% {
+    transform: scale(0.92);
+    opacity: 0.7;
+  }
+}
+
+/* 새 줄이 위에 끼어들며 아래 줄을 밀어낸다. */
+.fs .fs-grow {
+  display: grid;
+  grid-template-rows: 1fr;
+  animation: fs-grow 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) var(--d, 0s) both;
+}
+.fs .fs-grow > * {
+  min-height: 0;
+  overflow: hidden;
+}
+@keyframes fs-grow {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+.fs .fs-flash {
+  animation: fs-flash 2.6s ease-out var(--d, 0s) both;
+}
+@keyframes fs-flash {
+  from,
+  45% {
+    background-color: var(--accent-subtle);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.fs .fs-bar {
+  transform-origin: left center;
+  animation: fs-bar 0.75s cubic-bezier(0.2, 0.7, 0.2, 1) var(--d, 0s) both;
+}
+@keyframes fs-bar {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* 답 고르기: 고른 칸은 진하게, 나머지는 흐리게 */
+.fs .fs-select {
+  animation: fs-select 0.25s ease var(--d, 0s) both;
+}
+@keyframes fs-select {
+  from {
+    background-color: var(--surface);
+    border-color: var(--n-300);
+    color: var(--text);
+  }
+}
+.fs .fs-dim {
+  animation: fs-dim 0.3s ease var(--d, 0s) both;
+}
+@keyframes fs-dim {
+  from {
+    opacity: 1;
+  }
+}
+
+/* 입력 중 말풍선: 잠깐 나타났다 사라진다. 기본은 안 보임. */
+.fs .fs-blip {
+  opacity: 0;
+  animation: fs-blip 0.8s linear var(--d, 0s) both;
+}
+@keyframes fs-blip {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.fs .fs-dot {
+  animation: fs-dot 0.9s ease-in-out infinite;
+}
+.fs .fs-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.fs .fs-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes fs-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.45;
+    transform: none;
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* 움직임 줄이기: 전부 완성된 모습으로 멈춰 둔다(전역 규칙의 1ms 재생 대신 아예 끈다). */
+@media (prefers-reduced-motion: reduce) {
+  .lp-rise,
+  .fs * {
+    animation: none !important;
+  }
+}
+
+/* 자리만 잡는 안 보이는 사본은 처음부터 완성된 모습이어야 한다. */
+.fs .fs-still * {
+  animation: none !important;
+}
