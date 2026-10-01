@@ -34,6 +34,16 @@ export interface ReleaseNote {
 
 const ALL_NOTES: ReleaseNote[] = [
   {
+    version: "1.3.2",
+    date: "2026-10-01",
+    time: "05:03",
+    features: [],
+    changes: [
+      "훈수와 옷장 데이터가 아는 브랜드가 8곳 늘었습니다. 중고 거래에서 많이 찾는 카키스·버드노트·올드조·아킴보 클럽·에피센터 투어리스트·아드리안 캐시미어·카미야·리버풀을 더해, 내 옷장의 브랜드를 더 정확히 알아봅니다.",
+    ],
+    fixes: [],
+  },
+  {
     version: "1.3.1",
     date: "2026-09-30",
     time: "21:28",
