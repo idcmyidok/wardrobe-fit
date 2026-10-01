@@ -255,7 +255,6 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
     const bigSide = look.find((p) => p.bigShare === bigMax)!;
     if (trimMax * 100 >= R.fit_trim_pct) add("fit_trim", R.fit_trim, `${side} 슬림·레귤러핏 ${P(trimMax)} (${R.fit_trim_pct}% 이상)`, trimSide.trim);
     else if (bigMax * 100 >= R.fit_big_pct) add("fit_big", -R.fit_big, `${side} 세미오버핏 이상 ${P(bigMax)} (${R.fit_big_pct}% 이상)`, bigSide.big);
-    if (fitContrast(fit)) add("fit_contrast", R.fit_contrast, "상의·하의 각 3벌 이상에서 한쪽은 슬림·레귤러, 한쪽은 큰 핏이 절반 이상", [...fit.top.trim, ...fit.top.big, ...fit.bottom.trim, ...fit.bottom.big]);
   }
   const logo = share(clothes, isLogo);
   if (clothes.length && logo * 100 >= R.logo_pct) add("logo", -R.logo, `제품명에 '로고'가 든 옷 ${P(logo)} (${R.logo_pct}% 이상)`, clothes.filter(isLogo));
@@ -381,7 +380,6 @@ export const SCORE_PART_NAME: Record<string, string> = {
   misfit: "안 맞는 옷",
   fit_trim: "슬림·레귤러핏",
   fit_big: "큰 핏 쏠림",
-  fit_contrast: "위아래 핏 대비",
   logo: "로고 옷",
   season_gap: "계절 코디 부족",
   age_street: "나이: 스트릿",

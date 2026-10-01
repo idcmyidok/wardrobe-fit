@@ -372,7 +372,6 @@ const RULE_NAME: Record<string, string> = {
   fit_trim: "핏: 슬림·레귤러 위주 가점",
   fit_big_pct: "핏: 오버·와이드 감점 기준(%)",
   fit_big: "핏: 오버·와이드 위주 감점",
-  fit_contrast: "핏: 위아래 실루엣 대비 가점",
   misfit_each: "치수에 안 맞는 옷: 한 벌당 감점",
   misfit_max: "치수에 안 맞는 옷: 최대 감점",
   gap_months: "구매 공백: 연속으로 안 산 달 기준",

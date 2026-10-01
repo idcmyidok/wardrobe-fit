@@ -167,7 +167,6 @@ export const SCORE_RULES = {
   fit_trim: 3,
   fit_big_pct: 60,
   fit_big: 2,
-  fit_contrast: 2,
   misfit_each: 2,
   misfit_max: 10,
   gap_months: 4,
