@@ -1,6 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- 비공개 저장소의 임시 주소라 next/image 최적화를 쓰지 않는다(다른 화면과 같음). */
+import { useRouter } from "next/navigation";
 import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { UsageNote } from "@/components/usage/usage-note";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
@@ -118,7 +119,7 @@ export function RoastView({ initialResult, copy = ROAST_COPY, orders }: { initia
         <div className="flex flex-wrap items-end justify-between gap-3 border-b border-text pb-4">
           <div className="flex flex-col gap-1">
             <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700 uppercase">{orders ? "Order roast" : "Wardrobe roast"}</span>
-            <h1 className="text-title">{orders ? "무신사 주문내역 훈수" : "내 옷장 훈수"}</h1>
+            <h1 className="text-title">{orders ? "무신사 주문내역 훈수" : "내 패션 훈수"}</h1>
           </div>
           {signedIn && !orders && <UsageNote kind="roast" />}
         </div>
@@ -180,6 +181,7 @@ export function RoastView({ initialResult, copy = ROAST_COPY, orders }: { initia
           <Intro
             clothes={clothes}
             skipIntro={mode === "name"}
+            orders={!!orders}
             onStart={(n, ag) => {
               setName(n);
               setAge(ag);
@@ -348,7 +350,7 @@ function Photos({
   );
 }
 
-function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: boolean; onStart: (name: string | null, age: number | null) => void }) {
+function Intro({ clothes, skipIntro, orders, onStart }: { clothes: number; skipIntro: boolean; orders: boolean; onStart: (name: string | null, age: number | null) => void }) {
   const copy = useContext(CopyContext);
   // 다시 분석할 때도 소개 문구부터 타이핑한다.
   const [typed, setTyped] = useState(false);
@@ -356,6 +358,10 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
   const [criteria, setCriteria] = useState(false);
   const [criteriaDone, setCriteriaDone] = useState(false);
   const [asking, setAsking] = useState(false);
+  // 옷장 훈수에서 시작 버튼을 누르면 바로 아래에서 평가 기준(옷장·주문내역)을 고르게 한다.
+  const [picking, setPicking] = useState(false);
+  const [pickDone, setPickDone] = useState(false);
+  const router = useRouter();
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const enough = clothes >= MIN_CLOTHES;
@@ -374,10 +380,10 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
           <Typed text={copy.CRITERIA} onDone={() => setCriteriaDone(true)} />
         </p>
       )}
-      {typed && enough && !asking && (!criteria || criteriaDone) && (
+      {typed && enough && !asking && !picking && (!criteria || criteriaDone) && (
         <>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="roast-choice" onClick={() => setAsking(true)}>
+            <button type="button" className="roast-choice" onClick={() => (orders ? setAsking(true) : setPicking(true))}>
               {copy.START_LABEL}
             </button>
             {!criteria && (
@@ -387,6 +393,21 @@ function Intro({ clothes, skipIntro, onStart }: { clothes: number; skipIntro: bo
             )}
           </div>
         </>
+      )}
+      {typed && picking && (
+        <p className="roast-ai">
+          <Typed text={copy.PICK_ASK} onDone={() => setPickDone(true)} />
+        </p>
+      )}
+      {typed && picking && pickDone && !asking && (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="roast-choice" onClick={() => setAsking(true)}>
+            {copy.PICK_CLOSET}
+          </button>
+          <button type="button" className="roast-choice" onClick={() => router.push("/roast/orders")}>
+            {copy.PICK_ORDERS}
+          </button>
+        </div>
       )}
       {typed && asking && (
         <form

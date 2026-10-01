@@ -44,7 +44,7 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     for (const p of report.points) expect(p.lead).toMatch(/[.!?]$/);
     expect(report.lists[0]?.items[0]).toBe("블랙 반소매 티셔츠 7벌");
     // 옷장 DNA 대신 제목 아래 요약 한 문장(특징 두세 개를 잇는다)
-    expect(report.summary).toMatch(/^옷장이 전체적으로 .+이고, .+인 옷장이네요\.$/);
+    expect(report.summary).toMatch(/^옷장이 전체적으로 .+이고, .+인 옷장이네요\. .+점.+\.$/);
     expect(report.dna).toBeUndefined();
   });
 

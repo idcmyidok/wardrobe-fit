@@ -497,8 +497,11 @@ export function buildReport(
     kindsUsed.add(t.kind);
     words.push(w);
   }
-  const summary =
+  const summaryBase =
     words.length >= 3 ? tryFill(r, R.SUMMARY_3, { a: words[0], b: words[1], c: words[2] }) : words.length === 2 ? tryFill(r, R.SUMMARY_2, { a: words[0], b: words[1] }) : null;
+  // 요약 문장 뒤에 점수 한마디를 덧붙인다(요약이 없으면 한마디만).
+  const scoreSay = tryFill(r, R.SCORE_SAY, { score: totalScore });
+  const summary = [summaryBase, scoreSay].filter(Boolean).join(" ") || null;
 
   // 캐릭터(6): 조건이 맞는 것 중 뚜렷한 순서로 세 개. "> " 문장에 들어간다.
   const C = R.character as Record<string, { name: string; who: string }>;
