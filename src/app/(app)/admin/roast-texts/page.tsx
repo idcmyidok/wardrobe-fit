@@ -22,17 +22,17 @@ export default async function RoastTextsPage() {
       vars: allowedVars(`${g.id}.x`).map((v) => ({ key: v, label: varLabel(g.id, v) })),
       units: units
         .filter((u) => groupOf(u.key) === g.id)
-        .map((u) => ({ key: u.key, kind: u.kind, label: fieldLabel(u.key, optionLabel), base: u.value, edited: edits[u.key] ?? null })),
+        .map((u) => ({ key: u.key, kind: u.kind, label: fieldLabel(u.key, optionLabel), value: edits[u.key] ?? u.value })),
     }))
     .filter((g) => g.units.length);
 
   const current = applyTextEdits(rows).quiz;
   const quizzes: EditorQuiz[] = [
-    ...Object.entries(DEFAULT_TEXTS.quiz).map(([id, base]) => ({ id, builtIn: true, base, value: current[id] ?? base, deleted: !current[id] })),
+    ...Object.entries(DEFAULT_TEXTS.quiz).map(([id, base]) => ({ id, builtIn: true, value: current[id] ?? base, deleted: !current[id] })),
     ...Object.entries(current)
       .filter(([id]) => CUSTOM_QUIZ_ID.test(id))
-      .map(([id, value]) => ({ id, builtIn: false, base: null, value, deleted: false })),
-  ].map((q) => ({ ...q, edited: q.builtIn ? JSON.stringify(q.value) !== JSON.stringify(q.base) || q.deleted : true }));
+      .map(([id, value]) => ({ id, builtIn: false, value, deleted: false })),
+  ];
   const brands = BRANDS.map((b) => b.name).sort((a, b) => a.localeCompare(b));
 
   return <RoastTextEditor groups={groups} quizzes={quizzes} brands={brands} layout={{ sections: LAYOUT_SECTION, points: LAYOUT_POINT }} />;
