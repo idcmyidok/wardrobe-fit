@@ -194,6 +194,25 @@ describe("주문내역 훈수 목록 → 분석", () => {
     }
   });
 
+  it("반응별 조건: 매장파 답은 주문 건수에 따라 다른 반응과 결과 글이 나온다", () => {
+    const pickOffline = (orders: number) => {
+      const a = run();
+      a.orders = { ...a.orders!, orders };
+      for (let seed = 1; seed < 200; seed++) {
+        const q = buildScript(a, seed, null, DEFAULT_TEXTS, 34).asked.find((x) => x.id === "o_only_musinsa");
+        if (q) return q;
+      }
+      throw new Error("o_only_musinsa 질문이 안 나옴");
+    };
+    const short = pickOffline(12);
+    expect(short.reactions.offline).toContain("전통적이지만 확실한 방법");
+    expect(short.roast.offline).toEqual(["집 밖에서 옷을 주로 사서, 주문목록이 짧았네요."]);
+    const long = pickOffline(80);
+    expect(long.reactions.offline).toContain("주문은 왜 이렇게 많을까요");
+    expect(long.roast.offline[0]).toContain("택배 기사님");
+    expect(long.roast.offline).toHaveLength(1);
+  });
+
   it("질문이 대화 끝에 몰리지 않고 분석 문장 사이에 섞인다", () => {
     const a = run();
     let early = 0;

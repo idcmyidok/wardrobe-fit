@@ -1,9 +1,11 @@
-import { RoastTextEditor, type EditorGroup, type EditorQuiz } from "@/components/admin/roast-text-editor";
+import { RoastTextEditor, type EditorGroup, type EditorQuiz, type WhenOption } from "@/components/admin/roast-text-editor";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/server/admin/guard";
 import { BRANDS } from "@/server/roast/brands";
-import { fieldLabel, LAYOUT_POINT, LAYOUT_SECTION, textGroups, varLabel } from "@/server/roast/meta";
+import { LINE_SECTION } from "@/server/roast/lines";
+import { fieldLabel, LAYOUT_POINT, LAYOUT_SECTION, PATTERN_COND, SECTION_NAME, textGroups, varLabel } from "@/server/roast/meta";
 import { getRoastTextEdits } from "@/server/roast/queries";
+import { WHEN_DEFS } from "@/server/roast/react-when";
 import { Q_TEXT } from "@/server/roast/questions";
 import { allowedVars, applyTextEdits, CUSTOM_QUIZ_ID, DEFAULT_TEXTS, fromRows, groupOf, unitsOf } from "@/server/roast/texts";
 
@@ -35,5 +37,11 @@ export default async function RoastTextsPage() {
   ];
   const brands = BRANDS.map((b) => b.name).sort((a, b) => a.localeCompare(b));
 
-  return <RoastTextEditor groups={groups} quizzes={quizzes} brands={brands} layout={{ sections: LAYOUT_SECTION, points: LAYOUT_POINT }} />;
+  // 질문 반응마다 고르는 조건: 숫자 조건과 분석에서 잡힌 특징(패턴별 멘트 탭의 조건)
+  const whenOptions: WhenOption[] = [
+    ...Object.entries(WHEN_DEFS).map(([id, d]) => ({ id, label: d.label, n: d.n, group: "개수" })),
+    ...Object.entries(LINE_SECTION).map(([id, sec]) => ({ id: `pat:${id}`, label: `${PATTERN_COND[id] ?? id}`, group: `분석에서 잡힘: ${SECTION_NAME[sec] ?? sec}` })),
+  ];
+
+  return <RoastTextEditor groups={groups} quizzes={quizzes} brands={brands} layout={{ sections: LAYOUT_SECTION, points: LAYOUT_POINT }} whenOptions={whenOptions} />;
 }

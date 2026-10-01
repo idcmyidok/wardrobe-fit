@@ -554,6 +554,8 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
       : (REACT_NAME[p[3]] ?? optionLabel?.(p[1], p[3]) ?? p[3]);
     if (p[2] === "react") return `바로 반응: ${who}`;
     if (p[2] === "roast") return `결과 글: ${who}`;
+    if (p[2] === "when") return `반응 조건: ${who}`;
+    if (p[2] === "result") return `조건 맞을 때 결과 글: ${who}`;
   }
   return key;
 }

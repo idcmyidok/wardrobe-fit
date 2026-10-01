@@ -13,7 +13,7 @@
 | `src/app/(app)/roast/fonts/*.woff2` | | 폰트, 무시 |
 
 ## 핵심 영역 길잡이
-- **훈수(/roast)**: 화면 `src/components/roast/roast-view.tsx`(914), 서버 `src/server/roast/`. 점수 `score.ts`(`scoreWardrobe`)·점수 규칙값 `score-deltas.ts`·등급 `bands.ts`; 분석 `analyze.ts`; 대화 조립 `compose.ts`(`buildScript`, 결과 마무리 `composeResult`)·결과 본문 `report.ts`(`buildReport`)·문장 원문 `lines.ts`(대화 문장 say만)/`report-text.ts`; 질문 `questions.ts`(1295, `QUESTIONS`/`pickQuestions`), 퀴즈 `quiz.ts`(`QUIZ`); 관리자 편집 단위·조건 `meta.ts`(`textGroups`)·`texts.ts`(저장된 문구 덮어쓰기 `DEFAULT_TEXTS`); 서버 액션 `actions.ts`(`startRoast`/`finishRoast`), 관리자 저장 `admin-actions.ts`. 훈수에는 AI 글쓰기가 없다(2026-10-01 제거; 옛 저장 결과 `headline`/`paragraphs`는 report 없는 결과를 열 때만 쓰임).
+- **훈수(/roast)**: 화면 `src/components/roast/roast-view.tsx`(914), 서버 `src/server/roast/`. 점수 `score.ts`(`scoreWardrobe`)·점수 규칙값 `score-deltas.ts`·등급 `bands.ts`; 분석 `analyze.ts`; 대화 조립 `compose.ts`(`buildScript`, 결과 마무리 `composeResult`)·결과 본문 `report.ts`(`buildReport`)·문장 원문 `lines.ts`(대화 문장 say만)/`report-text.ts`; 질문 `questions.ts`(1295, `QUESTIONS`/`pickQuestions`), 퀴즈 `quiz.ts`(`QUIZ`); 질문 반응(1번·2번…)마다 붙이는 조건·조건별 결과 글 `react-when.ts`(`WHEN_DEFS`/`reactPool`, 저장 키 `questions.<질문>.when|result.<반응>`, 관리자 화면은 `roast-text-editor.tsx`의 `ReactField`·`WhenPicker`); 관리자 편집 단위·조건 `meta.ts`(`textGroups`)·`texts.ts`(저장된 문구 덮어쓰기 `DEFAULT_TEXTS`); 서버 액션 `actions.ts`(`startRoast`/`finishRoast`), 관리자 저장 `admin-actions.ts`. 훈수에는 AI 글쓰기가 없다(2026-10-01 제거; 옛 저장 결과 `headline`/`paragraphs`는 report 없는 결과를 열 때만 쓰임).
 - **무신사 주문내역 훈수(/roast/orders, 메뉴 없음)**: 화면 `src/app/(app)/roast/orders/page.tsx` → `roast-view.tsx`(`orders` prop) + 붙여넣기·로딩 `src/components/roast/order-roast.tsx`(`OrderPaste`, 북마크 안내는 주문 가져오기와 같은 `garment-form/order-guide.tsx`의 `OrderGuide`, 사진은 `/api/imports/{id}/image` 프록시 주소). 서버 액션 `src/server/roast/order-actions.ts`(`startOrderRoast`/`finishOrderRoast`, 저장·AI 없음). 주문내역 전용 `src/server/roast/orders/`: 입력 `input.ts`(`toGarments`), 분석 `analysis.ts`(`analyzeOrders`), 수치 `metrics.ts`(랭킹템·스탠다드·반품), 점수 `score.ts`(`scoreOrders`)·기준값 `rules.ts`(`ORDER_RULES`/`ORDER_AGE_RULES`/`ORDER_DELTAS`), 질문 `questions.ts`(`ORDER_QUESTIONS`), 결과 문단 `report.ts`(`orderOverride` → `buildReport`의 override), 문장 `texts.ts`. 관리자 편집은 "주문내역 훈수" 탭(`meta.ts` textGroups의 kind "orders"). 상품 하트·후기 수는 `parsers/musinsa.ts`(`popularityIn`), 주문 나누기는 `musinsa-orders.ts`(`parseOrdersForRoast`), 상품 읽기 API `/api/order-imports/item`(`roast: true`면 kind "roast"로 하루 분석 한도 대신 `ORDER_ROAST_DAILY_CAP`, 기록은 parser_version 끝 `ORDER_ROAST_SUFFIX`). 메뉴·노트 공개는 `src/lib/features.ts`의 `orderRoastMenu`.
 - **관리자 점수/결과 구성 탭**: `src/components/admin/roast-text-editor.tsx`(`RoastTextEditor`), 페이지 `src/app/(app)/admin/roast-texts/`, 저장 `src/server/roast/admin-actions.ts`. 기본값 없음: 저장된 값(DB)이 기준이고 묶음(`GroupBlock`·`QuizForm`) 단위로 입력 1초 뒤·칸을 벗어날 때 자동 저장(`useAutosave`, 서버 `saveRoastUnits`/`saveRoastQuiz`). 코드 문장은 DB에 값이 없는 칸의 처음 값으로만 쓰임. 접었다 펴도 저장값이 보이도록 부모의 `saved`를 칸에 반영하고, 저장값이 코드 문장(`EditorUnit.base`)과 다르면 제목 옆 "고친 문장 (n/전체)"·칸 이름 옆 "(직접 수정함)"을 버건디색으로 표시.
 - **브랜드 데이터**: csv → `scripts/build-brands.mjs` → `brands.json` → `src/server/roast/brands.ts`(`findBrand`, `normalizeBrand`, `BRAND_GROUPS`). 무신사 수집 스크립트 `scripts/musinsa/`.
@@ -120,7 +120,7 @@
 
 ### src/components/admin
 - `admin-view.tsx` (217줄) AdminView:31
-- `roast-text-editor.tsx` EditorUnit EditorGroup QuizValue EditorQuiz LayoutInfo RoastTextEditor useAutosave GroupBlock UnitField QuizForm
+- `roast-text-editor.tsx` EditorUnit EditorGroup WhenOption QuizValue EditorQuiz LayoutInfo RoastTextEditor useAutosave GroupBlock UnitField ReactField WhenPicker QuizForm
 - `usd-rate-form.tsx` (45줄) UsdRateForm:9
 - `user-actions.tsx` (71줄) UserActions:8
 
@@ -366,6 +366,7 @@
 - `meta.ts` (555줄) VAR_LABEL:15 SECTION_NAME:24 PATTERN_COND:28 QUESTION_COND:93 REACT_NAME:147 SCREEN_NAME:154 COMMON_NAME:172 varLabel:188 …
 - `order-actions.ts` (162줄) beginOrderRoast:60 orderRoastUsed:78 startOrderRoast:86 finishOrderRoast:102 (하루 1회: 붙여넣기 직후 beginOrderRoast가 roast_runs kind='orders'에 기록, 관리자·테스터 예외, 상품 읽기 API도 기록 없으면 403)
 - `order-limit.ts` (31줄) kstDayStart:14 orderRoastUsedToday:19 (한국 시간 0시 기준 하루 1회)
+- `react-when.ts` (~75줄) WhenDef WHEN_DEFS checkWhen whenMatches reactPool (반응별 조건)
 - `queries.ts` (57줄) getLatestRoast:12 signGarments:27 getRoastTextEdits:43 getRoastTexts:54
 - `questions.ts` (1295줄) QuestionDef:19 QuestionText:34 chimchakItems:69(침착맨 질문 조건) fromShop:78 QUESTIONS:80 Q_TEXT:243 AskedQuestion:1063 brandTrio:1085 …
 - `quiz.ts` (680줄) QuizEntry:14 QUIZ:24 PickedQuiz:668 pickQuiz:673

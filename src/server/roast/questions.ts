@@ -6,6 +6,7 @@ import { familyName, type FamilyId } from "./keywords";
 import { findBand } from "./bands";
 import { ORDER_Q_TEXT } from "./orders/texts";
 import { pickQuiz } from "./quiz";
+import { reactPool } from "./react-when";
 import { MissingVar, won, type Rng, type Vars } from "./text";
 import type { RoastTexts } from "./texts";
 
@@ -40,7 +41,14 @@ export interface QuestionText {
   react: Record<string, string[]>;
   /** 결과 글에서 답을 두고 한 번 더 비꼬는 문단. 반응 종류 → 문장들(하나 고름) */
   roast: Record<string, string[]>;
+  /** 반응 종류 → 반응 목록과 같은 순서의 조건(react-when.ts). 빈 칸은 조건 없음 */
+  when?: Record<string, string[]>;
+  /** 반응 종류 → 반응 목록과 같은 순서의 결과 글. 조건이 맞아 그 반응이 나왔을 때 roast 대신 쓴다. 빈 칸은 원래 결과 글 */
+  result?: Record<string, string[]>;
 }
+
+/** 반응마다 조건을 붙일 수 없는 질문(반응을 코드가 따로 만든다) */
+export const NO_REACT_WHEN = new Set(["quiz", "band_quiz", "drop_item", "brand_best"]);
 
 const pat = (a: Analysis, id: string) => a.patterns.find((p) => p.id === id);
 const has = (a: Analysis, id: string) => Boolean(pat(a, id));
@@ -1284,11 +1292,21 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
   };
   // "~에 쓴 돈이 얼마라는 거, 알고 있었나요?"는 답한 뒤 그 옷들 사진과 가격을 보여 준다.
   const reveal = q.id === "brand_spend_q" || q.id === "subcat_spend_q" ? pricedPhotos(a, pat(a, q.pattern!)?.garmentIds ?? []) : [];
+  // 반응마다 붙인 조건(관리자 문장 편집)이 맞으면 그 반응을 쓰고, 그 반응에 결과 글이 있으면 결과 글도 그것으로 바꾼다.
+  const answered = options.map((o) => {
+    const key = reactKey(o.id);
+    const list = tx.react[key] ?? [];
+    const { pool, matched } = reactPool(list.length, tx.when?.[key], a);
+    const i = pool.length ? r.pick(pool) : -1;
+    const own = matched ? tx.result?.[key]?.[i]?.trim() : "";
+    const roast = own ? fillAll([own], vars) : [];
+    return { id: o.id, reaction: f(i >= 0 ? list[i] : r.pick(list)), roast: roast.length ? roast : roastOf(key) };
+  });
   return {
     ...base,
     options,
-    reactions: Object.fromEntries(options.map((o) => [o.id, f(r.pick(tx.react[reactKey(o.id)]))])),
-    roast: roastMap(options.map((o) => [o.id, roastOf(reactKey(o.id))])),
+    reactions: Object.fromEntries(answered.map((x) => [x.id, x.reaction])),
+    roast: roastMap(answered.map((x) => [x.id, x.roast])),
     ...(q.id === "fashionable_q" ? { scoreKey: Object.fromEntries(options.map((o) => [o.id, reactKey(o.id)])) } : {}),
     ...(reveal.length ? { reveal } : {}),
   };
