@@ -111,8 +111,10 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
     const taste = share(known, isTaste);
     add("taste", upTo(taste, R.taste_full, R.taste_max), `진짜 헤리티지(1990년 이전 설립, 너무 유명한 브랜드 제외)·워크웨어·일본 데님 ${P(taste)}, ${R.taste_full}%면 만점 ${R.taste_max}점`, known.filter(isTaste));
   }
-  const fruitsN = items.filter((i) => i.shop === "후르츠패밀리").length;
-  if (fruitsN >= R.fruits_n) add("fruits", R.fruits, `후르츠패밀리 링크 ${fruitsN}벌 (${R.fruits_n}벌 이상)`, items.filter((i) => i.shop === "후르츠패밀리"));
+  // 후르츠패밀리 링크가 3벌 이상이어도, 전부 중저가(가격 레벨 2) 이하 브랜드면 가점 없음(브랜드를 모르면 낮다고 보지 않는다)
+  const fruitsList = items.filter((i) => i.shop === "후르츠패밀리");
+  const fruitsAllCheap = fruitsList.length > 0 && fruitsList.every((i) => i.brand && i.brand.price <= 2);
+  if (fruitsList.length >= R.fruits_n && !fruitsAllCheap) add("fruits", R.fruits, `후르츠패밀리 링크 ${fruitsList.length}벌 (${R.fruits_n}벌 이상, 전부 중저가 이하 브랜드는 제외)`, fruitsList);
 
   // 색: 데님은 빼고 본다. 기본색 = 무채색
   const colored = items.filter(colorCounted);
@@ -177,9 +179,9 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
 
   const krNew = known.filter((i) => i.brand!.country === "한국" && (i.brand!.founded ?? 0) >= a.now.getFullYear() - R.kr_new_age && (isTopDesigner(i) || isMidTier(i)) && i.brand!.pop <= 2);
   if (krNew.length >= R.kr_new_n) add("kr_new", R.kr_new, `설립 ${R.kr_new_age}년 이내 국내 디자이너 브랜드(대중성 낮음) ${krNew.length}벌 (${R.kr_new_n}벌 이상)`, krNew);
-  const jpList = known.filter((i) => i.brand!.country === "일본");
+  const jpList = known.filter((i) => i.brand!.country === "일본" && i.brand!.price >= R.foreign_price);
   const jpN = jpList.length;
-  if (jpN >= R.jp_n) add("jp", R.jp, `일본 브랜드 ${jpN}벌 (${R.jp_n}벌 이상)`, jpList);
+  if (jpN >= R.jp_n) add("jp", R.jp, `일본 중고가 이상 브랜드 ${jpN}벌 (${R.jp_n}벌 이상)`, jpList);
   const reproList = items.filter(isRepro);
   const repro = reproList.length;
   if (repro) add("repro", repro >= R.repro_many_n ? R.repro_many : R.repro, `일본 데님·리바이스 빈티지 ${repro}벌 (${R.repro_many_n}벌 이상이면 +${R.repro_many})`, reproList);
@@ -199,9 +201,10 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
   // 2. 빼는 점수 --------------------------------------------------------------
   if (enough) {
     // 무신사 좋아요가 많고 고가 미만이면서 대중적인 브랜드(SPA·매스마켓 포함) 쏠림
-    const isPopular = (i: Item) => (i.brand!.likes ?? 0) >= R.popular_likes && i.brand!.price < 5 && i.brand!.pop >= 4;
+    const isPopular = (i: Item) =>
+      ((i.brand!.likes ?? 0) >= R.popular_likes && i.brand!.price < 5 && i.brand!.pop >= 4) || (i.brand!.positions.includes("SPA") && i.brand!.price <= 3);
     const popular = share(known, isPopular);
-    add("popular", -over(popular, R.popular_from, R.popular_per10, R.popular_max), `좋아요 ${R.popular_likes.toLocaleString()} 이상·고가 미만·대중적 브랜드 ${P(popular)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max})`, known.filter(isPopular));
+    add("popular", -over(popular, R.popular_from, R.popular_per10, R.popular_max), `좋아요 ${R.popular_likes.toLocaleString()} 이상·고가 미만·대중적 브랜드, 또는 가격 레벨 3 이하 SPA(좋아요 상관없음) ${P(popular)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max})`, known.filter(isPopular));
     const isTrendy = (i: Item) => i.brand!.hype >= 4 && i.brand!.pop >= 4;
     const trendy = share(known, isTrendy);
     if (trendy * 100 >= R.trendy_pct) add("trendy", -R.trendy, `하이프·대중성 모두 높은 브랜드 ${P(trendy)} (${R.trendy_pct}% 이상)`, known.filter(isTrendy));

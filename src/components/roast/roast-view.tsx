@@ -373,6 +373,9 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
   const router = useRouter();
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
+  // 나이는 필수(10~99): 점수의 나이 기준에 쓴다.
+  const ageNum = Number(age);
+  const ageOk = Number.isInteger(ageNum) && ageNum >= 10 && ageNum <= 99;
   const enough = clothes >= MIN_CLOTHES;
 
   return (
@@ -433,8 +436,8 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
           className="flex flex-col gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            const n = Number(age);
-            onStart(name.trim() || null, Number.isInteger(n) && n >= 10 && n <= 99 ? n : null);
+            if (!ageOk) return;
+            onStart(name.trim() || null, ageNum);
           }}
         >
           <p className="roast-ai">
@@ -457,9 +460,10 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
               autoComplete="off"
               aria-label="나이"
               placeholder="나이"
+              required
               className="min-h-12 w-20 border border-text bg-surface px-3 text-body"
             />
-            <button type="submit" className={buttonClassName({ variant: "primary", size: "lg" })}>
+            <button type="submit" disabled={!ageOk} className={buttonClassName({ variant: "primary", size: "lg" })}>
               시작하기
             </button>
           </div>

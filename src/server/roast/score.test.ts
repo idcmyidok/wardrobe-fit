@@ -3,6 +3,7 @@ import type { Garment } from "@/lib/types/domain";
 import { analyze, brandKindOf, colorCounted } from "./analyze";
 import { buildReport } from "./report";
 import { REPORT_TEXT } from "./report-text";
+import { SCORE_DELTAS } from "./score-deltas";
 import { ageAt, bandOf, scoreWardrobe, tierOf } from "./score";
 
 const now = new Date("2026-09-29T12:00:00+09:00");
@@ -87,13 +88,13 @@ describe("옷장 점수(점수 계획서)", () => {
     expect(r.total.score).toBe(100);
   });
 
-  it("중고가 가점: 스트릿·컨템포러리 중고가는 하나당 +1(최대 +5), 대중적 브랜드는 제외", () => {
+  it("중고가 가점: 스트릿·컨템포러리 중고가는 하나당 +1(최대 +3), 대중적 브랜드는 제외", () => {
     const part = (brand: string, n: number) => {
       const a = analyze(Array.from({ length: n }, (_, i) => g(i, { brand })), null, 1360, now);
       return scoreWardrobe(a, { age: null }).parts.find((p) => p.id === "mid")?.delta;
     };
     expect(part("Pop Trading Company", 2)).toBe(2);
-    expect(part("Pop Trading Company", 8)).toBe(5);
+    expect(part("Pop Trading Company", 8)).toBe(3);
     expect(part("COS", 6)).toBeUndefined();
   });
 
@@ -124,5 +125,27 @@ describe("옷장 점수(점수 계획서)", () => {
     const r = buildReport(a, null, 1, { ...REPORT_TEXT, layout });
     expect(r.order?.[0]).toBe("dna");
     expect(r.points.map((p) => p.id)).not.toContain("fit");
+  });
+  it("SPA(가격 레벨 3 이하)는 좋아요와 상관없이 인기 대중 쏠림에 들어가고 10%p마다 -3, 최대 -12", () => {
+    const a = analyze(Array.from({ length: 10 }, (_, i) => g(i, { brand: "UNIQLO" })), null, 1360, now);
+    expect(scoreWardrobe(a, { age: null }).parts.find((p) => p.id === "popular")?.delta).toBe(-12);
+  });
+
+  it("일본 브랜드 가점은 중고가 이상만 센다(유니클로 제외)", () => {
+    const jp = (brand: string) => scoreWardrobe(analyze(Array.from({ length: 5 }, (_, i) => g(i, { brand })), null, 1360, now), { age: null }).parts.find((p) => p.id === "jp");
+    expect(jp("UNIQLO")).toBeUndefined();
+    expect(jp("Needles")?.delta).toBe(2);
+  });
+
+  it("후르츠패밀리 가점은 3벌 이상이어도 전부 중저가 이하 브랜드면 없다", () => {
+    const fruits = (brand: string) =>
+      scoreWardrobe(analyze(Array.from({ length: 5 }, (_, i) => g(i, { brand, productUrl: i < 3 ? "https://fruitsfamily.com/p/1" : null })), null, 1360, now), { age: null }).parts.find((p) => p.id === "fruits");
+    expect(fruits("UNIQLO")).toBeUndefined();
+    expect(fruits("Needles")?.delta).toBe(3);
+  });
+
+  it("퀴즈는 맞혀도 가점이 없고 틀리면 감점만 있다", () => {
+    expect(SCORE_DELTAS.quiz).toEqual({ right: 0, wrong: -9 });
+    expect(SCORE_DELTAS.band_quiz).toEqual({ right: 0, wrong: -9 });
   });
 });
