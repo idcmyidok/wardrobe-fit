@@ -31,4 +31,8 @@ export interface OrderContext {
   events: OrderEvent[];
   /** 옷 id → 상품 하트·후기 수 */
   pop: Record<string, OrderPop>;
+  /** 옷 id → 주문 번호(팩·셋업을 나눈 옷은 같은 번호) */
+  orderOf: Record<string, number>;
+  /** 옷 id → 산 사이즈의 실측(사이즈표에서 찾은 값, "chest:55|length:70"). 못 찾으면 null(같은 옷 반복은 사이즈로 본다) */
+  measure: Record<string, string | null>;
 }

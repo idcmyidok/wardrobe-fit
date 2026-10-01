@@ -373,6 +373,10 @@
   padding: 56px 0;
   text-align: center;
 }
+.roast .roast-order-wait {
+  font-weight: 600;
+  text-wrap: pretty;
+}
 .roast .roast-order-line {
   min-height: 1.6em;
   animation: roast-order-line 0.5s ease-out;

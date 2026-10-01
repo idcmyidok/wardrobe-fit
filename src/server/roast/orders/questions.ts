@@ -38,7 +38,9 @@ export const ORDER_QUESTIONS: QuestionDef[] = [
       return list.length >= 5 ? { n: list.length, likes: (R.rank_likes_k * 1000).toLocaleString("ko-KR") } : null;
     },
     photos: (a) => photoIds(rankList(a).sort((x, y) => (likesOf(a, y) ?? 0) - (likesOf(a, x) ?? 0))).slice(0, 8) },
-  { id: "o_review", bucket: "o_review", base: 0.35, options: ["read", "points", "skip"], when: () => ({}) },
+  // 후기 읽기와 후기 쓰기는 다른 일이라 따로 묻는다(사용자 요청).
+  { id: "o_review_read", bucket: "o_review_read", base: 0.35, options: ["read", "photo", "skip"], when: () => ({}) },
+  { id: "o_review_write", bucket: "o_review_write", base: 0.35, options: ["points", "good_only", "never"], when: () => ({}) },
   { id: "o_returns", bucket: "o_return", base: 0.9, options: ["size", "mind", "try_on"],
     when: (a) => {
       const rs = returnStats(a);

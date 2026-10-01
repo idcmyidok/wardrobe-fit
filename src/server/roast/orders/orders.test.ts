@@ -4,10 +4,11 @@ import { buildScript, composeResult } from "../compose";
 import { buildReport } from "../report";
 import { DEFAULT_TEXTS } from "../texts";
 import { analyzeOrders } from "./analysis";
-import { toGarments, type OrderRoastItem } from "./input";
+import { orderItemSchema, toGarments, type OrderRoastItem } from "./input";
 import { busiestMonth, isRanking, isStandard, returnStats } from "./metrics";
 import { orderOverride } from "./report";
 import { ORDER_RULES } from "./rules";
+import { ORDER_PART_NAME, ORDER_RULE_NAME } from "./texts";
 import { scoreOrders } from "./score";
 
 const now = new Date("2026-09-30T12:00:00+09:00");
@@ -27,7 +28,7 @@ const item = (over: Partial<OrderRoastItem> = {}): OrderRoastItem => ({
   goodsNo: String(1000 + seq),
   likes: 20_000,
   reviews: 5_000,
-  image: `https://image.msscdn.net/images/goods_img/${seq}.jpg`,
+  image: `/api/imports/00000000-0000-4000-8000-${String(seq).padStart(12, "0")}/image?i=0`,
   ...over,
 });
 
@@ -52,6 +53,17 @@ function run() {
   const { garments, ctx } = toGarments(sample());
   return analyzeOrders(garments, ctx, 1360, now);
 }
+
+describe("주문내역 훈수 목록 검사", () => {
+  it("사진은 이미지 프록시 주소만 받는다(무신사 주소는 화면 CSP에 막힌다)", () => {
+    expect(orderItemSchema.safeParse(item()).success).toBe(true);
+    expect(orderItemSchema.safeParse(item({ image: "https://image.msscdn.net/images/goods_img/1.jpg" })).success).toBe(false);
+  });
+  it('브랜드가 "undefined"로 오면 브랜드 없음으로 본다', () => {
+    expect(orderItemSchema.parse(item({ brand: "undefined" })).brand).toBe("");
+    expect(orderItemSchema.parse(item({ brand: " 커버낫 " })).brand).toBe("커버낫");
+  });
+});
 
 describe("주문내역 붙여넣기(훈수용)", () => {
   it("반품·취소·교환도 상태를 붙여 남긴다", () => {
@@ -125,6 +137,49 @@ describe("주문내역 훈수 목록 → 분석", () => {
     expect(s.age).not.toBeNull();
     // 나이를 안 적으면 나이 기준은 없다
     expect(scoreOrders(a, { age: null }).parts.some((p) => p.id.startsWith("age_"))).toBe(false);
+  });
+
+  it("점수 기준과 항목마다 관리자 화면 이름이 있다", () => {
+    for (const k of Object.keys(ORDER_RULES)) expect(ORDER_RULE_NAME[k], k).toBeDefined();
+    const s = scoreOrders(run(), { age: 38 });
+    for (const p of s.parts) expect(ORDER_PART_NAME[p.id], p.id).toBeDefined();
+  });
+
+  it("같은 옷 반복: 같은 상품·같은 실측(없으면 사이즈)을 다른 주문에서 또 산 것만 센다", () => {
+    const dup = (list: OrderRoastItem[]) => {
+      const { garments, ctx } = toGarments(list);
+      return scoreOrders(analyzeOrders(garments, ctx, 1360, now), { age: null }).parts.find((p) => p.id === "dup")?.delta ?? 0;
+    };
+    seq = 0;
+    const base = Array.from({ length: 10 }, (_, k) => item({ brand: "커버낫", name: `다른 옷 ${k}`, likes: 100, reviews: 1 }));
+    const tee = (over: Partial<OrderRoastItem>) => item({ brand: "아더에러", name: "같은 셔츠", categoryId: "outer", subcategoryId: "outer.shirt", likes: 100, reviews: 1, ...over });
+    // 실측이 같으면 반복(색은 달라도)
+    expect(dup([...base, tee({ measure: "chest:60|length:72", color: "블루" }), tee({ measure: "chest:60|length:72", color: "블랙" })])).toBe(-ORDER_RULES.dup_each);
+    // 사이즈가 달라 실측이 다르면 반복이 아니다
+    expect(dup([...base, tee({ measure: "chest:60|length:72", size: "M" }), tee({ measure: "chest:63|length:74", size: "L" })])).toBe(0);
+    // 실측을 못 찾으면 사이즈로 본다
+    expect(dup([...base, tee({ size: "L" }), tee({ size: "L" })])).toBe(-ORDER_RULES.dup_each);
+    // 한 주문의 팩(같은 주문 번호)은 반복이 아니다
+    const pack = tee({ size: "L" });
+    expect(dup([...base, pack, { ...pack }])).toBe(0);
+  });
+
+  it("석 달 평균 구매액 기준은 25·15·10만 원", () => {
+    expect([ORDER_RULES.spend_top_won, ORDER_RULES.spend_a_won, ORDER_RULES.spend_b_won]).toEqual([25, 15, 10]);
+  });
+
+  it("새 감점: 몰아 사기 날, 반품하고 또 사는 브랜드", () => {
+    seq = 0;
+    const list = [
+      ...Array.from({ length: 6 }, (_, k) => item({ brand: "커버낫", name: `후드 ${k}`, subcategoryId: "top.hoodie", date: "2026-03-02" })),
+      ...Array.from({ length: 6 }, (_, k) => item({ brand: "아더에러", name: `셔츠 ${k}`, categoryId: "outer", subcategoryId: "outer.shirt", date: `2026-0${(k % 6) + 1}-15` })),
+      item({ status: "returned", brand: "커버낫", name: "반품 1" }),
+      item({ status: "returned", brand: "커버낫", name: "반품 2" }),
+    ];
+    const { garments, ctx } = toGarments(list);
+    const ids = scoreOrders(analyzeOrders(garments, ctx, 1360, now), { age: null }).parts.map((p) => p.id);
+    expect(ids).toContain("binge");
+    expect(ids).toContain("return_brand");
   });
 
   it("대화는 주문내역 질문만(공통 퀴즈·밥과 옷·패셔너블 제외) 묻고, 옷장이라는 말을 쓰지 않는다", () => {

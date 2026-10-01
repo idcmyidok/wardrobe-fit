@@ -14,12 +14,12 @@
 
 ## 핵심 영역 길잡이
 - **훈수(/roast)**: 화면 `src/components/roast/roast-view.tsx`(839), 서버 `src/server/roast/`. 점수 `score.ts`(`scoreWardrobe`)·점수 규칙값 `score-deltas.ts`·등급 `bands.ts`; 분석 `analyze.ts`; 문장 조립 `compose.ts`(`composeResult`)·`report.ts`(`buildReport`)·문장 원문 `lines.ts`/`report-text.ts`; 질문 `questions.ts`(1355, `QUESTIONS`/`pickQuestions`), 퀴즈 `quiz.ts`(`QUIZ`); 관리자 편집 단위·조건 `meta.ts`(`textGroups`)·`texts.ts`(저장된 문구 덮어쓰기 `DEFAULT_TEXTS`); 서버 액션 `actions.ts`(`startRoast`/`finishRoast`), 관리자 저장 `admin-actions.ts`; AI 문장 `ai.ts`.
-- **무신사 주문내역 훈수(/roast/orders, 메뉴 없음)**: 화면 `src/app/(app)/roast/orders/page.tsx` → `roast-view.tsx`(`orders` prop) + 붙여넣기·로딩 `src/components/roast/order-roast.tsx`(`OrderPaste`). 서버 액션 `src/server/roast/order-actions.ts`(`startOrderRoast`/`finishOrderRoast`, 저장·AI 없음). 주문내역 전용 `src/server/roast/orders/`: 입력 `input.ts`(`toGarments`), 분석 `analysis.ts`(`analyzeOrders`), 수치 `metrics.ts`(랭킹템·스탠다드·반품), 점수 `score.ts`(`scoreOrders`)·기준값 `rules.ts`(`ORDER_RULES`/`ORDER_AGE_RULES`/`ORDER_DELTAS`), 질문 `questions.ts`(`ORDER_QUESTIONS`), 결과 문단 `report.ts`(`orderOverride` → `buildReport`의 override), 문장 `texts.ts`. 관리자 편집은 "주문내역 훈수" 탭(`meta.ts` textGroups의 kind "orders"). 상품 하트·후기 수는 `parsers/musinsa.ts`(`popularityIn`), 주문 나누기는 `musinsa-orders.ts`(`parseOrdersForRoast`), 상품 읽기 API `/api/order-imports/item`(`roast: true`면 kind "roast"로 하루 분석 한도 대신 `ORDER_ROAST_DAILY_CAP`, 기록은 parser_version 끝 `ORDER_ROAST_SUFFIX`). 메뉴·노트 공개는 `src/lib/features.ts`의 `orderRoastMenu`.
+- **무신사 주문내역 훈수(/roast/orders, 메뉴 없음)**: 화면 `src/app/(app)/roast/orders/page.tsx` → `roast-view.tsx`(`orders` prop) + 붙여넣기·로딩 `src/components/roast/order-roast.tsx`(`OrderPaste`, 북마크 안내는 주문 가져오기와 같은 `garment-form/order-guide.tsx`의 `OrderGuide`, 사진은 `/api/imports/{id}/image` 프록시 주소). 서버 액션 `src/server/roast/order-actions.ts`(`startOrderRoast`/`finishOrderRoast`, 저장·AI 없음). 주문내역 전용 `src/server/roast/orders/`: 입력 `input.ts`(`toGarments`), 분석 `analysis.ts`(`analyzeOrders`), 수치 `metrics.ts`(랭킹템·스탠다드·반품), 점수 `score.ts`(`scoreOrders`)·기준값 `rules.ts`(`ORDER_RULES`/`ORDER_AGE_RULES`/`ORDER_DELTAS`), 질문 `questions.ts`(`ORDER_QUESTIONS`), 결과 문단 `report.ts`(`orderOverride` → `buildReport`의 override), 문장 `texts.ts`. 관리자 편집은 "주문내역 훈수" 탭(`meta.ts` textGroups의 kind "orders"). 상품 하트·후기 수는 `parsers/musinsa.ts`(`popularityIn`), 주문 나누기는 `musinsa-orders.ts`(`parseOrdersForRoast`), 상품 읽기 API `/api/order-imports/item`(`roast: true`면 kind "roast"로 하루 분석 한도 대신 `ORDER_ROAST_DAILY_CAP`, 기록은 parser_version 끝 `ORDER_ROAST_SUFFIX`). 메뉴·노트 공개는 `src/lib/features.ts`의 `orderRoastMenu`.
 - **관리자 점수/결과 구성 탭**: `src/components/admin/roast-text-editor.tsx`(`RoastTextEditor`), 페이지 `src/app/(app)/admin/roast-texts/`, 저장 `src/server/roast/admin-actions.ts`. 저장값이 새 기본값을 이김(되돌리기 필요).
 - **브랜드 데이터**: csv → `scripts/build-brands.mjs` → `brands.json` → `src/server/roast/brands.ts`(`findBrand`, `normalizeBrand`, `BRAND_GROUPS`). 무신사 수집 스크립트 `scripts/musinsa/`.
 - **핏 계산**: `src/lib/fit/compute.ts`(`computeFit`/`computeSize`), 내 치수 기반 `body-fit.ts`(`FIT_GROUPS`), 길이 `length-fit.ts`, 신발 `shoes.ts`, VS 비교 `versus.ts`, 비교 대상 선택 `select-comparables.ts`, 서버 `src/server/fit/service.ts`, AI 설명 `src/server/ai/fit-interpreter.ts`.
 - **구매 판단기(핏체크)**: 화면 `src/components/fit-check/`(`fit-check-view`, `fit-result-view`, `versus-view`), API `src/app/api/fit-checks`, 링크 파싱 `src/server/import/`(`parsers/`, `registry.ts`, `service.ts`).
-- **무신사 주문 가져오기**: `src/server/import/musinsa-orders.ts`, `src/lib/import/`, 화면 `src/components/garment-form/order-import-view.tsx`.
+- **무신사 주문 가져오기**: `src/server/import/musinsa-orders.ts`, `src/lib/import/`, 화면 `src/components/garment-form/order-import-view.tsx`, 북마크 안내 `order-guide.tsx`(`OrderGuide`, 주문내역 훈수와 같이 씀).
 - **옷장/분석/코디**: `src/components/wardrobe/`, `src/server/garments/`, `src/components/analysis/wardrobe-analysis.ts`, `src/lib/outfit/recommend.ts`.
 - **업데이트 노트**: `src/lib/release-notes.ts`(342), 화면 `src/components/layout/release-notes-dialog.tsx`. (버전·노트는 사용자 지시 없이 수정 금지)
 - **DB**: `supabase/migrations/`(번호순), 스펙 `PROJECT_SPEC.md`(1189줄, 필요한 절만 `grep -n "^#"`로 찾기).
@@ -157,7 +157,8 @@
 - `garment-fields.tsx` (487줄) FormState:22 Imported:40 EMPTY_FORM:42 importedForm:61 chartMeasurements:79 draftToForm:85 ItemState:105 newItemState:115 …
 - `image-picker.tsx` (97줄) ImagePicker:11
 - `new-garment-view.tsx` (565줄) extractLinks:38 NewGarmentView:62
-- `order-import-view.tsx` (643줄) OrderImportView:96
+- `order-guide.tsx` (179줄) OrderGuide:18
+- `order-import-view.tsx` (471줄) OrderImportView:95
 - `page-image-grid.tsx` (68줄) PageImageGrid:9
 - `shoe-fit-picker.tsx` (29줄) ShoeFitPicker:4
 - `shop-photos.tsx` (90줄) ShopPhotos:13
@@ -183,7 +184,7 @@
 - `outfit-view.tsx` (139줄) OutfitView:20
 
 ### src/components/roast
-- `order-roast.tsx` (177줄) OrderCopy:18 OrderPaste:29
+- `order-roast.tsx` (198줄) OrderCopy:21 OrderPaste:45
 - `roast-view.tsx` (893줄) RoastView:65
 
 ### src/components/settings
@@ -368,21 +369,21 @@
 - `report-text.ts` (308줄) REPORT_TEXT:12 ReportTexts:307
 - `report.ts` (657줄) ReportOverride:89 buildReport:102 limitPhotos:621 splitLead:642 tryFill:647
 - `score-deltas.ts` (249줄) SCORE_DELTAS:9 SCORE_RULES:88 ScoreRules:184 AGE_RULES:191 AGE_BANDS:238
-- `score.ts` (385줄) ScorePart:16 WardrobeScore:25 ScoreOptions:33 scoreWardrobe:64(isTopDesigner/isMidTier/isGood 판정은 파일 위쪽) fitContrast:302 ageAt:307 bandName:314 bandOf:322 …
+- `score.ts` (385줄) ScorePart:16 WardrobeScore:25 ScoreOptions:33 isTopDesigner:44 isMidTier:46 isNice:52(주문내역 점수도 씀) scoreWardrobe:64 fitContrast:302 ageAt:307 bandName:314 bandOf:322 …
 - `shift.ts` (64줄) ShiftRules:3 TasteShift:9 detectTasteShift:40
 - `text.ts` (119줄) josa:56 won:66 Vars:75 MissingVar:78 fill:80 varsOf:91 rng:94 Rng:118
 - `texts.ts` (284줄) DEFAULT_TEXTS:40 RoastTexts:50 ROAST_TEXT_MAX:52 CUSTOM_QUIZ_ID:55 UnitKind:57 UnitValue:58 TextUnit:60 unitsOf:69 …
 
 ### src/server/roast/orders
 - `analysis.ts` (17줄) analyzeOrders:11
-- `context.ts` (35줄) OrderPop:7 OrderEvent:14 OrderContext:23
-- `input.ts` (69줄) orderItemSchema:13 OrderRoastItem:30 orderListSchema:31 toGarments:34
+- `context.ts` (38줄) OrderPop:7 OrderEvent:14 OrderContext:23(orderOf·measure: 같은 옷 반복용)
+- `input.ts` (75줄) orderItemSchema:16 OrderRoastItem:35 orderListSchema:36 toGarments:39
 - `metrics.ts` (106줄) orderRules:8 isStandard:10 likesOf:13 reviewsOf:14 isRanking:17 isHidden:27 thirds:35 busiestMonth:50 …
-- `questions.ts` (91줄) ORDER_QUESTIONS:33
+- `questions.ts` (92줄) ORDER_QUESTIONS:33
 - `report.ts` (105줄) orderOverride:29
-- `rules.ts` (116줄) ORDER_RULES:6 OrderRules:83 ORDER_AGE_RULES:89 ORDER_DELTAS:102
-- `score.ts` (192줄) OrderAgeKind:17 OrderScore:18 scoreOrders:40 orderTier:188
-- `texts.ts` (444줄) ORDER_SCREEN:9 ORDER_COMMON:39 ORDER_Q_TEXT:47 ORDER_REPORT_TEXT:231 ORDER_QUESTION_COND:282 ORDER_PART_NAME:298 ORDER_RULE_NAME:329 ORDER_AGE_KEY_NAME:397 …
+- `rules.ts` (146줄) ORDER_RULES:6 OrderRules:112 ORDER_AGE_RULES:119 ORDER_DELTAS:132
+- `score.ts` (236줄) OrderAgeKind:18 OrderScore:19 scoreOrders:42 orderTier:233 (점수 계산표 /mnt/project-files/roast/order-score-table.md)
+- `texts.ts` (489줄) ORDER_SCREEN:9 ORDER_COMMON:41 ORDER_Q_TEXT:49 ORDER_REPORT_TEXT:248 ORDER_QUESTION_COND:299 ORDER_PART_NAME:316 ORDER_RULE_NAME:355 ORDER_AGE_KEY_NAME:442 …
 
 ### src/server/security
 - `url-guard.ts` (89줄) isBlockedIp:56 ALLOWED_PORTS:67 UrlCheck:69 checkUrlShape:72
