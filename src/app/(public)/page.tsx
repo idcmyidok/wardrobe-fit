@@ -1,5 +1,6 @@
 import { parseAuthMode } from "@/components/auth/auth-mode";
 import { AuthPanel } from "@/components/auth/auth-panel";
+import { PromoBanner } from "@/components/landing/promo-banner";
 import { ServiceIntro } from "@/components/landing/service-intro";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { SiteFooter } from "@/components/legal/site-footer";
@@ -36,7 +37,10 @@ export default async function LandingPage({
         <div className="absolute top-5 right-[clamp(16px,3vw,32px)]">
           <ThemeToggle />
         </div>
-        <AuthPanel mode={mode} next={next} notice={notice} savedEmail={savedEmail} configured={isAuthConfigured()} />
+        <div className="flex w-full flex-col gap-8">
+          <AuthPanel mode={mode} next={next} notice={notice} savedEmail={savedEmail} configured={isAuthConfigured()} />
+          {(mode === "signin" || mode === "signup") && <PromoBanner />}
+        </div>
       </section>
     </main>
   );
