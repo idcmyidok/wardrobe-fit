@@ -22,7 +22,7 @@ export default async function RoastTextsPage() {
       vars: allowedVars(`${g.id}.x`).map((v) => ({ key: v, label: varLabel(g.id, v) })),
       units: units
         .filter((u) => groupOf(u.key) === g.id)
-        .map((u) => ({ key: u.key, kind: u.kind, label: fieldLabel(u.key, optionLabel), value: edits[u.key] ?? u.value })),
+        .map((u) => ({ key: u.key, kind: u.kind, label: fieldLabel(u.key, optionLabel), value: edits[u.key] ?? u.value, base: u.value })),
     }))
     .filter((g) => g.units.length);
 

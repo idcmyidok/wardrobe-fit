@@ -16,7 +16,11 @@ export interface EditorUnit {
   label: string;
   /** DB에 저장된 값(없으면 코드의 처음 문장) */
   value: UnitValue | number;
+  /** 코드의 처음 문장. 저장된 값과 다르면 직접 고친 문장으로 표시한다. */
+  base: UnitValue | number;
 }
+
+const isEdited = (value: EditorUnit["value"], base: EditorUnit["base"]) => JSON.stringify(value) !== JSON.stringify(base);
 
 export interface EditorGroup {
   id: string;
@@ -209,18 +213,28 @@ export function RoastTextEditor({ groups, quizzes, brands, layout }: { groups: E
         <ul className="flex flex-col">
           {shown.map((g) => {
             const isOpen = open.has(g.id) || Boolean(q);
+            // 접었다 펴도 저장한 문장이 보이도록 화면의 저장값을 칸에 반영한다.
+            const units = g.units.map((u) => ({ ...u, value: saved[u.key] ?? u.value }));
+            const editedCount = units.filter((u) => isEdited(u.value, u.base)).length;
             return (
               <li key={g.id} className="border-b border-neutral-300">
                 <button type="button" className="flex w-full items-start justify-between gap-3 py-3 text-left" aria-expanded={isOpen} onClick={() => toggle(g.id)}>
                   <span className="flex flex-col gap-0.5">
-                    <span className="text-base font-medium">{g.title}</span>
+                    <span className="text-base font-medium">
+                      {g.title}
+                      {editedCount > 0 && (
+                        <span className="ml-2 text-sm font-normal text-[#800020]">
+                          고친 문장 ({editedCount}/{units.length})
+                        </span>
+                      )}
+                    </span>
                     {g.when && <span className="text-sm text-neutral-700">{g.when}</span>}
                   </span>
                   <span className="shrink-0 text-sm text-neutral-700">
                     {g.units.length}칸 {isOpen ? "▲" : "▼"}
                   </span>
                 </button>
-                {isOpen && <GroupBlock group={g} onSaved={(items) => setSaved((m) => ({ ...m, ...items }))} />}
+                {isOpen && <GroupBlock group={{ ...g, units }} onSaved={(items) => setSaved((m) => ({ ...m, ...items }))} />}
               </li>
             );
           })}
@@ -378,7 +392,7 @@ function GroupBlock({ group, onSaved }: { group: EditorGroup; onSaved: (items: R
     <div className="flex flex-col gap-5 pb-5" onBlur={() => void flush()}>
       {vars.length > 0 && <p className="text-sm text-neutral-700">쓸 수 있는 자리: {vars.map((v) => `[${v.label}]`).join(" ")}</p>}
       {group.units.map((u) => (
-        <UnitField key={u.key} unit={u} value={values[u.key]} onChange={(v) => setValues((m) => ({ ...m, [u.key]: v }))} />
+        <UnitField key={u.key} unit={u} value={values[u.key]} edited={isEdited(u.value, u.base)} onChange={(v) => setValues((m) => ({ ...m, [u.key]: v }))} />
       ))}
       <div className="min-h-5">
         <Message message={status} />
@@ -387,17 +401,23 @@ function GroupBlock({ group, onSaved }: { group: EditorGroup; onSaved: (items: R
   );
 }
 
-function UnitField({ unit, value, onChange }: { unit: EditorUnit; value: UnitValue; onChange: (v: UnitValue) => void }) {
+function UnitField({ unit, value, edited, onChange }: { unit: EditorUnit; value: UnitValue; edited: boolean; onChange: (v: UnitValue) => void }) {
   if (unit.kind === "number")
     return (
       <label className="flex min-w-48 items-center gap-2 text-sm">
-        <span className="flex-1">{unit.label}</span>
+        <span className="flex-1">
+          {unit.label}
+          {edited && <span className="ml-1 text-[#800020]">(직접 수정함)</span>}
+        </span>
         <Input type="number" step={1} className="w-20" value={value as string} onChange={(e) => onChange(e.target.value)} aria-label={unit.key.startsWith("report.layout.") ? unit.label : `${unit.label} 점수`} />
       </label>
     );
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1 text-sm font-medium">{unit.label}</legend>
+      <legend className="mb-1 text-sm font-medium">
+        {unit.label}
+        {edited && <span className="ml-1 font-normal text-[#800020]">(직접 수정함)</span>}
+      </legend>
       {unit.kind === "text" ? (
         <textarea aria-label={unit.label} rows={rowsFor(value as string)} className={areaClass} value={value as string} onChange={(e) => onChange(e.target.value)} />
       ) : (
