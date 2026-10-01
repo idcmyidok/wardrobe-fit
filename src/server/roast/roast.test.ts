@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Garment } from "@/lib/types/domain";
 import { analyze } from "./analyze";
 import { BRANDS, brandGroups, brandLabels, findBrand, isTrendBrand, MUSINSA_POPULAR } from "./brands";
-import { buildScript, composeResult, outfitCounts, quotesAnswer } from "./compose";
+import { buildScript, composeResult, quotesAnswer } from "./compose";
 import { productFamilies } from "./keywords";
 import { QUESTIONS, Q_TEXT } from "./questions";
 import { QUIZ } from "./quiz";
@@ -126,25 +126,6 @@ describe("분석과 결과", () => {
   const now = new Date("2026-09-29T12:00:00+09:00");
   const a = analyze(wardrobe, null, 1360, now);
 
-  it("코디 조합 수: 상의×하의×신발 × (1+아우터) × (1+모자)", () => {
-    const mixed = analyze(
-      [
-        ...Array.from({ length: 3 }, (_, i) => g(i, { categoryId: "top" })),
-        ...Array.from({ length: 2 }, (_, i) => g(10 + i, { categoryId: "bottom" })),
-        ...Array.from({ length: 2 }, (_, i) => g(20 + i, { categoryId: "shoes" })),
-        g(30, { categoryId: "outer" }),
-        ...Array.from({ length: 2 }, (_, i) => g(40 + i, { categoryId: "hat" })),
-      ],
-      null,
-      1360,
-      now,
-    );
-    // 기본 12 + 아우터만 12 + 모자만 24 + 둘 다 24 = 72
-    expect(outfitCounts(mixed)).toMatchObject({ base: 12, combos: 72 });
-    const noShoes = analyze(wardrobe.filter((x) => x.categoryId !== "shoes"), null, 1360, now);
-    expect(outfitCounts(noShoes).combos).toBe(0);
-    expect(composeResult(noShoes, null, 1).outfit).toMatch(/0가지/);
-  });
   it("보류 옷은 빼고, 모자·신발을 뺀 옷을 센다", () => {
     expect(a.clothes).toHaveLength(13);
   });
@@ -182,9 +163,9 @@ describe("분석과 결과", () => {
     // 일반 질문은 최대 10개, 끝에 늘 붙는 질문(무신사 링크·패셔너블)은 따로 센다.
     expect(p1.script.questions.filter((q) => !["chimchak_q", "fashionable_q"].includes(q.id)).length).toBeLessThanOrEqual(10);
     expect(p1.script.steps.filter((s) => s.t === "status").length).toBeLessThanOrEqual(15);
-    const r = composeResult(a, "세현", 42);
-    expect(r.headline).not.toMatch(/[{}]/);
-    expect(r.paragraphs.map((x) => x.text).join(" ")).not.toMatch(/[{}]/);
+    const r = composeResult(a, 42);
+    expect(r.closing.length).toBeGreaterThanOrEqual(2);
+    expect(r.closing.join(" ")).not.toMatch(/[{}]/);
   });
 });
 
@@ -207,18 +188,17 @@ describe("관리자 문장 수정", () => {
   it("고치는 단위: 문장 목록은 통째로, 퀴즈 정답은 숫자로", () => {
     const units = new Map(unitsOf().map((u) => [u.key, u]));
     expect(units.get("lines.black_bias.say")?.kind).toBe("list");
-    expect(units.get("lines.black_bias.head")?.kind).toBe("pairs");
+    expect(units.has("lines.black_bias.head")).toBe(false);
     expect(units.get("questions.odd_photo.text")?.kind).toBe("text");
     expect(units.get("quiz.cdg-play.answer")?.kind).toBe("number");
     expect(units.has("lines.black_bias.say.0")).toBe(false);
   });
   it("그 문장에 없는 자리는 막고, 목록은 비울 수 없다", () => {
-    expect(checkUnit("lines.black_bias.say", ["검정이 {n}벌, {pct}%", "새 문장"])).toEqual({ value: ["검정이 {n}벌, {pct}%", "새 문장"] });
+    expect(checkUnit("lines.black_bias.say", ["검정이 {n}벌", "새 문장"])).toEqual({ value: ["검정이 {n}벌", "새 문장"] });
     expect(checkUnit("lines.black_bias.say", ["검정이 {amountWon}"])).toMatchObject({ error: expect.stringMatching(/자리/) });
     expect(checkUnit("lines.black_bias.say", [])).toMatchObject({ error: expect.stringMatching(/이상/) });
     expect(checkUnit("lines.nope.say", ["x"])).toMatchObject({ error: expect.stringMatching(/없는/) });
     expect(checkUnit("questions.odd_photo.text", " ")).toMatchObject({ error: expect.stringMatching(/비워/) });
-    expect(checkUnit("common.HEAD_SINGLE_PREFIX", ["", "결론은,"])).toEqual({ value: ["", "결론은,"] });
   });
   it("고친 문장이 분석에 쓰이고, 예전 방식(목록 안 한 줄)과 잘못된 값은 무시한다", () => {
     const T = applyTextEdits({
@@ -292,29 +272,6 @@ describe("새 패턴", () => {
         const since = before.slice(before.map((x) => x.t).lastIndexOf("status") + 1);
         for (const x of since) if (x.t === "say" && x.photos && q.photos.length) expect(x.photos.some((id) => q.photos.includes(id))).toBe(false);
       });
-    }
-  });
-  it("결과 글에 답을 두고 비꼬는 문단이 들어간다", () => {
-    const w = Array.from({ length: 12 }, (_, i) => g(i, { productName: i < 3 ? "그래픽 반팔 티셔츠" : `프린트 옷${i}`, colorName: i < 3 ? "화이트" : "블랙" }));
-    const a = analyze(w, null, 1360, now);
-    const plan = buildScript(a, 7, null);
-    const answers = Object.fromEntries(plan.asked.map((q) => [q.id, q.options[0].id]));
-    const r = composeResult(a, null, 7, undefined, plan.asked, answers);
-    const candidates = plan.asked.map((q) => q.roast[answers[q.id]] ?? []).filter((l) => l.length);
-    expect(candidates.length).toBeGreaterThan(0);
-    expect(r.paragraphs.some((p) => candidates[0].includes(p.text))).toBe(true);
-  });
-  it("결과 글에서 답을 옮겨 말하며 시작하는 문단(\"~라고 하셨죠.\")은 한 번만 쓴다", () => {
-    const w = Array.from({ length: 14 }, (_, i) => g(i, { productName: i < 3 ? "그래픽 반팔 티셔츠" : `프린트 옷${i}`, colorName: i < 3 ? "화이트" : "블랙", purchasePrice: 10000 * (i + 1) }));
-    const a = analyze(w, null, 1360, now);
-    for (let seed = 0; seed < 40; seed++) {
-      const plan = buildScript(a, seed, null);
-      for (const pick of [0, 1, 2]) {
-        const answers = Object.fromEntries(plan.asked.map((q) => [q.id, q.options[Math.min(pick, q.options.length - 1)].id]));
-        const r = composeResult(a, null, seed, undefined, plan.asked, answers);
-        const all = new Set(plan.asked.flatMap((q) => Object.values(q.roast).flat()));
-        expect(r.paragraphs.filter((p) => all.has(p.text) && quotesAnswer(p.text)).length).toBeLessThanOrEqual(1);
-      }
     }
   });
   it("질문 답 문단마다 답을 옮겨 말하지 않고 시작하는 문장이 하나 이상 있다", () => {

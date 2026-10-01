@@ -9,13 +9,9 @@ import { isAuthConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
 import type { Garment } from "@/lib/types/domain";
 import { isAdmin } from "@/server/admin/guard";
-import { getQuotaExemption } from "@/server/admin/is-admin";
-import { getAiProvider } from "@/server/ai/provider";
 import { getMyBodyProfile } from "@/server/body/queries";
-import { hoursAgo } from "@/server/fit/service";
 import { listMyGarments } from "@/server/garments/queries";
 import { getUsdRate } from "@/server/settings/queries";
-import { buildAiInput, ROAST_AI_DAILY_LIMIT, writeWithAi } from "./ai";
 import { analyze, MIN_GARMENTS } from "./analyze";
 import { buildScript, composeResult } from "./compose";
 import { getRoastTexts, signGarments } from "./queries";
@@ -24,8 +20,8 @@ import type { ScoreRules } from "./score-deltas";
 
 /**
  * AI 옷장 분석 서버 액션.
- * - startRoast: 지금 옷장을 읽어 대화 순서를 만든다(AI 없음). 진행 상태는 저장하지 않는다.
- * - finishRoast: 같은 seed로 분석을 다시 만들고 답을 반영해 결과 글을 쓴다. AI는 여기서 한 번만(하루 3회), 넘으면 템플릿.
+ * - startRoast: 지금 옷장을 읽어 대화 순서를 만든다. 진행 상태는 저장하지 않는다.
+ * - finishRoast: 같은 seed로 분석을 다시 만들고 답을 반영해 결과(report)를 만든다. AI는 쓰지 않는다.
  * 로그인한 사용자는 DB의 옷장을 읽고 결과를 저장한다. Supabase가 없는 미리보기 모드는 화면이 보낸 예시 옷장으로 계산하고 저장하지 않는다.
  */
 
@@ -75,18 +71,6 @@ async function source(preview: unknown): Promise<Source | { error: string }> {
   return { garments: await listMyGarments(), userId: user.id, supabase };
 }
 
-async function aiLeft(s: Source): Promise<number | null> {
-  if (!s.supabase || !s.userId) return null;
-  if (await getQuotaExemption(s.supabase, s.userId)) return null;
-  const { count } = await s.supabase
-    .from("roast_runs")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", s.userId)
-    .eq("ai_used", true)
-    .gte("created_at", hoursAgo(24));
-  return Math.max(0, ROAST_AI_DAILY_LIMIT - (count ?? 0));
-}
-
 export async function startRoast(input: { name: string | null; age?: number | null; preview?: unknown }): Promise<RoastStart> {
   try {
     const s = await source(input.preview);
@@ -99,7 +83,7 @@ export async function startRoast(input: { name: string | null; age?: number | nu
     if (a.clothesTotal < MIN_GARMENTS) return { ok: false, code: "too_few", count: a.clothesTotal };
     const seed = Math.floor(Math.random() * 2 ** 31);
     const { script } = buildScript(a, seed, name, texts, age);
-    return { ok: true, script, aiLeft: await aiLeft(s) };
+    return { ok: true, script };
   } catch (e) {
     console.error("[roast] start", e instanceof Error ? e.message : e);
     return { ok: false, code: "error", message: "옷장을 읽지 못했습니다. 잠시 후 다시 시도해 주세요." };
@@ -120,28 +104,14 @@ export async function finishRoast(input: { seed: number; name: string | null; ag
     const a = analyze(s.garments, body, usdRate, new Date(), texts.score.rules as Partial<ScoreRules> | undefined);
     if (a.clothesTotal < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 10개 이상일 때 분석할 수 있습니다." };
     const plan = buildScript(a, seed, name, texts, age);
-    const composed = composeResult(a, name, seed, texts, plan.asked, answers);
+    const composed = composeResult(a, seed, texts);
     const report = buildReport(a, name, seed, texts.report, plan.asked, answers, texts.score, age);
     // 점수 풀이는 관리자에게만 보인다(미리보기 모드는 로그인 없는 개발용 화면이라 확인용으로 보여 준다).
     if (s.userId && !(await isAdmin(s.userId))) delete report.scoreDetail;
 
-    let written: Pick<RoastResult, "headline" | "paragraphs" | "closing"> = composed;
-    let aiUsed = false;
-    const left = await aiLeft(s);
-    const provider = s.userId && (left === null || left > 0) ? getAiProvider() : null;
-    if (provider) {
-      const withPhoto = (ids: string[]) => ids.filter((id) => a.items.find((i) => i.id === id)?.hasPhoto).slice(0, 40);
-      const ai = await writeWithAi(provider, buildAiInput(a, plan, composed, answers, name), withPhoto);
-      if (ai) {
-        // 코디 조합 수는 계산값이라 AI 글 뒤에 그대로 붙인다.
-        written = composed.outfit ? { ...ai, paragraphs: [...ai.paragraphs, { text: composed.outfit, photos: [] }] } : ai;
-        aiUsed = true;
-      }
-    }
-
     // 결과에 나온 옷의 브랜드·제품명·사진 경로를 복사해 둔다(옷을 지워도 문장은 남는다).
     const ids = [
-      ...new Set([...written.paragraphs.flatMap((p) => p.photos), ...report.points.flatMap((p) => p.photos ?? [])]),
+      ...new Set(report.points.flatMap((p) => p.photos ?? [])),
     ];
     const paths = new Map<string, { image: string | null; thumb: string | null }>();
     if (s.supabase && ids.length) {
@@ -165,9 +135,9 @@ export async function finishRoast(input: { seed: number; name: string | null; ag
       name,
       createdAt: new Date().toISOString(),
       garmentCount: a.clothesTotal,
-      headline: written.headline,
-      paragraphs: written.paragraphs,
-      closing: written.closing,
+      headline: "",
+      paragraphs: [],
+      closing: composed.closing,
       disclaimer: texts.screen.DISCLAIMER,
       report,
       garments,
@@ -175,20 +145,18 @@ export async function finishRoast(input: { seed: number; name: string | null; ag
         .filter((q) => answers[q.id])
         .map((q) => ({ id: q.id, question: q.text, answer: q.options.find((o) => o.id === answers[q.id])?.label ?? "" })),
       patterns: composed.used.map((p) => ({ id: p.id, stats: p.stats })),
-      aiUsed,
       wardrobeHash: wardrobeHash(s.garments),
     };
 
     if (s.supabase && s.userId) {
       const [run, save] = await Promise.all([
-        s.supabase.from("roast_runs").insert({ user_id: s.userId, ai_used: aiUsed }),
+        s.supabase.from("roast_runs").insert({ user_id: s.userId }),
         s.supabase.from("roast_results").upsert({
           user_id: s.userId,
           name,
           garment_count: result.garmentCount,
           result: JSON.parse(JSON.stringify({ ...result, garments: stripUrls(garments) })),
           wardrobe_hash: result.wardrobeHash,
-          ai_used: aiUsed,
           created_at: result.createdAt,
         }),
       ]);

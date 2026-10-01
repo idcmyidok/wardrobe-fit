@@ -50,7 +50,6 @@ export const PATTERN_COND: Record<string, string> = {
   group_sports: "스포츠 25% 이상",
   group_outdoor: "아웃도어 25% 이상",
   group_mass: "SPA·대중 브랜드 35% 이상",
-  trend_brands: "요즘 뜨는 브랜드 3벌 이상이고 20% 이상",
   country_bias: "브랜드 아는 옷 중 한 나라 60% 이상",
   trait_hype: "브랜드 화제성 평균 3.5 이상",
   trait_trendy: "유행 성향 평균 3.8 이상",
@@ -111,7 +110,6 @@ export const QUESTION_COND: Record<string, string> = {
   category_why: "한 대분류 50% 이상",
   few_clothes: "옷 10~19벌",
   many_clothes_wear: "옷 60벌 이상",
-  trend_source: "요즘 뜨는 브랜드 편중",
   timeless_q: "유행 안 타는 브랜드 편중",
   hype_alarm: "화제성 높은 브랜드 편중",
   country_q: "한 나라 60% 이상",
@@ -139,7 +137,7 @@ export const QUESTION_COND: Record<string, string> = {
   hats_q: "모자 5개 이상. 모자 사진을 가로로 보여 줌",
   hat_sub_q: "모자 중 한 종류 3개 이상이고 60% 이상",
   vintage_q: "누구에게나(오래된·헤리티지·일본 데님 브랜드가 많으면 더 자주)",
-  influencer_q: "누구에게나(요즘 뜨는·유행 타는 브랜드가 많으면 더 자주)",
+  influencer_q: "누구에게나(유행 타는·화제성 높은 브랜드가 많으면 더 자주)",
   fashionable_q: "누구에게나, 늘 마지막에. 반응·결과 글·점수 증감은 옷장 점수 구간(높음·중간·낮음)별로 다름",
   chimchak_q: "침착맨 또는 얼렁뚱땅 상점 옷이 있을 때 꼭(질문 수에 안 셈). 점수 증감 없음",
 };
@@ -166,7 +164,6 @@ export const SCREEN_NAME: Record<string, string> = {
   TOO_FEW: "옷이 10벌보다 적을 때",
   OPENING: "분석 시작 전 첫 멘트",
   WRITING: "결과를 쓰는 중",
-  NO_AI_LEFT: "오늘 AI 글쓰기를 다 썼을 때",
   DISCLAIMER: "결과 맨 아래 안내",
   CHANGED: "옷장이 바뀌었을 때(결과 위)",
   RETRY_LABEL: "다시 해보기 버튼",
@@ -185,11 +182,6 @@ export const COMMON_NAME: Record<string, string> = {
   FEW_PATTERNS: "패턴이 적을 때",
   WRAP_UP: "마무리 전",
   CLOSING: "결과 맨 끝(2~3줄 고름)",
-  OUTFIT_COMBOS: "결과 글: 코디 조합 가짓수",
-  OUTFIT_NONE: "결과 글: 조합이 0가지일 때(상의·하의·신발 중 없는 것)",
-  PLAIN_HEADLINE: "패턴이 없을 때 헤드라인",
-  PLAIN_PARA: "패턴이 없을 때 본문",
-  HEAD_SINGLE_PREFIX: "헤드라인을 패턴 하나로 만들 때 앞말",
 };
 
 /** 묶음마다 자리 이름을 달리 부를 때 */
@@ -499,15 +491,13 @@ export function textGroups(): TextGroupMeta[] {
   return out;
 }
 
-/** 고치는 단위 위치 → 사람이 읽는 칸 이름. 예: "lines.x.head" → "헤드라인(앞절 + 뒷절)" */
+/** 고치는 단위 위치 → 사람이 읽는 칸 이름. 예: "lines.x.say" → "대화 문장(하나 고름)" */
 export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string) => string | undefined): string {
   const p = key.split(".");
   if (p[0] === "screen") return p[1] === "OPENING" ? "문장들(하나 고름)" : "문장";
   if (p[0] === "common") return p[1] === "SECTION_STATUS" ? `${SECTION_NAME[p[2]] ?? p[2]} (하나 고름)` : "문장들(하나 고름)";
   if (p[0] === "lines") {
     if (p[2] === "say") return "대화 문장(하나 고름)";
-    if (p[2] === "para") return "결과 본문(하나 고름)";
-    if (p[2] === "head") return "헤드라인 앞절 + 뒷절(두 패턴을 이을 때 앞 패턴은 앞절, 뒤 패턴은 뒷절을 씀)";
   }
   if (p[0] === "score") {
     if (p[1] === "rules") return RULE_NAME[p[2]] ?? p[2];

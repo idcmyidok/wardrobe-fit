@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseOrdersForRoast } from "@/server/import/musinsa-orders";
-import { buildScript, composeResult } from "../compose";
+import { buildScript } from "../compose";
 import { buildReport } from "../report";
 import { DEFAULT_TEXTS } from "../texts";
 import { analyzeOrders } from "./analysis";
@@ -216,7 +216,6 @@ describe("주문내역 훈수 목록 → 분석", () => {
     const seed = 7;
     const plan = buildScript(a, seed, "세현", DEFAULT_TEXTS, 38);
     const answers = Object.fromEntries(plan.asked.map((q) => [q.id, q.options[0].id]));
-    composeResult(a, "세현", seed, DEFAULT_TEXTS, plan.asked, answers);
     const score = scoreOrders(a, { age: 38 });
     const report = buildReport(a, "세현", seed, DEFAULT_TEXTS.report, plan.asked, answers, DEFAULT_TEXTS.score, 38, orderOverride(a, seed, DEFAULT_TEXTS, score));
     const ids = report.points.map((p) => p.id);

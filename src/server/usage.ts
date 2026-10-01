@@ -5,7 +5,6 @@ import type { Usage, UsageCounter } from "@/lib/usage";
 import { getQuotaExemption } from "@/server/admin/is-admin";
 import { aiDailyLimit, CACHE_SUFFIX, FIT_DAILY_LIMIT, hoursAgo } from "@/server/fit/service";
 import { IMPORT_DAILY_LIMIT, ORDER_ROAST_SUFFIX } from "@/server/import/service";
-import { ROAST_AI_DAILY_LIMIT } from "@/server/roast/ai";
 
 type Client = SupabaseClient<Database>;
 
@@ -18,9 +17,8 @@ export async function getUsage(supabase: Client, userId: string): Promise<Usage>
   const imports = () => supabase.from("product_imports").select("created_at", { count: "exact" }).eq("user_id", userId).gte("created_at", since).or(`parser_version.is.null,parser_version.not.like.%${ORDER_ROAST_SUFFIX}`);
   const fits = () => supabase.from("fit_checks").select("created_at", { count: "exact" }).eq("user_id", userId).gte("created_at", since);
   const ai = () => fits().not("ai_model", "is", null).not("ai_model", "like", `%${CACHE_SUFFIX}`);
-  const roast = () => supabase.from("roast_runs").select("created_at", { count: "exact" }).eq("user_id", userId).eq("ai_used", true).gte("created_at", since);
 
-  const counter = async (query: () => ReturnType<typeof imports> | ReturnType<typeof fits> | ReturnType<typeof roast>, limit: number): Promise<UsageCounter> => {
+  const counter = async (query: () => ReturnType<typeof imports> | ReturnType<typeof fits>, limit: number): Promise<UsageCounter> => {
     const [oldest, newest] = await Promise.all([
       query().order("created_at", { ascending: true }).limit(1),
       query().order("created_at", { ascending: false }).limit(1),
@@ -28,12 +26,11 @@ export async function getUsage(supabase: Client, userId: string): Promise<Usage>
     return { used: oldest.count ?? 0, limit, oldestAt: oldest.data?.[0]?.created_at ?? null, newestAt: newest.data?.[0]?.created_at ?? null };
   };
 
-  const [exemption, importUsage, fitUsage, aiUsage, roastUsage] = await Promise.all([
+  const [exemption, importUsage, fitUsage, aiUsage] = await Promise.all([
     getQuotaExemption(supabase, userId),
     counter(imports, IMPORT_DAILY_LIMIT),
     counter(fits, FIT_DAILY_LIMIT),
     counter(ai, aiDailyLimit()),
-    counter(roast, ROAST_AI_DAILY_LIMIT),
   ]);
-  return { unlimited: Boolean(exemption), unlimitedReason: exemption, imports: importUsage, fits: fitUsage, ai: aiUsage, roast: roastUsage };
+  return { unlimited: Boolean(exemption), unlimitedReason: exemption, imports: importUsage, fits: fitUsage, ai: aiUsage };
 }

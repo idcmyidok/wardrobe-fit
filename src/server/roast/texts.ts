@@ -54,8 +54,8 @@ export const ROAST_TEXT_MAX = 500;
 const BODY_MAX = 1000;
 export const CUSTOM_QUIZ_ID = /^c-[a-z0-9]{4,24}$/;
 
-export type UnitKind = "text" | "list" | "pairs" | "number";
-export type UnitValue = string | string[] | [string, string][] | number;
+export type UnitKind = "text" | "list" | "number";
+export type UnitValue = string | string[] | number;
 
 export interface TextUnit {
   key: string;
@@ -63,13 +63,11 @@ export interface TextUnit {
   value: UnitValue;
 }
 
-const isPairs = (v: unknown[]) => v.length > 0 && v.every((x) => Array.isArray(x));
-
 /** 모든 고치는 단위를 편다. */
 export function unitsOf(root: unknown = DEFAULT_TEXTS, prefix = ""): TextUnit[] {
   if (typeof root === "string") return [{ key: prefix, kind: "text", value: root }];
   if (typeof root === "number") return [{ key: prefix, kind: "number", value: root }];
-  if (Array.isArray(root)) return [{ key: prefix, kind: isPairs(root) ? "pairs" : "list", value: root as UnitValue }];
+  if (Array.isArray(root)) return [{ key: prefix, kind: "list", value: root as UnitValue }];
   if (root && typeof root === "object")
     return Object.entries(root).flatMap(([k, v]) => unitsOf(v, prefix ? `${prefix}.${k}` : k));
   return [];
@@ -125,13 +123,10 @@ export function allowedVars(key: string): string[] {
   return allowedCache.get(g)!;
 }
 
-/** 빈 문장이 되어도 되는 곳 */
-const mayBeEmpty = (key: string) => key === "common.HEAD_SINGLE_PREFIX";
-
 /** 문장 하나 검사. 통과하면 null, 아니면 이유. */
 function checkSentence(key: string, value: string): string | null {
   const v = value.trim();
-  if (!v && !mayBeEmpty(key)) return "비워 둘 수 없습니다.";
+  if (!v) return "비워 둘 수 없습니다.";
   if (v.length > ROAST_TEXT_MAX) return `${ROAST_TEXT_MAX}자 이하로 써 주세요.`;
   const allowed = new Set(allowedVars(key));
   const bad = varsOf(v).filter((x) => !allowed.has(x));
@@ -183,24 +178,12 @@ export function checkUnit(key: string, value: unknown): { value: UnitValue } | {
   if (!Array.isArray(value)) return { error: "목록이 아닙니다." };
   if (value.length < minItems(key, unit.base)) return { error: `${minItems(key, unit.base)}개 이상 남겨 주세요.` };
   if (value.length > 40) return { error: "40개까지만 넣을 수 있습니다." };
-  if (unit.kind === "pairs") {
-    const out: [string, string][] = [];
-    for (const pair of value) {
-      if (!Array.isArray(pair) || pair.length !== 2 || pair.some((s) => typeof s !== "string")) return { error: "앞절·뒷절을 모두 써 주세요." };
-      for (const s of pair) {
-        const problem = checkSentence(key, s);
-        if (problem) return { error: problem };
-      }
-      out.push([pair[0].trim(), pair[1].trim()]);
-    }
-    return { value: out };
-  }
   const out: string[] = [];
   for (const s of value) {
     if (typeof s !== "string") return { error: "문장이 아닙니다." };
     const problem = checkSentence(key, s);
     if (problem) return { error: problem };
-    out.push(mayBeEmpty(key) ? s : s.trim());
+    out.push(s.trim());
   }
   return { value: out };
 }
