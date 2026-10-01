@@ -180,7 +180,7 @@ describe("분석과 결과", () => {
     expect(p1.script).toEqual(p2.script);
     expect(p1.script.questions.length).toBeGreaterThan(0);
     // 일반 질문은 최대 8개, 끝에 늘 붙는 질문(무신사 링크·패셔너블)은 따로 센다.
-    expect(p1.script.questions.filter((q) => !["musinsa_link_q", "fashionable_q"].includes(q.id)).length).toBeLessThanOrEqual(8);
+    expect(p1.script.questions.filter((q) => !["chimchak_q", "fashionable_q"].includes(q.id)).length).toBeLessThanOrEqual(8);
     expect(p1.script.steps.filter((s) => s.t === "status").length).toBeLessThanOrEqual(15);
     const r = composeResult(a, "세현", 42);
     expect(r.headline).not.toMatch(/[{}]/);

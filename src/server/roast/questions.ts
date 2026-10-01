@@ -65,15 +65,14 @@ const pricedPhotos = (a: Analysis, ids: string[]) =>
     .slice(0, 8)
     .map((i) => ({ id: i.id, amount: amountLabel(i.price!) }));
 
-/** 구매 링크 5개 이상 중 절반 이상이 무신사면 { total, n } */
-export function musinsaLinks(a: Analysis): { total: number; n: number } | null {
-  const linked = a.items.filter((i) => i.shop);
-  const n = linked.filter((i) => i.shop === "무신사").length;
-  return linked.length >= 5 && n * 2 >= linked.length ? { total: linked.length, n } : null;
+/** 침착맨 또는 얼렁뚱땅 상점 옷이 하나라도 있으면 { n } (브랜드 자료의 두 브랜드는 서로 다른 브랜드다) */
+export function chimchakItems(a: Analysis): { n: number } | null {
+  const n = a.items.filter((i) => i.brand?.name === "CHIMCHAKMAN" || i.brand?.name === "얼렁뚱땅 상점").length;
+  return n ? { n } : null;
 }
 
 /** 늘 따로 붙이는 질문(질문 수에 세지 않는다) */
-const APPENDED = ["musinsa_link_q", "fashionable_q"];
+const APPENDED = ["chimchak_q", "fashionable_q"];
 
 /** 구매 링크가 그 쇼핑몰인 옷 */
 export const fromShop = (a: Analysis, shop: string) => a.items.filter((i) => i.shop === shop);
@@ -239,8 +238,8 @@ export const QUESTIONS: QuestionDef[] = [
     when: (a) => ({ boost: has(a, "old_brands") || has(a, "trait_heritage") || has(a, "group_jp_denim") || has(a, "group_heritage") ? 1 : 0 }) },
   { id: "influencer_q", bucket: "self", base: 0.4, options: ["daily", "sometimes", "never"],
     when: (a) => ({ boost: has(a, "trend_brands") || has(a, "trait_trendy") || has(a, "trait_hype") ? 1 : 0 }) },
-  // 아래 두 질문은 pickQuestions가 따로 붙인다(질문 수와 상관없이). 무신사 링크 질문 → 마지막 질문 순서.
-  { id: "musinsa_link_q", bucket: "musinsa_link", base: 0, options: ["yes", "link_only", "dunno"], when: (a) => musinsaLinks(a) },
+  // 아래 두 질문은 pickQuestions가 따로 붙인다(질문 수와 상관없이). 침착맨 질문 → 마지막 질문 순서.
+  { id: "chimchak_q", bucket: "chimchak", base: 0, options: ["love", "sometimes", "clothes_only"], when: (a) => chimchakItems(a) },
   { id: "fashionable_q", bucket: "last", base: 0, options: ["yes", "normal", "no", "others_say"], when: () => ({}) },
 ];
 
@@ -1091,20 +1090,20 @@ export const Q_TEXT: Record<string, QuestionText> = {
       low_others_say: ["남들이 그렇다고 했다는데, 그 남들이 혹시 매장 직원이나 계산을 기다리던 사장님은 아니었는지 확인해 보시길 권합니다.", "칭찬은 공짜라서 쉽게 나옵니다. 그 칭찬에 맞춰 산 옷들은 공짜가 아니었습니다."],
     },
   },
-  // 무신사 구매 링크가 많으면 질문 수와 상관없이 꼭 묻는다(사용자 요청). link_only면 무신사 관련 감점이 절반이 된다.
-  musinsa_link_q: {
-    lead: ["구매 링크 {total}개 중 {n}개가 무신사입니다."],
-    text: "정말 다 무신사에서 산 건가요?",
-    options: { yes: "다 무신사에서 샀음", link_only: "링크만 무신사인 게 많음", dunno: "모르겠음" },
+  // 침착맨·얼렁뚱땅 상점 옷이 있으면 질문 수와 상관없이 꼭 묻는다(사용자 요청). 점수 증감은 없다.
+  chimchak_q: {
+    lead: ["침착맨 쪽 옷이 {n}벌 있습니다."],
+    text: "침착맨, 좋아하세요?",
+    options: { love: "좋아함", sometimes: "가끔 봄", clothes_only: "옷만 샀음" },
     react: {
-      yes: ["솔직하시네요. 무신사 VIP 등급이 궁금해집니다.", "네, 옷장이 먼저 자백했습니다."],
-      link_only: ["아, 링크만 빌려 온 거군요. 감점을 조금 봐 드리겠습니다.", "링크만 무신사라니, 알리바이가 생겼네요."],
-      dunno: ["기억이 안 날 만큼 많이 샀다는 뜻이군요.", "모른다는 대답이 제일 무섭습니다."],
+      love: ["역시 그렇군요. 옷장에 침착맨이 살고 있었습니다.", "좋아하시는 건 알겠는데, 이 정도면 팬심이 옷장까지 들어왔네요."],
+      sometimes: ["가끔 보는 사람의 옷장치고는 꽤 성실합니다.", "가끔이라고 하셨지만 옷장은 꽤 자주 본 모양입니다."],
+      clothes_only: ["옷만 샀다는 분이 제일 의심스럽습니다.", "옷이 마음에 들었다는 말, 일단 믿어 보겠습니다."],
     },
     roast: {
-      yes: ["구매 링크 대부분이 무신사고, 실제로도 다 무신사에서 샀다고 하셨습니다. 무신사 앱 첫 화면이 당신 옷장의 입구입니다.", "무신사에서 다 샀다는 솔직한 대답 덕분에 이 옷장의 출처가 명확해졌습니다. 장바구니가 곧 옷장이었습니다."],
-      link_only: ["링크만 무신사인 게 많다고 하셨습니다. 다른 데서 사고 링크만 빌려 왔다면, 무신사는 옷장이 아니라 카탈로그였던 셈입니다.", "링크는 무신사, 결제는 딴 데. 알리바이는 인정하지만 링크를 고르는 손가락은 여전히 무신사로 향했습니다."],
-      dunno: ["어디서 샀는지 모르겠다고 하셨습니다. 기억이 안 날 만큼 샀다는 건, 옷장이 영수증보다 빨리 불어났다는 뜻입니다.", "구매처를 모르는 옷장은 출처 불명의 옷장입니다. 다음엔 적어도 어디서 샀는지는 기억해 주세요."],
+      love: ["침착맨을 좋아한다고 하셨습니다. 옷장 한쪽에 굿즈가 자리를 잡은 걸 보면 응원이 말로만 끝나지 않았습니다.", "침착맨 팬이라는 고백으로 옷장의 출처가 설명됩니다. 취향이 아니라 팬심으로 채운 칸입니다."],
+      sometimes: ["가끔 본다고 하셨는데 침착맨 옷은 가끔 사는 수준이 아닙니다. 가끔이 꽤 자주인가 봅니다.", "가끔 보는 사이에 옷장에 들어온 침착맨 옷입니다. 시청 시간보다 결제 속도가 빨랐나 봅니다."],
+      clothes_only: ["옷만 샀다고 하셨습니다. 침착맨 로고가 박힌 옷을 옷만 보고 샀다는 말은 조금 용감합니다.", "침착맨 상점에서 파는 옷이 하필 마음에 들었다니, 우연도 참 성실합니다. 그 우연을 믿어 드리겠습니다."],
     },
   },
 };

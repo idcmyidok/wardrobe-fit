@@ -92,8 +92,8 @@ const SECTION_ORDER: Section[] = ["size", "category", "acc", "color", "brand", "
 /** 관련 패턴이 없는 질문이 들어갈 섹션(QUESTION_SECTION에 없는 것) */
 const EXTRA_QUESTION_SECTION: Record<string, Section> = { band_quiz: "brand", rationalize: "spend", three_500: "money", fit_choice: "repeat", fruits_q: "shop", bunjang_q: "shop", vintage_q: "style", influencer_q: "style" };
 
-/** 대화의 끝에 늘 붙는 질문(무신사 링크 → 패셔너블 순서. 패셔너블은 무조건 마지막) */
-const LAST_QUESTIONS = ["musinsa_link_q", "fashionable_q"];
+/** 대화의 끝에 늘 붙는 질문(침착맨 → 패셔너블 순서. 패셔너블은 무조건 마지막) */
+const LAST_QUESTIONS = ["chimchak_q", "fashionable_q"];
 
 /**
  * 분석 문장과 질문을 관련 있는 것끼리 묶어 섹션 순서대로 늘어놓는다.

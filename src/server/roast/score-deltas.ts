@@ -7,21 +7,21 @@ import "server-only";
  * 점수는 옷장 수치로 낸 기본 점수에 이 값을 더한 뒤 0~100으로 자른다.
  */
 export const SCORE_DELTAS: Record<string, Record<string, number>> = {
-  quiz: { right: 5, wrong: -5 },
+  quiz: { right: 3, wrong: -9 },
   /** 밴드 퀴즈: 패션 퀴즈와 같은 증감(사용자 요청) */
-  band_quiz: { right: 5, wrong: -5 },
+  band_quiz: { right: 3, wrong: -9 },
   /** 3대 500: 넘음·곧 넘음은 가점, 나머지는 0점(사용자 요청) */
   three_500: { over: 3, soon: 1, dots: 0, comfy: 0 },
   drop_item: { most: 0, mid: 0, least: 0 },
-  brand_best: { spend: 1, count: 1, recent: -1, spend2: -2 },
+  brand_best: { spend: 0, count: 0, recent: 0, spend2: 0 },
   odd_photo: { mine: 1, gift: 0, dunno: -2 },
   justify_combo: { different: -2, similar: 1, dunno: -1 },
   color_taste: { black_easy: -1, just_happens: -2, have_colors: 1 },
   brand_employee: { love: 0, sale: 1, didnt_know: -2 },
-  food_vs_clothes: { food: 2, clothes: -2, both: -1 },
+  food_vs_clothes: { food: -2, clothes: 2, both: -1 },
   golden_spoon: { no: 0, yes: 0, skip: 0 },
   rationalize: { none: -2, some: 1, why: -1 },
-  extreme_one: { of_course: 0, no: 0, already: 0 },
+  extreme_one: { of_course: 0, no: -2, already: 0 },
   black_why: { matches: 0, no_thinking: -2, charcoal: -1 },
   chroma_love: { love: 1, suits: 2, didnt_know: -1 },
   category_why: { wear_most: 1, cant_stop: -2, elsewhere: 0 },
@@ -76,8 +76,8 @@ export const SCORE_DELTAS: Record<string, Record<string, number>> = {
     low_no: 2,
     low_others_say: -3,
   },
-  /** 무신사 구매 링크 질문. link_only를 고르면 무신사 관련 감점이 절반이 된다(report.ts). */
-  musinsa_link_q: { yes: 0, link_only: 0, dunno: 0 },
+  /** 침착맨·얼렁뚱땅 상점 브랜드가 있으면 꼭 묻는 질문(점수 증감 없음) */
+  chimchak_q: { love: 0, sometimes: 0, clothes_only: 0 },
 };
 
 /**
@@ -86,12 +86,13 @@ export const SCORE_DELTAS: Record<string, Record<string, number>> = {
  * 비율은 %, 금액은 만 원, 점수는 정수(감점도 양수로 적는다). 관리자 문장 편집의 "점수" 탭(score.rules)에서 고친다.
  */
 export const SCORE_RULES = {
-  base: 50,
+  base: 45,
   // 더하는 점수
   designer_each: 2,
   designer_max: 10,
-  niche_full: 20,
-  niche_max: 8,
+  /** 컨템포러리·디자이너·스트릿 중고가(대중적 제외): 하나당 가점, 합쳐서 최대 */
+  mid_each: 1,
+  mid_max: 5,
   style_mid_pct: 40,
   style_mid: 2,
   style_high_pct: 60,
@@ -99,13 +100,15 @@ export const SCORE_RULES = {
   taste_full: 20,
   taste_max: 5,
   fruits_n: 3,
-  fruits: 3,
+  fruits: 5,
   accent_basic_pct: 70,
   accent_max_n: 4,
   accent: 3,
   basic_pct: 85,
   basic_lux_n: 3,
   basic_lux: 4,
+  /** 해외 브랜드 가점은 이 가격 레벨(4 = 중고가) 이상만 센다 */
+  foreign_price: 4,
   steady_gap: 3,
   steady: 2,
   good_outer: 2,
@@ -127,14 +130,20 @@ export const SCORE_RULES = {
   shoe_set: 3,
   spend_top_won: 30,
   spend_top: 3,
+  /** 무신사 좋아요 수가 없는데 중고가 이상인 브랜드: 하나당 가점, 최대 */
+  nolikes_each: 2,
+  nolikes_max: 6,
   // 빼는 점수
-  mass_from: 50,
-  mass_per10: 3,
-  mass_max: 12,
+  /** 무신사 좋아요 ≥ popular_likes, 가격이 고가 미만, 대중성이 대중적~매우 대중적인 브랜드 비율 */
+  popular_likes: 50000,
+  popular_from: 40,
+  popular_per10: 5,
+  popular_max: 20,
   musinsa_from: 60,
   musinsa_per10: 3,
   musinsa_max: 9,
-  /** 26세 이하에 산 옷은 무신사 인기 브랜드 쏠림에서 1/musinsa_young_div만 센다 */
+  /** musinsa_young_age세 이하에 산 옷은 무신사 인기 브랜드 쏠림에서 1/musinsa_young_div만 센다 */
+  musinsa_young_age: 24,
   musinsa_young_div: 3,
   /** 무신사 좋아요 상위 이 %에 드는 브랜드도 무신사풍으로 센다(0이면 끔) */
   musinsa_likes_top: 30,
@@ -147,7 +156,7 @@ export const SCORE_RULES = {
   /** 변화가 있을 때 점수에 더할 값(기본 0: 문장만) */
   shift_score: 0,
   trendy_pct: 50,
-  trendy: 5,
+  trendy: 15,
   dup_each: 3,
   dup_max: 15,
   scattered_pct: 20,
@@ -163,19 +172,18 @@ export const SCORE_RULES = {
   misfit_max: 10,
   gap_months: 4,
   gap_max: 12,
-  basic_mass_pct: 40,
-  basic_mass: 4,
-  lux_mismatch: 3,
-  sneakers_only: 2,
+  basic_mass: 8,
+  lux_mismatch: 10,
+  sneakers_only: 7,
   logo_pct: 20,
-  logo: 3,
+  logo: 15,
   season_gap_pct: 25,
-  season_gap: 2,
+  season_gap: 5,
   spend_a_won: 20,
-  spend_a: 1,
+  spend_a: 2,
   spend_b_won: 10,
-  spend_b: 3,
-  spend_c: 5,
+  spend_b: 6,
+  spend_c: 10,
   // 마지막 질문("스스로 패셔너블하다고 생각하나요?")의 점수 구간
   tier_high: 70,
   tier_low: 40,
@@ -193,45 +201,45 @@ export const AGE_RULES: Record<string, Record<string, number>> = {
     street_plus_pct: 40,
     street_plus: 2,
     formal_pct: 40,
-    formal_minus: 3,
+    formal_minus: 6,
     lux_n: 2,
-    lux_minus: 3,
+    lux_minus: 6,
   },
-  b20: { street_plus_pct: 40, street_plus: 2, formal_pct: 40, formal_minus: 2 },
+  b20: { street_plus_pct: 40, street_plus: 2, formal_pct: 40, formal_minus: 4 },
   b24: {},
-  b27: { mature_pct: 30, mature_plus: 2, musinsa_pct: 60, musinsa_minus: 1 },
-  b30: { mature_pct: 30, mature_plus: 2, musinsa_pct: 50, musinsa_minus: 3 },
+  b27: { mature_pct: 30, mature_plus: 2, musinsa_pct: 60, musinsa_minus: 2 },
+  b30: { mature_pct: 30, mature_plus: 2, musinsa_pct: 50, musinsa_minus: 6 },
   b36: {
     mature_pct: 40,
     mature_plus: 3,
     musinsa_pct: 45,
-    musinsa_minus: 4,
+    musinsa_minus: 8,
     street_pct: 60,
-    street_minus: 4,
+    street_minus: 8,
   },
   b41: {
     mature_pct: 40,
     mature_plus: 4,
     musinsa_pct: 40,
-    musinsa_minus: 5,
+    musinsa_minus: 10,
     street_pct: 50,
-    street_minus: 5,
+    street_minus: 10,
   },
   b51: {
     mature_pct: 40,
     mature_plus: 5,
     musinsa_pct: 40,
-    musinsa_minus: 6,
+    musinsa_minus: 12,
     street_pct: 40,
-    street_minus: 6,
+    street_minus: 12,
   },
   b61: {
     mature_pct: 50,
     mature_plus: 5,
     musinsa_pct: 40,
-    musinsa_minus: 6,
+    musinsa_minus: 12,
     street_pct: 30,
-    street_minus: 7,
+    street_minus: 14,
   },
 };
 /** 구간 시작 나이(위 AGE_RULES 키 순서대로) */
