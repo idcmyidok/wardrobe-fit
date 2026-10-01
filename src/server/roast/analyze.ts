@@ -364,12 +364,6 @@ export function analyze(
     }, list);
   }
 
-  const trendy = known.filter((i) => i.trend);
-  if (trendy.length >= 3 && trendy.length / all >= 0.2) {
-    const brandsIn = [...countBy(trendy, (i) => i.brand!.name).values()].sort((a, b) => b.length - a.length);
-    add("trend_brands", ramp(trendy.length / all, 0.2, 0.5), 0.8, { n: trendy.length, pct: pct(trendy.length, all), brand: labelOf(brandsIn[0]), brands: brandsIn.length }, trendy);
-  }
-
   if (K >= 5) {
     const [country, cList] = top(countBy(known, (i) => i.brand!.country || null)) ?? [null, []];
     if (country && cList.length / K >= 0.6) add("country_bias", ramp(cList.length / K, 0.6, 0.95), 0.55, { country, n: cList.length, pct: pct(cList.length, K) }, cList);
