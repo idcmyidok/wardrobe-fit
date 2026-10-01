@@ -1191,7 +1191,7 @@ function build(q: QuestionDef, vars: Vars, a: Analysis, r: Rng, fill: (t: string
   const photos = q.photos?.(a) ?? [];
   // 퀴즈 앞 멘트는 브랜드를 고른 뒤에 채운다.
   const base = { id: q.id, lead: q.id === "quiz" ? [] : tx.lead.map((l) => f(l)), text: tx.text ? f(tx.text) : "", photos };
-  if (q.id === "odd_photo" && !photos.length) return null;
+  if ((q.id === "odd_photo" || q.id === "o_odd") && !photos.length) return null;
 
   // 결과 글 문단: 채울 수 있는 문장을 모두 넘기고, 결과 글을 쓸 때 앞 문단과 겹치지 않게 하나 고른다.
   // 고를 수 있는 문장이 없으면 그 답은 결과 글에 쓰지 않는다.

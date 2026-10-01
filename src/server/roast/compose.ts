@@ -93,7 +93,7 @@ const SECTION_ORDER: Section[] = ["size", "category", "acc", "color", "brand", "
 const EXTRA_QUESTION_SECTION: Record<string, Section> = { band_quiz: "brand", rationalize: "spend", three_500: "money", fit_choice: "repeat", fruits_q: "shop", bunjang_q: "shop", vintage_q: "style", influencer_q: "style",
   // 주문내역 훈수 질문(관련 패턴이 없어 섹션이 없으면 모두 대화 끝에 몰린다)
   o_only_musinsa: "category", o_ranking: "brand", o_brand_vip: "brand", o_standard: "group", o_review_read: "trait", o_review_write: "shop",
-  o_shift: "style", o_returns: "repeat", o_cancel: "repeat", o_sale_month: "timing", o_courier: "timing", o_cheapest: "money", o_grade: "spend",
+  o_shift: "style", o_returns: "repeat", o_cancel: "repeat", o_sale_month: "timing", o_courier: "timing", o_cheapest: "money", o_grade: "spend", o_odd: "odd",
 };
 
 /** 대화의 끝에 늘 붙는 질문(침착맨 → 패셔너블 순서. 패셔너블은 무조건 마지막) */
@@ -167,7 +167,7 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
 
   // 낯선 옷 고르기 질문은 그 사진을 질문에서만 보여 준다. 다른 문장은 해당 옷 사진을 빠짐없이 다 보여 주고,
   // 같은 사진이 바로 뒤 질문에 또 나오지 않게 질문 쪽에서 뺀다(sayShown).
-  const askedPhotos = new Set(asked.filter((q) => q.id === "odd_photo").flatMap((q) => q.photos));
+  const askedPhotos = new Set(asked.filter((q) => q.id === "odd_photo" || q.id === "o_odd").flatMap((q) => q.photos));
   const sayShown = new Map<string, Set<string>>();
   // 질문은 화면이 늘 새 이야기로 띄운다(앞 문장과 간격을 둔다).
   const ask = (i: number) => {

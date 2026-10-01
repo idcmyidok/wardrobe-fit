@@ -103,3 +103,12 @@ export function topTag(list: Item[]): { tag: string; share: number } | null {
   const [tag, n] = [...tags.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))[0] ?? [null, 0];
   return tag ? { tag, share: n / known.length } : null;
 }
+
+/** 오래된 1/3과 최근 1/3의 주 스타일이 다를 때 그 둘. 동률이면 이름순으로 하나만 정해, 질문과 결과 글이 같은 스타일을 말한다. */
+export function styleShiftOf(a: Analysis, min: number): { old: string; new: string; from: string; to: string; list: Item[]; older: Item[] } | null {
+  const t = thirds(a, min);
+  if (!t) return null;
+  const o = topTag(t.old);
+  const n = topTag(t.recent);
+  return o && n && o.tag !== n.tag ? { old: o.tag, new: n.tag, from: t.from, to: t.to, list: t.recent, older: t.old } : null;
+}

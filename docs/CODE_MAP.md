@@ -382,7 +382,7 @@
 - `analysis.ts` (17줄) analyzeOrders:11
 - `context.ts` (38줄) OrderPop:7 OrderEvent:14 OrderContext:23(orderOf·measure: 같은 옷 반복용)
 - `input.ts` (75줄) orderItemSchema:16 OrderRoastItem:35 orderListSchema:36 toGarments:39
-- `metrics.ts` (106줄) orderRules:8 isStandard:10 likesOf:13 reviewsOf:14 isRanking:17 isHidden:27 thirds:35 busiestMonth:50 …
+- `metrics.ts` (106줄) orderRules:8 isStandard:10 likesOf:13 reviewsOf:14 isRanking:17 isHidden:27 thirds:35 busiestMonth:50 … styleShiftOf(오래된·최근 1/3 주 스타일, 질문·결과 글 공용)
 - `questions.ts` (92줄) ORDER_QUESTIONS:33
 - `report.ts` (105줄) orderOverride:29
 - `rules.ts` (176줄) ORDER_RULES:6 OrderRules:142 ORDER_AGE_RULES:149 ORDER_DELTAS:162
