@@ -102,7 +102,8 @@ export const ORDER_AGE_RULES: Record<string, Record<string, number>> = {
 export const ORDER_DELTAS: Record<string, Record<string, number>> = {
   o_only_musinsa: { all: -2, also_other: 1, offline: 1 },
   o_ranking: { ranking: -3, popular_after: 0, didnt_know: -1 },
-  o_review: { read: 0, points: -1, skip: 1 },
+  o_review_read: { read: 0, photo: -1, skip: 1 },
+  o_review_write: { points: -1, good_only: 0, never: 0 },
   o_returns: { size: -1, mind: -2, try_on: 0 },
   o_cancel: { impulse: -2, price_drop: 0, mistake: -1 },
   o_sale_month: { cart: -2, same_day: -1, coincidence: 0 },

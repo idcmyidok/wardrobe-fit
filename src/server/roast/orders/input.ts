@@ -8,13 +8,16 @@ import type { OrderContext } from "./context";
  * 화면이 보내는 주문내역 훈수 목록(붙여 넣은 글을 화면에서 나누고 상품 페이지 정보를 붙인 것).
  * 서버는 이 목록을 저장하지 않고, 요청마다 분석용 옷(Garment)으로 바꿔 쓴다.
  */
-const IMAGE_RE = /^https:\/\/image\.msscdn\.net\/[^\s"'<>]{1,500}$/;
+/** 사진: 본인 분석 기록의 이미지 프록시 주소(무신사 주소는 사이트 CSP에 막혀 화면에서 깨진다) */
+const IMAGE_RE = /^\/api\/imports\/[0-9a-f-]{36}\/image\?i=\d{1,2}$/;
+/** 상품 페이지에서 브랜드를 못 읽어 들어온 "undefined" 같은 글자는 브랜드 없음으로 본다 */
+const NO_BRAND_RE = /^(undefined|null|none|-)$/i;
 
 export const orderItemSchema = z.object({
   /** 같은 주문에서 나온 옷끼리 같은 번호(팩·셋업) */
   order: z.number().int().min(0).max(5000),
   status: z.enum(["kept", "exchanged", "returned", "cancelled"]),
-  brand: z.string().max(100),
+  brand: z.string().max(100).transform((v) => (NO_BRAND_RE.test(v.trim()) ? "" : v.trim())),
   name: z.string().max(200),
   categoryId: z.enum(["outer", "top", "bottom", "hat", "shoes"] satisfies CategoryId[]).nullable(),
   subcategoryId: z.string().max(50).nullable(),

@@ -17,7 +17,8 @@ import { ORDER_PART_NAME } from "./texts";
 /** 주문내역 질문 → 답을 붙일 문단 */
 const ANSWER_TO: Record<string, string[]> = {
   o_ranking: ["o_popularity"],
-  o_review: ["o_popularity"],
+  o_review_read: ["o_popularity"],
+  o_review_write: ["o_popularity"],
   o_standard: ["o_standard"],
   o_cheapest: ["o_price"],
   o_shift: ["o_shift"],

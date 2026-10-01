@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { buttonClassName } from "@/components/ui/button";
 import type { OrderItemResult } from "@/app/api/order-imports/item/route";
+import { OrderGuide } from "@/components/garment-form/order-guide";
+import { importImageUrl } from "@/lib/import/client";
 import { parseOrdersForRoast } from "@/server/import/musinsa-orders";
 import type { OrderRoastItem } from "@/server/roast/orders/input";
 import type { ORDER_SCREEN } from "@/server/roast/orders/texts";
@@ -11,7 +13,7 @@ import type { ORDER_SCREEN } from "@/server/roast/orders/texts";
  * 주문내역 훈수의 붙여넣기와 상품 읽기(숨은 주소 /roast/orders).
  * 1) 붙여 넣은 글을 주문 가져오기와 같은 규칙으로 나눈다(반품·취소·교환도 분석용으로 남긴다).
  * 2) 구매 확정·교환한 주문마다 상품 페이지를 읽어 분류·사진·하트·후기 수를 붙인다. 하루 분석 한도에는 세지 않는다.
- *    읽는 동안에는 목록 대신 점 여섯 개와 번갈아 바뀌는 문장, 진행 %만 보여 준다(사용자 요청).
+ *    읽는 동안에는 목록 대신 기다려 달라는 안내, 점 여섯 개와 번갈아 바뀌는 문장, 진행 %만 보여 준다(사용자 요청).
  * 붙여 넣은 글과 목록은 이 화면에만 있고 저장하지 않는다.
  */
 
@@ -25,6 +27,8 @@ const LINE_MS = 2400;
 const text = (v: string | string[] | undefined) => (Array.isArray(v) ? (v[0] ?? "") : (v ?? ""));
 const list = (v: string | string[] | undefined) => (Array.isArray(v) ? v : v ? [v] : []);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** 상품 페이지에서 브랜드를 못 읽어 "undefined" 같은 글자가 오면 주문내역의 브랜드를 쓴다 */
+const brandOf = (v: string | null | undefined) => (v && !/^(undefined|null|none|-)$/i.test(v.trim()) ? v.trim() : null);
 
 export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items: OrderRoastItem[], note: string | null) => void }) {
   const [value, setValue] = useState("");
@@ -43,7 +47,7 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
     const items: OrderRoastItem[] = parsed.garments.map((g) => ({
       order: orderIndex.get(g.order) ?? 0,
       status: g.status,
-      brand: g.order.brand,
+      brand: brandOf(g.order.brand) ?? "",
       name: g.order.name,
       categoryId: g.categoryId,
       subcategoryId: g.subcategoryId,
@@ -89,7 +93,9 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
       if (!product) failed++;
       else if (result?.verdict === "not_garment") dropped.add(order);
       else {
-        const image = product.imageUrls.find((u) => u.startsWith("https://image.msscdn.net/")) ?? null;
+        // 사진은 무신사 주소를 바로 쓰면 사이트 보안 정책(CSP)에 막혀 깨진다. 분석 기록의 이미지 프록시로 받는다.
+        const at = product.imageUrls.findIndex((u) => u.startsWith("https://image.msscdn.net/"));
+        const image = result?.outcome?.importId && at >= 0 ? importImageUrl(result.outcome.importId, at) : null;
         items.forEach((x, k) => {
           if (x.order !== order) return;
           // 셋업·팩은 주문에서 나눈 분류를 그대로 두고, 한 벌짜리는 상품 카테고리를 따른다.
@@ -98,13 +104,13 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
             x.categoryId = verdict.categoryId as OrderRoastItem["categoryId"];
             x.subcategoryId = verdict.subcategoryId;
           }
-          x.brand = product.brand?.value ?? x.brand;
+          x.brand = brandOf(product.brand?.value) ?? brandOf(x.brand) ?? "";
           x.name = product.productName?.value ?? x.name;
           x.goodsNo = result?.goodsNo ?? x.goodsNo;
           x.color = x.color || product.colorCandidate?.value || null;
           x.likes = product.popularity?.likes ?? null;
           x.reviews = product.popularity?.reviews ?? null;
-          x.image = image && image.length <= 500 ? image : null;
+          x.image = image;
         });
       }
       setProgress(Math.round(((n + 1) / Math.max(targets.length, 1)) * 100));
@@ -114,7 +120,7 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
     onReady(items.filter((x) => !dropped.has(x.order)), failed || stop ? text(copy.LOADING_FAIL) : null);
   }
 
-  if (progress != null) return <OrderLoading lines={list(copy.LOADING)} percent={progress} />;
+  if (progress != null) return <OrderLoading wait={text(copy.LOADING_WAIT)} lines={list(copy.LOADING)} percent={progress} />;
 
   return (
     <form
@@ -125,6 +131,7 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
       }}
     >
       <p className="roast-ai">{text(copy.PASTE_ASK)}</p>
+      <OrderGuide startLabel={text(copy.PASTE_LABEL)} />
       <span className="text-sm text-neutral-700">{text(copy.PASTE_GUIDE)}</span>
       <textarea
         value={value}
@@ -148,8 +155,8 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
   );
 }
 
-/** 상품을 읽는 동안: 점 여섯 개(훈수 대화와 같은 움직임), 번갈아 바뀌는 문장, 진행 % */
-function OrderLoading({ lines, percent }: { lines: string[]; percent: number }) {
+/** 상품을 읽는 동안: 기다려 달라는 안내, 점 여섯 개(훈수 대화와 같은 움직임), 번갈아 바뀌는 문장, 진행 % */
+function OrderLoading({ wait, lines, percent }: { wait: string; lines: string[]; percent: number }) {
   // 첫 문장은 무작위로 고르고 그다음부터 차례로 바꾼다.
   const [i, setI] = useState(() => Math.floor(Math.random() * Math.max(lines.length, 1)));
   useEffect(() => {
@@ -160,6 +167,7 @@ function OrderLoading({ lines, percent }: { lines: string[]; percent: number }) 
   const line = lines.length ? lines[i % lines.length] : "";
   return (
     <div className="roast-order-loading" role="status" aria-live="polite">
+      {wait && <p className="roast-order-wait">{wait}</p>}
       <span className="roast-dots" aria-hidden>
         {Array.from({ length: 6 }, (_, k) => (
           <span key={k} style={{ animationDelay: `${k * 0.12}s` }}>

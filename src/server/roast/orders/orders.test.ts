@@ -4,7 +4,7 @@ import { buildScript, composeResult } from "../compose";
 import { buildReport } from "../report";
 import { DEFAULT_TEXTS } from "../texts";
 import { analyzeOrders } from "./analysis";
-import { toGarments, type OrderRoastItem } from "./input";
+import { orderItemSchema, toGarments, type OrderRoastItem } from "./input";
 import { busiestMonth, isRanking, isStandard, returnStats } from "./metrics";
 import { orderOverride } from "./report";
 import { ORDER_RULES } from "./rules";
@@ -27,7 +27,7 @@ const item = (over: Partial<OrderRoastItem> = {}): OrderRoastItem => ({
   goodsNo: String(1000 + seq),
   likes: 20_000,
   reviews: 5_000,
-  image: `https://image.msscdn.net/images/goods_img/${seq}.jpg`,
+  image: `/api/imports/00000000-0000-4000-8000-${String(seq).padStart(12, "0")}/image?i=0`,
   ...over,
 });
 
@@ -52,6 +52,17 @@ function run() {
   const { garments, ctx } = toGarments(sample());
   return analyzeOrders(garments, ctx, 1360, now);
 }
+
+describe("주문내역 훈수 목록 검사", () => {
+  it("사진은 이미지 프록시 주소만 받는다(무신사 주소는 화면 CSP에 막힌다)", () => {
+    expect(orderItemSchema.safeParse(item()).success).toBe(true);
+    expect(orderItemSchema.safeParse(item({ image: "https://image.msscdn.net/images/goods_img/1.jpg" })).success).toBe(false);
+  });
+  it('브랜드가 "undefined"로 오면 브랜드 없음으로 본다', () => {
+    expect(orderItemSchema.parse(item({ brand: "undefined" })).brand).toBe("");
+    expect(orderItemSchema.parse(item({ brand: " 커버낫 " })).brand).toBe("커버낫");
+  });
+});
 
 describe("주문내역 붙여넣기(훈수용)", () => {
   it("반품·취소·교환도 상태를 붙여 남긴다", () => {
