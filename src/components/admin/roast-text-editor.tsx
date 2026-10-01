@@ -149,7 +149,7 @@ export function RoastTextEditor({ groups, quizzes, brands, layout }: { groups: E
         <Link href="/admin" className={cn(colLabel, "w-fit uppercase")}>
           ← Admin
         </Link>
-        <h1 className="text-title">내 옷장 훈수 문장</h1>
+        <h1 className="text-title">내 패션 훈수 문장</h1>
         <p className="text-sm text-pretty text-neutral-700">
           [개수], [브랜드]처럼 대괄호 안의 자리는 실제 옷장 값으로 바뀝니다. 새로 쓸 때도 같은 이름으로 [개수]처럼 쓰면 됩니다.
           [브랜드|을]처럼 조사를 붙이면 받침에 맞춰 을·를이 골라집니다. 목록은 &quot;문장 추가&quot;로 늘리고 &quot;빼기&quot;로 줄인 뒤 저장합니다.
