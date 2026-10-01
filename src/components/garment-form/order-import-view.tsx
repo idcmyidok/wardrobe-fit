@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { CATEGORIES, SUBCATEGORIES, SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { MEASUREMENT_KEYS, MEASUREMENT_LABELS, formatNum } from "@/lib/constants/measurements";
 import { cn } from "@/lib/cn";
 import { importImageFile, importImageUrl } from "@/lib/import/client";
 import { OrderGuide } from "./order-guide";
+import { lookupOf, takeOrderHandoff, type OrderHandoff, type OrderLookup } from "@/lib/import/order-handoff";
 import { findDuplicates, type ExistingGarment } from "@/lib/import/order-duplicates";
 import { notifyUsageChanged } from "@/lib/usage";
 import type { CategoryId, Measurements } from "@/lib/types/domain";
@@ -107,11 +108,20 @@ export function OrderImportView() {
   /** 모두 등록한 벌 수. 값이 있으면 완료 팝업을 띄운다. */
   const [finished, setFinished] = useState<number | null>(null);
 
+  // 주문내역 훈수에서 "옷장에 넣기"로 넘어오면 이미 읽은 결과로 바로 확인 화면을 연다.
+  const taken = useRef(false);
+  useEffect(() => {
+    if (taken.current || !signedIn || !new URLSearchParams(window.location.search).has("from")) return;
+    taken.current = true;
+    const handoff = takeOrderHandoff();
+    if (handoff) void start(handoff);
+  });
+
   const patch = (keys: (k: string) => boolean, change: (item: Item) => Partial<Item>) =>
     setItems((prev) => prev?.map((it) => (keys(it.key) ? { ...it, ...change(it) } : it)) ?? prev);
 
-  async function start() {
-    const parsed = parseOrdersToGarments(text);
+  async function start(handoff?: OrderHandoff) {
+    const parsed = parseOrdersToGarments(handoff?.text ?? text);
     if (!parsed.orders.length) {
       setNotice("주문을 찾지 못했어요. 무신사 주문내역 화면 전체를 복사해 붙여 넣어 주세요.");
       return;
@@ -147,6 +157,17 @@ export function OrderImportView() {
     setProgress({ done: 0, total: orders.length });
     stop.current = false;
 
+    // 주문내역 훈수에서 넘어왔으면 이미 읽은 결과를 그대로 쓴다(주문 순서는 같은 글을 나눈 순서).
+    if (handoff) {
+      for (const [n, order] of orders.entries()) {
+        applyLookup((key) => key.startsWith(`${n}-`), handoff.lookups[parsed.orders.indexOf(order)] ?? null, "not_found");
+      }
+      setItems((prev) => prev?.map((it) => (it.status === "waiting" ? { ...it, status: "not_found" } : it)) ?? prev);
+      setProgress({ done: orders.length, total: orders.length });
+      setPhase("review");
+      return;
+    }
+
     for (const [n, order] of orders.entries()) {
       if (stop.current) break;
       if (n > 0) await new Promise((r) => setTimeout(r, PAUSE_MS));
@@ -167,7 +188,7 @@ export function OrderImportView() {
       } catch {
         result = null;
       }
-      applyResult(mine, result);
+      applyLookup(mine, lookupOf(result), "failed");
       if (result?.outcome?.errorCode === "rate_limited") {
         setNotice("하루에 너무 많이 가져와서 일시적으로 막혔어요. 잠시 뒤에 다시 해 주세요. 찾은 옷까지만 확인해서 등록할 수 있어요.");
         break;
@@ -180,33 +201,35 @@ export function OrderImportView() {
     setPhase("review");
   }
 
-  function applyResult(mine: (key: string) => boolean, result: OrderItemResult | null) {
-    const product = result?.outcome?.product ?? null;
-    const importId = result?.outcome?.importId ?? null;
-    if (!result || !result.goodsNo) return patch(mine, () => ({ status: result ? "not_found" : "failed" }));
-    if (!product || !importId) return patch(mine, () => ({ status: "failed", productUrl: `https://www.musinsa.com/products/${result.goodsNo}` }));
-    if (result.verdict === "not_garment") return patch(mine, () => ({ status: "not_garment", include: false }));
-    const rows = product.sizeChart?.rows ?? [];
+  /** 조회 결과를 목록에 반영한다. lookup이 없으면 missing 상태로 둔다(이름·사이즈·가격만으로 등록 가능). */
+  function applyLookup(mine: (key: string) => boolean, lookup: OrderLookup | null, missing: "failed" | "not_found") {
+    if (!lookup) return patch(mine, () => ({ status: missing }));
+    if (!lookup.goodsNo) return patch(mine, () => ({ status: "not_found" }));
+    const goodsNo = lookup.goodsNo;
+    if (!lookup.importId) return patch(mine, () => ({ status: "failed", productUrl: `https://www.musinsa.com/products/${goodsNo}` }));
+    if (lookup.verdict === "not_garment") return patch(mine, () => ({ status: "not_garment", include: false }));
+    const importId = lookup.importId;
+    const rows = lookup.sizeRows;
     patch(mine, (it) => {
       // 셋업·팩은 주문에서 나눈 분류를 그대로 두고, 한 벌짜리는 상품 카테고리를 따른다.
-      const fromProduct = result.verdict && typeof result.verdict === "object" && !it.part ? result.verdict : null;
+      const fromProduct = lookup.verdict && typeof lookup.verdict === "object" && !it.part ? lookup.verdict : null;
       const categoryId = (fromProduct?.categoryId as CategoryId | undefined) ?? it.categoryId;
       const subcategoryId = fromProduct?.subcategoryId ?? it.subcategoryId;
       const row = matchSizeRow(rows, it.size || null);
       return {
         status: "found",
         // 브랜드·제품명은 상품 페이지 값을 쓴다(주문내역 글은 복사 방법에 따라 줄 순서가 달라진다).
-        brand: product.brand?.value ?? it.brand,
-        productName: product.productName?.value ?? it.productName,
+        brand: lookup.brand ?? it.brand,
+        productName: lookup.productName ?? it.productName,
         include: Boolean(categoryId),
         categoryId,
         subcategoryId,
         size: it.size || row?.sizeLabel || "",
-        color: it.color || product.colorCandidate?.value || "",
+        color: it.color || lookup.color || "",
         measurements: chartMeasurements(rows, it.size, categoryId),
         importId,
-        productUrl: `https://www.musinsa.com/products/${result.goodsNo}`,
-        hasImage: product.imageUrls.length > 0,
+        productUrl: `https://www.musinsa.com/products/${goodsNo}`,
+        hasImage: lookup.hasImage,
         sizeRows: rows,
       };
     });
@@ -293,7 +316,7 @@ export function OrderImportView() {
             onChange={(e) => setText(e.target.value)}
           />
           {notice && <p className="text-sm text-accent-700">{notice}</p>}
-          <button type="button" className="btn btn-primary min-h-11 self-start" disabled={!text.trim() || !signedIn} onClick={start}>
+          <button type="button" className="btn btn-primary min-h-11 self-start" disabled={!text.trim() || !signedIn} onClick={() => start()}>
             옷만 골라서 찾기 시작
           </button>
           {!signedIn && <p className="text-sm text-neutral-700">로그인해야 쓸 수 있어요.</p>}

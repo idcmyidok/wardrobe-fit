@@ -5,6 +5,7 @@ import { buttonClassName } from "@/components/ui/button";
 import type { OrderItemResult } from "@/app/api/order-imports/item/route";
 import { OrderGuide } from "@/components/garment-form/order-guide";
 import { importImageUrl } from "@/lib/import/client";
+import { lookupOf, saveOrderHandoff, type OrderLookup } from "@/lib/import/order-handoff";
 import { matchSizeRow, parseOrdersForRoast } from "@/server/import/musinsa-orders";
 import type { NormalizedSizeChart } from "@/server/import/types";
 import type { OrderRoastItem } from "@/server/roast/orders/input";
@@ -79,6 +80,8 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
     // 가진 옷(구매 확정·교환)의 주문만 상품 페이지를 읽는다. 반품·취소는 주문내역 글만으로 본다.
     const targets = [...new Set(items.filter((x) => x.status === "kept" || x.status === "exchanged").map((x) => x.order))];
     const dropped = new Set<number>();
+    /** "주문내역으로 추가" 화면에 넘길 읽은 결과(주문 순서별) */
+    const lookups: Record<number, OrderLookup> = {};
     let failed = 0;
     let stop = false;
     for (const [n, order] of targets.entries()) {
@@ -102,6 +105,8 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
         result = null;
       }
       if (result?.outcome?.errorCode === "rate_limited") stop = true;
+      const lookup = lookupOf(result);
+      if (lookup) lookups[order] = lookup;
       const product = result?.outcome?.product ?? null;
       if (!product) failed++;
       else if (result?.verdict === "not_garment") dropped.add(order);
@@ -130,6 +135,7 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
       setProgress(Math.round(((n + 1) / Math.max(targets.length, 1)) * 100));
     }
     setProgress(100);
+    saveOrderHandoff({ text: value, lookups });
     await sleep(300);
     onReady(items.filter((x) => !dropped.has(x.order)), failed || stop ? text(copy.LOADING_FAIL) : null);
   }
