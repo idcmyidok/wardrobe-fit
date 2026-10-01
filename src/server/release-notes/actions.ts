@@ -2,6 +2,8 @@
 
 import { z } from "zod";
 import {
+  DATE_RE,
+  TIME_RE,
   parseEditBody,
   RELEASE_NOTE_BODY_MAX,
   RELEASE_NOTE_IMAGE_BUCKET,
@@ -27,6 +29,8 @@ const contentSchema = z.object({
   features: z.array(z.object({ title: line, description: z.string().trim().max(2000) })).max(50),
   changes: z.array(line).max(100),
   fixes: z.array(line).max(100),
+  date: z.string().regex(DATE_RE).optional(),
+  time: z.string().regex(TIME_RE).optional(),
 });
 
 export async function getReleaseNoteEdits(): Promise<ReleaseNoteEdits> {

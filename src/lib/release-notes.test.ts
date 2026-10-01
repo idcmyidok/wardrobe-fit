@@ -44,11 +44,19 @@ describe("업데이트 노트 수정", () => {
   };
   it("노트를 세 칸의 글로 옮기고 다시 읽으면 같다", () => {
     const draft = noteToDraft(full);
-    expect(draft).toEqual({ features: "새 기능: 설명: 자세히\n제목만", changes: "바뀐 점", fixes: "고친 점\n또 고친 점" });
-    expect(draftToContent(draft)).toEqual({ features: full.features, changes: full.changes, fixes: full.fixes });
+    expect(draft).toEqual({ date: "2026-09-28", time: "", features: "새 기능: 설명: 자세히\n제목만", changes: "바뀐 점", fixes: "고친 점\n또 고친 점" });
+    expect(draftToContent(draft)).toEqual({ date: full.date, features: full.features, changes: full.changes, fixes: full.fixes });
   });
   it("빈 줄과 앞의 - · 는 버린다", () => {
-    expect(draftToContent({ features: "", changes: "- 하나\n\n· 둘\r\n  ", fixes: "" })).toEqual({ features: [], changes: ["하나", "둘"], fixes: [] });
+    expect(draftToContent({ date: "", time: "", features: "", changes: "- 하나\n\n· 둘\r\n  ", fixes: "" })).toEqual({ features: [], changes: ["하나", "둘"], fixes: [] });
+  });
+  it("날짜·시각을 고쳐 저장하고 읽는다(형식이 틀리면 무시)", () => {
+    const draft = { ...noteToDraft(full), date: "2026-09-30", time: "13:17" };
+    const content = draftToContent(draft);
+    expect(content).toMatchObject({ date: "2026-09-30", time: "13:17" });
+    expect(parseEditBody(JSON.stringify(content))).toEqual(content);
+    expect(draftToContent({ ...draft, date: "", time: "25:99" })).not.toHaveProperty("date");
+    expect(draftToContent({ ...draft, time: "25:99" })).not.toHaveProperty("time");
   });
   it("저장된 글을 읽고, 모양이 틀리면 null", () => {
     const content = { features: [], changes: ["a"], fixes: [] };
