@@ -765,11 +765,8 @@ function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string
         </ul>
       </div>
     )),
-    total: (
-      <p>
-        <b>{report.total.lead}</b> {report.total.text}
-      </p>
-    ),
+    // 점수·총점 문장은 화면에 드러내지 않는다(점수 계산은 내부·관리자 풀이에만 쓴다).
+    total: null,
     points: report.points.map((p) => (
       <div key={p.id}>
         <p>
