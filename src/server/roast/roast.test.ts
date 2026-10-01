@@ -433,3 +433,12 @@ describe("퀴즈", () => {
     expect(quiz.leadPhotos?.[at]).toEqual([a.items.find((i) => i.brandLabel === "메종 마르지엘라")!.id]);
   });
 });
+
+describe("반응별 조건 저장 검사", () => {
+  it("빈 칸은 두고 끝의 빈 칸은 지운다, 모르는 조건은 막는다", () => {
+    expect(checkUnit("questions.o_only_musinsa.when.offline", ["", "count_lte:20|pat:black_bias", ""])).toEqual({ value: ["", "count_lte:20|pat:black_bias"] });
+    expect(checkUnit("questions.o_only_musinsa.when.offline", ["nope"])).toHaveProperty("error");
+    expect(checkUnit("questions.o_only_musinsa.when.offline", ["count_lte"])).toHaveProperty("error");
+    expect(checkUnit("questions.o_only_musinsa.result.offline", ["", "결과 글"])).toEqual({ value: ["", "결과 글"] });
+  });
+});

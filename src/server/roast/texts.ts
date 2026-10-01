@@ -2,8 +2,9 @@ import "server-only";
 import { isBubbleKey, splitSentences } from "@/lib/roast/bubbles";
 import { ROAST_COPY } from "@/lib/roast/copy";
 import { findBrand } from "./brands";
-import { COMMON, LINE_TEXT } from "./lines";
-import { Q_TEXT } from "./questions";
+import { COMMON, LINE_SECTION, LINE_TEXT } from "./lines";
+import { NO_REACT_WHEN, Q_TEXT, type QuestionText } from "./questions";
+import { checkWhen } from "./react-when";
 import { QUIZ, type QuizEntry } from "./quiz";
 import { REPORT_TEXT } from "./report-text";
 import { AGE_RULES, SCORE_DELTAS, SCORE_RULES } from "./score-deltas";
@@ -33,6 +34,17 @@ function splitChat<T>(node: T, path = ""): T {
   return node;
 }
 
+/** 반응마다 붙이는 조건·결과 글 칸(react-when.ts). 코드에 없으면 빈 목록으로 둔다. */
+function withReactWhen(texts: Record<string, QuestionText>): Record<string, QuestionText> {
+  return Object.fromEntries(
+    Object.entries(texts).map(([id, tx]) => {
+      if (NO_REACT_WHEN.has(id) || !Object.keys(tx.react).length) return [id, tx];
+      const fill = (m: Record<string, string[]> | undefined) => Object.fromEntries(Object.keys(tx.react).map((k) => [k, m?.[k] ?? []]));
+      return [id, { ...tx, when: fill(tx.when), result: fill(tx.result) }];
+    }),
+  );
+}
+
 /**
  * 주문내역 훈수: 질문 문구는 questions(o_*), 답별 증감은 score(o_*), 점수 기준은 score.orules·score.oage,
  * 화면·대화·결과 문장은 orders.screen·orders.common·orders.report에 있다(관리자 "주문내역 훈수" 탭).
@@ -41,7 +53,7 @@ export const DEFAULT_TEXTS = splitChat({
   screen: ROAST_COPY,
   common: COMMON,
   lines: LINE_TEXT,
-  questions: Q_TEXT,
+  questions: withReactWhen(Q_TEXT),
   quiz: QUIZ,
   report: REPORT_TEXT,
   score: { ...SCORE_DELTAS, ...ORDER_DELTAS, rules: SCORE_RULES, age: AGE_RULES, orules: ORDER_RULES, oage: ORDER_AGE_RULES },
@@ -176,6 +188,8 @@ export function checkUnit(key: string, value: unknown): { value: UnitValue } | {
     return problem ? { error: problem } : { value: value.trim() };
   }
   if (!Array.isArray(value)) return { error: "목록이 아닙니다." };
+  const cond = key.match(/^questions\.[^.]+\.(when|result)\./)?.[1];
+  if (cond) return checkReactWhen(key, cond, value);
   if (value.length < minItems(key, unit.base)) return { error: `${minItems(key, unit.base)}개 이상 남겨 주세요.` };
   if (value.length > 40) return { error: "40개까지만 넣을 수 있습니다." };
   const out: string[] = [];
@@ -187,6 +201,25 @@ export function checkUnit(key: string, value: unknown): { value: UnitValue } | {
   }
   return { value: out };
 }
+
+/** 반응별 조건·결과 글 목록: 빈 칸을 허용하고, 끝의 빈 칸은 지운다. */
+function checkReactWhen(key: string, kind: string, value: unknown[]): { value: UnitValue } | { error: string } {
+  if (value.length > 40) return { error: "40개까지만 넣을 수 있습니다." };
+  const out: string[] = [];
+  for (const s of value) {
+    if (typeof s !== "string") return { error: "문장이 아닙니다." };
+    const v = s.trim();
+    if (kind === "when" && !checkWhen(v, PATTERN_IDS)) return { error: "모르는 조건이 있습니다." };
+    if (kind === "result" && v) {
+      const problem = checkSentence(key, v);
+      if (problem) return { error: problem };
+    }
+    out.push(v);
+  }
+  while (out.length && !out[out.length - 1]) out.pop();
+  return { value: out };
+}
+const PATTERN_IDS = new Set(Object.keys(LINE_SECTION));
 
 export const sameValue = (a: UnitValue | undefined, b: UnitValue | undefined) => JSON.stringify(a) === JSON.stringify(b);
 

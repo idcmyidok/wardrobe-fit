@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
@@ -21,6 +21,22 @@ export interface EditorUnit {
 }
 
 const isEdited = (value: EditorUnit["value"], base: EditorUnit["base"]) => JSON.stringify(value) !== JSON.stringify(base);
+
+/** 질문 반응마다 붙이는 조건 칸(questions.<질문>.when.<종류>)과 결과 글 칸(…result…). 반응 칸 안에서 함께 고친다. */
+const WHEN_KEY = /^questions\.[^.]+\.(when|result)\./;
+const companions = (key: string) => {
+  const m = key.match(/^questions\.([^.]+)\.react\.(.+)$/);
+  return m ? { when: `questions.${m[1]}.when.${m[2]}`, result: `questions.${m[1]}.result.${m[2]}` } : null;
+};
+
+/** 반응 조건 드롭다운에 나오는 준비된 경우. n이 있으면 경계 숫자를 고칠 수 있다. */
+export interface WhenOption {
+  id: string;
+  label: string;
+  n?: number;
+  group: string;
+}
+const WhenContext = createContext<WhenOption[]>([]);
 
 export interface EditorGroup {
   id: string;
@@ -99,7 +115,19 @@ export interface LayoutInfo {
   points: Record<string, { name: string; how: string }>;
 }
 
-export function RoastTextEditor({ groups, quizzes, brands, layout }: { groups: EditorGroup[]; quizzes: EditorQuiz[]; brands: string[]; layout: LayoutInfo }) {
+export function RoastTextEditor({
+  groups,
+  quizzes,
+  brands,
+  layout,
+  whenOptions,
+}: {
+  groups: EditorGroup[];
+  quizzes: EditorQuiz[];
+  brands: string[];
+  layout: LayoutInfo;
+  whenOptions: WhenOption[];
+}) {
   const [kind, setKind] = useState<Kind>("lines");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -141,6 +169,7 @@ export function RoastTextEditor({ groups, quizzes, brands, layout }: { groups: E
   };
 
   return (
+    <WhenContext.Provider value={whenOptions}>
     <main className="mx-auto max-w-240 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
       <div className="flex flex-col gap-1 border-b border-text pb-4">
         <Link href="/admin" className={cn(colLabel, "w-fit uppercase")}>
@@ -215,7 +244,13 @@ export function RoastTextEditor({ groups, quizzes, brands, layout }: { groups: E
             const isOpen = open.has(g.id) || Boolean(q);
             // 접었다 펴도 저장한 문장이 보이도록 화면의 저장값을 칸에 반영한다.
             const units = g.units.map((u) => ({ ...u, value: saved[u.key] ?? u.value }));
-            const editedCount = units.filter((u) => isEdited(u.value, u.base)).length;
+            // 반응별 조건·결과 글 칸은 반응 칸 안에 들어 있어 따로 세지 않는다(고쳤으면 그 반응 칸을 고친 것으로 센다).
+            const visible = units.filter((u) => !WHEN_KEY.test(u.key));
+            const changed = new Set(units.filter((u) => isEdited(u.value, u.base)).map((u) => u.key));
+            const editedCount = visible.filter((u) => {
+              const c = companions(u.key);
+              return changed.has(u.key) || (c && (changed.has(c.when) || changed.has(c.result)));
+            }).length;
             return (
               <li key={g.id} className="border-b border-neutral-300">
                 <button type="button" className="flex w-full items-start justify-between gap-3 py-3 text-left" aria-expanded={isOpen} onClick={() => toggle(g.id)}>
@@ -224,14 +259,14 @@ export function RoastTextEditor({ groups, quizzes, brands, layout }: { groups: E
                       {g.title}
                       {editedCount > 0 && (
                         <span className="ml-2 text-sm font-normal text-[#800020]">
-                          고친 문장 ({editedCount}/{units.length})
+                          고친 문장 ({editedCount}/{visible.length})
                         </span>
                       )}
                     </span>
                     {g.when && <span className="text-sm text-neutral-700">{g.when}</span>}
                   </span>
                   <span className="shrink-0 text-sm text-neutral-700">
-                    {g.units.length}칸 {isOpen ? "▲" : "▼"}
+                    {visible.length}칸 {isOpen ? "▲" : "▼"}
                   </span>
                 </button>
                 {isOpen && <GroupBlock group={{ ...g, units }} onSaved={(items) => setSaved((m) => ({ ...m, ...items }))} />}
@@ -243,6 +278,7 @@ export function RoastTextEditor({ groups, quizzes, brands, layout }: { groups: E
         </>
       )}
     </main>
+    </WhenContext.Provider>
   );
 }
 
@@ -391,9 +427,29 @@ function GroupBlock({ group, onSaved }: { group: EditorGroup; onSaved: (items: R
   return (
     <div className="flex flex-col gap-5 pb-5" onBlur={() => void flush()}>
       {vars.length > 0 && <p className="text-sm text-neutral-700">쓸 수 있는 자리: {vars.map((v) => `[${v.label}]`).join(" ")}</p>}
-      {group.units.map((u) => (
-        <UnitField key={u.key} unit={u} value={values[u.key]} edited={isEdited(u.value, u.base)} onChange={(v) => setValues((m) => ({ ...m, [u.key]: v }))} />
-      ))}
+      {group.units
+        .filter((u) => !WHEN_KEY.test(u.key))
+        .map((u) => {
+          const c = companions(u.key);
+          if (c && c.when in values && c.result in values) {
+            const edited = [u.key, c.when, c.result].some((k) => {
+              const unit = group.units.find((x) => x.key === k);
+              return unit && isEdited(unit.value, unit.base);
+            });
+            return (
+              <ReactField
+                key={u.key}
+                unit={u}
+                items={values[u.key] as string[]}
+                when={values[c.when] as string[]}
+                result={values[c.result] as string[]}
+                edited={edited}
+                onChange={(items, when, result) => setValues((m) => ({ ...m, [u.key]: items, [c.when]: trimEnd(when), [c.result]: trimEnd(result) }))}
+              />
+            );
+          }
+          return <UnitField key={u.key} unit={u} value={values[u.key]} edited={isEdited(u.value, u.base)} onChange={(v) => setValues((m) => ({ ...m, [u.key]: v }))} />;
+        })}
       <div className="min-h-5">
         <Message message={status} />
       </div>
@@ -427,6 +483,129 @@ function UnitField({ unit, value, edited, onChange }: { unit: EditorUnit; value:
   );
 }
 
+const trimEnd = (list: string[]) => {
+  const out = [...list];
+  while (out.length && !out[out.length - 1]) out.pop();
+  return out;
+};
+
+/**
+ * 질문 반응 목록. 반응(1번·2번…)마다 접힌 "조건" 칸이 있어, 펼치면 준비된 경우를 드롭다운으로 골라 붙이고
+ * 그 반응이 나올 때의 결과 글을 적는다. 조건이 맞는 반응이 있으면 그것이, 없으면 조건 없는 반응이 나온다.
+ */
+function ReactField({
+  unit,
+  items,
+  when,
+  result,
+  edited,
+  onChange,
+}: {
+  unit: EditorUnit;
+  items: string[];
+  when: string[];
+  result: string[];
+  edited: boolean;
+  onChange: (items: string[], when: string[], result: string[]) => void;
+}) {
+  const at = (list: string[], i: number) => list[i] ?? "";
+  const setAt = (list: string[], i: number, v: string) => Array.from({ length: Math.max(list.length, i + 1) }, (_, k) => (k === i ? v : at(list, k)));
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="mb-1 text-sm font-medium">
+        {unit.label}
+        {edited && <span className="ml-1 font-normal text-[#800020]">(직접 수정함)</span>}
+      </legend>
+      <ListRows
+        items={items}
+        label={unit.label}
+        bubbles={isBubbleKey(unit.key)}
+        onChange={(next) => onChange(next, when, result)}
+        onRemove={(i) => onChange(items.filter((_, k) => k !== i), when.filter((_, k) => k !== i), result.filter((_, k) => k !== i))}
+        extra={(i) => (
+          <WhenPicker
+            label={`${unit.label} ${i + 1}`}
+            cell={at(when, i)}
+            result={at(result, i)}
+            onChange={(cell, text) => onChange(items, setAt(when, i, cell), setAt(result, i, text))}
+          />
+        )}
+      />
+    </fieldset>
+  );
+}
+
+/** 반응 하나의 조건(접힌 채로 시작). cell은 "count_lte:30|pat:black_bias" 모양 */
+function WhenPicker({ label, cell, result, onChange }: { label: string; cell: string; result: string; onChange: (cell: string, result: string) => void }) {
+  const options = useContext(WhenContext);
+  const parts = cell ? cell.split("|") : [];
+  const parse = (part: string) => {
+    const [id, n] = part.split(/:(?=\d+$)/);
+    return { id, n, opt: options.find((o) => o.id === id) };
+  };
+  const setParts = (next: string[]) => onChange(next.join("|"), result);
+  const groups = [...new Set(options.map((o) => o.group))];
+  const summary = parts.length ? `조건 ${parts.length}개${result ? " · 결과 글 있음" : ""}` : result ? "결과 글만 있음(조건을 골라야 씀)" : "조건 없음";
+  return (
+    <details className="ml-7 text-sm">
+      <summary className={cn("w-fit cursor-pointer py-1", parts.length ? "text-[#800020]" : "text-neutral-700")}>{summary}</summary>
+      <div className="mt-1 flex flex-col gap-2 border-l border-neutral-300 pl-3">
+        {parts.map((part, k) => {
+          const { id, n, opt } = parse(part);
+          const [before, after] = (opt?.label ?? id).split("{n}");
+          return (
+            <div key={k} className="flex flex-wrap items-center gap-1">
+              <span>{before}</span>
+              {opt?.n != null && (
+                <Input
+                  type="number"
+                  min={0}
+                  step={1}
+                  className="w-20"
+                  aria-label={`${label} 조건 ${k + 1} 숫자`}
+                  value={n ?? ""}
+                  onChange={(e) => setParts(parts.map((p, j) => (j === k ? `${id}:${e.target.value.replace(/\D/g, "").slice(0, 5) || "0"}` : p)))}
+                />
+              )}
+              {after != null && <span>{after}</span>}
+              <Button size="sm" variant="ghost" aria-label={`${label} 조건 ${k + 1} 빼기`} onClick={() => setParts(parts.filter((_, j) => j !== k))}>
+                빼기
+              </Button>
+            </div>
+          );
+        })}
+        <select
+          aria-label={`${label} 조건 고르기`}
+          className="min-h-11 w-full max-w-120 border border-neutral-400 bg-surface px-2"
+          value=""
+          onChange={(e) => {
+            const opt = options.find((o) => o.id === e.target.value);
+            if (opt) setParts([...parts, opt.n != null ? `${opt.id}:${opt.n}` : opt.id]);
+          }}
+        >
+          <option value="">+ 조건 고르기</option>
+          {groups.map((g) => (
+            <optgroup key={g} label={g}>
+              {options
+                .filter((o) => o.group === g)
+                .map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label.replace("{n}", String(o.n ?? ""))}
+                  </option>
+                ))}
+            </optgroup>
+          ))}
+        </select>
+        <label className="flex flex-col gap-1">
+          <span>이 반응이 나올 때 결과 글 (비우면 원래 결과 글, 조건이 맞을 때만 씀)</span>
+          <textarea aria-label={`${label} 결과 글`} rows={rowsFor(result)} className={areaClass} value={result} onChange={(e) => onChange(cell, e.target.value)} />
+        </label>
+        {parts.length > 1 && <p className="text-neutral-700">조건을 여러 개 고르면 모두 맞을 때만 이 반응이 나옵니다.</p>}
+      </div>
+    </details>
+  );
+}
+
 function ListRows({
   items,
   onChange,
@@ -434,12 +613,18 @@ function ListRows({
   answer,
   onAnswer,
   bubbles,
+  onRemove,
+  extra,
 }: {
   items: string[];
   onChange: (v: string[]) => void;
   label: string;
   answer?: number;
   onAnswer?: (i: number) => void;
+  /** 빼기를 따로 처리할 때(같은 순서의 다른 목록도 함께 뺀다) */
+  onRemove?: (i: number) => void;
+  /** 항목 아래에 붙이는 칸(반응별 조건) */
+  extra?: (i: number) => ReactNode;
   /** 대화 말풍선 문장: 줄을 바꾼 곳마다 말풍선이 나뉜다. 나누기·합치기 버튼을 보여 준다. */
   bubbles?: boolean;
 }) {
@@ -448,7 +633,8 @@ function ListRows({
     <div className="flex flex-col gap-2">
       {bubbles && <p className="text-sm text-neutral-700">줄을 바꾼 곳마다 말풍선이 따로 나옵니다.</p>}
       {items.map((s, i) => (
-        <div key={i} className="flex items-start gap-2">
+        <div key={i} className="flex flex-col gap-1">
+        <div className="flex items-start gap-2">
           {onAnswer ? (
             <label className="flex min-h-11 shrink-0 items-center gap-1 text-sm">
               <input type="radio" name={`${label}-answer`} checked={answer === i} onChange={() => onAnswer(i)} />
@@ -474,9 +660,11 @@ function ListRows({
                 나누기
               </Button>
             ))}
-          <Button size="sm" variant="ghost" aria-label={`${label} ${i + 1} 빼기`} onClick={() => onChange(items.filter((_, k) => k !== i))}>
+          <Button size="sm" variant="ghost" aria-label={`${label} ${i + 1} 빼기`} onClick={() => (onRemove ? onRemove(i) : onChange(items.filter((_, k) => k !== i)))}>
             빼기
           </Button>
+        </div>
+        {extra?.(i)}
         </div>
       ))}
       <div>

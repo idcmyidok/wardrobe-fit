@@ -156,8 +156,6 @@ export const SCREEN_NAME: Record<string, string> = {
   PICK_ASK: "시작 버튼을 누르면 나오는 기준 선택 멘트",
   PICK_CLOSET: "기준 선택 버튼(내 옷장)",
   PICK_ORDERS: "기준 선택 버튼(무신사 주문내역)",
-  CRITERIA_LABEL: "평가 기준 버튼",
-  CRITERIA: "평가 기준 버튼을 눌렀을 때 설명(대략적인 기준만 짧게)",
   START_NOTE: "이름·나이 묻기 위에 보이는 안내(결과 정확도에 대한 설명)",
   ASK_NAME: "이름·나이 묻기",
   NAME_HINT: "이름·나이 입력칸 아래 안내",
@@ -556,6 +554,8 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
       : (REACT_NAME[p[3]] ?? optionLabel?.(p[1], p[3]) ?? p[3]);
     if (p[2] === "react") return `바로 반응: ${who}`;
     if (p[2] === "roast") return `결과 글: ${who}`;
+    if (p[2] === "when") return `반응 조건: ${who}`;
+    if (p[2] === "result") return `조건 맞을 때 결과 글: ${who}`;
   }
   return key;
 }

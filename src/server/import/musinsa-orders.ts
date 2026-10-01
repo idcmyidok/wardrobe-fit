@@ -8,7 +8,9 @@ import { mapCategory } from "./normalize/category";
  * 북마크 버튼은 상품 링크 앞에 "⟦G:상품번호⟧" 줄을 끼워 넣어 복사한다.
  */
 
-export const ORDER_STATUSES = ["구매 확정", "오프라인 구매 완료", "반품 완료", "반품 신청", "취소 완료", "교환 요청", "교환 완료", "사용 완료"] as const;
+/** 아직 구매 확정 전인 주문(상품 준비중·배송중·배송 완료). 띄어쓰기가 다르게 복사될 때도 알아본다. */
+const IN_PROGRESS = ["상품 준비중", "상품준비중", "배송 준비중", "배송준비중", "배송중", "배송 중", "배송 완료", "배송완료"] as const;
+export const ORDER_STATUSES = ["구매 확정", "오프라인 구매 완료", "반품 완료", "반품 신청", "취소 완료", "교환 요청", "교환 완료", "사용 완료", ...IN_PROGRESS] as const;
 const KEEP = new Set(["구매 확정", "오프라인 구매 완료"]);
 
 export interface MusinsaOrder {
@@ -224,6 +226,8 @@ const ROAST_STATUS: Record<string, RoastOrderStatus> = {
   "반품 완료": "returned",
   "반품 신청": "returned",
   "취소 완료": "cancelled",
+  // 사용자 요청(2026-10-01): 상품 준비중·배송중·배송 완료도 가진 옷으로 보고 분석·20벌 판정에 센다.
+  ...Object.fromEntries(IN_PROGRESS.map((s) => [s, "kept" as const])),
 };
 
 export interface RoastOrderGarment extends OrderGarment {
