@@ -7,6 +7,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { requestPasswordReset, signIn, signUp, type AuthFormState } from "@/server/auth/actions";
 import type { AuthMode } from "./auth-mode";
+import { HelpPopup } from "./help-popup";
 
 const TITLE: Record<AuthMode, string> = {
   signin: "로그인",
@@ -37,6 +38,21 @@ export function AuthPanel({
 }) {
   return (
     <div className="flex w-full max-w-95 flex-col gap-5">
+      {mode === "signin" && (
+        <HelpPopup label="비밀번호 입력 시 사기 사이트라고 뜨는 문제">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/dolphin.jpg" alt="" className="w-full" />
+          <p>
+            만든 지 얼마 안 된 소규모 사이트라서 구글이 위험 사이트로 판단하는 경우가 있어요.
+            아이디·비밀번호·개인정보는 모두 암호화해서 저장하니 안심해 주세요.
+          </p>
+        </HelpPopup>
+      )}
+      {mode === "signup" && (
+        <HelpPopup label="인증 메일이 안 와요">
+          <p>인증 메일이 보이지 않으면 스팸메일함을 확인해 주세요.</p>
+        </HelpPopup>
+      )}
       <h2 className="border-b border-text pb-3 text-[25px]">{TITLE[mode]}</h2>
 
       {!configured && <PreviewNotice />}
