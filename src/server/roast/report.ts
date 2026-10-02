@@ -430,8 +430,8 @@ export function buildReport(
   const bonus = answerDeltas.reduce((sum, x) => sum + x.delta, 0);
   const rawScore = Math.max(0, Math.min(100, wardrobe.score + bonus));
   const liftRules = deltas.rules as Partial<ScoreRules> | undefined;
-  // 합계가 lift_floor점 미만이면 보정도 합계에 비례해 줄인다(합계 0이면 보정 0 → 0점까지 나올 수 있음)
-  const liftFloor = Number(liftRules?.lift_floor ?? SCORE_RULES.lift_floor);
+  // 주문내역만: 합계가 lift_floor점 미만이면 보정도 합계에 비례해 줄인다(합계 0이면 보정 0 → 0점까지 나올 수 있음). 옷장 훈수는 그대로.
+  const liftFloor = override ? Number(liftRules?.lift_floor ?? SCORE_RULES.lift_floor) : 0;
   const lift = Number(liftRules?.lift ?? SCORE_RULES.lift) * (liftFloor > 0 ? Math.min(1, rawScore / liftFloor) : 1);
   const totalScore = Math.round(rawScore + (100 - rawScore) * lift);
   // 관리자 점수 풀이: 같은 항목(나이 구간별 등)은 합치고 판단 기준은 이어 붙인다.
