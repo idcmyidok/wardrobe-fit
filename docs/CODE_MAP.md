@@ -171,6 +171,7 @@
 ### src/components/landing
 - `feature-showcase.tsx` (593줄) FeatureShowcase:37 — 첫 화면 대표 기능 탭(옷장 관리·구매 판단·옷장 훈수). 탭 글은 `FEATURES`:551, 예시 화면 WardrobeDemo:277·FitCheckDemo:400·RoastDemo:480. 움직임은 `landing.css`(--d 지연, 자동 넘김 막대 animationend로 다음 탭)
 - `promo-banner.tsx` (120줄) PromoBanner — 로그인 화면 회원가입 줄 아래 새 기능 알림 배너(클릭 없음)(signin·signup 모드). 항목은 `PROMOS` 목록 한 곳에서 추가·수정, 2개 이상이면 5초마다 왼쪽 밀어내기 전환(`landing.css`의 pb-slide), 마우스·포커스 시 멈춤, 점으로 이동
+- `src/components/auth/help-popup.tsx` HelpPopup — 로그인·회원가입 제목 위 빨간 밑줄 안내 + X 달린 팝업(`auth-panel.tsx`에서 사용, 돌고래 사진 `public/images/dolphin.jpg`)
 - `service-intro.tsx` (34줄) ServiceIntro:9 — 로그인 화면 왼쪽(제목·소개 한 줄 + FeatureShowcase)
 
 ### src/components/layout
