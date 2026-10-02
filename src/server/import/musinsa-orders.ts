@@ -226,7 +226,7 @@ const ROAST_STATUS: Record<string, RoastOrderStatus> = {
   "반품 완료": "returned",
   "반품 신청": "returned",
   "취소 완료": "cancelled",
-  // 사용자 요청(2026-10-01): 상품 준비중·배송중·배송 완료도 가진 옷으로 보고 분석·20벌 판정에 센다.
+  // 사용자 요청(2026-10-01): 상품 준비중·배송중·배송 완료도 가진 옷으로 보고 분석·30벌 판정에 센다.
   ...Object.fromEntries(IN_PROGRESS.map((s) => [s, "kept" as const])),
 };
 

@@ -58,7 +58,7 @@ async function prepare(items: unknown): Promise<{ a: Analysis; T: RoastTexts; si
 
 /**
  * 주문내역을 붙여 넣고 상품을 읽기 직전에 부른다. 오늘 이미 훈수를 시작했으면 막는다(하루 한 번).
- * 횟수는 여기서 쓰지 않는다. 읽은 옷이 20벌 이상으로 확인된 뒤 commitOrderRoast에서 쓴다(옷이 모자라면 횟수를 쓰지 않는다).
+ * 횟수는 여기서 쓰지 않는다. 읽은 옷이 30벌 이상으로 확인된 뒤 commitOrderRoast에서 쓴다(옷이 모자라면 횟수를 쓰지 않는다).
  * 관리자·테스터는 제한이 없다.
  */
 export async function beginOrderRoast(): Promise<{ ok: true } | { ok: false; used: boolean; message: string }> {
@@ -76,7 +76,7 @@ export async function beginOrderRoast(): Promise<{ ok: true } | { ok: false; use
   }
 }
 
-/** 읽은 옷(못 찾은 상품·옷이 아닌 상품 제외)이 20벌 이상일 때 오늘 횟수를 쓴다. 이미 썼으면 막는다. 관리자·테스터는 기록하지 않는다. */
+/** 읽은 옷(못 찾은 상품·옷이 아닌 상품 제외)이 30벌 이상일 때 오늘 횟수를 쓴다. 이미 썼으면 막는다. 관리자·테스터는 기록하지 않는다. */
 export async function commitOrderRoast(): Promise<{ ok: true } | { ok: false; used: boolean; message: string }> {
   if (!isAuthConfigured()) return { ok: true };
   try {
