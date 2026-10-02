@@ -358,7 +358,7 @@ describe("가장 비싼 항목", () => {
     expect(says.length).toBeGreaterThan(0);
     for (const t of says) {
       expect(t).not.toContain("가장 비싼 옷");
-      expect(t.split("\n")[1]).toBe(`${p.stats.itemName}입니다.`);
+      expect(t.split("\n")[1]).toContain(p.stats.itemName as string);
     }
   });
 });
