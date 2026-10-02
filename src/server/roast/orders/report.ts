@@ -98,7 +98,6 @@ export function orderOverride(a: Analysis, seed: number, T: RoastTexts, score: O
     points,
     answerTo: ANSWER_TO,
     headline: O.HEADLINE,
-    totalLead: O.TOTAL_LEAD,
     skipDiags: ["shop"],
   };
 }

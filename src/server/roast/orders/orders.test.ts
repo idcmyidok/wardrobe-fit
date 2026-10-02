@@ -325,7 +325,7 @@ describe("주문내역 전용 문장 칸(옷장 훈수 문장 복사)", () => {
     expect(Object.keys(O.lines).sort()).toEqual(Object.keys(LINE_TEXT).filter((id) => !ORDER_SKIP_PATTERNS.has(id)).sort());
     expect(Object.keys(O.questions).sort()).toEqual(["fashionable_q", "food_vs_clothes", "quiz"]);
     for (const k of ["NAME_GREETING", "SECTION_STATUS", "THINKING", "MID_REMARKS", "FEW_PATTERNS", "CLOSING"]) expect(O.common[k]).toBeDefined();
-    for (const k of ["TOTAL", "SCORE_SAY", "SUMMARY_3", "color", "wallet", "diag"]) expect(O.report[k]).toBeDefined();
+    for (const k of ["SCORE_SAY", "SUMMARY_3", "color", "wallet", "diag"]) expect(O.report[k]).toBeDefined();
     // 주문내역에서 나오지 않는 것은 없다
     expect(O.lines.count_small).toBeUndefined();
     expect((O.report.diag as Record<string, unknown>).shop).toBeUndefined();
@@ -345,7 +345,16 @@ describe("주문내역 전용 문장 칸(옷장 훈수 문장 복사)", () => {
   it("주문내역 훈수는 전용 칸 문장을 쓴다", () => {
     const T = forOrders(applyTextEdits({ "orders.lines.avg_price.say": JSON.stringify(["주문용 {avgWon}"]) }));
     expect(T.lines.avg_price.say).toEqual(["주문용 {avgWon}"]);
-    expect(forOrders(DEFAULT_TEXTS).report.TOTAL.b50).toEqual(DEFAULT_TEXTS.report.TOTAL.b50.map((x) => x.replace(/옷장/g, "주문내역")));
+    expect(forOrders(DEFAULT_TEXTS).report.LIST_DUP).toEqual(DEFAULT_TEXTS.report.LIST_DUP.map((x) => x.replace(/옷장/g, "주문내역")));
+  });
+
+  it("결과 구성은 옷장·주문내역이 따로이고, 주문내역을 고치면 옷장은 그대로다", () => {
+    const T = forOrders(applyTextEdits({ "orders.report.layout.count.photos": "7", "report.layout.count.diag_max": "4" }));
+    expect(T.report.layout.count.photos).toBe(7);
+    expect(applyTextEdits({ "orders.report.layout.count.photos": "7" }).report.layout.count.photos).toBe(DEFAULT_TEXTS.report.layout.count.photos);
+    // 옷장 쪽만 고쳤고 주문내역 전용 값이 없으면 옷장 값을 따라간다
+    expect(T.report.layout.count.diag_max).toBe(4);
+    expect(Object.keys(T.report.layout.point_order)).not.toContain("fit");
   });
 
   it("전용 칸은 모두 고칠 수 있는 칸이고, 질문 반응 조건 칸도 있다", () => {

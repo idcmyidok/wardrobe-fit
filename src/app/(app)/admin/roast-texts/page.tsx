@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/server/admin/guard";
 import { BRANDS } from "@/server/roast/brands";
 import { LINE_SECTION } from "@/server/roast/lines";
-import { fieldLabel, LAYOUT_POINT, LAYOUT_SECTION, PATTERN_COND, SECTION_NAME, textGroups, varLabel } from "@/server/roast/meta";
+import { fieldLabel, LAYOUT_POINT, LAYOUT_POINT_ORDERS, LAYOUT_SECTION, LAYOUT_SECTION_ORDERS, PATTERN_COND, SECTION_NAME, textGroups, varLabel } from "@/server/roast/meta";
 import { getRoastTextEdits } from "@/server/roast/queries";
 import { WHEN_DEFS } from "@/server/roast/react-when";
 import { Q_TEXT } from "@/server/roast/questions";
@@ -49,5 +49,5 @@ export default async function RoastTextsPage() {
     ...Object.entries(LINE_SECTION).map(([id, sec]) => ({ id: `pat:${id}`, label: `${PATTERN_COND[id] ?? id}`, group: `분석에서 잡힘: ${SECTION_NAME[sec] ?? sec}` })),
   ];
 
-  return <RoastTextEditor groups={groups} quizzes={quizzes} brands={brands} layout={{ sections: LAYOUT_SECTION, points: LAYOUT_POINT }} whenOptions={whenOptions} />;
+  return <RoastTextEditor groups={groups} quizzes={quizzes} brands={brands} layout={{ closet: { sections: LAYOUT_SECTION, points: LAYOUT_POINT }, orders: { sections: LAYOUT_SECTION_ORDERS, points: LAYOUT_POINT_ORDERS } }} whenOptions={whenOptions} />;
 }

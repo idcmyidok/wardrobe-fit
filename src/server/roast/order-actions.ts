@@ -174,7 +174,6 @@ function reportAsOrders(r: RoastReport): RoastReport {
     ...r,
     headline: asOrders(r.headline),
     lists: r.lists.map((l) => ({ title: asOrders(l.title), items: l.items })),
-    total: { ...r.total, lead: asOrders(r.total.lead), text: asOrders(r.total.text) },
     points: r.points.map((x) => ({ ...x, lead: asOrders(x.lead), text: asOrders(x.text), ...(x.answer ? { answer: asOrders(x.answer) } : {}) })),
     ...(r.summary ? { summary: asOrders(r.summary) } : {}),
     notes: r.notes.map(asOrders),
