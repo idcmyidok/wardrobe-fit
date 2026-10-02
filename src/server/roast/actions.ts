@@ -8,21 +8,20 @@ import type { RoastFinish, RoastGarmentRef, RoastResult, RoastStart } from "@/li
 import { isAuthConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
 import type { Garment } from "@/lib/types/domain";
-import { getQuotaExemption } from "@/server/admin/is-admin";
-import { getAiProvider } from "@/server/ai/provider";
+import { isAdmin } from "@/server/admin/guard";
 import { getMyBodyProfile } from "@/server/body/queries";
-import { hoursAgo } from "@/server/fit/service";
 import { listMyGarments } from "@/server/garments/queries";
 import { getUsdRate } from "@/server/settings/queries";
-import { buildAiInput, ROAST_AI_DAILY_LIMIT, writeWithAi } from "./ai";
 import { analyze, MIN_GARMENTS } from "./analyze";
 import { buildScript, composeResult } from "./compose";
 import { getRoastTexts, signGarments } from "./queries";
+import { buildReport } from "./report";
+import type { ScoreRules } from "./score-deltas";
 
 /**
  * AI 옷장 분석 서버 액션.
- * - startRoast: 지금 옷장을 읽어 대화 순서를 만든다(AI 없음). 진행 상태는 저장하지 않는다.
- * - finishRoast: 같은 seed로 분석을 다시 만들고 답을 반영해 결과 글을 쓴다. AI는 여기서 한 번만(하루 3회), 넘으면 템플릿.
+ * - startRoast: 지금 옷장을 읽어 대화 순서를 만든다. 진행 상태는 저장하지 않는다.
+ * - finishRoast: 같은 seed로 분석을 다시 만들고 답을 반영해 결과(report)를 만든다. AI는 쓰지 않는다.
  * 로그인한 사용자는 DB의 옷장을 읽고 결과를 저장한다. Supabase가 없는 미리보기 모드는 화면이 보낸 예시 옷장으로 계산하고 저장하지 않는다.
  */
 
@@ -32,6 +31,10 @@ const nameSchema = z
   .max(20)
   .transform((s) => s.replace(/[<>{}]/g, "") || null)
   .nullable();
+
+/** 나이는 이번 계산에만 쓰고 어디에도 저장하지 않는다. */
+const ageSchema = z.number().int().min(10).max(99).nullable();
+const AGE_REQUIRED = "나이를 입력해 주세요.";
 
 /** 미리보기 모드에서 화면이 보내는 옷장(브라우저 저장소). 계산에 쓰는 칸만 느슨하게 확인한다. */
 const previewSchema = z
@@ -69,65 +72,50 @@ async function source(preview: unknown): Promise<Source | { error: string }> {
   return { garments: await listMyGarments(), userId: user.id, supabase };
 }
 
-async function aiLeft(s: Source): Promise<number | null> {
-  if (!s.supabase || !s.userId) return null;
-  if (await getQuotaExemption(s.supabase, s.userId)) return null;
-  const { count } = await s.supabase
-    .from("roast_runs")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", s.userId)
-    .eq("ai_used", true)
-    .gte("created_at", hoursAgo(24));
-  return Math.max(0, ROAST_AI_DAILY_LIMIT - (count ?? 0));
-}
-
-export async function startRoast(input: { name: string | null; preview?: unknown }): Promise<RoastStart> {
+export async function startRoast(input: { name: string | null; age?: number | null; preview?: unknown }): Promise<RoastStart> {
   try {
     const s = await source(input.preview);
     if ("error" in s) return { ok: false, code: "error", message: s.error };
     const name = nameSchema.safeParse(input.name).data ?? null;
+    const age = ageSchema.safeParse(input.age ?? null).data ?? null;
+    if (age == null) return { ok: false, code: "error", message: AGE_REQUIRED };
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
-    const a = analyze(s.garments, body, usdRate);
-    if (a.clothes.length < MIN_GARMENTS) return { ok: false, code: "too_few", count: a.clothes.length };
+    const texts = await getRoastTexts(s.supabase);
+    const a = analyze(s.garments, body, usdRate, new Date(), texts.score.rules as Partial<ScoreRules> | undefined);
+    if (a.clothesTotal < MIN_GARMENTS) return { ok: false, code: "too_few", count: a.clothesTotal };
     const seed = Math.floor(Math.random() * 2 ** 31);
-    const { script } = buildScript(a, seed, name, await getRoastTexts(s.supabase));
-    return { ok: true, script, aiLeft: await aiLeft(s) };
+    const { script } = buildScript(a, seed, name, texts, age);
+    return { ok: true, script };
   } catch (e) {
     console.error("[roast] start", e instanceof Error ? e.message : e);
     return { ok: false, code: "error", message: "옷장을 읽지 못했습니다. 잠시 후 다시 시도해 주세요." };
   }
 }
 
-export async function finishRoast(input: { seed: number; name: string | null; answers: Record<string, string>; preview?: unknown }): Promise<RoastFinish> {
+export async function finishRoast(input: { seed: number; name: string | null; age?: number | null; answers: Record<string, string>; preview?: unknown }): Promise<RoastFinish> {
   try {
     const s = await source(input.preview);
     if ("error" in s) return { ok: false, message: s.error };
     const name = nameSchema.safeParse(input.name).data ?? null;
+    const age = ageSchema.safeParse(input.age ?? null).data ?? null;
+    if (age == null) return { ok: false, message: AGE_REQUIRED };
     const seed = z.number().int().nonnegative().safeParse(input.seed).data ?? 0;
     const answers = z.record(z.string().max(60), z.string().max(200)).safeParse(input.answers).data ?? {};
 
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
-    const a = analyze(s.garments, body, usdRate);
-    if (a.clothes.length < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 10개 이상일 때 분석할 수 있습니다." };
     const texts = await getRoastTexts(s.supabase);
-    const plan = buildScript(a, seed, name, texts);
-    const composed = composeResult(a, name, seed, texts);
-
-    let written: Pick<RoastResult, "headline" | "paragraphs" | "closing"> = composed;
-    let aiUsed = false;
-    const left = await aiLeft(s);
-    const provider = s.userId && (left === null || left > 0) ? getAiProvider() : null;
-    if (provider) {
-      const withPhoto = (ids: string[]) => ids.filter((id) => a.items.find((i) => i.id === id)?.hasPhoto).slice(0, 2);
-      const ai = await writeWithAi(provider, buildAiInput(a, plan, composed, answers, name), withPhoto);
-      if (ai) {
-        written = ai;
-        aiUsed = true;
-      }
-    }
+    const a = analyze(s.garments, body, usdRate, new Date(), texts.score.rules as Partial<ScoreRules> | undefined);
+    if (a.clothesTotal < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 20개 이상일 때 분석할 수 있습니다." };
+    const plan = buildScript(a, seed, name, texts, age);
+    const composed = composeResult(a, seed, texts);
+    const report = buildReport(a, name, seed, texts.report, plan.asked, answers, texts.score, age);
+    // 점수 풀이는 관리자에게만 보인다(미리보기 모드는 로그인 없는 개발용 화면이라 확인용으로 보여 준다).
+    if (s.userId && !(await isAdmin(s.userId))) delete report.scoreDetail;
 
     // 결과에 나온 옷의 브랜드·제품명·사진 경로를 복사해 둔다(옷을 지워도 문장은 남는다).
-    const ids = [...new Set([...written.paragraphs.flatMap((p) => p.photos)])];
+    const ids = [
+      ...new Set(report.points.flatMap((p) => p.photos ?? [])),
+    ];
     const paths = new Map<string, { image: string | null; thumb: string | null }>();
     if (s.supabase && ids.length) {
       const { data } = await s.supabase.from("garments").select("id, image_path, thumb_path").in("id", ids);
@@ -149,30 +137,29 @@ export async function finishRoast(input: { seed: number; name: string | null; an
     const result: RoastResult = {
       name,
       createdAt: new Date().toISOString(),
-      garmentCount: a.clothes.length,
-      headline: written.headline,
-      paragraphs: written.paragraphs,
-      closing: written.closing,
+      garmentCount: a.clothesTotal,
+      headline: "",
+      paragraphs: [],
+      closing: composed.closing,
       disclaimer: texts.screen.DISCLAIMER,
+      report,
       garments,
       answers: plan.asked
         .filter((q) => answers[q.id])
         .map((q) => ({ id: q.id, question: q.text, answer: q.options.find((o) => o.id === answers[q.id])?.label ?? "" })),
       patterns: composed.used.map((p) => ({ id: p.id, stats: p.stats })),
-      aiUsed,
       wardrobeHash: wardrobeHash(s.garments),
     };
 
     if (s.supabase && s.userId) {
       const [run, save] = await Promise.all([
-        s.supabase.from("roast_runs").insert({ user_id: s.userId, ai_used: aiUsed }),
+        s.supabase.from("roast_runs").insert({ user_id: s.userId }),
         s.supabase.from("roast_results").upsert({
           user_id: s.userId,
           name,
           garment_count: result.garmentCount,
           result: JSON.parse(JSON.stringify({ ...result, garments: stripUrls(garments) })),
           wardrobe_hash: result.wardrobeHash,
-          ai_used: aiUsed,
           created_at: result.createdAt,
         }),
       ]);

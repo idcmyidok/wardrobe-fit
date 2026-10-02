@@ -1,3 +1,5 @@
+import { FEATURES } from "./features";
+
 /**
  * 업데이트 노트(사용자 메뉴 → 업데이트 노트). 최신 버전을 맨 위에 둔다.
  *
@@ -15,6 +17,8 @@
 export interface ReleaseFeature {
   title: string;
   description: string;
+  /** 숨긴 기능이면 그 기능 켜기 이름(src/lib/features.ts). 꺼져 있으면 노트에 보이지 않는다. */
+  feature?: keyof typeof FEATURES;
 }
 
 export interface ReleaseNote {
@@ -28,7 +32,124 @@ export interface ReleaseNote {
   fixes: string[];
 }
 
-export const RELEASE_NOTES: ReleaseNote[] = [
+const ALL_NOTES: ReleaseNote[] = [
+  {
+    version: "1.4.1",
+    date: "2026-10-02",
+    time: "12:54",
+    features: [],
+    changes: [
+      "내 패션 훈수 점수가 더 엄격해졌습니다. 패션 퀴즈는 맞혀도 점수가 오르지 않고 틀리면 깎이며, 가점 상한이 줄어 옷장이 잘 갖춰져도 80점대 이상으로 몰리지 않습니다. 옷이 너무 적거나 신발이 적을 때, 계절 옷이 비어 있을 때는 감점되고, 점수가 아주 낮으면 0점까지 나올 수 있습니다.",
+      "내 옷장 훈수는 모자·신발을 뺀 옷이 20벌 이상일 때 받을 수 있습니다. 나이는 건너뛸 수 없고 꼭 적어야 합니다.",
+      "무신사 인기 브랜드·유니클로 같은 대중 브랜드에 쏠린 정도, 일본 브랜드, 후르츠패밀리 브랜드를 점수에 반영하는 기준을 다듬었습니다.",
+      "질문에 답하면 나오는 반응이 내 옷장·주문 상황에 맞게 달라지고, 그 반응에 맞는 결과 글이 붙습니다.",
+      "\"스스로 패셔너블한 사람이라고 생각하나요?\" 질문의 반응이 화면에 보이는 최종 점수와 맞게 나옵니다.",
+      "훈수 질문이 분석 이야기 사이사이에 섞여 나오고, 분석과 질문 사이의 중간 혼잣말과 결과 첫머리의 소개 문장은 없앴습니다.",
+      "주문내역 훈수에 사이즈를 자주 바꿔 산 경우, 1만 원 미만 옷이 많은 경우, 내 치수와 맞지 않는 옷이 많은 경우의 감점이 더해졌고, 취향 변화·무신사 등급·튀는 옷을 묻는 질문이 다듬어졌습니다.",
+      "옷 정보의 \"상품 링크\" 칸에 \"가능한 실제 구매 링크를 적어주세요\" 안내가 붙었습니다. 실제 구매 링크가 있으면 훈수가 더 정확해집니다.",
+      "훈수와 옷장 데이터가 아는 브랜드 정보를 최종 점검본(3,700여 곳)으로 바로잡았습니다. 브랜드의 가격대와 성격이 더 정확히 반영됩니다.",
+    ],
+    fixes: [],
+  },
+  {
+    version: "1.4.0",
+    date: "2026-10-01",
+    time: "16:48",
+    features: [
+      {
+        title: "주문내역만 붙여 넣으면 훈수",
+        description:
+          "옷장에 옷을 하나도 안 넣어도 됩니다. \"내 패션 훈수\"에서 시작한 뒤 \"무신사 주문내역으로 훈수받기\"를 누르고, 이름과 나이를 적은 다음 무신사 주문내역을 복사해 붙여 넣으면 그동안 주문한 옷을 훑어보고 훈수를 둡니다. 상품 페이지를 차례로 읽는 동안 진행 상황과 \"주문내역을 분석하느라 시간이 좀 걸립니다\" 안내가 보입니다. 하트가 많은 랭킹템을 얼마나 샀는지, 무신사 스탠다드나 한 브랜드에 얼마나 쏠렸는지, 세일 때 몰아 산 날, 반품·교환·취소 습관, 예전과 요즘 주문의 변화까지 짚습니다. 준비중·배송중인 주문도 함께 보고, 반품·취소와 모자·신발을 뺀 옷이 20벌 이상일 때만 훈수를 둡니다(20벌 미만이면 안내만 나오고 오늘 횟수는 쓰지 않습니다). 주문내역 훈수는 하루에 한 번(한국 시간 0시 기준)만 할 수 있습니다. 결과 맨 아래 \"분석한 제품 전부 옷장에 넣기\"를 누르면 읽은 상품이 확인 화면에 그대로 담겨, 주문내역을 다시 붙여 넣지 않고도 옷장에 넣을 수 있습니다. 붙여 넣은 글과 주문 목록, 결과는 저장하지 않습니다.",
+      },
+      {
+        title: "로그인 화면, 움직이는 소개",
+        description:
+          "로그인 화면 왼쪽에 \"옷장 관리\"·\"구매 판단\"·\"패션 훈수\" 탭이 생겼습니다. 탭마다 링크를 넣으면 옷이 목록에 추가되는 모습, 치수 차이 막대, 훈수 질문과 답 같은 짧은 예시 화면이 실제처럼 움직이고, 7초쯤마다 다음 탭으로 넘어갑니다. 마우스를 올리면 멈추고, 탭을 직접 누르면 자동으로 넘어가지 않습니다.",
+      },
+      {
+        title: "새 기능 배너",
+        description:
+          "로그인·회원가입 화면의 회원가입 줄 아래에 \"AI 무신사 주문내역 훈수 OPEN!\"과 \"무신사에서 산 옷, 한 번에 옷장으로\" 배너가 5초마다 차례로 밀려 들어오는 안내입니다. 마우스를 올리면 멈추고, 아래 점으로 원하는 안내를 고를 수 있습니다.",
+      },
+    ],
+    changes: [
+      "\"내 옷장 훈수\"가 \"내 패션 훈수\"로 이름이 바뀌었습니다. 메뉴, 훈수 화면, 개인정보 처리방침, 로그인 화면 소개에서 같은 이름으로 보입니다.",
+      "훈수를 시작하면 \"어떤 기준으로 평가해드릴까요?\"가 나오고 \"내 옷장 정보로 훈수받기\"와 \"무신사 주문내역으로 훈수받기\" 중에서 고를 수 있습니다. 화면이 새로고침되지 않고 바로 아래에 이어집니다.",
+      "훈수 결과의 요약 문장 뒤에 \"대충 이 정도 드리죠\" 같은 한마디가 붙습니다.",
+      "무신사 주문내역 붙여넣기 화면에 주문 가져오기와 같은 북마크 안내가 나옵니다.",
+      "주문내역 훈수 결과의 평가는 내 패션 훈수와 같은 기준에 맞춰, 같은 옷을 다른 주문에서 반복해 산 것, 몰아 산 날, 반품하고 또 산 브랜드, 기본 상의만 산 경우를 따로 짚습니다.",
+      "주문내역 훈수의 후기 질문이 \"후기를 읽는지\"와 \"후기를 쓰는지\" 두 개로 나뉘었습니다.",
+    ],
+    fixes: [
+      "주문내역 훈수 대화에서 상품 사진이 모두 깨져 보이던 문제를 고쳤습니다.",
+      "주문내역 훈수에서 \"undefined 주문이 5건입니다\"처럼 브랜드 이름이 이상하게 나오던 문제를 고쳤습니다. 읽지 못한 브랜드는 주문내역의 브랜드 이름으로 보여 줍니다.",
+    ],
+  },
+  {
+    version: "1.3.3",
+    date: "2026-10-01",
+    time: "16:10",
+    features: [],
+    changes: [
+      "내 옷장 훈수 결과 맨 위에 나오던 총점 문장과 총점 한마디가 없어졌습니다.",
+      "훈수 질문이 8~10개까지 나옵니다. \"특이한 옷 고르기\"는 다른 옷과 겹치지 않는 점이 3개 이상인 옷만 골라 더 확실히 튀는 옷이 나옵니다.",
+      "설립 5년 안의 국내 브랜드를 \"신생 브랜드\"로 봅니다(올해 기준).",
+      "훈수가 중고가 브랜드, 디자이너·컨템포러리 브랜드, 아주 흔한 대중 브랜드를 보는 기준이 더 자연스럽게 다듬어졌습니다.",
+      "가장 아끼는 브랜드를 고른 답은 그 자리의 반응으로만 보이고, 결과 글에는 따로 문단이 들어가지 않습니다.",
+      "\"요즘 뜨는 브랜드가 몇 벌\"이라는 문장과 \"어디서 알게 됐나요\" 질문이 나오지 않습니다.",
+      "훈수와 옷장 데이터가 아는 브랜드가 3,700곳을 넘었습니다. 29cm·하이츠스토어·LLUD에서 파는 브랜드와 인기 순위의 새 브랜드를 더했습니다.",
+    ],
+    fixes: [
+      "i4p는 래퍼가 만든 중가 스트릿 브랜드로, 스케이터락은 중저가로, 1011 갤러리는 중가로 바로잡았고 etce는 대중적인 브랜드로 보게 고쳤습니다.",
+    ],
+  },
+  {
+    version: "1.3.2",
+    date: "2026-10-01",
+    time: "11:52",
+    features: [],
+    changes: [
+      "내 옷장 훈수 결과에서 구매 시기별 변화도 짚어 줍니다. 구매일을 적은 옷을 반기별로 묶어, 예전과 요즘 주로 사는 스타일이 달라졌거나 스타일은 같은데 가격대만 달라졌으면 한 줄 이야기해 줍니다.",
+      "훈수의 \"무신사 취향\" 판단에 무신사에서 좋아요가 많은 브랜드도 함께 봅니다.",
+      "훈수 질문이 관련된 분석 이야기 바로 뒤에 묶여서 나오고, 옷 사진은 양옆 화살표로 넘겨 볼 수 있습니다.",
+      "훈수와 옷장 데이터가 아는 브랜드가 3,500곳을 넘었습니다. 무신사에서 좋아요가 많은 브랜드를 새로 더해 내 옷장의 브랜드를 더 많이 알아봅니다.",
+      "하이츠스토어·니어서울에 입점한 브랜드 269곳 정보를 다시 조사해 고쳤습니다. 훈수가 스타일과 가격대를 더 정확히 짚습니다.",
+      "무신사 주문 가져오기는 하루 500건까지 가져올 수 있고, 링크로 옷을 넣는 횟수와 따로 셉니다. 주문 가져오기 화면에는 남은 횟수 대신 \"하루에 너무 많이 가져오면 일시적으로 막힐 수 있어요\" 안내만 보입니다.",
+    ],
+    fixes: [
+      "훈수에서 같은 데님 팬츠가 중복으로 세어지고 사진이 일부만 보이던 문제를 고쳤습니다.",
+      "루에브르는 한국 컨템포러리 브랜드(중고가), 해칭룸은 중고가로 바로잡았고, 브랜드 벨리에를 추가했습니다.",
+    ],
+  },
+  {
+    version: "1.3.1",
+    date: "2026-09-30",
+    time: "20:54",
+    features: [
+      {
+        title: "링크는 한 번에 여러 개",
+        description: "\"새 옷 추가\"에서 상품 링크를 최대 5개까지 한 번에 붙여 넣을 수 있습니다. 옷마다 정보가 차례로 채워지고, 확인한 뒤 한 번에 옷장에 등록됩니다.",
+      },
+      {
+        title: "입으면 이 정도 길이",
+        description: "구매 판단기 결과의 길이감 아래에, 내 키에 맞춘 사람 그림 위로 그 옷의 총장을 겹쳐 보여 줍니다. 옷이 어디까지 내려오는지 한눈에 보이고, 실측 어깨·가슴을 적어 두었다면 소매 모양도 거기에 맞춰 그려집니다.",
+      },
+      {
+        title: "옷장 성적표 나왔습니다",
+        description:
+          "내 옷장 훈수의 결과가 한 편의 글로 바뀌었습니다. 맨 위에 한 줄 평가와 옷장을 한 문장으로 정리한 요약이 나오고, 많이 가진 옷·좋아하는 브랜드, 컬러·핏·지갑 사정 이야기가 이어집니다.",
+      },
+    ],
+    changes: [
+      "내 옷장 훈수 대화가 더 사람처럼 흘러갑니다. 글자가 한 자씩 찍히고 문장마다 말풍선이 나뉘며, 섹션 사이에 잠깐 고민하는 \"......\" 표시가 나옵니다. 화면은 대화를 따라 맨 아래로 내려갑니다.",
+      "훈수에서 질문과 퀴즈가 늘었습니다. 가진 브랜드의 패션 퀴즈(Cactus Jack·Yeezy 같은 힙합 아티스트 브랜드 포함), 밴드 티셔츠가 있으면 밴드 노래 퀴즈, 언더아머가 있으면 \"3대 500인가요?\"까지 나옵니다.",
+      "훈수를 시작할 때 이름과 나이(한국식 나이, 저장하지 않음)를 적으면 결과에 반영됩니다. 핏이 슬림·레귤러인 옷이 많은지도 결과에서 짚어 줍니다.",
+      "훈수와 옷장 데이터가 아는 브랜드가 1,600곳을 넘었습니다. 크림·하이츠스토어 같은 편집숍의 스트릿·스케이트 브랜드와 국내 브랜드를 새로 조사해 더 정확히 봅니다.",
+      "바지의 예상 핏은 허리를 빼고 판단합니다. 허리가 늘어나는 바지는 실측이 작게 나와 핏이 잘못 보일 수 있어서입니다.",
+      "총장 그림에서 밑단 길이는 바지 허리선을 기준으로 견줍니다.",
+    ],
+    fixes: ["훈수 대화가 이어지는 동안 화면이 맨 아래까지 따라 내려가지 않던 문제를 고쳤습니다."],
+  },
   {
     version: "1.3.0",
     date: "2026-09-30",
@@ -268,6 +389,9 @@ export const RELEASE_NOTES: ReleaseNote[] = [
 ];
 
 /** 지금 버전(맨 위 노트) */
+/** 화면에 보이는 노트: 꺼 둔 기능의 문장은 뺀다 */
+export const RELEASE_NOTES: ReleaseNote[] = ALL_NOTES.map((n) => ({ ...n, features: n.features.filter((f) => !f.feature || FEATURES[f.feature]) }));
+
 export const CURRENT_VERSION = RELEASE_NOTES[0]?.version ?? "";
 
 /** "1.1.0" → "1" */
@@ -287,9 +411,13 @@ export function groupByMajor(notes: ReleaseNote[] = RELEASE_NOTES): { major: str
 
 /**
  * 관리자가 화면에서 고친 노트. DB(release_note_edits.body)에 신규 기능·변경 내용·수정사항을 JSON으로 저장하고,
- * 있으면 코드의 노트 대신 같은 모양으로 보여 준다. 버전과 날짜는 코드의 노트를 따른다.
+ * 있으면 코드의 노트 대신 같은 모양으로 보여 준다. 날짜·시각도 고쳤다면 같이 저장한다(버전은 코드를 따른다).
  */
-export type ReleaseNoteContent = Pick<ReleaseNote, "features" | "changes" | "fixes">;
+export type ReleaseNoteContent = Pick<ReleaseNote, "features" | "changes" | "fixes"> & {
+  /** 관리자가 고친 날짜(YYYY-MM-DD)·시각(HH:mm). 있으면 코드의 값 대신 보여 준다. */
+  date?: string;
+  time?: string;
+};
 export type ReleaseNoteEdits = Record<string, ReleaseNoteContent>;
 
 /** 수정 칸 세 개의 글. 한 줄이 한 항목이고, 신규 기능은 "제목: 설명"으로 쓴다. */
@@ -297,12 +425,21 @@ export interface ReleaseNoteDraft {
   features: string;
   changes: string;
   fixes: string;
+  /** YYYY-MM-DD, 비어 있으면 코드의 날짜 */
+  date: string;
+  /** HH:mm, 비어 있으면 코드의 시각(없으면 시각 없음) */
+  time: string;
 }
+
+export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+export const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export const RELEASE_NOTE_BODY_MAX = 20000;
 
-export function noteToDraft(note: ReleaseNoteContent): ReleaseNoteDraft {
+export function noteToDraft(note: ReleaseNoteContent & { date: string; time?: string }): ReleaseNoteDraft {
   return {
+    date: note.date,
+    time: note.time ?? "",
     features: note.features.map((f) => (f.description ? `${f.title}: ${f.description}` : f.title)).join("\n"),
     changes: note.changes.join("\n"),
     fixes: note.fixes.join("\n"),
@@ -324,7 +461,10 @@ export function splitFeatureLine(line: string): ReleaseFeature {
 }
 
 export function draftToContent(draft: ReleaseNoteDraft): ReleaseNoteContent {
-  return { features: lines(draft.features).map(splitFeatureLine), changes: lines(draft.changes), fixes: lines(draft.fixes) };
+  const content: ReleaseNoteContent = { features: lines(draft.features).map(splitFeatureLine), changes: lines(draft.changes), fixes: lines(draft.fixes) };
+  if (DATE_RE.test(draft.date)) content.date = draft.date;
+  if (TIME_RE.test(draft.time)) content.time = draft.time;
+  return content;
 }
 
 /** DB에 저장된 글을 읽는다. 모양이 맞지 않으면 null(코드의 노트를 보여 준다). */
@@ -335,8 +475,17 @@ export function parseEditBody(body: string): ReleaseNoteContent | null {
     const feats = (a: unknown): a is ReleaseFeature[] =>
       Array.isArray(a) && a.every((x) => x && typeof x.title === "string" && typeof x.description === "string");
     if (!feats(v.features) || !strs(v.changes) || !strs(v.fixes)) return null;
-    return { features: v.features, changes: v.changes, fixes: v.fixes };
+    const content: ReleaseNoteContent = { features: v.features, changes: v.changes, fixes: v.fixes };
+    if (typeof v.date === "string" && DATE_RE.test(v.date)) content.date = v.date;
+    if (typeof v.time === "string" && TIME_RE.test(v.time)) content.time = v.time;
+    return content;
   } catch {
     return null;
   }
 }
+
+/** 버전 → 그 노트에 넣은 사진 주소(관리자가 넣는다) */
+export type ReleaseNoteImages = Record<string, string>;
+
+/** 노트 사진을 담는 Storage bucket(공개 읽기, 관리자만 쓰기) */
+export const RELEASE_NOTE_IMAGE_BUCKET = "release-note-images";

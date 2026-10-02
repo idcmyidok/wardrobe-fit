@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { CATEGORIES, SUBCATEGORIES, SUBCATEGORY_NAME } from "@/lib/constants/categories";
 import { MEASUREMENT_KEYS, MEASUREMENT_LABELS, formatNum } from "@/lib/constants/measurements";
 import { cn } from "@/lib/cn";
 import { importImageFile, importImageUrl } from "@/lib/import/client";
-import { MUSINSA_BOOKMARKLET } from "@/lib/import/musinsa-bookmarklet";
-import { guideDevice, type GuideDevice } from "@/lib/import/order-guide-device";
+import { OrderGuide } from "./order-guide";
+import { lookupOf, takeOrderHandoff, type OrderHandoff, type OrderLookup } from "@/lib/import/order-handoff";
 import { findDuplicates, type ExistingGarment } from "@/lib/import/order-duplicates";
 import { notifyUsageChanged } from "@/lib/usage";
 import type { CategoryId, Measurements } from "@/lib/types/domain";
@@ -108,11 +108,20 @@ export function OrderImportView() {
   /** 모두 등록한 벌 수. 값이 있으면 완료 팝업을 띄운다. */
   const [finished, setFinished] = useState<number | null>(null);
 
+  // 주문내역 훈수에서 "옷장에 넣기"로 넘어오면 이미 읽은 결과로 바로 확인 화면을 연다.
+  const taken = useRef(false);
+  useEffect(() => {
+    if (taken.current || !signedIn || !new URLSearchParams(window.location.search).has("from")) return;
+    taken.current = true;
+    const handoff = takeOrderHandoff();
+    if (handoff) void start(handoff);
+  });
+
   const patch = (keys: (k: string) => boolean, change: (item: Item) => Partial<Item>) =>
     setItems((prev) => prev?.map((it) => (keys(it.key) ? { ...it, ...change(it) } : it)) ?? prev);
 
-  async function start() {
-    const parsed = parseOrdersToGarments(text);
+  async function start(handoff?: OrderHandoff) {
+    const parsed = parseOrdersToGarments(handoff?.text ?? text);
     if (!parsed.orders.length) {
       setNotice("주문을 찾지 못했어요. 무신사 주문내역 화면 전체를 복사해 붙여 넣어 주세요.");
       return;
@@ -148,6 +157,17 @@ export function OrderImportView() {
     setProgress({ done: 0, total: orders.length });
     stop.current = false;
 
+    // 주문내역 훈수에서 넘어왔으면 이미 읽은 결과를 그대로 쓴다(주문 순서는 같은 글을 나눈 순서).
+    if (handoff) {
+      for (const [n, order] of orders.entries()) {
+        applyLookup((key) => key.startsWith(`${n}-`), handoff.lookups[parsed.orders.indexOf(order)] ?? null, "not_found");
+      }
+      setItems((prev) => prev?.map((it) => (it.status === "waiting" ? { ...it, status: "not_found" } : it)) ?? prev);
+      setProgress({ done: orders.length, total: orders.length });
+      setPhase("review");
+      return;
+    }
+
     for (const [n, order] of orders.entries()) {
       if (stop.current) break;
       if (n > 0) await new Promise((r) => setTimeout(r, PAUSE_MS));
@@ -168,9 +188,9 @@ export function OrderImportView() {
       } catch {
         result = null;
       }
-      applyResult(mine, result);
+      applyLookup(mine, lookupOf(result), "failed");
       if (result?.outcome?.errorCode === "rate_limited") {
-        setNotice("오늘 가져오기 한도(100번)를 다 써서 멈췄어요. 찾은 옷까지만 확인해서 등록할 수 있어요.");
+        setNotice("하루에 너무 많이 가져와서 일시적으로 막혔어요. 잠시 뒤에 다시 해 주세요. 찾은 옷까지만 확인해서 등록할 수 있어요.");
         break;
       }
       setProgress({ done: n + 1, total: orders.length });
@@ -181,33 +201,35 @@ export function OrderImportView() {
     setPhase("review");
   }
 
-  function applyResult(mine: (key: string) => boolean, result: OrderItemResult | null) {
-    const product = result?.outcome?.product ?? null;
-    const importId = result?.outcome?.importId ?? null;
-    if (!result || !result.goodsNo) return patch(mine, () => ({ status: result ? "not_found" : "failed" }));
-    if (!product || !importId) return patch(mine, () => ({ status: "failed", productUrl: `https://www.musinsa.com/products/${result.goodsNo}` }));
-    if (result.verdict === "not_garment") return patch(mine, () => ({ status: "not_garment", include: false }));
-    const rows = product.sizeChart?.rows ?? [];
+  /** 조회 결과를 목록에 반영한다. lookup이 없으면 missing 상태로 둔다(이름·사이즈·가격만으로 등록 가능). */
+  function applyLookup(mine: (key: string) => boolean, lookup: OrderLookup | null, missing: "failed" | "not_found") {
+    if (!lookup) return patch(mine, () => ({ status: missing }));
+    if (!lookup.goodsNo) return patch(mine, () => ({ status: "not_found" }));
+    const goodsNo = lookup.goodsNo;
+    if (!lookup.importId) return patch(mine, () => ({ status: "failed", productUrl: `https://www.musinsa.com/products/${goodsNo}` }));
+    if (lookup.verdict === "not_garment") return patch(mine, () => ({ status: "not_garment", include: false }));
+    const importId = lookup.importId;
+    const rows = lookup.sizeRows;
     patch(mine, (it) => {
       // 셋업·팩은 주문에서 나눈 분류를 그대로 두고, 한 벌짜리는 상품 카테고리를 따른다.
-      const fromProduct = result.verdict && typeof result.verdict === "object" && !it.part ? result.verdict : null;
+      const fromProduct = lookup.verdict && typeof lookup.verdict === "object" && !it.part ? lookup.verdict : null;
       const categoryId = (fromProduct?.categoryId as CategoryId | undefined) ?? it.categoryId;
       const subcategoryId = fromProduct?.subcategoryId ?? it.subcategoryId;
       const row = matchSizeRow(rows, it.size || null);
       return {
         status: "found",
         // 브랜드·제품명은 상품 페이지 값을 쓴다(주문내역 글은 복사 방법에 따라 줄 순서가 달라진다).
-        brand: product.brand?.value ?? it.brand,
-        productName: product.productName?.value ?? it.productName,
+        brand: lookup.brand ?? it.brand,
+        productName: lookup.productName ?? it.productName,
         include: Boolean(categoryId),
         categoryId,
         subcategoryId,
         size: it.size || row?.sizeLabel || "",
-        color: it.color || product.colorCandidate?.value || "",
+        color: it.color || lookup.color || "",
         measurements: chartMeasurements(rows, it.size, categoryId),
         importId,
-        productUrl: `https://www.musinsa.com/products/${result.goodsNo}`,
-        hasImage: product.imageUrls.length > 0,
+        productUrl: `https://www.musinsa.com/products/${goodsNo}`,
+        hasImage: lookup.hasImage,
         sizeRows: rows,
       };
     });
@@ -294,15 +316,14 @@ export function OrderImportView() {
             onChange={(e) => setText(e.target.value)}
           />
           {notice && <p className="text-sm text-accent-700">{notice}</p>}
-          <button type="button" className="btn btn-primary min-h-11 self-start" disabled={!text.trim() || !signedIn} onClick={start}>
+          <button type="button" className="btn btn-primary min-h-11 self-start" disabled={!text.trim() || !signedIn} onClick={() => start()}>
             옷만 골라서 찾기 시작
           </button>
           {!signedIn && <p className="text-sm text-neutral-700">로그인해야 쓸 수 있어요.</p>}
           <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-neutral-700">
             <li>지금은 무신사 주문내역만 가져올 수 있어요.</li>
             <li>이미 옷장에 있는 옷(같은 상품·사이즈)은 자동으로 빼고, 원하면 체크해서 다시 추가할 수 있어요.</li>
-            <li>상품 하나를 찾을 때마다 하루 링크 분석 횟수(100번)를 1번씩 써서, 한 번에 많이 쓰게 돼요.</li>
-            <li>옷이 100벌을 넘으면 오늘 분석 횟수를 다 써서 일부는 찾지 못하거나 등록에 실패할 수 있어요.</li>
+            <li>하루에 너무 많이 가져오면 일시적으로 막힐 수 있어요.</li>
           </ul>
         </section>
       )}
@@ -369,175 +390,6 @@ export function OrderImportView() {
         </div>
       )}
     </main>
-  );
-}
-
-const noSubscribe = () => () => {};
-
-const PERIOD_TIP =
-  "검색창을 눌러 검색 기간을 최대(5년)로 늘린 뒤 맨 아래까지 스크롤하면 예전 주문까지 모두 가져올 수 있어요.";
-
-/** 접속한 기기에 맞는 가져오기 방법 하나만 보여 준다. 다른 기기 방법도 눌러서 볼 수 있다. */
-function OrderGuide() {
-  const detected = useSyncExternalStore(
-    noSubscribe,
-    () => guideDevice(navigator.userAgent, navigator.maxTouchPoints),
-    () => null,
-  );
-  const [other, setOther] = useState(false);
-  const [copied, setCopied] = useState<"ok" | "fail" | null>(null);
-  const bookmark = useRef<HTMLAnchorElement>(null);
-
-  const device: GuideDevice | null = !detected
-    ? null
-    : !other
-      ? detected
-      : detected === "pc"
-        ? "android-chrome"
-        : "pc";
-  // React는 javascript: 주소를 href로 넣지 못하게 막아서 직접 넣는다.
-  useEffect(() => {
-    bookmark.current?.setAttribute("href", MUSINSA_BOOKMARKLET);
-  }, [device]);
-
-  if (!device) return null;
-  const pc = device === "pc";
-  const safari = device === "ios-safari";
-
-  async function copyBookmark() {
-    try {
-      await navigator.clipboard.writeText(MUSINSA_BOOKMARKLET);
-      setCopied("ok");
-    } catch {
-      setCopied("fail");
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-3">
-      {pc ? (
-        <>
-          <ol className="flex list-decimal flex-col gap-2 pl-5 text-base text-pretty">
-            <li>
-              아래 <b>무신사 주문 복사</b> 버튼을 브라우저의 즐겨찾기 막대로
-              끌어다 놓아요. 처음 한 번만 하면 돼요.
-            </li>
-            <li>무신사 마이페이지의 주문내역을 열어요. {PERIOD_TIP}</li>
-            <li>
-              주문내역 화면에서 즐겨찾기에 넣은 <b>무신사 주문 복사</b>를
-              눌러요. 상품번호까지 함께 복사돼요.
-            </li>
-            <li>복사한 글을 아래 칸에 붙여 넣고 시작을 눌러요.</li>
-          </ol>
-          <a
-            ref={bookmark}
-            className="btn btn-secondary min-h-10 self-start"
-            onClick={(e) => e.preventDefault()}
-          >
-            무신사 주문 복사
-          </a>
-        </>
-      ) : (
-        <>
-          {device === "mobile-other" && (
-            <p className="border border-accent-700 px-3 py-2 text-sm text-accent-700 text-pretty">
-              휴대폰에서는 크롬과 사파리에서만 쓸 수 있어요. 이 화면 주소를
-              크롬이나 사파리에서 열어 주세요.
-            </p>
-          )}
-          {device !== "mobile-other" && (
-            <p className="text-sm text-neutral-700 text-pretty">
-              휴대폰에서는 크롬·사파리에서만 쓸 수 있어요. 무신사 앱이 아닌
-              웹사이트에서 해요.
-            </p>
-          )}
-          <ol className="flex list-decimal flex-col gap-2 pl-5 text-base text-pretty">
-            <li>
-              아래 <b>북마크 주소 복사</b>를 눌러요.
-            </li>
-            {safari ? (
-              <li>
-                사파리 아래 주소창의 <b>왼쪽 버튼</b>을 눌러 메뉴를 열고{" "}
-                <b>북마크에 추가</b>를 눌러요. 그다음 주소창 <b>가운데</b>를
-                누르면 나오는 <b>책 모양 아이콘 → 북마크</b>에서 방금 만든
-                북마크를 길게 눌러
-                <b> 편집</b>하고, 이름은 <b>무신사복사</b>, 주소는 지운 뒤
-                복사한 글을 붙여 넣어요. 처음 한 번만 하면 돼요.
-              </li>
-            ) : (
-              <li>
-                크롬에서 이 화면을 북마크에 추가해요(<b>⋮ → ☆</b>). 그다음{" "}
-                <b>⋮ → 북마크</b>에서 방금 만든 북마크를 <b>수정</b>해 이름은
-                <b> 무신사복사</b>, URL은 지운 뒤 복사한 글을 붙여 넣어요. 처음
-                한 번만 하면 돼요.
-              </li>
-            )}
-            <li>
-              {safari ? "사파리" : "크롬"}로{" "}
-              <a
-                href="https://www.musinsa.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold underline underline-offset-2"
-              >
-                musinsa.com
-              </a>
-              에 로그인해 마이페이지의 주문내역을 열어요. {PERIOD_TIP}
-            </li>
-            <li>
-              {safari ? (
-                <>
-                  주소창 가운데를 눌러 <b>책 모양 아이콘 → 북마크</b>를 열고{" "}
-                  <b>무신사복사</b>를 눌러요. 주소창에 입력해서 열면 사파리가
-                  실행을 막으니 꼭 북마크 목록에서 눌러 주세요.
-                </>
-              ) : (
-                <>
-                  주소창에 <b>무신사복사</b>를 입력하고 목록에 뜬 북마크(별
-                  표시)를 눌러요.
-                </>
-              )}
-            </li>
-            <li>
-              화면에 <b>복사하기</b> 버튼이 뜨면 눌러요. 이 화면으로 돌아와 아래
-              칸에 붙여 넣고 시작을 눌러요.
-            </li>
-          </ol>
-          <button
-            type="button"
-            className="btn btn-secondary min-h-11 self-start"
-            onClick={copyBookmark}
-          >
-            북마크 주소 복사
-          </button>
-          {copied === "ok" && (
-            <p className="text-sm text-neutral-700">
-              복사했어요. 북마크 주소에 붙여 넣어 주세요.
-            </p>
-          )}
-          {copied === "fail" && (
-            <label className="flex flex-col gap-1 text-sm text-neutral-700">
-              자동 복사가 막혀 있어요. 아래 글을 길게 눌러 모두 선택해 복사해
-              주세요.
-              <textarea
-                className="input font-mono text-xs"
-                rows={3}
-                readOnly
-                value={MUSINSA_BOOKMARKLET}
-                onFocus={(e) => e.currentTarget.select()}
-              />
-            </label>
-          )}
-        </>
-      )}
-      <button
-        type="button"
-        className="btn btn-ghost self-start text-sm"
-        onClick={() => setOther((v) => !v)}
-      >
-        {pc ? "휴대폰 방법 보기" : "PC 방법 보기"}
-      </button>
-    </div>
   );
 }
 

@@ -512,6 +512,27 @@ export type Database = {
         }
         Relationships: []
       }
+      release_note_images: {
+        Row: {
+          path: string
+          updated_at: string
+          updated_by: string | null
+          version: string
+        }
+        Insert: {
+          path: string
+          updated_at?: string
+          updated_by?: string | null
+          version: string
+        }
+        Update: {
+          path?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       roast_text_edits: {
         Row: {
           body: string
@@ -568,18 +589,21 @@ export type Database = {
           ai_used: boolean
           created_at: string
           id: number
+          kind: string
           user_id: string
         }
         Insert: {
           ai_used?: boolean
           created_at?: string
           id?: never
+          kind?: string
           user_id: string
         }
         Update: {
           ai_used?: boolean
           created_at?: string
           id?: never
+          kind?: string
           user_id?: string
         }
         Relationships: []

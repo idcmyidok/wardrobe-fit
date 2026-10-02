@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { FEATURES } from "@/lib/features";
-import type { ReleaseNoteEdits } from "@/lib/release-notes";
+import type { ReleaseNoteEdits, ReleaseNoteImages } from "@/lib/release-notes";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
@@ -12,7 +12,7 @@ const NAV = [
   { href: "/wardrobe", label: "내 옷장" },
   { href: "/fit-check", label: "구매 판단기" },
   { href: "/analysis", label: "옷장 데이터" },
-  { href: "/roast", label: "내 옷장 훈수" },
+  { href: "/roast", label: "내 패션 훈수" },
   ...(FEATURES.outfit ? [{ href: "/outfit", label: "오늘의 코디" }] : []),
   { href: "/body", label: "내 치수" },
 ];
@@ -22,10 +22,12 @@ export function AppHeader({
   email,
   admin = false,
   releaseNoteEdits = {},
+  releaseNoteImages = {},
 }: {
   email: string | null;
   admin?: boolean;
   releaseNoteEdits?: ReleaseNoteEdits;
+  releaseNoteImages?: ReleaseNoteImages;
 }) {
   const pathname = usePathname();
   return (
@@ -59,7 +61,7 @@ export function AppHeader({
           <div className="hidden sm:block">
             <ThemeToggle />
           </div>
-          <UserMenu email={email} admin={admin} releaseNoteEdits={releaseNoteEdits} />
+          <UserMenu email={email} admin={admin} releaseNoteEdits={releaseNoteEdits} releaseNoteImages={releaseNoteImages} />
         </div>
       </div>
     </header>

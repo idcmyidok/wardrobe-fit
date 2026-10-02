@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { garmentFromCategoryPath, matchSizeRow, optionPairs, packCount, parseMusinsaOrders, parseOrdersToGarments } from "./musinsa-orders";
+import { garmentFromCategoryPath, matchSizeRow, optionPairs, packCount, parseMusinsaOrders, parseOrdersForRoast, parseOrdersToGarments } from "./musinsa-orders";
 
 // 무신사 주문내역을 Ctrl+A로 복사한 글과 같은 모양(상품은 지어낸 것)
 const TEXT = `126건
@@ -132,5 +132,17 @@ describe("북마크 버튼 글(화면에 보이는 글만)", () => {
   it("[브랜드, 상품명] 순서도 상품명·브랜드를 바르게 읽는다", () => {
     const [order] = parseMusinsaOrders(`25.10.15(수)\n구매 확정\n⟦G:4567890⟧\n아캄\nSmall Sun Jacquard Beanie (Brown)\nFREE / 1개\n31,870원\n`);
     expect(order).toMatchObject({ brand: "아캄", name: "Small Sun Jacquard Beanie (Brown)", goodsNo: "4567890" });
+  });
+});
+
+describe("parseOrdersForRoast", () => {
+  it("상품 준비중·배송중·배송 완료도 가진 옷으로 센다", () => {
+    const text = ["26.09.30(수)", "상품 준비중", "후드 집업", "브랜드E", "후드 집업", "그레이 / L / 1개", "89,000원", "배송중", "와이드 데님", "브랜드F", "와이드 데님", "30 / 1개", "59,000원", "배송 완료", "옥스포드 셔츠", "브랜드G", "옥스포드 셔츠", "M / 1개", "49,000원"].join("\n");
+    const { garments } = parseOrdersForRoast(text);
+    expect(garments.map((g) => [g.order.name, g.status])).toEqual([
+      ["후드 집업", "kept"],
+      ["와이드 데님", "kept"],
+      ["옥스포드 셔츠", "kept"],
+    ]);
   });
 });

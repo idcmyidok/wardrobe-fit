@@ -13,10 +13,14 @@ import {
   type ReleaseNoteContent,
   type ReleaseNoteDraft,
   type ReleaseNoteEdits,
+  type ReleaseNoteImages,
+  RELEASE_NOTE_IMAGE_BUCKET,
 } from "@/lib/release-notes";
+import { ImagePrepareError, prepareGarmentImage } from "@/lib/images/prepare-image";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const FIXES_TITLE = "수정사항";
-import { resetReleaseNoteEdit, saveReleaseNoteEdit } from "@/server/release-notes/actions";
+import { removeReleaseNoteImage, resetReleaseNoteEdit, saveReleaseNoteEdit, saveReleaseNoteImage } from "@/server/release-notes/actions";
 
 /**
  * 업데이트 노트 창. 최신 버전이 맨 위, 아래는 스크롤해서 본다.
@@ -28,12 +32,17 @@ export function ReleaseNotesDialog({
   admin = false,
   edits,
   onEditsChange,
+  images = {},
+  onImagesChange,
 }: {
   onClose: () => void;
   admin?: boolean;
   /** 서버가 미리 읽어 온 관리자 수정본. 처음 그릴 때부터 이걸로 보여 준다. */
   edits: ReleaseNoteEdits;
   onEditsChange: (edits: ReleaseNoteEdits) => void;
+  /** 버전별 사진 주소 */
+  images?: ReleaseNoteImages;
+  onImagesChange?: (images: ReleaseNoteImages) => void;
 }) {
   const groups = groupByMajor();
   const [major, setMajor] = useState(groups[0]?.major ?? "");
@@ -45,6 +54,13 @@ export function ReleaseNotesDialog({
     if (body === null) delete next[version];
     else next[version] = body;
     onEditsChange(next);
+  };
+
+  const applyImage = (version: string, url: string | null) => {
+    const next = { ...images };
+    if (url === null) delete next[version];
+    else next[version] = url;
+    onImagesChange?.(next);
   };
 
   useEffect(() => {
@@ -104,7 +120,7 @@ export function ReleaseNotesDialog({
 
         <div ref={scroller} className="flex flex-col overflow-y-auto overscroll-contain px-5" data-testid="release-notes">
           {notes.map((note) => (
-            <NoteItem key={note.version} note={note} edited={edits[note.version]} admin={admin} onSaved={applyEdit} />
+            <NoteItem key={note.version} note={note} edited={edits[note.version]} image={images[note.version]} admin={admin} onSaved={applyEdit} onImage={applyImage} />
           ))}
         </div>
       </div>
@@ -116,13 +132,17 @@ export function ReleaseNotesDialog({
 function NoteItem({
   note,
   edited,
+  image,
   admin,
   onSaved,
+  onImage,
 }: {
   note: ReleaseNote;
   edited: ReleaseNoteContent | undefined;
+  image: string | undefined;
   admin: boolean;
   onSaved: (version: string, content: ReleaseNoteContent | null) => void;
+  onImage: (version: string, url: string | null) => void;
 }) {
   const [draft, setDraft] = useState<ReleaseNoteDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -150,9 +170,9 @@ function NoteItem({
       <header className="flex items-baseline justify-between gap-3">
         <h3 className="text-lg font-semibold">{note.version} 패치노트</h3>
         <div className="flex items-baseline gap-3">
-          <time dateTime={note.time ? `${note.date}T${note.time}+09:00` : note.date} className="font-mono text-sm text-neutral-700 tabular-nums">
-            {formatDate(note.date)}
-            {note.time && ` ${note.time}`}
+          <time dateTime={shown.time ? `${shown.date}T${shown.time}+09:00` : shown.date} className="font-mono text-sm text-neutral-700 tabular-nums">
+            {formatDate(shown.date)}
+            {shown.time && ` ${shown.time}`}
           </time>
           {admin && !draft && (
             <button
@@ -179,6 +199,17 @@ function NoteItem({
             }
           }}
         >
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              날짜
+              <input type="date" className="input" value={draft.date} disabled={pending} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              시각 (한국시간)
+              <input type="time" className="input" value={draft.time} disabled={pending} onChange={(e) => setDraft({ ...draft, time: e.target.value })} />
+            </label>
+          </div>
+          <PhotoField version={note.version} image={image} disabled={pending} onImage={onImage} />
           <DraftField
             label="신규 기능"
             hint="한 줄에 하나씩, 제목: 설명"
@@ -216,11 +247,109 @@ function NoteItem({
         </div>
       ) : (
         <>
+          {image && (
+            // eslint-disable-next-line @next/next/no-img-element -- 관리자가 올린 공개 사진(이미 줄여서 올린다)
+            <img src={image} alt={`${note.version} 업데이트 사진`} loading="lazy" decoding="async" className="h-auto w-full border border-neutral-300" />
+          )}
           {empty && <p className="text-sm text-neutral-700">내용을 준비하고 있어요.</p>}
           <CodeNoteBody note={shown} />
         </>
       )}
     </article>
+  );
+}
+
+/**
+ * 노트 사진 한 장. 고르면 브라우저에서 긴 변 1600px WebP(품질 0.8)로 줄여 바로 올리고, 큰 원본은 올리지 않는다.
+ * 글 저장("완료")과 따로 저장·삭제한다.
+ */
+function PhotoField({
+  version,
+  image,
+  disabled,
+  onImage,
+}: {
+  version: string;
+  image: string | undefined;
+  disabled: boolean;
+  onImage: (version: string, url: string | null) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      if (!supabase) throw new Error("no client");
+      const { image: prepared } = await prepareGarmentImage(file);
+      const path = `${version}/${crypto.randomUUID()}.${prepared.type === "image/webp" ? "webp" : "jpg"}`;
+      const up = await supabase.storage.from(RELEASE_NOTE_IMAGE_BUCKET).upload(path, prepared.blob, { contentType: prepared.type, cacheControl: "31536000", upsert: false });
+      if (up.error) throw up.error;
+      const saved = await saveReleaseNoteImage(version, path);
+      if (!saved.ok) setError(saved.error);
+      else onImage(version, saved.url);
+    } catch (e) {
+      setError(
+        e instanceof ImagePrepareError
+          ? e.code === "too_large"
+            ? "사진이 너무 큽니다. 30MB 이하로 골라 주세요."
+            : "사진을 읽지 못했습니다. 다른 사진을 골라 주세요."
+          : "사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    setError(null);
+    const result = await removeReleaseNoteImage(version).catch(() => ({ ok: false as const, error: "사진을 지우지 못했습니다." }));
+    setBusy(false);
+    if (!result.ok) setError(result.error);
+    else onImage(version, null);
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="flex items-baseline justify-between gap-2">
+        <span className="font-mono text-xs font-medium tracking-[0.08em] text-neutral-700">사진</span>
+        <span className="text-xs text-neutral-600">한 장 · 큰 사진은 자동으로 줄여 올립니다</span>
+      </span>
+      {image && (
+        // eslint-disable-next-line @next/next/no-img-element -- 관리자가 올린 공개 사진
+        <img src={image} alt="" className="h-auto w-full border border-neutral-300" />
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <label className={cn("btn btn-secondary min-h-8 cursor-pointer px-3 py-1 text-sm", (busy || disabled) && "pointer-events-none opacity-60")}>
+          {busy ? "올리는 중…" : image ? "사진 바꾸기" : "사진 넣기"}
+          <input
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            disabled={busy || disabled}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              void pick(file);
+            }}
+          />
+        </label>
+        {image && (
+          <button type="button" className="btn btn-ghost min-h-8 px-3 py-1 text-sm" disabled={busy || disabled} onClick={remove}>
+            사진 지우기
+          </button>
+        )}
+      </div>
+      {error && (
+        <p role="alert" className="text-sm text-negative">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 

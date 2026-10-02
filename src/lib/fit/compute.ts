@@ -38,11 +38,18 @@ export const TOLERANCE: Record<MeasurementKey, number> = {
 /** 범위 경계에서 이만큼 벗어난 건 체감 차이가 작아 범위 안으로 본다. */
 const WITHIN_SLACK = 0.5;
 
+/**
+ * 값은 표에 보여 주되 핏 판단(판정·요약·가까운 옷·사이즈 안내)에는 쓰지 않는 치수.
+ * 하의 허리: 스판처럼 실측이 작게 나오는 옷이 있어 치수만으로 핏을 말할 수 없다.
+ */
+export const EXCLUDED_DIMS: Partial<Record<CategoryId, readonly MeasurementKey[]>> = { bottom: ["waist"] };
+const isExcluded = (categoryId: CategoryId, key: MeasurementKey) => EXCLUDED_DIMS[categoryId]?.includes(key) ?? false;
+
 /** 그룹별 핵심 치수(가중치 2) */
 export const CORE_DIMS: Record<CategoryId, readonly MeasurementKey[]> = {
   outer: ["shoulder", "chest", "length", "sleeve"],
   top: ["shoulder", "chest", "length", "sleeve"],
-  bottom: ["waist", "thigh", "length", "rise"],
+  bottom: ["thigh", "length", "rise"],
   hat: ["head", "depth", "brim"],
   shoes: [],
 };
@@ -89,7 +96,7 @@ export function snapshotComparables(selected: SelectedComparable[]): ComparableS
   });
 }
 
-function dimension(key: MeasurementKey, cand: number | null, comps: ComparableSnapshot[]): DimensionResult {
+function dimension(key: MeasurementKey, cand: number | null, comps: ComparableSnapshot[], excluded = false): DimensionResult {
   const withValue = comps.filter((c) => c.measurements[key] != null);
   const owned = stat(withValue.map((c) => c.measurements[key]!));
   // 후기가 있고, 이 치수(또는 전체)에 불만이 없는 옷의 값
@@ -101,6 +108,8 @@ function dimension(key: MeasurementKey, cand: number | null, comps: ComparableSn
   const basis = comfort ? "comfort" : owned ? "owned" : null;
 
   const base = { key, candidate: cand, comfortRange: comfort, ownedRange: owned, basis } as const;
+  if (excluded)
+    return { ...base, verdict: "unknown", distanceFromRange: null, anchors: [], tag: "excluded", judgement: "스판처럼 실측이 작게 나오는 옷이 있어 핏 판단에 쓰지 않음" };
   if (cand == null) return { ...base, verdict: "unknown", distanceFromRange: null, anchors: [], tag: "none", judgement: "신규 실측 없음" };
   if (!range) return { ...base, verdict: "unknown", distanceFromRange: null, anchors: [], tag: "none", judgement: "기존 옷 실측 없음" };
 
@@ -162,6 +171,7 @@ function nearest(categoryId: CategoryId, cand: Measurements, comps: ComparableSn
       let sum = 0;
       let weight = 0;
       for (const k of measurementKeysFor(categoryId)) {
+        if (isExcluded(categoryId, k)) continue;
         const a = cand[k];
         const b = c.measurements[k];
         if (a == null || b == null) continue;
@@ -224,7 +234,8 @@ export function ruleSummary(dims: DimensionResult[], comps: ComparableSnapshot[]
   return sentences.join(" ");
 }
 
-function limitationsOf(dims: DimensionResult[], comps: ComparableSnapshot[], skippedCount: number): string[] {
+function limitationsOf(allDims: DimensionResult[], comps: ComparableSnapshot[], skippedCount: number): string[] {
+  const dims = allDims.filter((d) => d.tag !== "excluded");
   const out: string[] = [];
   if (comps.length && comps.length < 3) out.push(`비교할 수 있는 옷이 ${comps.length}벌뿐입니다. 기록이 늘면 범위가 더 정확해집니다.`);
   if (comps.length && !comps.some((c) => c.matchLevel === "subcategory"))
@@ -251,7 +262,7 @@ export function computeSize(
 ): SizeReport {
   const t = (text: string) => itemWording(categoryId, text);
   const dims = measurementKeysFor(categoryId)
-    .map((k) => dimension(k, size.measurements[k] ?? null, comps))
+    .map((k) => dimension(k, size.measurements[k] ?? null, comps, isExcluded(categoryId, k)))
     .map((d) => ({ ...d, judgement: t(d.judgement) }));
   const confidence = confidenceOf(categoryId, dims, comps);
   return {

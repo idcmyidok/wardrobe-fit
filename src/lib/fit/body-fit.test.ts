@@ -157,20 +157,15 @@ describe("하의: 허벅지가 기본 축, 허리는 크기만", () => {
     expect(r.dimensions.find((d) => d.key === "thigh")!.level).toBe("too_small");
     expect(r.level).toBe("slim");
   });
-  it("허리 −6cm 미만이면 전체 너무 작음", () => {
-    const r = ok(computeBodyFit(pants({ waist: 36, hip: 52, thigh: 32 }), body));
-    expect(r.level).toBe("too_small");
-    expect(r.basis.rule).toBe("waist_small");
-  });
-  it("허리 −6~−2cm는 작음, −2~+2cm는 적정, +2cm 초과는 너무 큼(전체 판정은 그대로)", () => {
-    const waist = (w: number) => ok(computeBodyFit(pants({ waist: w, hip: 52, thigh: 32 }), body));
-    expect(waist(38).dimensions.find((d) => d.key === "waist")!.waist).toBe("small");
-    expect(waist(38).level).toBe("regular");
-    expect(waist(41).dimensions.find((d) => d.key === "waist")!.waist).toBe("fit");
-    const big = waist(41.5);
-    expect(big.dimensions.find((d) => d.key === "waist")!.waist).toBe("too_big");
-    expect(big.level).toBe("regular");
-    expect(big.issues.find((i) => i.key === "waist")!.severe).toBe(true);
+  it("허리는 핏 판정에 쓰지 않는다(스판처럼 실측이 작게 나오는 옷)", () => {
+    const base = ok(computeBodyFit(pants({ hip: 52, thigh: 32 }), body));
+    for (const w of [30, 36, 41, 50]) {
+      const r = ok(computeBodyFit(pants({ waist: w, hip: 52, thigh: 32 }), body));
+      expect(r.level).toBe(base.level);
+      expect(r.scores).toEqual(base.scores);
+      expect(r.dimensions.map((d) => d.key)).toEqual(["hip", "thigh"]);
+      expect(r.issues).toEqual(base.issues);
+    }
   });
   it("반바지는 긴 바지와 기준이 다르다", () => {
     // 허벅지 여유 +5cm: 반바지는 슬림(3~5), 긴 바지는 레귤러(4~8)
@@ -239,7 +234,7 @@ describe("예상 핏 판단 근거", () => {
     const reasons = bodyFitReasons(r);
     expect(r.level).toBe("too_small");
     expect(reasons.at(-1)!.text).toMatch(/엉덩이가 내 몸보다도 좁아 전체를 너무 작음으로 봤어요/);
-    expect(reasons.find((x) => x.key === "waist")!.text).toContain("허리는 핏 단계와 관계없이 크기만 봐요");
-    expect(reasons.find((x) => x.key === "waist")!.text).toContain("이 옷은 작음이에요");
+    expect(reasons.some((x) => x.key === "waist")).toBe(false);
+    expect(reasons.at(-1)!.text).toContain("허리는 핏 판정에 넣지 않아요");
   });
 });

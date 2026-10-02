@@ -1,34 +1,79 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
-import { resetRoastText, saveRoastText } from "@/server/roast/admin-actions";
+import { isBubbleKey, joinBubbles, splitSentences } from "@/lib/roast/bubbles";
+import { deleteRoastQuiz, saveRoastQuiz, saveRoastUnits } from "@/server/roast/admin-actions";
 
-export interface EditorField {
+type UnitValue = string | string[];
+
+export interface EditorUnit {
   key: string;
+  kind: "text" | "list" | "number";
   label: string;
-  base: string;
-  edited: string | null;
+  /** DB에 저장된 값(없으면 코드의 처음 문장) */
+  value: UnitValue | number;
+  /** 코드의 처음 문장. 저장된 값과 다르면 직접 고친 문장으로 표시한다. */
+  base: UnitValue | number;
 }
+
+const isEdited = (value: EditorUnit["value"], base: EditorUnit["base"]) => JSON.stringify(value) !== JSON.stringify(base);
+
+/** 질문 반응마다 붙이는 조건 칸(questions.<질문>.when.<종류>)과 결과 글 칸(…result…). 반응 칸 안에서 함께 고친다. */
+const WHEN_KEY = /^(?:orders\.)?questions\.[^.]+\.(when|result)\./;
+const companions = (key: string) => {
+  const m = key.match(/^((?:orders\.)?questions\.[^.]+)\.react\.(.+)$/);
+  return m ? { when: `${m[1]}.when.${m[2]}`, result: `${m[1]}.result.${m[2]}` } : null;
+};
+
+/** 반응 조건 드롭다운에 나오는 준비된 경우. n이 있으면 경계 숫자를 고칠 수 있다. */
+export interface WhenOption {
+  id: string;
+  label: string;
+  n?: number;
+  group: string;
+}
+const WhenContext = createContext<WhenOption[]>([]);
 
 export interface EditorGroup {
   id: string;
-  kind: "screen" | "common" | "lines" | "questions" | "quiz";
+  kind: "screen" | "common" | "lines" | "questions" | "report" | "score" | "layout" | "orders";
   title: string;
   when: string;
   vars: { key: string; label: string }[];
-  fields: EditorField[];
+  units: EditorUnit[];
 }
 
-const KINDS: { id: EditorGroup["kind"]; label: string }[] = [
+export interface QuizValue {
+  brand: string;
+  answer: number;
+  question: string;
+  options: string[];
+  correct: string[];
+  wrong: string[];
+}
+
+export interface EditorQuiz {
+  id: string;
+  builtIn: boolean;
+  value: QuizValue;
+  deleted: boolean;
+}
+
+type Kind = EditorGroup["kind"] | "quiz";
+const KINDS: { id: Kind; label: string }[] = [
   { id: "lines", label: "패턴별 멘트" },
   { id: "questions", label: "질문·반응" },
   { id: "quiz", label: "패션 퀴즈" },
   { id: "common", label: "공통 문구" },
   { id: "screen", label: "화면·결과 안내" },
+  { id: "report", label: "결과 페이지" },
+  { id: "layout", label: "결과 구성" },
+  { id: "score", label: "점수" },
+  { id: "orders", label: "주문내역 훈수" },
 ];
 
 type Vars = EditorGroup["vars"];
@@ -52,31 +97,59 @@ function fromDisplay(text: string, vars: Vars): { text: string } | { error: stri
   return unknown.length ? { error: `모르는 자리입니다: ${unknown.join(", ")}` } : { text: out };
 }
 
+/** 값 전체를 화면용으로(문장·목록 모두) */
+function mapText<T extends UnitValue>(v: T, f: (s: string) => string): T {
+  if (typeof v === "string") return f(v) as T;
+  return (v as string[]).map(f) as T;
+}
+
 const colLabel = "font-mono text-label font-medium tracking-[0.08em] text-neutral-700";
 
 /**
- * 훈수 문장 편집. 묶음(패턴·질문·퀴즈)을 펼치면 문장마다 입력칸이 나오고, 칸별로 저장·되돌리기 한다.
+ * 훈수 문장 편집. 묶음(패턴·질문·공통 문구·퀴즈)을 펼치면 입력칸이 나오고, 고치면 묶음 단위로 바로 저장된다(저장 버튼·기본값 없음).
+ * 문장 목록은 항목을 더하거나 뺄 수 있고, 퀴즈는 새로 만들거나 지울 수 있다.
  * {자리}는 그 묶음에서 쓸 수 있는 것만 받는다(서버에서 한 번 더 확인).
  */
-export function RoastTextEditor({ groups }: { groups: EditorGroup[] }) {
-  const [kind, setKind] = useState<EditorGroup["kind"]>("lines");
+export interface LayoutInfo {
+  sections: Record<string, { name: string; how: string }>;
+  points: Record<string, { name: string; how: string }>;
+}
+
+export function RoastTextEditor({
+  groups,
+  quizzes,
+  brands,
+  layout,
+  whenOptions,
+}: {
+  groups: EditorGroup[];
+  quizzes: EditorQuiz[];
+  brands: string[];
+  layout: LayoutInfo;
+  whenOptions: WhenOption[];
+}) {
+  const [kind, setKind] = useState<Kind>("lines");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<Set<string>>(new Set());
-  const [edited, setEdited] = useState<Record<string, string | null>>(() =>
-    Object.fromEntries(groups.flatMap((g) => g.fields.map((f) => [f.key, f.edited]))),
-  );
+  const [saved, setSaved] = useState<Record<string, EditorUnit["value"]>>(() => Object.fromEntries(groups.flatMap((g) => g.units.map((u) => [u.key, u.value]))));
+  const [quizList, setQuizList] = useState(quizzes);
 
-  const shown = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return groups.filter(
-      (g) =>
-        g.kind === kind &&
-        (!q ||
-          `${g.title} ${g.when}`.toLowerCase().includes(q) ||
-          g.fields.some((f) => toDisplay(edited[f.key] ?? f.base, g.vars).toLowerCase().includes(q))),
-    );
-  }, [groups, kind, query, edited]);
-  const editedCount = Object.values(edited).filter((v) => v !== null).length;
+  const q = query.trim().toLowerCase();
+  const shown = useMemo(
+    () =>
+      groups.filter(
+        (g) =>
+          g.kind === kind &&
+          (!q ||
+            `${g.title} ${g.when}`.toLowerCase().includes(q) ||
+            g.units.some((u) => JSON.stringify(mapText(saved[u.key] as UnitValue, (s) => toDisplay(s, g.vars))).toLowerCase().includes(q))),
+      ),
+    [groups, kind, q, saved],
+  );
+  const shownQuizzes = useMemo(
+    () => quizList.filter((z) => !q || `${z.id} ${z.value.brand} ${z.value.question} ${z.value.options.join(" ")}`.toLowerCase().includes(q)),
+    [quizList, q],
+  );
 
   const toggle = (id: string) =>
     setOpen((s) => {
@@ -86,17 +159,27 @@ export function RoastTextEditor({ groups }: { groups: EditorGroup[] }) {
       return next;
     });
 
+  const addQuiz = () => {
+    const id = `c-${Math.random().toString(36).slice(2, 10)}`;
+    setQuizList((l) => [
+      { id, builtIn: false, value: { brand: "", answer: 0, question: "", options: ["", "", "", ""], correct: [""], wrong: [""] }, deleted: false },
+      ...l,
+    ]);
+    setOpen((s) => new Set(s).add(`quiz.${id}`));
+  };
+
   return (
+    <WhenContext.Provider value={whenOptions}>
     <main className="mx-auto max-w-240 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
       <div className="flex flex-col gap-1 border-b border-text pb-4">
         <Link href="/admin" className={cn(colLabel, "w-fit uppercase")}>
           ← Admin
         </Link>
-        <h1 className="text-title">내 옷장 훈수 문장</h1>
+        <h1 className="text-title">내 패션 훈수 문장</h1>
         <p className="text-sm text-pretty text-neutral-700">
           [개수], [브랜드]처럼 대괄호 안의 자리는 실제 옷장 값으로 바뀝니다. 새로 쓸 때도 같은 이름으로 [개수]처럼 쓰면 됩니다.
-          [브랜드|을]처럼 조사를 붙이면 받침에 맞춰 을·를이 골라집니다. 한 칸에 여러
-          문장이 있으면 매번 그중 하나를 씁니다. 새 패턴·질문은 코드로만 추가할 수 있습니다. 고친 문장 {editedCount}개.
+          [브랜드|을]처럼 조사를 붙이면 받침에 맞춰 을·를이 골라집니다. 목록은 &quot;문장 추가&quot;로 늘리고 &quot;빼기&quot;로 줄입니다.
+          고치면 잠시 뒤 자동으로 저장되고(별도 저장 버튼 없음), 저장된 값이 그대로 사이트에 나옵니다. 새 패턴·질문은 코드로만 추가할 수 있습니다.
         </p>
       </div>
 
@@ -108,114 +191,569 @@ export function RoastTextEditor({ groups }: { groups: EditorGroup[] }) {
             </Button>
           ))}
         </div>
-        <Input type="search" placeholder="문장·패턴 이름으로 찾기" aria-label="문장 찾기" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <Input type="search" placeholder="문장·패턴·브랜드 이름으로 찾기" aria-label="문장 찾기" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
 
-      <ul className="flex flex-col">
-        {shown.map((g) => {
-          const isOpen = open.has(g.id) || Boolean(query.trim());
-          const changed = g.fields.filter((f) => edited[f.key] !== null).length;
-          return (
-            <li key={g.id} className="border-b border-neutral-300">
-              <button type="button" className="flex w-full items-start justify-between gap-3 py-3 text-left" aria-expanded={isOpen} onClick={() => toggle(g.id)}>
-                <span className="flex flex-col gap-0.5">
-                  <span className="text-base font-medium">{g.title}</span>
-                  {g.when && <span className="text-sm text-neutral-700">{g.when}</span>}
-                </span>
-                <span className="shrink-0 text-sm text-neutral-700">
-                  {changed ? `고침 ${changed} · ` : ""}
-                  {g.fields.length}문장 {isOpen ? "▲" : "▼"}
-                </span>
-              </button>
-              {isOpen && (
-                <div className="flex flex-col gap-4 pb-5">
-                  {g.vars.length > 0 && (
-                    <p className="text-sm text-neutral-700">
-                      쓸 수 있는 자리: {g.vars.map((v) => `[${v.label}]`).join(" ")}
-                    </p>
+      {kind === "quiz" ? (
+        <>
+          <div className="py-3">
+            <Button size="sm" onClick={addQuiz}>
+              + 새 퀴즈 만들기
+            </Button>
+          </div>
+          <datalist id="roast-brands">
+            {brands.map((b) => (
+              <option key={b} value={b} />
+            ))}
+          </datalist>
+          <ul className="flex flex-col">
+            {shownQuizzes.map((z) => {
+              const id = `quiz.${z.id}`;
+              const isOpen = open.has(id) || Boolean(q);
+              return (
+                <li key={z.id} className="border-b border-neutral-300">
+                  <button type="button" className="flex w-full items-start justify-between gap-3 py-3 text-left" aria-expanded={isOpen} onClick={() => toggle(id)}>
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-base font-medium">{z.value.brand || "새 퀴즈"}</span>
+                      <span className="text-sm text-neutral-700">
+                        {z.value.question || "문제를 써 주세요"}
+                        {z.value.options[z.value.answer] ? ` · 정답: ${z.value.answer + 1}번` : ""}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-sm text-neutral-700">
+                      {z.deleted ? "지움 · " : !z.builtIn ? "새 퀴즈 · " : ""}
+                      {isOpen ? "▲" : "▼"}
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <QuizForm
+                      quiz={z}
+                      onChange={(next) => setQuizList((l) => (next ? l.map((x) => (x.id === z.id ? next : x)) : l.filter((x) => x.id !== z.id)))}
+                    />
                   )}
-                  {g.fields.map((f) => (
-                    <Field key={f.key} field={f} vars={g.vars} edited={edited[f.key]} onSaved={(v) => setEdited((e) => ({ ...e, [f.key]: v }))} />
-                  ))}
-                </div>
-              )}
-            </li>
-          );
-        })}
-        {!shown.length && <li className="py-8 text-base text-neutral-700">찾는 문장이 없습니다.</li>}
-      </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      ) : (
+        <>
+        {kind === "layout" && !q && <LayoutOverview layout={layout} groups={groups} saved={saved} />}
+        <ul className="flex flex-col">
+          {shown.map((g) => {
+            const isOpen = open.has(g.id) || Boolean(q);
+            // 접었다 펴도 저장한 문장이 보이도록 화면의 저장값을 칸에 반영한다.
+            const units = g.units.map((u) => ({ ...u, value: saved[u.key] ?? u.value }));
+            // 반응별 조건·결과 글 칸은 반응 칸 안에 들어 있어 따로 세지 않는다(고쳤으면 그 반응 칸을 고친 것으로 센다).
+            const visible = units.filter((u) => !WHEN_KEY.test(u.key));
+            const changed = new Set(units.filter((u) => isEdited(u.value, u.base)).map((u) => u.key));
+            const editedCount = visible.filter((u) => {
+              const c = companions(u.key);
+              return changed.has(u.key) || (c && (changed.has(c.when) || changed.has(c.result)));
+            }).length;
+            return (
+              <li key={g.id} className="border-b border-neutral-300">
+                <button type="button" className="flex w-full items-start justify-between gap-3 py-3 text-left" aria-expanded={isOpen} onClick={() => toggle(g.id)}>
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-base font-medium">
+                      {g.title}
+                      {editedCount > 0 && (
+                        <span className="ml-2 text-sm font-normal text-[#800020]">
+                          고친 문장 ({editedCount}/{visible.length})
+                        </span>
+                      )}
+                    </span>
+                    {g.when && <span className="text-sm text-neutral-700">{g.when}</span>}
+                  </span>
+                  <span className="shrink-0 text-sm text-neutral-700">
+                    {visible.length}칸 {isOpen ? "▲" : "▼"}
+                  </span>
+                </button>
+                {isOpen && <GroupBlock group={{ ...g, units }} onSaved={(items) => setSaved((m) => ({ ...m, ...items }))} />}
+              </li>
+            );
+          })}
+          {!shown.length && <li className="py-8 text-base text-neutral-700">찾는 문장이 없습니다.</li>}
+        </ul>
+        </>
+      )}
     </main>
+    </WhenContext.Provider>
   );
 }
 
-function Field({
-  field,
-  vars,
-  edited,
-  onSaved,
-}: {
-  field: EditorField;
-  vars: Vars;
-  edited: string | null | undefined;
-  onSaved: (v: string | null) => void;
-}) {
-  const current = toDisplay(edited ?? field.base, vars);
-  const [value, setValue] = useState(current);
-  const [pending, startTransition] = useTransition();
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const dirty = value.trim() !== current;
-  const id = `rt-${field.key}`;
+/** 결과 페이지가 지금 설정으로 어떤 순서로 나오는지 한눈에 보여 준다(순서·켜기는 아래 칸에서 고친다). */
+function LayoutOverview({ layout, groups, saved }: { layout: LayoutInfo; groups: EditorGroup[]; saved: Record<string, EditorUnit["value"]> }) {
+  const valueOf = (key: string) => {
+    for (const g of groups) for (const u of g.units) if (u.key === key) return Number(saved[key] ?? u.value);
+    return undefined;
+  };
+  const sorted = (names: Record<string, unknown>, orderKey: string) =>
+    Object.keys(names)
+      .map((k) => ({ k, n: valueOf(`report.layout.${orderKey}.${k}`) ?? 99 }))
+      .sort((a, b) => a.n - b.n)
+      .map((x) => x.k);
+  const on = (showKey: string, k: string) => valueOf(`report.layout.${showKey}.${k}`) !== 0;
+  return (
+    <section className="flex flex-col gap-2 border-b border-neutral-300 py-4" aria-label="지금 결과 페이지 구성">
+      <p className="text-base font-medium">지금 결과 페이지 구성</p>
+      <p className="text-sm text-neutral-700">내용 자체는 옷장 패턴과 질문 답으로 자동으로 정해집니다. 여기서는 순서·켜기·개수와 고정 문구만 고칩니다.</p>
+      <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm">
+        <li>
+          <b>첫 줄: 점수 구간 문장</b> <span className="text-neutral-700">총점이 속한 10점 구간의 문장(결과 페이지 탭)</span>
+        </li>
+        {sorted(layout.sections, "order").map((k) => (
+          <li key={k} className={on("show", k) ? "" : "text-neutral-500 line-through"}>
+            <b>{layout.sections[k].name}</b> <span className="text-neutral-700">{layout.sections[k].how}</span>
+            {k === "points" && (
+              <ol className="mt-1 flex list-[lower-alpha] flex-col gap-0.5 pl-5">
+                {sorted(layout.points, "point_order").map((p) => (
+                  <li key={p} className={on("point_show", p) ? "" : "text-neutral-500 line-through"}>
+                    {layout.points[p].name} <span className="text-neutral-700">· {layout.points[p].how}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
 
-  const save = () =>
-    startTransition(async () => {
-      setMessage(null);
-      const conv = fromDisplay(value.trim(), vars);
-      if ("error" in conv) return setMessage({ ok: false, text: conv.error });
-      const r = await saveRoastText(field.key, conv.text);
-      if (r.ok) {
-        onSaved(conv.text === field.base ? null : conv.text);
-        setMessage({ ok: true, text: "저장했습니다." });
-      } else setMessage({ ok: false, text: r.error });
-    });
-  const reset = () =>
-    startTransition(async () => {
-      setMessage(null);
-      const r = await resetRoastText(field.key);
-      if (r.ok) {
-        onSaved(null);
-        setValue(toDisplay(field.base, vars));
-        setMessage({ ok: true, text: "원래 문장으로 돌렸습니다." });
-      } else setMessage({ ok: false, text: r.error });
-    });
+type Status = { ok: boolean; text: string } | null;
+type SaveResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * 입력이 바뀌면 잠시(1초) 뒤, 또는 칸을 벗어나는 즉시 저장한다. sig는 입력 전체를 문자열로 만든 것.
+ * 저장하는 동안 더 고치면 끝난 뒤 이어서 다시 저장한다. 검사에 걸리면 이유를 보여 주고 저장하지 않는다.
+ */
+function useAutosave(sig: string, save: () => Promise<SaveResult>, enabled = true) {
+  const [savedSig, setSavedSig] = useState(sig);
+  const [state, setState] = useState<"idle" | "saving" | "done" | "error">("idle");
+  const [error, setError] = useState("");
+  const latest = useRef({ sig, save, savedSig, enabled });
+  useEffect(() => {
+    Object.assign(latest.current, { sig, save, enabled });
+  });
+  const busy = useRef(false);
+
+  const run = useCallback(async () => {
+    if (busy.current) return;
+    busy.current = true;
+    try {
+      while (latest.current.enabled && latest.current.sig !== latest.current.savedSig) {
+        const { sig: s, save: fn } = latest.current;
+        setState("saving");
+        const r = await fn();
+        if (!r.ok) {
+          setError(r.error);
+          setState("error");
+          return;
+        }
+        latest.current.savedSig = s;
+        setSavedSig(s);
+        setState("done");
+      }
+    } finally {
+      busy.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!enabled || sig === savedSig) return;
+    const t = setTimeout(run, 1000);
+    return () => clearTimeout(t);
+  }, [sig, savedSig, enabled, run]);
+
+  const dirty = sig !== savedSig;
+  const status: Status =
+    state === "saving" ? { ok: true, text: "저장 중…" } : state === "error" && dirty ? { ok: false, text: `저장 전: ${error}` } : dirty ? { ok: true, text: "고치는 중…" } : state === "done" ? { ok: true, text: "저장됨" } : null;
+  return { status, flush: run };
+}
+
+function Message({ message }: { message: Status }) {
+  if (!message) return null;
+  return (
+    <span role={message.ok ? "status" : "alert"} className={message.ok ? "text-sm text-neutral-700" : "text-sm text-negative"}>
+      {message.text}
+    </span>
+  );
+}
+
+const areaClass = "w-full resize-y border border-neutral-400 bg-surface px-3 py-2 text-base leading-relaxed";
+const rowsFor = (s: string) => Math.min(4, Math.max(1, Math.ceil(s.length / 48) + (s.match(/\n/g)?.length ?? 0)));
+
+/** 한 묶음(패턴·질문·공통 문구 하나)의 칸을 모아 한꺼번에 저장한다. */
+function GroupBlock({ group, onSaved }: { group: EditorGroup; onSaved: (items: Record<string, EditorUnit["value"]>) => void }) {
+  const vars = group.vars;
+  const initial = useMemo(
+    () => Object.fromEntries(group.units.map((u) => [u.key, u.kind === "number" ? String(u.value) : mapText(u.value as UnitValue, (s) => toDisplay(s, vars))])),
+    [group.units, vars],
+  );
+  const [values, setValues] = useState<Record<string, UnitValue>>(initial);
+  const savedUnits = useRef<Record<string, string>>(Object.fromEntries(Object.entries(initial).map(([k, v]) => [k, JSON.stringify(v)])));
+
+  const { status, flush } = useAutosave(JSON.stringify(values), async () => {
+    const items: { key: string; value: UnitValue | number }[] = [];
+    const sent: Record<string, string> = {};
+    for (const u of group.units) {
+      const v = values[u.key];
+      const sig = JSON.stringify(v);
+      if (sig === savedUnits.current[u.key]) continue;
+      sent[u.key] = sig;
+      if (u.kind === "number") {
+        items.push({ key: u.key, value: Number(v) });
+        continue;
+      }
+      let error: string | null = null;
+      const converted = mapText(v, (x) => {
+        const c = fromDisplay(x, vars);
+        if ("error" in c) error ??= c.error;
+        return "error" in c ? x : c.text;
+      });
+      if (error) return { ok: false, error: `${u.label}: ${error}` };
+      items.push({ key: u.key, value: converted });
+    }
+    if (!items.length) return { ok: true };
+    const r = await saveRoastUnits(items as { key: string; value: UnitValue }[]);
+    if (r.ok) {
+      Object.assign(savedUnits.current, sent);
+      onSaved(Object.fromEntries(items.map((i) => [i.key, i.value])));
+    }
+    return r;
+  });
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium">
-        {field.label}
-        {edited != null && <span className="ml-2 font-normal text-neutral-700">고침</span>}
+    <div className="flex flex-col gap-5 pb-5" onBlur={() => void flush()}>
+      {vars.length > 0 && <p className="text-sm text-neutral-700">쓸 수 있는 자리: {vars.map((v) => `[${v.label}]`).join(" ")}</p>}
+      {group.units
+        .filter((u) => !WHEN_KEY.test(u.key))
+        .map((u) => {
+          const c = companions(u.key);
+          if (c && c.when in values && c.result in values) {
+            const edited = [u.key, c.when, c.result].some((k) => {
+              const unit = group.units.find((x) => x.key === k);
+              return unit && isEdited(unit.value, unit.base);
+            });
+            return (
+              <ReactField
+                key={u.key}
+                unit={u}
+                items={values[u.key] as string[]}
+                when={values[c.when] as string[]}
+                result={values[c.result] as string[]}
+                edited={edited}
+                onChange={(items, when, result) => setValues((m) => ({ ...m, [u.key]: items, [c.when]: trimEnd(when), [c.result]: trimEnd(result) }))}
+              />
+            );
+          }
+          return <UnitField key={u.key} unit={u} value={values[u.key]} edited={isEdited(u.value, u.base)} onChange={(v) => setValues((m) => ({ ...m, [u.key]: v }))} />;
+        })}
+      <div className="min-h-5">
+        <Message message={status} />
+      </div>
+    </div>
+  );
+}
+
+function UnitField({ unit, value, edited, onChange }: { unit: EditorUnit; value: UnitValue; edited: boolean; onChange: (v: UnitValue) => void }) {
+  if (unit.kind === "number")
+    return (
+      <label className="flex min-w-48 items-center gap-2 text-sm">
+        <span className="flex-1">
+          {unit.label}
+          {edited && <span className="ml-1 text-[#800020]">(직접 수정함)</span>}
+        </span>
+        <Input type="number" step={1} className="w-20" value={value as string} onChange={(e) => onChange(e.target.value)} aria-label={unit.key.startsWith("report.layout.") ? unit.label : `${unit.label} 점수`} />
       </label>
-      <textarea
-        id={id}
-        rows={Math.min(4, Math.max(1, Math.ceil(value.length / 48)))}
-        className="w-full resize-y border border-neutral-400 bg-surface px-3 py-2 text-base leading-relaxed"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
+    );
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="mb-1 text-sm font-medium">
+        {unit.label}
+        {edited && <span className="ml-1 font-normal text-[#800020]">(직접 수정함)</span>}
+      </legend>
+      {unit.kind === "text" ? (
+        <textarea aria-label={unit.label} rows={rowsFor(value as string)} className={areaClass} value={value as string} onChange={(e) => onChange(e.target.value)} />
+      ) : (
+        <ListRows items={value as string[]} onChange={onChange} label={unit.label} bubbles={isBubbleKey(unit.key)} />
+      )}
+    </fieldset>
+  );
+}
+
+const trimEnd = (list: string[]) => {
+  const out = [...list];
+  while (out.length && !out[out.length - 1]) out.pop();
+  return out;
+};
+
+/**
+ * 질문 반응 목록. 반응(1번·2번…)마다 접힌 "조건" 칸이 있어, 펼치면 준비된 경우를 드롭다운으로 골라 붙이고
+ * 그 반응이 나올 때의 결과 글을 적는다. 조건이 맞는 반응이 있으면 그것이, 없으면 조건 없는 반응이 나온다.
+ */
+function ReactField({
+  unit,
+  items,
+  when,
+  result,
+  edited,
+  onChange,
+}: {
+  unit: EditorUnit;
+  items: string[];
+  when: string[];
+  result: string[];
+  edited: boolean;
+  onChange: (items: string[], when: string[], result: string[]) => void;
+}) {
+  const at = (list: string[], i: number) => list[i] ?? "";
+  const setAt = (list: string[], i: number, v: string) => Array.from({ length: Math.max(list.length, i + 1) }, (_, k) => (k === i ? v : at(list, k)));
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="mb-1 text-sm font-medium">
+        {unit.label}
+        {edited && <span className="ml-1 font-normal text-[#800020]">(직접 수정함)</span>}
+      </legend>
+      <ListRows
+        items={items}
+        label={unit.label}
+        bubbles={isBubbleKey(unit.key)}
+        onChange={(next) => onChange(next, when, result)}
+        onRemove={(i) => onChange(items.filter((_, k) => k !== i), when.filter((_, k) => k !== i), result.filter((_, k) => k !== i))}
+        extra={(i) => (
+          <WhenPicker
+            label={`${unit.label} ${i + 1}`}
+            cell={at(when, i)}
+            result={at(result, i)}
+            onChange={(cell, text) => onChange(items, setAt(when, i, cell), setAt(result, i, text))}
+          />
+        )}
       />
-      {edited != null && <p className="text-sm text-neutral-700">원래 문장: {toDisplay(field.base, vars)}</p>}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" disabled={pending || !dirty} onClick={save}>
-          {pending ? "저장 중…" : "저장"}
+    </fieldset>
+  );
+}
+
+/** 반응 하나의 조건(접힌 채로 시작). cell은 "count_lte:30|pat:black_bias" 모양 */
+function WhenPicker({ label, cell, result, onChange }: { label: string; cell: string; result: string; onChange: (cell: string, result: string) => void }) {
+  const options = useContext(WhenContext);
+  const parts = cell ? cell.split("|") : [];
+  const parse = (part: string) => {
+    const [id, n] = part.split(/:(?=\d+$)/);
+    return { id, n, opt: options.find((o) => o.id === id) };
+  };
+  const setParts = (next: string[]) => onChange(next.join("|"), result);
+  const groups = [...new Set(options.map((o) => o.group))];
+  const summary = parts.length ? `조건 ${parts.length}개${result ? " · 결과 글 있음" : ""}` : result ? "결과 글만 있음(조건을 골라야 씀)" : "조건 없음";
+  return (
+    <details className="ml-7 text-sm">
+      <summary className={cn("w-fit cursor-pointer py-1", parts.length ? "text-[#800020]" : "text-neutral-700")}>{summary}</summary>
+      <div className="mt-1 flex flex-col gap-2 border-l border-neutral-300 pl-3">
+        {parts.map((part, k) => {
+          const { id, n, opt } = parse(part);
+          const [before, after] = (opt?.label ?? id).split("{n}");
+          return (
+            <div key={k} className="flex flex-wrap items-center gap-1">
+              <span>{before}</span>
+              {opt?.n != null && (
+                <Input
+                  type="number"
+                  min={0}
+                  step={1}
+                  className="w-20"
+                  aria-label={`${label} 조건 ${k + 1} 숫자`}
+                  value={n ?? ""}
+                  onChange={(e) => setParts(parts.map((p, j) => (j === k ? `${id}:${e.target.value.replace(/\D/g, "").slice(0, 5) || "0"}` : p)))}
+                />
+              )}
+              {after != null && <span>{after}</span>}
+              <Button size="sm" variant="ghost" aria-label={`${label} 조건 ${k + 1} 빼기`} onClick={() => setParts(parts.filter((_, j) => j !== k))}>
+                빼기
+              </Button>
+            </div>
+          );
+        })}
+        <select
+          aria-label={`${label} 조건 고르기`}
+          className="min-h-11 w-full max-w-120 border border-neutral-400 bg-surface px-2"
+          value=""
+          onChange={(e) => {
+            const opt = options.find((o) => o.id === e.target.value);
+            if (opt) setParts([...parts, opt.n != null ? `${opt.id}:${opt.n}` : opt.id]);
+          }}
+        >
+          <option value="">+ 조건 고르기</option>
+          {groups.map((g) => (
+            <optgroup key={g} label={g}>
+              {options
+                .filter((o) => o.group === g)
+                .map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label.replace("{n}", String(o.n ?? ""))}
+                  </option>
+                ))}
+            </optgroup>
+          ))}
+        </select>
+        <label className="flex flex-col gap-1">
+          <span>이 반응이 나올 때 결과 글 (비우면 원래 결과 글, 조건이 맞을 때만 씀)</span>
+          <textarea aria-label={`${label} 결과 글`} rows={rowsFor(result)} className={areaClass} value={result} onChange={(e) => onChange(cell, e.target.value)} />
+        </label>
+        {parts.length > 1 && <p className="text-neutral-700">조건을 여러 개 고르면 모두 맞을 때만 이 반응이 나옵니다.</p>}
+      </div>
+    </details>
+  );
+}
+
+function ListRows({
+  items,
+  onChange,
+  label,
+  answer,
+  onAnswer,
+  bubbles,
+  onRemove,
+  extra,
+}: {
+  items: string[];
+  onChange: (v: string[]) => void;
+  label: string;
+  answer?: number;
+  onAnswer?: (i: number) => void;
+  /** 빼기를 따로 처리할 때(같은 순서의 다른 목록도 함께 뺀다) */
+  onRemove?: (i: number) => void;
+  /** 항목 아래에 붙이는 칸(반응별 조건) */
+  extra?: (i: number) => ReactNode;
+  /** 대화 말풍선 문장: 줄을 바꾼 곳마다 말풍선이 나뉜다. 나누기·합치기 버튼을 보여 준다. */
+  bubbles?: boolean;
+}) {
+  const setAt = (i: number, v: string) => onChange(items.map((x, k) => (k === i ? v : x)));
+  return (
+    <div className="flex flex-col gap-2">
+      {bubbles && <p className="text-sm text-neutral-700">줄을 바꾼 곳마다 말풍선이 따로 나옵니다.</p>}
+      {items.map((s, i) => (
+        <div key={i} className="flex flex-col gap-1">
+        <div className="flex items-start gap-2">
+          {onAnswer ? (
+            <label className="flex min-h-11 shrink-0 items-center gap-1 text-sm">
+              <input type="radio" name={`${label}-answer`} checked={answer === i} onChange={() => onAnswer(i)} />
+              정답
+            </label>
+          ) : (
+            <span className="min-w-5 pt-2 text-sm text-neutral-700">{i + 1}</span>
+          )}
+          <textarea
+            aria-label={`${label} ${i + 1}`}
+            rows={rowsFor(s)}
+            className={areaClass}
+            value={s}
+            onChange={(e) => setAt(i, e.target.value)}
+          />
+          {bubbles &&
+            (s.includes("\n") ? (
+              <Button size="sm" variant="ghost" aria-label={`${label} ${i + 1} 한 말풍선으로 합치기`} onClick={() => setAt(i, joinBubbles(s))}>
+                합치기
+              </Button>
+            ) : (
+              <Button size="sm" variant="ghost" aria-label={`${label} ${i + 1} 문장마다 나누기`} disabled={splitSentences(s) === s} onClick={() => setAt(i, splitSentences(s))}>
+                나누기
+              </Button>
+            ))}
+          <Button size="sm" variant="ghost" aria-label={`${label} ${i + 1} 빼기`} onClick={() => (onRemove ? onRemove(i) : onChange(items.filter((_, k) => k !== i)))}>
+            빼기
+          </Button>
+        </div>
+        {extra?.(i)}
+        </div>
+      ))}
+      <div>
+        <Button size="sm" variant="secondary" onClick={() => onChange([...items, ""])}>
+          + 문장 추가
         </Button>
-        {edited != null && (
-          <Button size="sm" variant="ghost" disabled={pending} onClick={reset}>
-            원래대로
+      </div>
+    </div>
+  );
+}
+
+function QuizForm({ quiz, onChange }: { quiz: EditorQuiz; onChange: (next: EditorQuiz | null) => void }) {
+  const [v, setV] = useState<QuizValue>(quiz.value);
+  const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState<Status>(null);
+  const set = <K extends keyof QuizValue>(k: K, value: QuizValue[K]) => setV((x) => ({ ...x, [k]: value }));
+
+  const { status, flush } = useAutosave(
+    JSON.stringify(v),
+    async () => {
+      const r = await saveRoastQuiz(quiz.id, v);
+      if (r.ok) onChange({ ...quiz, value: v, deleted: false });
+      return r;
+    },
+    !quiz.deleted,
+  );
+
+  const run = (fn: () => Promise<SaveResult>, done: () => void, ok: string) =>
+    startTransition(async () => {
+      setMessage(null);
+      const r = await fn();
+      if (r.ok) {
+        done();
+        setMessage({ ok: true, text: ok });
+      } else setMessage({ ok: false, text: r.error });
+    });
+
+  const remove = () => {
+    if (!window.confirm("이 퀴즈를 지울까요? 지운 퀴즈도 다시 쓰기를 누르면 되살릴 수 있습니다.")) return;
+    run(
+      () => deleteRoastQuiz(quiz.id),
+      () => onChange(quiz.builtIn ? { ...quiz, deleted: true } : null),
+      "지웠습니다.",
+    );
+  };
+  const restore = () =>
+    run(
+      () => saveRoastQuiz(quiz.id, v),
+      () => onChange({ ...quiz, value: v, deleted: false }),
+      "다시 쓰도록 저장했습니다.",
+    );
+
+  const setOptions = (options: string[]) =>
+    setV((x) => ({ ...x, options, answer: Math.min(x.answer, Math.max(0, options.length - 1)) }));
+
+  return (
+    <div className="flex flex-col gap-4 pb-5" onBlur={() => void flush()}>
+      {quiz.deleted && <p className="text-sm text-negative">지운 퀴즈입니다. &quot;다시 쓰기&quot;를 누르면 지금 내용으로 되살아납니다.</p>}
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        브랜드(이 브랜드 옷이 있을 때만 나옴)
+        <Input list="roast-brands" value={v.brand} onChange={(e) => set("brand", e.target.value)} placeholder="예: Stüssy" />
+      </label>
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        문제
+        <textarea rows={rowsFor(v.question)} className={areaClass} value={v.question} onChange={(e) => set("question", e.target.value)} />
+      </label>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium">선택지(정답을 골라 주세요. 화면에서는 순서를 섞어 보여 줍니다)</legend>
+        <ListRows items={v.options} onChange={setOptions} label={`${quiz.id} 선택지`} answer={v.answer} onAnswer={(i) => set("answer", i)} />
+      </fieldset>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium">맞혔을 때(하나 고름)</legend>
+        <ListRows items={v.correct} onChange={(x) => set("correct", x)} label={`${quiz.id} 맞혔을 때`} bubbles />
+      </fieldset>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium">틀렸을 때(하나 고름)</legend>
+        <ListRows items={v.wrong} onChange={(x) => set("wrong", x)} label={`${quiz.id} 틀렸을 때`} bubbles />
+      </fieldset>
+      <div className="flex flex-wrap items-center gap-2">
+        {quiz.deleted ? (
+          <Button size="sm" disabled={pending} onClick={restore}>
+            다시 쓰기
+          </Button>
+        ) : (
+          <Button size="sm" variant="ghost" disabled={pending} onClick={remove}>
+            퀴즈 지우기
           </Button>
         )}
-        {message && (
-          <span role={message.ok ? "status" : "alert"} className={message.ok ? "text-sm text-neutral-700" : "text-sm text-negative"}>
-            {message.text}
-          </span>
-        )}
+        <Message message={message ?? status} />
       </div>
     </div>
   );

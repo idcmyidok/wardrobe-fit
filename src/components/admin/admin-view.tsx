@@ -3,7 +3,6 @@ import { cn } from "@/lib/cn";
 import { IMPORT_FAILURE, type ImportFailureCode } from "@/lib/import/messages";
 import type { AdminOverview, AdminOverviewError } from "@/server/admin/queries";
 import { UsdRateForm } from "./usd-rate-form";
-import { BodyEncryption } from "./body-encryption";
 import { UserActions } from "./user-actions";
 
 const section = "flex flex-col gap-4 border-b border-text py-8";
@@ -33,12 +32,10 @@ export function AdminView({
   overview,
   myId,
   usdRate,
-  bodyEncryption,
 }: {
   overview: AdminOverview | AdminOverviewError | null;
   myId: string;
   usdRate: number;
-  bodyEncryption: { pending: number | null; keySet: boolean };
 }) {
   return (
     <main className="mx-auto max-w-320 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
@@ -73,16 +70,9 @@ export function AdminView({
         <UsdRateForm current={usdRate} />
       </section>
 
-      <section className={section} aria-labelledby="admin-body-enc">
-        <h2 id="admin-body-enc" className="text-body font-semibold">
-          신체치수 암호화
-        </h2>
-        <BodyEncryption pending={bodyEncryption.pending} keySet={bodyEncryption.keySet} />
-      </section>
-
       <section className={section} aria-labelledby="admin-roast-texts">
         <h2 id="admin-roast-texts" className="text-body font-semibold">
-          내 옷장 훈수 문장
+          내 패션 훈수 문장
         </h2>
         <p className="text-sm text-neutral-700">패턴별 멘트, 질문과 반응, 패션 퀴즈 문장을 모두 보고 고칠 수 있습니다.</p>
         <Link href="/admin/roast-texts" className="w-fit text-base underline underline-offset-4">
