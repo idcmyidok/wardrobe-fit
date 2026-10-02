@@ -8,7 +8,7 @@ import type { AskedQuestion } from "./questions";
 import { fill, MissingVar, rng, won, type Rng, type Vars } from "./text";
 import type { ReportTexts } from "./report-text";
 import { SCORE_RULES, type ScoreRules } from "./score-deltas";
-import { fitContrast, liftOf, SCORE_PART_NAME, scoreWardrobe, type ScorePart, type WardrobeScore } from "./score";
+import { fitContrast, floorTotal, liftOf, SCORE_PART_NAME, scoreWardrobe, type ScorePart, type WardrobeScore } from "./score";
 import { findColorFamily } from "@/lib/constants/colors";
 
 /**
@@ -431,7 +431,8 @@ export function buildReport(
   const liftRules = deltas.rules as Partial<ScoreRules> | undefined;
   const liftFloor = Number(liftRules?.lift_floor ?? SCORE_RULES.lift_floor);
   const lift = liftOf(rawScore, liftRules);
-  const totalScore = Math.round(rawScore + (100 - rawScore) * lift);
+  // 옷장 훈수는 꺾은선(최저 floor_min점 보장), 주문내역은 기존 낮은 점수 보정
+  const totalScore = override ? Math.round(rawScore + (100 - rawScore) * lift) : floorTotal(rawScore, liftRules);
   // 관리자 점수 풀이: 같은 항목(나이 구간별 등)은 합치고 판단 기준은 이어 붙인다.
   const merged = new Map<string, { delta: number; why: string[]; items: string[] }>();
   for (const p of wardrobe.parts) {
@@ -443,7 +444,9 @@ export function buildReport(
     items: [
       ...[...merged.entries()].map(([id, m]) => ({ label: (override?.partName ?? SCORE_PART_NAME)[id] ?? id, why: m.why.join(" / "), delta: Math.round(m.delta * 10) / 10, ...(m.items.length ? { garments: m.items } : {}) })),
       ...answerDeltas,
-      { label: "낮은 점수 보정", why: `점수가 낮을수록 더 올려 줌(${liftFloor}점 미만은 합계에 비례해 줄임): 합계 ${Math.round(rawScore)}점 → (100 − 합계) × ${Math.round(lift * 1000) / 1000}를 더함`, delta: Math.round((rawScore * (1 - lift) + 100 * lift - rawScore) * 10) / 10 },
+      override
+        ? { label: "낮은 점수 보정", why: `점수가 낮을수록 더 올려 줌(${liftFloor}점 미만은 합계에 비례해 줄임): 합계 ${Math.round(rawScore)}점 → (100 − 합계) × ${Math.round(lift * 1000) / 1000}를 더함`, delta: Math.round((rawScore * (1 - lift) + 100 * lift - rawScore) * 10) / 10 }
+        : { label: "최저점 보정", why: `합계 ${Math.round(rawScore)}점 → 0점은 ${liftRules?.floor_min ?? SCORE_RULES.floor_min}점, 50점은 ${liftRules?.floor_mid ?? SCORE_RULES.floor_mid}점, 100점은 100점이 되도록 직선으로 이음`, delta: totalScore - rawScore },
     ].filter((x) => x.delta),
     total: totalScore,
   };
@@ -451,7 +454,10 @@ export function buildReport(
     const t = tryFill(r, (R.age as Record<string, string[]>)[wardrobe.age.kind] ?? [], { age: wardrobe.age.age, pct: wardrobe.age.pct });
     if (t) put("age", { id: "age", ...splitLead(t) });
   }
-  const band = (totalScore >= 90 ? "b90" : `b${Math.floor(totalScore / 10) * 10}`) as keyof ReportTexts["HEADLINE"];
+  // 옷장: 10점 이하 b0 · 11~22 b10 · 23~30 b20 · 31~40 b30 … 91점 이상 b90 (최저 23점이라 b10이 사실상 22점 이하 칸). 주문내역은 기존 10점 단위
+  const band = (override
+    ? totalScore >= 90 ? "b90" : `b${Math.floor(totalScore / 10) * 10}`
+    : totalScore <= 10 ? "b0" : totalScore <= 22 ? "b10" : totalScore <= 30 ? "b20" : `b${Math.min(90, Math.ceil(totalScore / 10) * 10 - 10)}`) as keyof ReportTexts["HEADLINE"];
 
   // 제목 아래 요약 한 문장: 가장 뚜렷한 특징 세 개(모자라면 두 개)를 서로 다른 종류에서 골라 잇는다(사용자 요청).
   const Sm = R.summary as Record<string, readonly string[]>;

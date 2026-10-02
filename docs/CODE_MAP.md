@@ -19,7 +19,7 @@
 - **브랜드 데이터**: csv → `scripts/build-brands.mjs` → `brands.json` → `src/server/roast/brands.ts`(`findBrand`, `normalizeBrand`, `BRAND_GROUPS`). 무신사 수집 스크립트 `scripts/musinsa/`.
 - **핏 계산**: `src/lib/fit/compute.ts`(`computeFit`/`computeSize`), 내 치수 기반 `body-fit.ts`(`FIT_GROUPS`), 길이 `length-fit.ts`, 신발 `shoes.ts`, VS 비교 `versus.ts`, 비교 대상 선택 `select-comparables.ts`, 서버 `src/server/fit/service.ts`, AI 설명 `src/server/ai/fit-interpreter.ts`.
 - **구매 판단기(핏체크)**: 화면 `src/components/fit-check/`(`fit-check-view`, `fit-result-view`, `versus-view`), API `src/app/api/fit-checks`, 링크 파싱 `src/server/import/`(`parsers/`, `registry.ts`, `service.ts`).
-- **무신사 주문 가져오기**: `src/server/import/musinsa-orders.ts`, `src/lib/import/`, 화면 `src/components/garment-form/order-import-view.tsx`, 북마크 안내 `order-guide.tsx`(`OrderGuide`, 주문내역 훈수와 같이 씀). 훈수 결과 맨 아래 "분석한 제품 전부 옷장에 넣기"(`roast-view.tsx`)는 `/wardrobe/import-orders?from=roast`로 가며, 훈수가 읽은 결과를 `src/lib/import/order-handoff.ts`로 넘겨 재조회 없이 확인 화면을 연다(`order-import-view.tsx`의 `applyLookup`).
+- **무신사 주문 가져오기**: `src/server/import/musinsa-orders.ts`, `src/lib/import/`, 화면 `src/components/garment-form/order-import-view.tsx`, 북마크 안내 `order-guide.tsx`(`OrderGuide`, 주문내역 훈수와 같이 씀). 옷장 훈수는 이름·나이 뒤 `Chat`이 "옷을 전부 넣었나요?" 질문(`READY_*` 문장, 3번째는 종료+"옷장에 옷 추가하기" 링크)을 먼저 하고, 시작 화면 `Intro`는 동의 체크(`CONSENT`·`CONSENT_WARN`, 옷장·주문내역 공통)가 있어야 시작되며 `Typed`는 `**굵게**`·`!!붉은 글씨!!` 표시를 지원한다. 훈수 결과 맨 아래 "분석한 제품 전부 옷장에 넣기"(`roast-view.tsx`)는 `/wardrobe/import-orders?from=roast`로 가며, 훈수가 읽은 결과를 `src/lib/import/order-handoff.ts`로 넘겨 재조회 없이 확인 화면을 연다(`order-import-view.tsx`의 `applyLookup`).
 - **옷장/분석/코디**: `src/components/wardrobe/`, `src/server/garments/`, `src/components/analysis/wardrobe-analysis.ts`, `src/lib/outfit/recommend.ts`.
 - **업데이트 노트**: `src/lib/release-notes.ts`(342), 화면 `src/components/layout/release-notes-dialog.tsx`. (버전·노트는 사용자 지시 없이 수정 금지)
 - **DB**: `supabase/migrations/`(번호순), 스펙 `PROJECT_SPEC.md`(1189줄, 필요한 절만 `grep -n "^#"`로 찾기).
@@ -375,7 +375,7 @@
 - `report-text.ts` (246줄) REPORT_TEXT:10 ReportTexts:246
 - `report.ts` (603줄) ReportOverride:89 buildReport:102 limitPhotos:568 splitLead:589 tryFill:594
 - `score-deltas.ts` (249줄) SCORE_DELTAS:9 SCORE_RULES:88 ScoreRules:184 AGE_RULES:191 AGE_BANDS:238
-- `score.ts` (385줄) ScorePart:16 WardrobeScore:25 ScoreOptions:33 isTopDesigner:44 isMidTier:46 isHeritage:48 isGood:50 isNice:52 isFormalLux:55 isRepro:56 monthIndex:59(판정 함수는 주문내역 점수도 씀) scoreWardrobe:64 fitContrast:302 ageAt:307 bandName:314 bandOf:322 liftOf·liftedTotal(낮은 점수 보정, 리포트 총점과 마지막 질문 구간이 같이 씀) tierOf …
+- `score.ts` (385줄) ScorePart:16 WardrobeScore:25 ScoreOptions:33 isTopDesigner:44 isMidTier:46 isHeritage:48 isGood:50 isNice:52 isFormalLux:55 isRepro:56 monthIndex:59(판정 함수는 주문내역 점수도 씀) scoreWardrobe:64 fitContrast:302 ageAt:307 bandName:314 bandOf:322 liftOf·liftedTotal(주문내역용 낮은 점수 보정)·floorTotal(옷장 최저 23점 꺾은선 보정: 0→23·50→55·100→100, 리포트 총점과 마지막 질문 구간이 같이 씀) tierOf …
 - `shift.ts` (64줄) ShiftRules:3 TasteShift:9 detectTasteShift:40
 - `text.ts` (119줄) josa:56 won:66 Vars:75 MissingVar:78 fill:80 varsOf:91 rng:94 Rng:118
 - `texts.ts` (266줄) DEFAULT_TEXTS:40 RoastTexts:50 ROAST_TEXT_MAX:52 CUSTOM_QUIZ_ID:55 UnitKind:57 UnitValue:58 TextUnit:60 unitsOf:69 orderMirrorKeys forOrders(주문내역 전용 칸 덮기) …

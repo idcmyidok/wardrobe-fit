@@ -14,7 +14,7 @@ import { ORDER_AGE_KEY_NAME, ORDER_COMMON, ORDER_QUESTION_COND, ORDER_REPORT_NAM
 
 /** {자리} → 사람이 읽는 이름 */
 export const VAR_LABEL: Record<string, string> = {
-  n: "개수", pct: "비율%", brand: "브랜드", brands: "브랜드 수", names: "브랜드 이름들(쉼표로)", catName: "대분류", sub: "세부분류", color: "색", colorful: "유채색 벌 수",
+  who: "이름", n: "개수", pct: "비율%", brand: "브랜드", brands: "브랜드 수", names: "브랜드 이름들(쉼표로)", catName: "대분류", sub: "세부분류", color: "색", colorful: "유채색 벌 수",
   country: "나라", tag: "스타일", fit: "핏", fitPhrase: "핏(알 때만 '○○ 핏 ')", familyName: "제품군", owner: "호칭('○○님의' 또는 '당신의')", what: "반복되는 옷(예: 블랙 반팔 티셔츠)", colorPct: "유채색 비율%", tag1: "스타일 1위", tag2: "스타일 2위", tag3: "스타일 3위", cheapCat: "평균가 가장 낮은 종류", cheapWon: "그 평균 금액", pricyCat: "평균가 가장 높은 종류", pricyWon: "그 평균 금액", minWon: "최저 구매가", months: "평균 보유 개월", year: "브랜드 설립 연도 중간값", topPct: "상의 오버 비율%", bottomPct: "하의 슬림·레귤러 비율%", recent: "최근 6개월 구매 벌 수", recentPct: "최근 6개월 구매분 비율%", level: "낮음·중간·높음", position: "시장 포지션", itemName: "브랜드의 상품명", kind: "옷 종류(모두 하의면 '바지', 아니면 '옷')", month: "월",
   most: "많은 계절", mostN: "많은 계절 벌 수", least: "적은 계절", leastN: "적은 계절 벌 수", avgWon: "평균 금액", priceWon: "금액", amountWon: "금액",
   ratio: "배수", name: "제품명", oldest: "가장 오래된 브랜드", maxWon: "최고 구매가", traitText: "다른 점(색, 종류 등)",
@@ -161,6 +161,17 @@ export const SCREEN_NAME: Record<string, string> = {
   ASK_NAME: "이름·나이 묻기",
   NAME_HINT: "이름·나이 입력칸 아래 안내",
   AGE_HINT: "한국식 나이로 적으라는 안내 + 나이를 저장하지 않는다는 안내",
+  CONSENT: "시작 화면 동의 체크박스 선언문(**굵게**, 옷장·주문내역 공통)",
+  CONSENT_WARN: "동의 체크 없이 시작 버튼을 눌렀을 때 버튼 아래 안내(옷장·주문내역 공통)",
+  READY_Q: "이름·나이 입력 뒤 첫 질문(**굵게**)",
+  READY_WARN: "첫 질문 아래 경고(!!붉은 글씨!!)",
+  READY_ALL: "첫 질문 선택지 1",
+  READY_SOME: "첫 질문 선택지 2",
+  READY_LATER: "첫 질문 선택지 3(고르면 훈수 종료)",
+  READY_ALL_SAY: "첫 질문 선택지 1 반응",
+  READY_SOME_SAY: "첫 질문 선택지 2 반응",
+  READY_LATER_SAY: "첫 질문 선택지 3 반응(이어서 아래 버튼만 보임)",
+  READY_ADD_LABEL: "선택지 3을 고른 뒤 나오는 버튼",
   TOO_FEW: "옷이 30벌보다 적을 때",
   OPENING: "분석 시작 전 첫 멘트",
   WRITING: "결과를 쓰는 중",
@@ -396,6 +407,8 @@ const RULE_NAME: Record<string, string> = {
   sneakers_only: "신발이 적거나 전부 운동화: 감점",
   lift: "최종 점수 보정: 낮은 점수일수록 더 올림 (0~1, 점수+(100-점수)×이 값)",
   lift_floor: "최종 점수 보정: 합계가 이 점수 미만이면 보정을 합계에 비례해 줄임 (0이면 안 줄임)",
+  floor_min: "옷장 최종 점수 보정: 합계 0점일 때 나오는 최저 점수",
+  floor_mid: "옷장 최종 점수 보정: 합계 50점일 때 나오는 점수 (0점→최저, 50점→이 값, 100점→100점을 직선으로 이음)",
   thin_n: "옷이 적음: 모자·신발 뺀 옷이 이 벌 수 이하",
   thin: "옷이 적음: 감점",
   logo_pct: "로고 과다: 기준 비율(%)",
@@ -554,7 +567,10 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
       if (last === "title") return "이름(관리용)";
       return last === "high" ? "뚜렷할 때(하나 고름, 첫 문장은 굵게)" : "반대쪽으로 뚜렷할 때(하나 고름, 첫 문장은 굵게)";
     }
-    if (p[1] === "HEADLINE") return last === "b90" ? "90점 이상" : last === "b0" ? "10점 미만" : `${last.slice(1)}~${Number(last.slice(1)) + 9}점`;
+    if (p[1] === "HEADLINE") {
+      const n = Number(last.slice(1));
+      return last === "b90" ? "91점 이상" : last === "b0" ? "10점 이하" : last === "b10" ? "11~22점" : last === "b20" ? "23~30점" : `${n + 1}~${n + 10}점`;
+    }
     if (p[1] === "color") return `${COLOR_NAME[last] ?? last} (하나 고름)`;
     if (p[1] === "fit") return `${FIT_NAME[last] ?? last} (하나 고름)`;
     if (p[1] === "age") return `${AGE_REMARK_NAME[last] ?? last} (하나 고름)`;

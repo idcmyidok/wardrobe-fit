@@ -344,6 +344,15 @@ export function liftedTotal(score: number, rules?: Partial<ScoreRules>): number 
   return Math.round(raw + (100 - raw) * liftOf(raw, rules));
 }
 
+/** 옷장 훈수 최종 점수: 합계 0→floor_min, 50→floor_mid, 100→100을 꺾은선으로 잇는다(최저점을 보장하면서 100점 근처는 그대로) */
+export function floorTotal(score: number, rules?: Partial<ScoreRules>): number {
+  const R = { ...SCORE_RULES, ...(rules ?? {}) };
+  const raw = Math.max(0, Math.min(100, score));
+  const lo = Number(R.floor_min);
+  const mid = Number(R.floor_mid);
+  return Math.round(raw <= 50 ? lo + ((mid - lo) * raw) / 50 : mid + ((100 - mid) * (raw - 50)) / 50);
+}
+
 /** 점수 구간(마지막 질문의 반응·증감을 고를 때) */
 export function tierOf(score: number, rules?: Partial<ScoreRules>): "high" | "mid" | "low" {
   const R = { ...SCORE_RULES, ...(rules ?? {}) };

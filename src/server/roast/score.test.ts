@@ -4,7 +4,7 @@ import { analyze, brandKindOf, colorCounted } from "./analyze";
 import { buildReport } from "./report";
 import { REPORT_TEXT } from "./report-text";
 import { SCORE_DELTAS } from "./score-deltas";
-import { ageAt, bandOf, liftedTotal, scoreWardrobe, tierOf } from "./score";
+import { ageAt, bandOf, floorTotal, liftedTotal, scoreWardrobe, tierOf } from "./score";
 
 const now = new Date("2026-09-29T12:00:00+09:00");
 const g = (i: number, over: Partial<Garment> = {}): Garment =>
@@ -27,11 +27,19 @@ const g = (i: number, over: Partial<Garment> = {}): Garment =>
     ...over,
   }) as Garment;
 
+describe("옷장 최저점 보정", () => {
+  it("0점 23점, 50점 60점, 100점 100점을 꺾은선으로 잇는다", () => {
+    expect([0, 25, 50, 75, 100].map((x) => floorTotal(x))).toEqual([23, 42, 60, 80, 100]);
+    expect(floorTotal(-5)).toBe(23);
+    expect(tierOf(floorTotal(0))).toBe("low");
+  });
+});
+
 describe("점수 구간은 보정이 들어간 점수로 정한다", () => {
-  it("보정 전 35점은 낮음이지만 보정 후 43점은 중간", () => {
-    expect(tierOf(35)).toBe("low");
+  it("보정 전 45점은 낮음이지만 보정 후 점수는 중간", () => {
+    expect(tierOf(45)).toBe("low");
+    expect(tierOf(floorTotal(45))).toBe("mid");
     expect(liftedTotal(35)).toBe(43);
-    expect(tierOf(liftedTotal(35))).toBe("mid");
     expect(liftedTotal(0)).toBe(0);
     expect(liftedTotal(-30)).toBe(0);
   });
@@ -74,10 +82,10 @@ describe("옷장 점수(점수 계획서)", () => {
     expect(bandOf(70)).toBe("b61");
   });
 
-  it("마지막 질문의 점수 구간: 70 이상 high, 40 미만 low", () => {
-    expect(tierOf(70)).toBe("high");
+  it("마지막 질문의 점수 구간: 23~100을 3등분(74 이상 high, 49 미만 low)", () => {
+    expect(tierOf(74)).toBe("high");
     expect(tierOf(55)).toBe("mid");
-    expect(tierOf(39)).toBe("low");
+    expect(tierOf(48)).toBe("low");
     expect(tierOf(55, { tier_high: 50 })).toBe("high");
   });
 
@@ -158,13 +166,13 @@ describe("옷장 점수(점수 계획서)", () => {
     expect(SCORE_DELTAS.quiz).toEqual({ right: 0, wrong: -9 });
     expect(SCORE_DELTAS.band_quiz).toEqual({ right: 0, wrong: -9 });
   });
-  it("무채색뿐인데 고급 브랜드 없음: 95% 이상 -12, 85~95% -6", () => {
+  it("무채색뿐인데 고급 브랜드 없음: 95% 이상 -8, 85~95% -4", () => {
     const part = (colored: number) => {
       const list = Array.from({ length: 20 }, (_, i) => g(i, { brand: "UNIQLO", colorName: i < colored ? "네이비" : "블랙" }));
       return scoreWardrobe(analyze(list, null, 1360, now), { age: null }).parts.find((p) => p.id === "basic_mass")?.delta;
     };
-    expect(part(0)).toBe(-12);
-    expect(part(2)).toBe(-6);
+    expect(part(0)).toBe(-8);
+    expect(part(2)).toBe(-4);
     expect(part(5)).toBeUndefined();
   });
 
