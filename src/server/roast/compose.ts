@@ -6,7 +6,7 @@ import type { Analysis, Pattern } from "./analyze";
 import { familyName, type FamilyId } from "./keywords";
 import { LINE_SECTION, type Section } from "./lines";
 import { pickQuestions, QUESTIONS, type AskedQuestion } from "./questions";
-import { scoreWardrobe, tierOf } from "./score";
+import { liftedTotal, scoreWardrobe, tierOf } from "./score";
 import { ORDER_QUESTIONS } from "./orders/questions";
 import type { OrderRules } from "./orders/rules";
 import { orderTier, scoreOrders } from "./orders/score";
@@ -148,12 +148,12 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
   const orders = Boolean(a.orders);
   const C = orders ? { ...T.common, ...T.orders.common } : T.common;
   const convo = rank(a, r, 15, T, 3);
-  // "스스로 패셔너블한가요?"는 지금까지의 점수 구간에 따라 반응이 달라진다(질문 답 전 점수)
+  // "스스로 패셔너블한가요?"는 지금까지의 점수 구간에 따라 반응이 달라진다(질문 답 전 점수, 보정이 들어간 점수)
   const rules = T.score.rules as unknown as ScoreRules;
   const orules = T.score.orules as unknown as Partial<OrderRules>;
   const tier = orders
-    ? orderTier(scoreOrders(a, { age, rules: orules, ageRules: T.score.oage as unknown as Record<string, Record<string, number>> }).score, orules)
-    : tierOf(scoreWardrobe(a, { age, rules, ageRules: T.score.age as unknown as Record<string, Record<string, number>> }).score, rules);
+    ? orderTier(liftedTotal(scoreOrders(a, { age, rules: orules, ageRules: T.score.oage as unknown as Record<string, Record<string, number>> }).score, rules), orules)
+    : tierOf(liftedTotal(scoreWardrobe(a, { age, rules, ageRules: T.score.age as unknown as Record<string, Record<string, number>> }).score, rules), rules);
   const defs = orders ? ORDER_QUESTIONS : QUESTIONS;
   const picked = pickQuestions(a, r, fill, T, tier, defs);
   const asked = orders ? picked.map(askedAsOrders) : picked;

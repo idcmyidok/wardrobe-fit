@@ -8,7 +8,7 @@ import type { AskedQuestion } from "./questions";
 import { fill, MissingVar, rng, won, type Rng, type Vars } from "./text";
 import type { ReportTexts } from "./report-text";
 import { SCORE_RULES, type ScoreRules } from "./score-deltas";
-import { fitContrast, SCORE_PART_NAME, scoreWardrobe, type ScorePart, type WardrobeScore } from "./score";
+import { fitContrast, liftOf, SCORE_PART_NAME, scoreWardrobe, type ScorePart, type WardrobeScore } from "./score";
 import { findColorFamily } from "@/lib/constants/colors";
 
 /**
@@ -430,9 +430,8 @@ export function buildReport(
   const bonus = answerDeltas.reduce((sum, x) => sum + x.delta, 0);
   const rawScore = Math.max(0, Math.min(100, wardrobe.score + bonus));
   const liftRules = deltas.rules as Partial<ScoreRules> | undefined;
-  // 합계가 lift_floor점 미만이면 보정도 합계에 비례해 줄인다(합계 0이면 보정 0 → 0점까지 나올 수 있음). 옷장·주문내역 공통.
   const liftFloor = Number(liftRules?.lift_floor ?? SCORE_RULES.lift_floor);
-  const lift = Number(liftRules?.lift ?? SCORE_RULES.lift) * (liftFloor > 0 ? Math.min(1, rawScore / liftFloor) : 1);
+  const lift = liftOf(rawScore, liftRules);
   const totalScore = Math.round(rawScore + (100 - rawScore) * lift);
   // 관리자 점수 풀이: 같은 항목(나이 구간별 등)은 합치고 판단 기준은 이어 붙인다.
   const merged = new Map<string, { delta: number; why: string[]; items: string[] }>();

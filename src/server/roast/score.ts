@@ -331,6 +331,19 @@ export function bandOf(age: number): string {
   return key;
 }
 
+/** 낮은 점수 보정: 합계(0~100으로 자른 값)에 (100-합계)×보정 세기를 더한다. 합계가 lift_floor점 미만이면 세기도 합계에 비례해 줄인다(합계 0이면 0). 옷장·주문내역 공통 */
+export function liftOf(raw: number, rules?: Partial<ScoreRules>): number {
+  const R = { ...SCORE_RULES, ...(rules ?? {}) };
+  const floor = Number(R.lift_floor);
+  return Number(R.lift) * (floor > 0 ? Math.min(1, raw / floor) : 1);
+}
+
+/** 보정이 들어간 점수(마지막 질문의 구간을 정할 때도 이 점수를 쓴다) */
+export function liftedTotal(score: number, rules?: Partial<ScoreRules>): number {
+  const raw = Math.max(0, Math.min(100, score));
+  return Math.round(raw + (100 - raw) * liftOf(raw, rules));
+}
+
 /** 점수 구간(마지막 질문의 반응·증감을 고를 때) */
 export function tierOf(score: number, rules?: Partial<ScoreRules>): "high" | "mid" | "low" {
   const R = { ...SCORE_RULES, ...(rules ?? {}) };

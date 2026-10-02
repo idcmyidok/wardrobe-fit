@@ -4,7 +4,7 @@ import { analyze, brandKindOf, colorCounted } from "./analyze";
 import { buildReport } from "./report";
 import { REPORT_TEXT } from "./report-text";
 import { SCORE_DELTAS } from "./score-deltas";
-import { ageAt, bandOf, scoreWardrobe, tierOf } from "./score";
+import { ageAt, bandOf, liftedTotal, scoreWardrobe, tierOf } from "./score";
 
 const now = new Date("2026-09-29T12:00:00+09:00");
 const g = (i: number, over: Partial<Garment> = {}): Garment =>
@@ -26,6 +26,16 @@ const g = (i: number, over: Partial<Garment> = {}): Garment =>
     shoeFit: null,
     ...over,
   }) as Garment;
+
+describe("점수 구간은 보정이 들어간 점수로 정한다", () => {
+  it("보정 전 35점은 낮음이지만 보정 후 43점은 중간", () => {
+    expect(tierOf(35)).toBe("low");
+    expect(liftedTotal(35)).toBe(43);
+    expect(tierOf(liftedTotal(35))).toBe("mid");
+    expect(liftedTotal(0)).toBe(0);
+    expect(liftedTotal(-30)).toBe(0);
+  });
+});
 
 describe("옷장 점수(점수 계획서)", () => {
   it("데님은 컬러 계산에서 빠진다", () => {
