@@ -50,7 +50,6 @@ export const PATTERN_COND: Record<string, string> = {
   group_street: "스트릿 30% 이상",
   group_sports: "스포츠 25% 이상",
   group_outdoor: "아웃도어 25% 이상",
-  group_goods: "굿즈 브랜드 20% 이상(3벌 이상)",
   group_mass: "SPA·대중 브랜드 35% 이상",
   country_bias: "브랜드 아는 옷 중 한 나라 60% 이상",
   trait_hype: "브랜드 화제성 평균 3.5 이상",

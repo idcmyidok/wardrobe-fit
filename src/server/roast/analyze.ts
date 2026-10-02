@@ -232,7 +232,6 @@ export const GROUP_THRESHOLD: Record<BrandGroup, number> = {
   street: 0.3,
   sports: 0.25,
   outdoor: 0.25,
-  goods: 0.2,
   mass: 0.35,
 };
 
