@@ -25,6 +25,8 @@ import "./roast.css";
 
 const PREVIEW_KEY = "wardrobe-fit:roast-result";
 const TYPE_MS = 43;
+/** 시작 화면에서 선언문에 동의했다는 표시(옷장 → 주문내역으로 넘어갈 때 다시 묻지 않기 위해, 이 탭에서만 유지) */
+const CONSENT_KEY = "roast-consent";
 
 type Msg =
   | { id: number; kind: "ai"; text: string; photos?: string[]; gap?: boolean; captions?: Record<string, string> }
@@ -393,6 +395,18 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
   // 시작 버튼은 선언문에 동의(체크)해야 진행된다.
   const [agreed, setAgreed] = useState(false);
   const [needAgree, setNeedAgree] = useState(false);
+  // 옷장 훈수 시작 화면에서 이미 동의하고 주문내역 훈수로 넘어왔으면 다시 묻지 않는다.
+  useEffect(() => {
+    if (!orders) return;
+    try {
+      if (sessionStorage.getItem(CONSENT_KEY) === "1") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- sessionStorage는 hydration 뒤에만 읽을 수 있다
+        setAgreed(true);
+      }
+    } catch {
+      /* 저장소를 못 읽으면 다시 체크하면 된다 */
+    }
+  }, [orders]);
   const router = useRouter();
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
@@ -466,7 +480,14 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
           <button type="button" className="roast-choice" onClick={() => setAsking(true)}>
             {copy.PICK_CLOSET}
           </button>
-          <button type="button" className="roast-choice" onClick={() => router.push("/roast/orders")}>
+          <button type="button" className="roast-choice" onClick={() => {
+              try {
+                sessionStorage.setItem(CONSENT_KEY, "1");
+              } catch {
+                /* 저장 못 하면 주문내역 화면에서 다시 체크 */
+              }
+              router.push("/roast/orders");
+            }}>
             {copy.PICK_ORDERS}
           </button>
         </div>
