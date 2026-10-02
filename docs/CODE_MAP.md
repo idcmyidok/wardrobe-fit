@@ -189,7 +189,7 @@
 
 ### src/components/roast
 - `order-roast.tsx` (198줄) OrderCopy:21 OrderPaste:45
-- `roast-view.tsx` (914줄) RoastView:65
+- `roast-view.tsx` (914줄) RoastView:73(fast prop=관리자 10배 속도, pace.speed)
 
 ### src/components/settings
 - `settings-view.tsx` (64줄) SettingsView:11

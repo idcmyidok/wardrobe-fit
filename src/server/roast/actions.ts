@@ -92,7 +92,7 @@ export async function startRoast(input: { name: string | null; age?: number | nu
   }
 }
 
-export async function finishRoast(input: { seed: number; name: string | null; age?: number | null; answers: Record<string, string>; preview?: unknown }): Promise<RoastFinish> {
+export async function finishRoast(input: { seed: number; name: string | null; age?: number | null; answers: Record<string, string>; partial?: boolean; preview?: unknown }): Promise<RoastFinish> {
   try {
     const s = await source(input.preview);
     if ("error" in s) return { ok: false, message: s.error };
@@ -108,7 +108,7 @@ export async function finishRoast(input: { seed: number; name: string | null; ag
     if (a.clothesTotal < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 30개 이상일 때 분석할 수 있습니다." };
     const plan = buildScript(a, seed, name, texts, age);
     const composed = composeResult(a, seed, texts);
-    const report = buildReport(a, name, seed, texts.report, plan.asked, answers, texts.score, age);
+    const report = buildReport(a, name, seed, texts.report, plan.asked, answers, texts.score, age, undefined, input.partial === true);
     // 점수 풀이는 관리자에게만 보인다(미리보기 모드는 로그인 없는 개발용 화면이라 확인용으로 보여 준다).
     if (s.userId && !(await isAdmin(s.userId))) delete report.scoreDetail;
 
