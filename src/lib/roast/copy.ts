@@ -14,7 +14,7 @@ export const ROAST_COPY = {
   ASK_NAME: "시작하기 전에, 뭐라고 부르면 될까요? 나이도 꼭 알려 주시죠. 나잇값 하는 옷장인지도 봐 드리죠.",
   NAME_HINT: "이름은 안 적어도 되지만, 나이는 꼭 적어 주시죠.",
   AGE_HINT: "나이는 만 나이 말고 한국식 나이로 적어 주시죠. 이번 결과 쓰는 데만 쓰고 저장은 안 하죠.",
-  TOO_FEW: "모자·신발을 제외한 옷이 20개 이상이어야 분석할 수 있죠. (현재 {n}개)",
+  TOO_FEW: "모자·신발을 제외한 옷이 30개 이상이어야 분석할 수 있죠. (현재 {n}개)",
   OPENING: [
     "옷장 문을 열어보는 중이죠. 먼지가 많네요.",
     "옷장 문을 여는 중이죠. 뭔가 쏟아질 것 같은 예감이 드네요.",
@@ -28,5 +28,5 @@ export const ROAST_COPY = {
 export type RoastCopy = typeof ROAST_COPY;
 
 export const DISCLAIMER = ROAST_COPY.DISCLAIMER;
-export const MIN_CLOTHES = 20;
+export const MIN_CLOTHES = 30;
 export const tooFew = (copy: RoastCopy, n: number) => copy.TOO_FEW.replace(/\{n\}/g, String(n));

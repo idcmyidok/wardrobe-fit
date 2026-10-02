@@ -19,7 +19,7 @@ import { FAMILY_IDS, familyName, productFamilies, type FamilyId } from "./keywor
 
 export const ACHROMATIC = ["블랙", "그레이", "화이트"];
 /** 훈수를 받으려면 모자·신발을 뺀 옷이 이만큼 있어야 한다 */
-export const MIN_GARMENTS = 20;
+export const MIN_GARMENTS = 30;
 
 /** 핏 이름(상의·하의 공통으로 부를 때) */
 export const FIT_WORD: Record<FitLevel, string> = {
