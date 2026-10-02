@@ -659,6 +659,8 @@ function findOddOne(clothes: Item[], achromaticShare: number): Analysis["oddOne"
   let best: Analysis["oddOne"] = null;
   let bestScore = 0;
   for (const i of clothes) {
+    // 무채색 옷은 특이한 옷으로 고르지 않는다.
+    if (i.achromatic) continue;
     const traits = checks.filter(([, f]) => f(i)).map(([k]) => k);
     if (i.families.some((f) => (famCount.get(f) ?? 0) / n <= 0.12)) traits.push("family");
     // 특색이 뚜렷하지 않으면(겹치지 않는 점 3개 미만) 특이한 옷으로 고르지 않는다.
