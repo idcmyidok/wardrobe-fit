@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- 비공개 저장소의 임시 주소라 next/image 최적화를 쓰지 않는다(다른 화면과 같음). */
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { buttonClassName } from "@/components/ui/button";
 import { MIN_CLOTHES, ROAST_COPY, tooFew, type RoastCopy } from "@/lib/roast/copy";
@@ -25,6 +25,8 @@ import "./roast.css";
 
 const PREVIEW_KEY = "wardrobe-fit:roast-result";
 const TYPE_MS = 43;
+/** 관리자 계정은 출력·대기를 이 배수만큼 빠르게 본다(화면에서 RoastView가 정한다). */
+const pace = { speed: 1 };
 /** 시작 화면에서 선언문에 동의했다는 표시(옷장 → 주문내역으로 넘어갈 때 다시 묻지 않기 위해, 이 탭에서만 유지) */
 const CONSENT_KEY = "roast-consent";
 
@@ -37,7 +39,7 @@ type Msg =
 
 type DistOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 type NewMsg = DistOmit<Msg, "id">;
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms / pace.speed));
 /** 소개 문구가 끝난 뒤 다음 말(버튼·이름 묻기)이 나오기까지 쉬는 시간 */
 const INTRO_PAUSE_MS = 1100;
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -67,7 +69,10 @@ const koreanDate = (iso: string) =>
  * orders가 있으면 무신사 주문내역 훈수(숨은 주소 /roast/orders): 이름·나이 → 주문내역 붙여넣기·상품 읽기 → 대화 → 결과.
  * 주문내역 훈수는 옷장을 보지 않고, 결과도 저장하지 않는다(새로고침하면 처음부터).
  */
-export function RoastView({ initialResult, copy = ROAST_COPY, orders, ordersUsed = false }: { initialResult: RoastResult | null; copy?: RoastCopy; orders?: OrderCopy; ordersUsed?: boolean }) {
+export function RoastView({ initialResult, copy = ROAST_COPY, orders, ordersUsed = false, fast = false }: { initialResult: RoastResult | null; copy?: RoastCopy; orders?: OrderCopy; ordersUsed?: boolean; fast?: boolean }) {
+  useLayoutEffect(() => {
+    pace.speed = fast ? 10 : 1;
+  }, [fast]);
   const router = useRouter();
   const { garments, signedIn } = useWardrobe();
   const clothes = orders ? MIN_CLOTHES : garments.filter((g) => g.categoryId !== "hat" && g.categoryId !== "shoes").length;
@@ -113,7 +118,7 @@ export function RoastView({ initialResult, copy = ROAST_COPY, orders, ordersUsed
           }
         : {
             start: (name, age) => startRoast({ name, age, preview: signedIn ? undefined : garments }),
-            finish: (seed, name, age, answers) => finishRoast({ seed, name, age, answers, preview: signedIn ? undefined : garments }),
+            finish: (seed, name, age, answers, partial) => finishRoast({ seed, name, age, answers, partial, preview: signedIn ? undefined : garments }),
           },
     [orders, orderItems, signedIn, garments],
   );
@@ -257,7 +262,7 @@ function Typed({ text: raw, onDone }: { text: string; onDone?: () => void }) {
     // 문장 부호 뒤에서 잠깐 멈춘다.
     const ch = text[n - 1];
     const instant = reducedMotion();
-    const t = setTimeout(() => setN((x) => (instant ? text.length : x + 1)), instant ? 0 : /[.?!,]/.test(ch ?? "") ? TYPE_MS * 8 : TYPE_MS);
+    const t = setTimeout(() => setN((x) => (instant ? text.length : x + 1)), instant ? 0 : (/[.?!,]/.test(ch ?? "") ? TYPE_MS * 8 : TYPE_MS) / pace.speed);
     return () => clearTimeout(t);
   }, [n, text, onDone]);
   const starts = parts.map((_, i) => parts.slice(0, i).reduce((sum, x) => sum + x.t.length, 0));
@@ -417,7 +422,7 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
 
   return (
     <div className="roast-mono roast-log mt-8" aria-live="polite">
-      <p className="roast-ai"><Typed text={copy.INTRO} onDone={() => setTimeout(() => setTyped(true), reducedMotion() ? 0 : INTRO_PAUSE_MS)} /></p>
+      <p className="roast-ai"><Typed text={copy.INTRO} onDone={() => setTimeout(() => setTyped(true), reducedMotion() ? 0 : INTRO_PAUSE_MS / pace.speed)} /></p>
       {!skipIntro && copy.CREDIT && <p className="roast-credit">{copy.CREDIT}</p>}
       {typed && !enough && (
         <p className="roast-ai">
@@ -542,7 +547,7 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
 /** 대화 시작·결과 서버 액션(옷장 훈수 또는 주문내역 훈수) */
 interface Runner {
   start: (name: string | null, age: number | null) => Promise<RoastStart>;
-  finish: (seed: number, name: string | null, age: number | null, answers: Record<string, string>) => Promise<RoastFinish>;
+  finish: (seed: number, name: string | null, age: number | null, answers: Record<string, string>, partial: boolean) => Promise<RoastFinish>;
 }
 
 function Chat({
@@ -620,6 +625,7 @@ function Chat({
     if (started.current) return;
     started.current = true;
     void (async () => {
+      let readyPick: string | null = null;
       if (ready) {
         await think(500);
         await sayBubbles(copy.READY_Q.replace(/\{who\}/g, name ?? "회원"));
@@ -640,6 +646,7 @@ function Chat({
           choiceWaiter.current = resolve;
           push({ kind: "choices", q, picked: null });
         });
+        readyPick = picked;
         await think(600);
         await sayBubbles({ all: copy.READY_ALL_SAY, some: copy.READY_SOME_SAY, later: copy.READY_LATER_SAY }[picked] ?? "");
         if (picked === "later") {
@@ -664,7 +671,7 @@ function Chat({
       const answers = await play(start.script);
       push({ kind: "status", text: copy.WRITING, gap: true });
       const dots = push({ kind: "dots" });
-      const done = await runner.finish(start.script.seed, name, age, answers);
+      const done = await runner.finish(start.script.seed, name, age, answers, readyPick === "some");
       remove(dots);
       if (!done.ok) {
         setError(done.message);

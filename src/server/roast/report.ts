@@ -108,6 +108,8 @@ export function buildReport(
   score: Record<string, unknown> = {},
   age: number | null = null,
   override?: ReportOverride,
+  /** 옷을 다 넣지 않았다고 답하고 시작했을 때: 점수 한마디 뒤에 믿기 어렵다는 문장을 붙인다 */
+  partial = false,
 ): RoastReport {
   const deltas = score as Record<string, Record<string, number>>;
   const r = rng(seed ^ 0x2f6a91c3);
@@ -502,7 +504,7 @@ export function buildReport(
   const summaryBase =
     words.length >= 3 ? tryFill(r, R.SUMMARY_3, { a: words[0], b: words[1], c: words[2] }) : words.length === 2 ? tryFill(r, R.SUMMARY_2, { a: words[0], b: words[1] }) : null;
   // 요약 문장 뒤에 점수 한마디를 덧붙인다(요약이 없으면 한마디만).
-  const scoreSay = tryFill(r, R.SCORE_SAY, { score: totalScore });
+  const scoreSay = [tryFill(r, R.SCORE_SAY, { score: totalScore }), partial ? tryFill(r, R.SCORE_PARTIAL, {}) : null].filter(Boolean).join(" ") || null;
   const summary = [summaryBase, scoreSay].filter(Boolean).join(" ") || null;
 
   // 마지막 문단: 따로 붙일 곳이 없는 질문 답, 없으면 가장 비싼 항목
