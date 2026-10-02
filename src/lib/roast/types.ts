@@ -62,7 +62,7 @@ export interface RoastReport {
   /** 굵은 제목 + 목록(많이 가진 옷, 좋아하는 브랜드) */
   lists: { title: string; items: string[] }[];
   /** 총 옷장 점수(0~100, 질문·퀴즈 답이 더하거나 뺀다) */
-  total: { score: number; lead: string; text: string };
+  total: { score: number };
   /** 진단 문단: lead는 굵게, answer는 관련 질문 답에 붙는 한 줄, photos는 옆으로 넘기는 사진 줄 */
   points: { id: string; lead: string; text: string; answer?: string; photos?: string[] }[];
   /** 제목 바로 아래 한 문장: 가장 뚜렷한 특징 두세 개를 이은 요약 */

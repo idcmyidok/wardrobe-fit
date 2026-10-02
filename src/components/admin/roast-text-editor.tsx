@@ -40,7 +40,7 @@ const WhenContext = createContext<WhenOption[]>([]);
 
 export interface EditorGroup {
   id: string;
-  kind: "screen" | "common" | "lines" | "questions" | "report" | "score" | "layout" | "orders";
+  kind: "screen" | "common" | "lines" | "questions" | "report" | "score" | "layout" | "orders" | "orders-layout";
   title: string;
   when: string;
   vars: { key: string; label: string }[];
@@ -71,7 +71,8 @@ const KINDS: { id: Kind; label: string }[] = [
   { id: "common", label: "공통 문구" },
   { id: "screen", label: "화면·결과 안내" },
   { id: "report", label: "결과 페이지" },
-  { id: "layout", label: "결과 구성" },
+  { id: "layout", label: "결과 구성 (옷장 훈수)" },
+  { id: "orders-layout", label: "결과 구성 (주문내역 훈수)" },
   { id: "score", label: "점수" },
   { id: "orders", label: "주문내역 훈수" },
 ];
@@ -110,9 +111,13 @@ const colLabel = "font-mono text-label font-medium tracking-[0.08em] text-neutra
  * 문장 목록은 항목을 더하거나 뺄 수 있고, 퀴즈는 새로 만들거나 지울 수 있다.
  * {자리}는 그 묶음에서 쓸 수 있는 것만 받는다(서버에서 한 번 더 확인).
  */
-export interface LayoutInfo {
+export interface LayoutPart {
   sections: Record<string, { name: string; how: string }>;
   points: Record<string, { name: string; how: string }>;
+}
+export interface LayoutInfo {
+  closet: LayoutPart;
+  orders: LayoutPart;
 }
 
 export function RoastTextEditor({
@@ -238,7 +243,9 @@ export function RoastTextEditor({
         </>
       ) : (
         <>
-        {kind === "layout" && !q && <LayoutOverview layout={layout} groups={groups} saved={saved} />}
+        {(kind === "layout" || kind === "orders-layout") && !q && (
+          <LayoutOverview layout={kind === "layout" ? layout.closet : layout.orders} prefix={kind === "layout" ? "" : "orders."} groups={groups} saved={saved} />
+        )}
         <ul className="flex flex-col">
           {shown.map((g) => {
             const isOpen = open.has(g.id) || Boolean(q);
@@ -283,26 +290,31 @@ export function RoastTextEditor({
 }
 
 /** 결과 페이지가 지금 설정으로 어떤 순서로 나오는지 한눈에 보여 준다(순서·켜기는 아래 칸에서 고친다). */
-function LayoutOverview({ layout, groups, saved }: { layout: LayoutInfo; groups: EditorGroup[]; saved: Record<string, EditorUnit["value"]> }) {
+function LayoutOverview({ layout, prefix, groups, saved }: { layout: LayoutPart; prefix: string; groups: EditorGroup[]; saved: Record<string, EditorUnit["value"]> }) {
   const valueOf = (key: string) => {
     for (const g of groups) for (const u of g.units) if (u.key === key) return Number(saved[key] ?? u.value);
     return undefined;
   };
   const sorted = (names: Record<string, unknown>, orderKey: string) =>
     Object.keys(names)
-      .map((k) => ({ k, n: valueOf(`report.layout.${orderKey}.${k}`) ?? 99 }))
+      .map((k) => ({ k, n: valueOf(`${prefix}report.layout.${orderKey}.${k}`) ?? 99 }))
       .sort((a, b) => a.n - b.n)
       .map((x) => x.k);
-  const on = (showKey: string, k: string) => valueOf(`report.layout.${showKey}.${k}`) !== 0;
+  const on = (showKey: string, k: string) => valueOf(`${prefix}report.layout.${showKey}.${k}`) !== 0;
   return (
     <section className="flex flex-col gap-2 border-b border-neutral-300 py-4" aria-label="지금 결과 페이지 구성">
       <p className="text-base font-medium">지금 결과 페이지 구성</p>
-      <p className="text-sm text-neutral-700">내용 자체는 옷장 패턴과 질문 답으로 자동으로 정해집니다. 여기서는 순서·켜기·개수와 고정 문구만 고칩니다.</p>
+      <p className="text-sm text-neutral-700">
+        실제 결과 화면과 같은 순서입니다. 내용 자체는 {prefix ? "주문내역" : "옷장"} 패턴과 질문 답으로 자동으로 정해지고, 여기서는 순서·켜기·개수와 고정 문구만 고칩니다.
+      </p>
       <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm">
         <li>
-          <b>첫 줄: 점수 구간 문장</b> <span className="text-neutral-700">총점이 속한 10점 구간의 문장(결과 페이지 탭)</span>
+          <b>첫 줄: 점수 구간 문장</b> <span className="text-neutral-700">총점이 속한 10점 구간의 문장(결과 페이지 탭). 항상 맨 위, 점수 숫자는 나오지 않습니다.</span>
         </li>
-        {sorted(layout.sections, "order").map((k) => (
+        <li className={on("show", "summary") ? "" : "text-neutral-500 line-through"}>
+          <b>{layout.sections.summary.name}</b> <span className="text-neutral-700">{layout.sections.summary.how}</span>
+        </li>
+        {sorted(Object.fromEntries(Object.entries(layout.sections).filter(([k]) => k !== "summary")), "order").map((k) => (
           <li key={k} className={on("show", k) ? "" : "text-neutral-500 line-through"}>
             <b>{layout.sections[k].name}</b> <span className="text-neutral-700">{layout.sections[k].how}</span>
             {k === "points" && (

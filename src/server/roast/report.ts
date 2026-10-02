@@ -94,7 +94,6 @@ export interface ReportOverride {
   /** 질문 id → 답을 붙일 문단 id */
   answerTo: Record<string, string[]>;
   headline: Record<string, readonly string[]>;
-  totalLead: readonly string[];
   /** 빼는 진단 문단(주문내역에서는 당연한 것, 예: 구매 링크가 전부 무신사) */
   skipDiags: string[];
 }
@@ -536,11 +535,7 @@ export function buildReport(
   if (branded.length >= 8 && brandRows.length && (brandRows[0][1].length / branded.length) * 100 >= L.count.brand_top_pct)
     lists.push({ title: r.pick(R.LIST_BRAND), items: brandRows.map(([, l]) => `${l[0].brandLabel} ${pct(l.length, branded.length)}%`) });
 
-  const total = {
-    score: totalScore,
-    lead: tryFill(r, override?.totalLead ?? R.TOTAL_LEAD, { owner, score: totalScore }) ?? `${totalScore}점`,
-    text: r.pick(R.TOTAL[band]),
-  };
+  const total = { score: totalScore };
 
   const notes: string[] = [];
   if (K && K < items.length) {

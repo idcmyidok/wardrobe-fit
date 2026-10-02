@@ -16,7 +16,7 @@ export const ORDER_SKIP_PATTERNS = new Set(["count_small", "count_many", "count_
  */
 export const ORDER_MIRROR_SCREEN = ["CREDIT", "NAME_HINT", "AGE_HINT", "WRITING"] as const;
 export const ORDER_MIRROR_QUESTIONS = ["quiz", "food_vs_clothes", "fashionable_q"] as const;
-export const ORDER_MIRROR_REPORT_SKIP = ["layout", "HEADLINE", "TOTAL_LEAD", "fit", "age", "VINTAGE"] as const;
+export const ORDER_MIRROR_REPORT_SKIP = ["HEADLINE", "fit", "age", "VINTAGE"] as const;
 
 /** 화면 문구: 옷장 훈수 화면 문구(screen) 위에 덮어쓴다. PASTE_*·LOADING은 주문내역 훈수에만 있다. */
 export const ORDER_SCREEN = {
@@ -298,7 +298,6 @@ export const ORDER_REPORT_TEXT = {
     b10: ["{owner} 주문내역은 영수증이 곧 반성문입니다."],
     b0: ["{owner} 주문내역은 앱을 지우는 게 최선입니다."],
   },
-  TOTAL_LEAD: ["{owner} 주문내역은 100점 만점에 {score}점입니다."],
   /** 하트로 본 대중성: high = 랭킹템이 많음, low = 숨은 상품이 많음 */
   popularity: {
     high: [
@@ -549,7 +548,6 @@ export const ORDER_AGE_KEY_NAME: Record<string, string> = {
 
 export const ORDER_REPORT_NAME: Record<string, string> = {
   HEADLINE: "첫 줄: 총점 구간별 평가",
-  TOTAL_LEAD: "총점(굵게)",
   popularity: "하트로 본 대중성",
   standard: "무신사 스탠다드",
   price: "한 벌 평균가",

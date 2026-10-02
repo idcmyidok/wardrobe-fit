@@ -70,6 +70,12 @@ const ORDER_MIRROR = toOrders({
   report: {
     ...omit<unknown>(REPORT_TEXT, ORDER_MIRROR_REPORT_SKIP),
     diag: omit<unknown>(REPORT_TEXT.diag, ["shop"]),
+    // 주문내역에는 핏·빈티지 문단이 나올 수 없어 순서·켜기 칸에서 뺀다.
+    layout: {
+      ...REPORT_TEXT.layout,
+      point_order: omit<unknown>(REPORT_TEXT.layout.point_order, ["fit", "vintage"]),
+      point_show: omit<unknown>(REPORT_TEXT.layout.point_show, ["fit", "vintage"]),
+    },
   },
 });
 
@@ -174,7 +180,7 @@ export function groupOf(key: string): string {
   // 결과 페이지의 진단·점수는 항목마다 따로 묶는다(예: "report.diag.color").
   if (/^report\.(diag|layout)\./.test(key)) return key.split(".").slice(0, 3).join(".");
   // 주문내역 훈수의 화면·대화·결과 문장은 항목마다 따로 묶는다(예: "orders.report.shift").
-  if (key.startsWith("orders.report.diag.")) return key.split(".").slice(0, 4).join(".");
+  if (/^orders\.report\.(diag|layout)\./.test(key)) return key.split(".").slice(0, 4).join(".");
   if (key.startsWith("orders.")) return key.split(".").slice(0, 3).join(".");
   return key.split(".").slice(0, 2).join(".");
 }
@@ -217,7 +223,7 @@ function minItems(key: string, base: UnitValue | undefined): number {
 export function checkUnit(key: string, value: unknown): { value: UnitValue } | { error: string } {
   const unit = unitAt(key);
   if (!unit) return { error: "없는 문장입니다." };
-  if (unit.kind === "number" && key.startsWith("report.layout.")) {
+  if (unit.kind === "number" && /^(orders\.)?report\.layout\./.test(key)) {
     // 결과 구성: 순서 1~20, 켜기 0·1, 개수 0~40
     const n = typeof value === "number" ? value : Number(value);
     const [min, max] = /\.(show|point_show)\./.test(key) ? [0, 1] : /\.(order|point_order)\./.test(key) ? [1, 20] : [0, 40];
