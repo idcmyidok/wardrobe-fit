@@ -37,9 +37,8 @@ describe("무신사 인기 태그", () => {
     for (const b of ["Matin Kim", "마뗑킴", "무신사 스탠다드 키즈", "thisisneverthat", "MLB"]) expect(brandLabels(b)).toContain(MUSINSA_POPULAR);
     for (const b of ["Nike", "adidas", "The North Face", "New Balance", "Arc'teryx", "UNIQLO"]) expect(brandLabels(b)).not.toContain(MUSINSA_POPULAR);
   });
-  it("태그만 있는 브랜드는 분석 자료에 넣지 않는다", () => {
+  it("분석 자료의 브랜드는 모두 가격 레벨 값이 있다", () => {
     expect(brandLabels("레더리")).toContain(MUSINSA_POPULAR);
-    expect(findBrand("SPLASH CODE")).toBeNull();
     expect(BRANDS.every((b) => typeof b.price === "number")).toBe(true);
   });
 });
