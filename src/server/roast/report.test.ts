@@ -53,17 +53,17 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     const plan = buildScript(a, 3, null);
     const q = plan.asked.find((x) => x.options.length && !x.scoreKey)!;
     const opt = q.options[0].id;
-    const base = buildReport(a, null, 3, REPORT_TEXT, plan.asked, { [q.id]: opt }, { rules: { lift: 0 } });
-    const plus = buildReport(a, null, 3, REPORT_TEXT, plan.asked, { [q.id]: opt }, { rules: { lift: 0 }, [q.id]: { [opt]: 5 } });
-    const minus = buildReport(a, null, 3, REPORT_TEXT, plan.asked, { [q.id]: opt }, { rules: { lift: 0 }, [q.id]: { [opt]: -5 } });
+    const base = buildReport(a, null, 3, REPORT_TEXT, plan.asked, { [q.id]: opt }, { rules: { floor_min: 0, floor_mid: 50 } });
+    const plus = buildReport(a, null, 3, REPORT_TEXT, plan.asked, { [q.id]: opt }, { rules: { floor_min: 0, floor_mid: 50 }, [q.id]: { [opt]: 5 } });
+    const minus = buildReport(a, null, 3, REPORT_TEXT, plan.asked, { [q.id]: opt }, { rules: { floor_min: 0, floor_mid: 50 }, [q.id]: { [opt]: -5 } });
     expect(plus.total.score - base.total.score).toBe(Math.min(5, 100 - base.total.score));
     expect(base.total.score - minus.total.score).toBe(Math.min(5, base.total.score));
   });
 
   it("선택지를 코드가 만드는 질문(퀴즈 등)은 반응 종류로 증감을 찾는다", () => {
     const q = { id: "quiz", text: "", options: [{ id: "2", label: "2" }], reactions: {}, roast: {}, photos: [], scoreKey: { "2": "right" } } as unknown as AskedQuestion;
-    const base = buildReport(a, null, 3, REPORT_TEXT, [q], { quiz: "2" }, { rules: { lift: 0 } });
-    const right = buildReport(a, null, 3, REPORT_TEXT, [q], { quiz: "2" }, { rules: { lift: 0 }, quiz: { right: 4 } });
+    const base = buildReport(a, null, 3, REPORT_TEXT, [q], { quiz: "2" }, { rules: { floor_min: 0, floor_mid: 50 } });
+    const right = buildReport(a, null, 3, REPORT_TEXT, [q], { quiz: "2" }, { rules: { floor_min: 0, floor_mid: 50 }, quiz: { right: 4 } });
     expect(right.total.score - base.total.score).toBe(Math.min(4, 100 - base.total.score));
   });
 
@@ -80,15 +80,15 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
   });
 
   it("점수 기준(rules)을 바꾸면 총점이 바뀐다", () => {
-    const up = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base: 60, lift: 0 } });
-    const base = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { lift: 0 } });
+    const up = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base: 60, floor_min: 0, floor_mid: 50 } });
+    const base = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { floor_min: 0, floor_mid: 50 } });
     expect(up.total.score - base.total.score).toBe(Math.min(15, 100 - base.total.score));
   });
 
-  it("낮은 점수 보정은 합계가 낮을수록 줄어 합계 0이면 0점(15점 미만은 비례)", () => {
+  it("옷장 점수는 최저 23점이 보장된다(합계 0 이하여도 23점)", () => {
     const at = (base: number) => buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base } }).total.score;
-    expect(at(-200)).toBe(0);
-    expect(at(0)).toBeGreaterThanOrEqual(buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base: 0, lift: 0 } }).total.score);
+    expect(at(-200)).toBe(23);
+    expect(at(0)).toBeGreaterThanOrEqual(buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base: 0, floor_min: 0, floor_mid: 50 } }).total.score);
   });
 
   it("핏은 치수가 없어도 직접 적은 핏이 5벌 이상이면 진단한다", () => {

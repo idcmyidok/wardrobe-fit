@@ -184,6 +184,9 @@ export const SCORE_RULES = {
   lift: 0.12,
   /** 합계가 이 점수 미만이면 보정(lift)을 합계에 비례해 줄임(합계 0이면 보정 0). 0이면 줄이지 않음. 옷장·주문내역 공통 */
   lift_floor: 15,
+  /** 옷장 훈수 최종 점수 보정(주문내역은 안 씀): 합계 0점 → floor_min점, 합계 50점 → floor_mid점, 합계 100점 → 100점을 꺾은선으로 잇는다(위 lift 대신) */
+  floor_min: 23,
+  floor_mid: 55,
   thin_n: 20,
   thin: 4,
   logo_pct: 20,
@@ -197,8 +200,9 @@ export const SCORE_RULES = {
   spend_b: 6,
   spend_c: 10,
   // 마지막 질문("스스로 패셔너블하다고 생각하나요?")의 점수 구간
-  tier_high: 70,
-  tier_low: 40,
+  // (옷장: 최저 23점~100점을 3등분)
+  tier_high: 74,
+  tier_low: 49,
 };
 
 export type ScoreRules = typeof SCORE_RULES;

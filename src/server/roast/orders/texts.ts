@@ -14,7 +14,7 @@ export const ORDER_SKIP_PATTERNS = new Set(["count_small", "count_many", "count_
  * 화면: 주문내역 화면에서 보이는데 ORDER_SCREEN에 없던 문구 / 질문: 옷장 훈수와 같이 쓰던 질문(퀴즈 앞 멘트·밥과 옷·패셔너블)
  * 결과: 주문내역에서 나올 수 없는 것(결과 구성·첫 줄·총점 첫 줄은 따로 있음, 핏·나이·빈티지)은 뺀다.
  */
-export const ORDER_MIRROR_SCREEN = ["CREDIT", "NAME_HINT", "AGE_HINT", "WRITING"] as const;
+export const ORDER_MIRROR_SCREEN = ["CREDIT", "NAME_HINT", "AGE_HINT", "WRITING", "CONSENT", "CONSENT_WARN"] as const;
 export const ORDER_MIRROR_QUESTIONS = ["quiz", "food_vs_clothes", "fashionable_q"] as const;
 export const ORDER_MIRROR_REPORT_SKIP = ["HEADLINE", "fit", "age", "VINTAGE"] as const;
 
