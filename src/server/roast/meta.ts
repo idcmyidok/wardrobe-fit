@@ -454,14 +454,15 @@ const ORDER_REPORT_SIDE: Record<string, string> = {
   lux: "어린 나이에 명품",
 };
 
-export function textGroups(): TextGroupMeta[] {
+/** 질문 문구는 qText(고친 값 반영)가 주면 그것을, 없으면 코드 원본을 쓴다. */
+export function textGroups(qText: (qid: string, orders?: boolean) => string | undefined = (q) => Q_TEXT[q]?.text): TextGroupMeta[] {
   const out: TextGroupMeta[] = [];
   for (const [k, name] of Object.entries(SCREEN_NAME)) out.push({ id: `screen.${k}`, kind: "screen", title: name, when: "" });
   for (const [k, name] of Object.entries(COMMON_NAME)) out.push({ id: `common.${k}`, kind: "common", title: name, when: "" });
   for (const [id, sec] of Object.entries(LINE_SECTION))
     out.push({ id: `lines.${id}`, kind: "lines", title: `${id} (${SECTION_NAME[sec]})`, when: PATTERN_COND[id] ?? "" });
   for (const q of QUESTIONS)
-    out.push({ id: `questions.${q.id}`, kind: "questions", title: Q_TEXT[q.id]?.text || (q.id === "quiz" ? "패션 퀴즈(앞 멘트)" : q.id), when: `${q.id} · ${QUESTION_COND[q.id] ?? ""}` });
+    out.push({ id: `questions.${q.id}`, kind: "questions", title: qText(q.id) || (q.id === "quiz" ? "패션 퀴즈(앞 멘트)" : q.id), when: `${q.id} · ${QUESTION_COND[q.id] ?? ""}` });
   for (const [k, name] of Object.entries(REPORT_NAME)) out.push({ id: `report.${k}`, kind: "report", title: name, when: "" });
   for (const [k, v] of Object.entries(REPORT_TEXT.diag)) out.push({ id: `report.diag.${k}`, kind: "report", title: `진단: ${v.title}`, when: k });
   out.push({ id: "report.layout.order", kind: "layout", title: "섹션 순서", when: "작은 숫자가 위(1~20). 첫 줄(점수 평가)은 항상 맨 위입니다." });
@@ -473,18 +474,18 @@ export function textGroups(): TextGroupMeta[] {
   out.push({ id: "score.rules", kind: "score", title: "총 옷장 점수 기준", when: "기본 점수에서 더하고 빼는 기준(비율은 %, 금액은 만 원, 감점도 양수로)" });
   out.push({ id: "score.age", kind: "score", title: "나이에 맞는 옷", when: "옷을 산 때 나이 구간별 기준(비율은 %, 감점도 양수로)" });
   for (const qid of Object.keys(SCORE_DELTAS).filter((k) => k !== "rules" && k !== "age"))
-    out.push({ id: `score.${qid}`, kind: "score", title: qid === "quiz" ? "패션 퀴즈" : Q_TEXT[qid]?.text || qid, when: `${qid} · 답에 따라 총 옷장 점수에 더하는 값(-20~20)` });
+    out.push({ id: `score.${qid}`, kind: "score", title: qid === "quiz" ? "패션 퀴즈" : qText(qid) || qid, when: `${qid} · 답에 따라 총 옷장 점수에 더하는 값(-20~20)` });
   // 주문내역 훈수(숨은 주소 /roast/orders): 한 탭에 화면·질문·결과 문장·점수를 모은다.
   const O = "[주문내역] ";
   for (const [k, name] of Object.entries(ORDER_SCREEN_NAME))
     out.push({ id: `orders.${k in ORDER_COMMON ? "common" : "screen"}.${k}`, kind: "orders", title: `${O}화면: ${name}`, when: "" });
   for (const q of ORDER_QUESTIONS.filter((d) => d.id.startsWith("o_")))
-    out.push({ id: `questions.${q.id}`, kind: "orders", title: `${O}질문: ${Q_TEXT[q.id]?.text ?? q.id}`, when: `${q.id} · ${ORDER_QUESTION_COND[q.id] ?? ""}` });
+    out.push({ id: `questions.${q.id}`, kind: "orders", title: `${O}질문: ${qText(q.id, true) ?? q.id}`, when: `${q.id} · ${ORDER_QUESTION_COND[q.id] ?? ""}` });
   for (const [k, name] of Object.entries(ORDER_REPORT_NAME)) out.push({ id: `orders.report.${k}`, kind: "orders", title: `${O}결과: ${name}`, when: "" });
   out.push({ id: "score.orules", kind: "orders", title: `${O}점수 기준`, when: "기본 점수에서 더하고 빼는 기준(비율은 %, 금액은 만 원, 감점도 양수로). 퀴즈·밥과 옷·패셔너블 질문 증감은 '점수' 탭 값을 같이 씁니다." });
   out.push({ id: "score.oage", kind: "orders", title: `${O}나이에 맞는 주문`, when: "옷을 산 때 나이 구간별 기준(비율은 %, 감점도 양수로)" });
   for (const qid of Object.keys(ORDER_DELTAS))
-    out.push({ id: `score.${qid}`, kind: "orders", title: `${O}점수: ${Q_TEXT[qid]?.text || qid}`, when: `${qid} · 답에 따라 총점에 더하는 값(-20~20)` });
+    out.push({ id: `score.${qid}`, kind: "orders", title: `${O}점수: ${qText(qid, true) || qid}`, when: `${qid} · 답에 따라 총점에 더하는 값(-20~20)` });
   // 옷장 훈수 문장을 주문내역 전용으로 따로 복사해 둔 칸(주문내역 쪽 값이 없으면 옷장 쪽을 따라간다)
   for (const id of new Set([...orderMirrorKeys()].map(groupOf))) {
     const [, kind, a, b] = id.split(".");
@@ -492,7 +493,7 @@ export function textGroups(): TextGroupMeta[] {
     else if (kind === "common") out.push({ id, kind: "orders", title: `${O}대화: ${COMMON_NAME[a] ?? a}`, when: "" });
     else if (kind === "lines") out.push({ id, kind: "orders", title: `${O}${a} (${SECTION_NAME[LINE_SECTION[a]]})`, when: PATTERN_COND[a] ?? "" });
     else if (kind === "questions")
-      out.push({ id, kind: "orders", title: `${O}질문: ${Q_TEXT[a]?.text || (a === "quiz" ? "패션 퀴즈(앞 멘트)" : a)}`, when: `${a} · ${QUESTION_COND[a] ?? ""}` });
+      out.push({ id, kind: "orders", title: `${O}질문: ${qText(a, true) || (a === "quiz" ? "패션 퀴즈(앞 멘트)" : a)}`, when: `${a} · ${QUESTION_COND[a] ?? ""}` });
     else if (a === "diag") out.push({ id, kind: "orders", title: `${O}진단: ${REPORT_TEXT.diag[b as keyof typeof REPORT_TEXT.diag]?.title ?? b}`, when: b });
     else out.push({ id, kind: "orders", title: `${O}결과: ${REPORT_NAME[a] ?? a}`, when: "" });
   }

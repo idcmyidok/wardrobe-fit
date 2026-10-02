@@ -20,8 +20,11 @@ export default async function RoastTextsPage() {
   // 주문내역 전용 칸에 저장값이 없으면 실제로 쓰이는 값(옷장 쪽을 따라간 값)을 보여 준다.
   const mirror = orderMirrorKeys();
   const followed = new Map(unitsOf(applyTextEdits(rows)).filter((u) => mirror.has(u.key)).map((u) => [u.key, u.value]));
-  const optionLabel = (qid: string, opt: string) => Q_TEXT[qid]?.options[opt];
-  const groups: EditorGroup[] = textGroups()
+  // 점수 탭 등의 질문 제목·선택지는 문장 편집에서 고친 값(지금 화면에 나오는 것)을 쓴다. 없으면 코드 원본.
+  const live = applyTextEdits(rows);
+  const optionLabel = (qid: string, opt: string) => live.questions[qid]?.options?.[opt] ?? Q_TEXT[qid]?.options[opt];
+  const qText = (qid: string, orders?: boolean) => (orders ? live.orders?.questions?.[qid]?.text : undefined) || live.questions[qid]?.text || Q_TEXT[qid]?.text;
+  const groups: EditorGroup[] = textGroups(qText)
     .map((g) => ({
       ...g,
       vars: allowedVars(`${g.id}.x`).map((v) => ({ key: v, label: varLabel(g.id, v) })),
