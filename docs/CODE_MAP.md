@@ -5,7 +5,7 @@
 ## 읽기·검색 제외 (큰 데이터, `.ignore`로 검색에서 뺌)
 | 파일 | 크기 | 안전한 조회법 |
 |---|---|---|
-| `data/brands/brand-master.csv` | 3,555행, 787KB | 열 이름 `head -1`, 한 브랜드 `grep -n "^브랜드명," `; 분포는 python/awk 스크립트로 |
+| `data/brands/brand-master.csv` | 3,759행 | 열 이름 `head -1`, 한 브랜드 `grep -n "^브랜드명," `; 분포는 python/awk 스크립트로 |
 | `data/brands/brand-master.xlsx` | 바이너리 | csv와 동일 내용, 열지 말 것 |
 | `src/server/roast/brands.json` | 1.1MB | csv에서 `scripts/build-brands.mjs`로 생성됨. 직접 읽지 말고 csv 기준으로 수정 후 재생성 |
 | `supabase/migrations/…0010_color_names_korean.sql` | 1,948줄 | 색상 이름 일괄 변환용, 볼 일 없음 |
