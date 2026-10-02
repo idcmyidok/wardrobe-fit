@@ -392,7 +392,7 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
   // 옷장 훈수에서 시작 버튼을 누르면 바로 아래에서 평가 기준(옷장·주문내역)을 고르게 한다.
   const [picking, setPicking] = useState(false);
   const [pickDone, setPickDone] = useState(false);
-  // 시작 버튼은 선언문에 동의(체크)해야 진행된다.
+  // 맨 처음(옷장 훈수) 시작 화면의 시작 버튼은 선언문에 동의(체크)해야 진행된다. 주문내역 훈수 시작 화면에는 없다.
   const [agreed, setAgreed] = useState(false);
   const [needAgree, setNeedAgree] = useState(false);
   // 옷장 훈수 시작 화면에서 이미 동의하고 주문내역 훈수로 넘어왔으면 다시 묻지 않는다.
@@ -436,6 +436,7 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
       )}
       {typed && enough && !dailyUsed && !asking && !picking && (
         <>
+          {!orders && (
           <label className="flex max-w-176 cursor-pointer items-start gap-2 text-sm">
             <input
               type="checkbox"
@@ -450,12 +451,13 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
               <Typed text={copy.CONSENT} />
             </span>
           </label>
+          )}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               className="roast-choice"
               onClick={() => {
-                if (!agreed) return setNeedAgree(true);
+                if (!orders && !agreed) return setNeedAgree(true);
                 if (orders) setAsking(true);
                 else setPicking(true);
               }}
@@ -463,7 +465,7 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
               {copy.START_LABEL}
             </button>
           </div>
-          {needAgree && !agreed && (
+          {!orders && needAgree && !agreed && (
             <p className="text-xs text-red-700" role="alert">
               {copy.CONSENT_WARN}
             </p>
