@@ -223,6 +223,28 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   if (month && month.pct >= R.sale_month_pct) add("sale_month", -R.sale_month, `해마다 ${month.month}월에 산 옷 ${month.pct}% (${R.sale_month_pct}% 이상)`, month.list);
   const avg = avgPrice(clothes);
   if (avg > 0 && avg < R.cheap_won * 10_000) add("cheap", -R.cheap, `옷 한 벌 평균 ${won(avg)} (${R.cheap_won}만 원 미만)`);
+  // 극단적 저가: 한 벌 tiny_won만 원 미만인 옷 비율(가격 있는 옷 기준)
+  const priced = clothes.filter((i) => i.price != null && i.price > 0);
+  const tinyList = priced.filter((i) => i.price! < R.tiny_won * 10_000);
+  if (priced.length >= 5 && (tinyList.length / priced.length) * 100 >= R.tiny_pct)
+    add("tiny", -R.tiny, `${R.tiny_won}만 원 미만 옷 ${tinyList.length}벌, ${P(tinyList.length / priced.length)} (${R.tiny_pct}% 이상)`, tinyList);
+  // 사이즈 갈팡질팡: 같은 브랜드에서 구매 간격이 size_gap_months개월 미만으로 이어진 옷들의 사이즈가 size_kinds_n종 이상(1.5년 이상 떨어진 구매는 사이즈가 달라도 따로 본다)
+  const sizeOf = (i: Item) => (i.g.sizeLabel ?? "").toUpperCase().replace(/\s+/g, "");
+  const messy: Item[] = [];
+  for (const list of byBrand.values()) {
+    const dated = list.filter((i) => i.date && sizeOf(i) && i.cat !== "shoes" && i.cat !== "hat").sort((x, y) => Date.parse(x.date!) - Date.parse(y.date!));
+    let run: Item[] = [];
+    const flush = () => {
+      if (new Set(run.map(sizeOf)).size >= R.size_kinds_n) messy.push(...run);
+      run = [];
+    };
+    for (const i of dated) {
+      if (run.length && Date.parse(i.date!) - Date.parse(run[run.length - 1].date!) >= R.size_gap_months * 30.44 * DAY) flush();
+      run.push(i);
+    }
+    flush();
+  }
+  if (messy.length) add("size_mess", -R.size_mess, `같은 브랜드에서 ${R.size_gap_months}개월 안에 이어 산 옷의 사이즈가 ${R.size_kinds_n}종 이상 (${[...new Set(messy.map((i) => i.brandLabel))].join("·")})`, messy);
   // 같은 옷 반복: 같은 상품(색만 다른 것 포함)을 같은 실측(실측을 못 찾으면 같은 사이즈)으로 다른 주문에서 또 산 것.
   // 한 주문의 팩(2PACK 등)은 한 번으로 본다.
   const fitKey = (i: Item) => a.orders?.measure[i.id] ?? (i.g.sizeLabel ? `size:${i.g.sizeLabel.toUpperCase().replace(/\s+/g, "")}` : null);

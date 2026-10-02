@@ -123,6 +123,14 @@ export const ORDER_RULES = {
   /** 반품하고 또 사는 브랜드: 반품 2건 이상인 브랜드를 return_brand_n벌 이상 가지고 있음 */
   return_brand_n: 3,
   return_brand: 3,
+  /** 사이즈 갈팡질팡: 같은 브랜드에서 구매 간격이 size_gap_months개월 미만으로 이어진 옷들의 사이즈가 size_kinds_n종 이상 */
+  size_kinds_n: 3,
+  size_gap_months: 18,
+  size_mess: 2,
+  /** 극단적 저가: 한 벌 tiny_won만 원 미만인 옷이 가격 있는 옷의 tiny_pct% 이상 */
+  tiny_won: 1,
+  tiny_pct: 20,
+  tiny: 3,
   /** 기본 상의만: 반팔·긴팔 티, 맨투맨, 후드가 옷의 basic_tops_pct% 이상 */
   basic_tops_pct: 50,
   basic_tops: 4,
