@@ -44,6 +44,7 @@
 
 ### src/app/(app)/admin/roast-texts
 - `page.tsx` (40줄) metadata:10 RoastTextsPage:13
+- `export/route.ts` (~45줄) GET: 지금 쓰이는 훈수 문장 전체 CSV(코드 기본값·DB 저장값·실제 나오는 값), 관리자만, 편집 화면 머리글의 "문장 전체 내려받기" 링크
 
 ### src/app/(app)/analysis
 - `page.tsx` (8줄) metadata:3 AnalysisPage:5
