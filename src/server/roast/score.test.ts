@@ -4,7 +4,7 @@ import { analyze, brandKindOf, colorCounted } from "./analyze";
 import { buildReport } from "./report";
 import { REPORT_TEXT } from "./report-text";
 import { SCORE_DELTAS } from "./score-deltas";
-import { ageAt, bandOf, liftedTotal, scoreWardrobe, tierOf } from "./score";
+import { ageAt, bandOf, floorTotal, liftedTotal, scoreWardrobe, tierOf } from "./score";
 
 const now = new Date("2026-09-29T12:00:00+09:00");
 const g = (i: number, over: Partial<Garment> = {}): Garment =>
@@ -27,11 +27,19 @@ const g = (i: number, over: Partial<Garment> = {}): Garment =>
     ...over,
   }) as Garment;
 
+describe("옷장 최저점 보정", () => {
+  it("0점 23점, 50점 55점, 100점 100점을 꺾은선으로 잇는다", () => {
+    expect([0, 25, 50, 75, 100].map((x) => floorTotal(x))).toEqual([23, 39, 55, 78, 100]);
+    expect(floorTotal(-5)).toBe(23);
+    expect(tierOf(floorTotal(0))).toBe("low");
+  });
+});
+
 describe("점수 구간은 보정이 들어간 점수로 정한다", () => {
-  it("보정 전 35점은 낮음이지만 보정 후 43점은 중간", () => {
-    expect(tierOf(35)).toBe("low");
+  it("보정 전 45점은 낮음이지만 보정 후 점수는 중간", () => {
+    expect(tierOf(45)).toBe("low");
+    expect(tierOf(floorTotal(45))).toBe("mid");
     expect(liftedTotal(35)).toBe(43);
-    expect(tierOf(liftedTotal(35))).toBe("mid");
     expect(liftedTotal(0)).toBe(0);
     expect(liftedTotal(-30)).toBe(0);
   });
@@ -74,10 +82,10 @@ describe("옷장 점수(점수 계획서)", () => {
     expect(bandOf(70)).toBe("b61");
   });
 
-  it("마지막 질문의 점수 구간: 70 이상 high, 40 미만 low", () => {
-    expect(tierOf(70)).toBe("high");
+  it("마지막 질문의 점수 구간: 23~100을 3등분(74 이상 high, 49 미만 low)", () => {
+    expect(tierOf(74)).toBe("high");
     expect(tierOf(55)).toBe("mid");
-    expect(tierOf(39)).toBe("low");
+    expect(tierOf(48)).toBe("low");
     expect(tierOf(55, { tier_high: 50 })).toBe("high");
   });
 

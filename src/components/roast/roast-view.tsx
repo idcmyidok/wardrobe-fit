@@ -1,6 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- 비공개 저장소의 임시 주소라 next/image 최적화를 쓰지 않는다(다른 화면과 같음). */
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
@@ -29,7 +30,8 @@ type Msg =
   | { id: number; kind: "ai"; text: string; photos?: string[]; gap?: boolean; captions?: Record<string, string> }
   | { id: number; kind: "status"; text: string; gap?: boolean }
   | { id: number; kind: "dots" }
-  | { id: number; kind: "choices"; q: RoastQuestion; picked: string | null };
+  | { id: number; kind: "choices"; q: RoastQuestion; picked: string | null }
+  | { id: number; kind: "link"; href: string; label: string };
 
 type DistOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 type NewMsg = DistOmit<Msg, "id">;
@@ -151,6 +153,7 @@ export function RoastView({ initialResult, copy = ROAST_COPY, orders, ordersUsed
               key={run}
               name={name}
               age={age}
+              ready={!orders}
               runner={runner}
               photoOf={photoOf}
               onDone={(r) => {
@@ -222,8 +225,23 @@ function FreshResult({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** 문장 속 **굵게**, !!붉은 글씨!! 표시를 나눈다(표시 글자는 출력하지 않는다). */
+function richParts(text: string): { t: string; k: "" | "b" | "r" }[] {
+  const out: { t: string; k: "" | "b" | "r" }[] = [];
+  let last = 0;
+  for (const m of text.matchAll(/\*\*(.+?)\*\*|!!(.+?)!!/g)) {
+    if (m.index > last) out.push({ t: text.slice(last, m.index), k: "" });
+    out.push({ t: m[1] ?? m[2], k: m[1] != null ? "b" : "r" });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push({ t: text.slice(last), k: "" });
+  return out;
+}
+
 /** 한 글자씩 출력. 움직임 줄이기 설정이면 바로 전부 보인다. */
-function Typed({ text, onDone }: { text: string; onDone?: () => void }) {
+function Typed({ text: raw, onDone }: { text: string; onDone?: () => void }) {
+  const parts = useMemo(() => richParts(raw), [raw]);
+  const text = useMemo(() => parts.map((p) => p.t).join(""), [parts]);
   const [n, setN] = useState(0);
   const done = useRef(false);
   useEffect(() => {
@@ -240,9 +258,14 @@ function Typed({ text, onDone }: { text: string; onDone?: () => void }) {
     const t = setTimeout(() => setN((x) => (instant ? text.length : x + 1)), instant ? 0 : /[.?!,]/.test(ch ?? "") ? TYPE_MS * 8 : TYPE_MS);
     return () => clearTimeout(t);
   }, [n, text, onDone]);
+  const starts = parts.map((_, i) => parts.slice(0, i).reduce((sum, x) => sum + x.t.length, 0));
   return (
     <>
-      {text.slice(0, n)}
+      {parts.map((p, i) => {
+        const shown = p.t.slice(0, Math.max(0, n - starts[i]));
+        if (!shown) return null;
+        return p.k === "b" ? <strong key={i}>{shown}</strong> : p.k === "r" ? <strong key={i} className="text-red-700">{shown}</strong> : <Fragment key={i}>{shown}</Fragment>;
+      })}
       {n < text.length && <span className="roast-cursor" aria-hidden />}
     </>
   );
@@ -367,6 +390,9 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
   // 옷장 훈수에서 시작 버튼을 누르면 바로 아래에서 평가 기준(옷장·주문내역)을 고르게 한다.
   const [picking, setPicking] = useState(false);
   const [pickDone, setPickDone] = useState(false);
+  // 시작 버튼은 선언문에 동의(체크)해야 진행된다.
+  const [agreed, setAgreed] = useState(false);
+  const [needAgree, setNeedAgree] = useState(false);
   const router = useRouter();
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
@@ -396,11 +422,38 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
       )}
       {typed && enough && !dailyUsed && !asking && !picking && (
         <>
+          <label className="flex max-w-176 cursor-pointer items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => {
+                setAgreed(e.target.checked);
+                if (e.target.checked) setNeedAgree(false);
+              }}
+              className="mt-0.5 size-4 shrink-0"
+            />
+            <span>
+              <Typed text={copy.CONSENT} />
+            </span>
+          </label>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="roast-choice" onClick={() => (orders ? setAsking(true) : setPicking(true))}>
+            <button
+              type="button"
+              className="roast-choice"
+              onClick={() => {
+                if (!agreed) return setNeedAgree(true);
+                if (orders) setAsking(true);
+                else setPicking(true);
+              }}
+            >
               {copy.START_LABEL}
             </button>
           </div>
+          {needAgree && !agreed && (
+            <p className="text-xs text-red-700" role="alert">
+              {copy.CONSENT_WARN}
+            </p>
+          )}
         </>
       )}
       {typed && picking && (
@@ -472,12 +525,15 @@ interface Runner {
 function Chat({
   name,
   age,
+  ready,
   runner,
   photoOf,
   onDone,
 }: {
   name: string | null;
   age: number | null;
+  /** 옷장 훈수: 이름·나이 뒤에 "옷을 전부 넣었는지" 먼저 묻는다 */
+  ready: boolean;
   runner: Runner;
   photoOf: (id: string) => string | null;
   onDone: (r: RoastResult) => void;
@@ -541,6 +597,35 @@ function Chat({
     if (started.current) return;
     started.current = true;
     void (async () => {
+      if (ready) {
+        await think(500);
+        await sayBubbles(copy.READY_Q.replace(/\{who\}/g, name ?? "회원"));
+        await sayBubbles(copy.READY_WARN);
+        const q: RoastQuestion = {
+          id: "ready",
+          lead: [],
+          text: "",
+          options: [
+            { id: "all", label: copy.READY_ALL },
+            { id: "some", label: copy.READY_SOME },
+            { id: "later", label: copy.READY_LATER },
+          ],
+          reactions: {},
+          photos: [],
+        };
+        const picked = await new Promise<string>((resolve) => {
+          choiceWaiter.current = resolve;
+          push({ kind: "choices", q, picked: null });
+        });
+        await think(600);
+        await sayBubbles({ all: copy.READY_ALL_SAY, some: copy.READY_SOME_SAY, later: copy.READY_LATER_SAY }[picked] ?? "");
+        if (picked === "later") {
+          // 훈수는 여기서 끝내고, 옷장에 옷을 넣으러 갈 버튼만 보여 준다.
+          push({ kind: "link", href: "/wardrobe/new", label: copy.READY_ADD_LABEL });
+          return;
+        }
+        await sleep(400);
+      }
       // 분석을 준비하는 동안 첫 멘트를 먼저 띄운다.
       const starting = runner.start(name, age);
       if (copy.OPENING.length) {
@@ -621,7 +706,7 @@ function Chat({
       }
       return answers;
     }
-  }, [name, age, runner, onDone, push, say, think, copy]);
+  }, [name, age, ready, runner, onDone, push, say, think, copy]);
 
   const onTyped = useCallback((id: number) => {
     setTypedIds((s) => new Set(s).add(id));
@@ -644,6 +729,12 @@ function Chat({
         ) : m.kind === "dots" ? (
           <div key={m.id}>
             <Dots />
+          </div>
+        ) : m.kind === "link" ? (
+          <div key={m.id}>
+            <Link href={m.href} className={buttonClassName({ variant: "primary", size: "lg" })}>
+              {m.label}
+            </Link>
           </div>
         ) : (
           <div key={m.id} className="flex flex-col gap-2 sm:max-w-120">
