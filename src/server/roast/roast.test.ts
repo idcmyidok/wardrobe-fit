@@ -44,8 +44,7 @@ describe("무신사 인기 태그", () => {
 });
 
 describe("브랜드 그룹", () => {
-  it("굿즈는 새 그룹, 캐주얼은 프리미엄 캐주얼과 같은 그룹", () => {
-    expect(brandGroups(findBrand("GATA")!)).toContain("goods");
+  it("캐주얼은 프리미엄 캐주얼과 같은 그룹", () => {
     const casual = BRANDS.find((b) => b.positions.includes("캐주얼") && !b.positions.includes("프리미엄 캐주얼"))!;
     expect(brandGroups(casual)).toContain("premium_casual");
   });
