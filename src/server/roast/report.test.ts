@@ -63,8 +63,8 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
 
   it("선택지를 코드가 만드는 질문(퀴즈 등)은 반응 종류로 증감을 찾는다", () => {
     const q = { id: "quiz", text: "", options: [{ id: "2", label: "2" }], reactions: {}, roast: {}, photos: [], scoreKey: { "2": "right" } } as unknown as AskedQuestion;
-    const base = buildReport(a, null, 3, REPORT_TEXT, [q], { quiz: "2" }, {});
-    const right = buildReport(a, null, 3, REPORT_TEXT, [q], { quiz: "2" }, { quiz: { right: 4 } });
+    const base = buildReport(a, null, 3, REPORT_TEXT, [q], { quiz: "2" }, { rules: { lift: 0 } });
+    const right = buildReport(a, null, 3, REPORT_TEXT, [q], { quiz: "2" }, { rules: { lift: 0 }, quiz: { right: 4 } });
     expect(right.total.score - base.total.score).toBe(Math.min(4, 100 - base.total.score));
   });
 
@@ -84,6 +84,12 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     const up = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base: 60, lift: 0 } });
     const base = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { lift: 0 } });
     expect(up.total.score - base.total.score).toBe(Math.min(15, 100 - base.total.score));
+  });
+
+  it("낮은 점수 보정은 합계가 낮을수록 줄어 합계 0이면 0점(15점 미만은 비례)", () => {
+    const at = (base: number) => buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base } }).total.score;
+    expect(at(-200)).toBe(0);
+    expect(at(0)).toBeGreaterThanOrEqual(buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base: 0, lift: 0 } }).total.score);
   });
 
   it("핏은 치수가 없어도 직접 적은 핏이 5벌 이상이면 진단한다", () => {

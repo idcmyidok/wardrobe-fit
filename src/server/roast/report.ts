@@ -428,8 +428,11 @@ export function buildReport(
     return d ? [{ label: "질문 답", why: `"${q.text}" → ${q.options.find((o) => o.id === ans)?.label ?? ans}`, delta: d }] : [];
   });
   const bonus = answerDeltas.reduce((sum, x) => sum + x.delta, 0);
-  const lift = Number((deltas.rules as Partial<ScoreRules> | undefined)?.lift ?? SCORE_RULES.lift);
   const rawScore = Math.max(0, Math.min(100, wardrobe.score + bonus));
+  const liftRules = deltas.rules as Partial<ScoreRules> | undefined;
+  // 합계가 lift_floor점 미만이면 보정도 합계에 비례해 줄인다(합계 0이면 보정 0 → 0점까지 나올 수 있음). 옷장·주문내역 공통.
+  const liftFloor = Number(liftRules?.lift_floor ?? SCORE_RULES.lift_floor);
+  const lift = Number(liftRules?.lift ?? SCORE_RULES.lift) * (liftFloor > 0 ? Math.min(1, rawScore / liftFloor) : 1);
   const totalScore = Math.round(rawScore + (100 - rawScore) * lift);
   // 관리자 점수 풀이: 같은 항목(나이 구간별 등)은 합치고 판단 기준은 이어 붙인다.
   const merged = new Map<string, { delta: number; why: string[]; items: string[] }>();
@@ -442,7 +445,7 @@ export function buildReport(
     items: [
       ...[...merged.entries()].map(([id, m]) => ({ label: (override?.partName ?? SCORE_PART_NAME)[id] ?? id, why: m.why.join(" / "), delta: Math.round(m.delta * 10) / 10, ...(m.items.length ? { garments: m.items } : {}) })),
       ...answerDeltas,
-      { label: "낮은 점수 보정", why: `점수가 낮을수록 더 올려 줌: 합계 ${Math.round(rawScore)}점 → (100 − 합계) × ${lift}를 더함`, delta: Math.round((rawScore * (1 - lift) + 100 * lift - rawScore) * 10) / 10 },
+      { label: "낮은 점수 보정", why: `점수가 낮을수록 더 올려 줌(${liftFloor}점 미만은 합계에 비례해 줄임): 합계 ${Math.round(rawScore)}점 → (100 − 합계) × ${Math.round(lift * 1000) / 1000}를 더함`, delta: Math.round((rawScore * (1 - lift) + 100 * lift - rawScore) * 10) / 10 },
     ].filter((x) => x.delta),
     total: totalScore,
   };

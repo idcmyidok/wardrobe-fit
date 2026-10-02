@@ -379,14 +379,14 @@
 - `texts.ts` (266줄) DEFAULT_TEXTS:40 RoastTexts:50 ROAST_TEXT_MAX:52 CUSTOM_QUIZ_ID:55 UnitKind:57 UnitValue:58 TextUnit:60 unitsOf:69 orderMirrorKeys forOrders(주문내역 전용 칸 덮기) …
 
 ### src/server/roast/orders
-- `analysis.ts` (17줄) analyzeOrders:11
+- `analysis.ts` (18줄) analyzeOrders:12(마지막 인자 body: 내 치수를 입력한 사람만 넣음, order-actions prepare가 getMyBodyProfile로 불러 줌)
 - `context.ts` (38줄) OrderPop:7 OrderEvent:14 OrderContext:23(orderOf·measure: 같은 옷 반복용)
-- `input.ts` (75줄) orderItemSchema:16 OrderRoastItem:35 orderListSchema:36 toGarments:39
+- `input.ts` (86줄) orderItemSchema:16 OrderRoastItem:35 orderListSchema:36 measurementsOf(실측 문자열→옷 실측, 내 치수 비교용) toGarments:51
 - `metrics.ts` (106줄) orderRules:8 isStandard:10 likesOf:13 reviewsOf:14 isRanking:17 isHidden:27 thirds:35 busiestMonth:50 … styleShiftOf(오래된·최근 1/3 주 스타일, 질문·결과 글 공용)
 - `questions.ts` (92줄) ORDER_QUESTIONS:33
 - `report.ts` (105줄) orderOverride:29
 - `rules.ts` (176줄) ORDER_RULES:6 OrderRules:142 ORDER_AGE_RULES:149 ORDER_DELTAS:162
-- `score.ts` (286줄) OrderAgeKind:18 OrderScore:19 scoreOrders:42 orderTier:283 (점수 계산표 /mnt/project-files/roast/order-score-table.md)
+- `score.ts` (286줄) OrderAgeKind:18 OrderScore:19 scoreOrders:42 orderTier:283 (점수 계산표 /mnt/project-files/roast/order-score-table.md; 새 감점: tiny 극단적 저가·size_mess 사이즈 갈팡질팡·body_off 내 치수에 안 맞는 옷)
 - `texts.ts` (529줄) ORDER_SKIP_PATTERNS ORDER_MIRROR_SCREEN/QUESTIONS/REPORT_SKIP ORDER_SCREEN:9 ORDER_COMMON:41 ORDER_Q_TEXT:49 ORDER_REPORT_TEXT:248 ORDER_QUESTION_COND:300 ORDER_PART_NAME:317 ORDER_RULE_NAME:368 ORDER_AGE_KEY_NAME:480 …
 
 ### src/server/security
