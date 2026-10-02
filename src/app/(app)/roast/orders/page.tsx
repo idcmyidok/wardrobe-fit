@@ -1,5 +1,6 @@
 import { RoastView } from "@/components/roast/roast-view";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminUser } from "@/server/admin/guard";
 import { orderRoastUsed } from "@/server/roast/order-actions";
 import { getRoastTexts } from "@/server/roast/queries";
 
@@ -10,7 +11,7 @@ import { getRoastTexts } from "@/server/roast/queries";
 export const metadata = { title: "무신사 주문내역 훈수 · Wardrobe Fit", robots: { index: false } };
 
 export default async function OrderRoastPage() {
-  const [texts, used] = await Promise.all([getRoastTexts(await createSupabaseServerClient()), orderRoastUsed()]);
+  const [texts, used, admin] = await Promise.all([getRoastTexts(await createSupabaseServerClient()), orderRoastUsed(), getAdminUser()]);
   const { LOADING, ...screen } = texts.orders.screen;
-  return <RoastView initialResult={null} copy={{ ...texts.screen, ...screen }} orders={{ ...texts.orders.screen, LOADING }} ordersUsed={used} />;
+  return <RoastView initialResult={null} copy={{ ...texts.screen, ...screen }} orders={{ ...texts.orders.screen, LOADING }} ordersUsed={used} fast={Boolean(admin)} />;
 }

@@ -454,6 +454,7 @@ const REPORT_NAME: Record<string, string> = {
   SUMMARY_3: "요약 한 문장(특징 세 개)",
   SUMMARY_2: "요약 한 문장(특징 두 개)",
   SCORE_SAY: "요약 문장 뒤 점수 한마디(첫 줄 아래)",
+  SCORE_PARTIAL: "옷을 다 넣지 않고 시작했을 때 점수 한마디 뒤에 붙는 문장",
   summary: "요약 한 문장에 들어가는 특징 말",
   BASIS_BRAND: "기준 안내(브랜드 정보)",
   suspicious: "마지막 문단",

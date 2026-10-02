@@ -1,5 +1,6 @@
 import { RoastView } from "@/components/roast/roast-view";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminUser } from "@/server/admin/guard";
 import { getLatestRoast, getRoastTexts } from "@/server/roast/queries";
 
 export const metadata = { title: "내 패션 훈수 · Wardrobe Fit" };
@@ -7,6 +8,6 @@ export const metadata = { title: "내 패션 훈수 · Wardrobe Fit" };
 export const maxDuration = 30;
 
 export default async function RoastPage() {
-  const [result, texts] = await Promise.all([getLatestRoast(), createSupabaseServerClient().then(getRoastTexts)]);
-  return <RoastView initialResult={result} copy={texts.screen} />;
+  const [result, texts, admin] = await Promise.all([getLatestRoast(), createSupabaseServerClient().then(getRoastTexts), getAdminUser()]);
+  return <RoastView initialResult={result} copy={texts.screen} fast={Boolean(admin)} />;
 }
