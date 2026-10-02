@@ -513,7 +513,7 @@ export function buildReport(
 
   // 첫 줄(총점 평가)
   const owner = name ? `${name}님의` : "당신의";
-  const headline = tryFill(r, override?.headline[band] ?? R.HEADLINE[band], { owner, score: totalScore }) ?? `${owner} ${override ? "주문내역" : "옷장"}은 별로입니다.`;
+  const headline = tryFill(r, override?.headline[band] ?? R.HEADLINE[band], { owner, score: totalScore }) ?? `${owner} ${override ? "주문내역" : "옷장"}은 별로네요.`;
 
   // 목록: 많이 가진 옷, 많이 산 브랜드(사용자 요청).
   // - 많이 가진 옷: 세부분류 + 색 + 핏이 같은 옷이 dup_min벌(3벌) 이상인 것만. 2벌은 중복으로 보지 않고, 없으면 목록을 뺀다.

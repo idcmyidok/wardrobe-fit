@@ -70,7 +70,7 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
   it("이미 많은 옷을 최근에도 또 샀으면 중복 문단 하나에 이어 쓴다", () => {
     const dups = report.points.filter((x) => `${x.lead} ${x.text}`.includes("블랙 반소매 티셔츠"));
     expect(dups).toHaveLength(1);
-    expect(dups[0].text).toContain("최근 6개월에도 2벌");
+    expect(dups[0].text).toContain("비슷한 옷을 2벌");
     expect(dups[0].photos?.length).toBeGreaterThan(0);
   });
 

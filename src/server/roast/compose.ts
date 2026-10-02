@@ -136,7 +136,7 @@ export interface Plan {
 /** 첫 문장이 사용자의 답을 옮겨 말하는 틀("~라고 하셨죠.", "~고르셨습니다.")인지 */
 export function quotesAnswer(text: string): boolean {
   const first = text.split(/(?<=[.?!])\s/)[0] ?? "";
-  return /셨(습니다|죠|네요)[.?!]?$/.test(first.trim());
+  return /(셨(습니다|죠|네요)|(라고|다고|고|로|으로|을|를) ?(했|골랐|말했|답했)(습니다|죠|네요|어요|잖아요))[.?!]?$/.test(first.trim());
 }
 
 /** 질문 문장이 관련 패턴 문장과 같은 사실(숫자·달·금액)을 되풀이하는 질문. 이 질문을 하면 패턴 문장은 대화에서 뺀다. */
