@@ -58,7 +58,7 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
     }
     setError(null);
     setProgress(0);
-    // 하루 한 번: 오늘 이미 했으면 여기서 막는다. 횟수는 읽은 옷이 20벌 이상일 때 쓴다(아래 commitOrderRoast).
+    // 하루 한 번: 오늘 이미 했으면 여기서 막는다. 횟수는 읽은 옷이 30벌 이상일 때 쓴다(아래 commitOrderRoast).
     const begun = await beginOrderRoast();
     if (!begun.ok) {
       setError(begun.used ? text(copy.DAILY_USED) : begun.message);
@@ -148,7 +148,7 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
     }
     setProgress(100);
     saveOrderHandoff({ text: value, lookups });
-    // 훈수는 읽은 옷(가진 것만, 모자·신발·못 찾은 상품·옷이 아닌 상품 제외)이 20벌 이상일 때만. 모자라면 횟수를 쓰지 않고 안내한다(1년치만 복사했을 수 있어서).
+    // 훈수는 읽은 옷(가진 것만, 모자·신발·못 찾은 상품·옷이 아닌 상품 제외)이 30벌 이상일 때만. 모자라면 횟수를 쓰지 않고 안내한다(1년치만 복사했을 수 있어서).
     const real = items.filter((x) => (x.status === "kept" || x.status === "exchanged") && found.has(x.order) && !dropped.has(x.order) && x.categoryId !== "hat" && x.categoryId !== "shoes").length;
     if (real < MIN_CLOTHES) {
       setError(text(copy.TOO_FEW).replace(/\{n\}/g, String(real)));
