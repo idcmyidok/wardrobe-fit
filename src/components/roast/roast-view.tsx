@@ -766,7 +766,7 @@ function ResultView({
 }
 
 /** 결과 페이지: How Bad Is Your Spotify처럼 글 위주(총점 평가 → 요약 한 문장 → 목록 → 총점 → 진단 문단·사진 줄) */
-const REPORT_ORDER = ["lists", "total", "points", "dna", "notes"];
+const REPORT_ORDER = ["lists", "points", "dna", "notes"];
 
 function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string) => string | null }) {
   // 첫 줄은 항상 맨 위, 나머지는 관리자 "결과 구성"의 순서(예전 결과는 기본 순서)
@@ -784,8 +784,6 @@ function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string
         </ul>
       </div>
     )),
-    // 점수·총점 문장은 화면에 드러내지 않는다(점수 계산은 내부·관리자 풀이에만 쓴다).
-    total: null,
     points: report.points.map((p) => (
       <div key={p.id}>
         <p>

@@ -193,18 +193,24 @@ export function varLabel(group: string, key: string): string {
 /** 편집 화면의 묶음(패턴 하나, 질문 하나 등). 퀴즈는 편집 화면이 따로 모은다. */
 export interface TextGroupMeta {
   id: string;
-  kind: "screen" | "common" | "lines" | "questions" | "report" | "score" | "layout" | "orders";
+  kind: "screen" | "common" | "lines" | "questions" | "report" | "score" | "layout" | "orders" | "orders-layout";
   title: string;
   when: string;
 }
 
 /** 결과 구성 탭: 섹션·문단 이름과 내용이 무엇으로 정해지는지 */
 export const LAYOUT_SECTION: Record<string, { name: string; how: string }> = {
-  summary: { name: "요약 한 문장(제목 바로 아래)", how: "가장 뚜렷한 옷장 특징 세 개(모자라면 두 개)를 서로 다른 종류(색·브랜드·스타일·핏 등)에서 골라 한 문장으로 잇습니다." },
+  summary: { name: "요약 한 문장", how: "첫 줄 바로 아래에 고정됩니다. 가장 뚜렷한 옷장 특징 세 개(모자라면 두 개)를 서로 다른 종류(색·브랜드·스타일·핏 등)에서 골라 한 문장으로 잇고, 뒤에 점수 한마디(결과 페이지 탭)가 붙습니다. 점수 숫자는 이 한마디에만 나옵니다." },
   lists: { name: "목록 두 개", how: "많이 가진 옷(세부분류 + 색 + 핏이 같은 옷 3벌 이상, 없으면 뺌)과 많이 산 브랜드(옷장 대비 %, 1위가 기준 미만이면 뺌). 제목은 고정 문구입니다." },
-  total: { name: "총점", how: "옷장 점수(점수 탭 기준) + 질문·퀴즈 답의 증감. 한마디는 총점 구간별 문장에서 고릅니다." },
   points: { name: "진단 문단들", how: "아래 \"진단 문단 순서\"대로 이어집니다. 문단마다 조건이 안 맞으면 저절로 빠지고, 사진과 질문 답은 아래 \"개수\" 설정에 따라 붙습니다." },
   notes: { name: "안내 문구", how: "브랜드 정보가 있는 옷 수 같은 기준 안내입니다." },
+};
+/** 주문내역 훈수의 결과 구성(같은 설정 칸을 주문내역 전용으로 따로 둔다) */
+export const LAYOUT_SECTION_ORDERS: Record<string, { name: string; how: string }> = {
+  summary: { name: "요약 한 문장", how: "첫 줄 바로 아래에 고정됩니다. 주문내역에서 가장 뚜렷한 특징 세 개(모자라면 두 개)를 한 문장으로 잇고, 뒤에 점수 한마디가 붙습니다." },
+  lists: { name: "목록 두 개", how: "많이 산 옷(세부분류 + 색이 같은 옷 3벌 이상, 없으면 뺌)과 많이 산 브랜드(1위가 기준 미만이면 뺌). 제목은 고정 문구입니다." },
+  points: { name: "진단 문단들", how: "주문내역 전용 문단(랭킹템·스탠다드·평균가·시기별 변화·세일 달·반품/취소·나이)이 먼저 나오고, 이어서 아래 \"진단 문단 순서\"대로 이어집니다. 문단마다 조건이 안 맞으면 저절로 빠지고, 사진과 질문 답은 \"개수\" 설정에 따라 붙습니다." },
+  notes: { name: "안내 문구", how: "브랜드 정보를 읽은 옷 수 같은 기준 안내입니다." },
 };
 export const LAYOUT_POINT: Record<string, { name: string; how: string }> = {
   diag_lead: { name: "첫 진단", how: "옷장 패턴 중 가장 뚜렷한 것 하나" },
@@ -213,6 +219,14 @@ export const LAYOUT_POINT: Record<string, { name: string; how: string }> = {
   diag: { name: "나머지 진단", how: "뚜렷한 순서로, 진단 문단 수만큼" },
   wallet: { name: "지갑(비싼 옷 vs 싼 옷 브랜드)", how: "가격과 브랜드 정보가 있는 옷 8벌 이상" },
   vintage: { name: "빈티지·구제", how: "브랜드를 빈티지·구제로 적은 옷 3벌 이상" },
+  age: { name: "나이 한마디", how: "시작할 때 나이를 적었을 때" },
+  last: { name: "마지막 문단", how: "따로 붙일 곳이 없는 질문 답, 없으면 가장 비싼 옷" },
+};
+export const LAYOUT_POINT_ORDERS: Record<string, { name: string; how: string }> = {
+  diag_lead: { name: "첫 진단", how: "주문내역 패턴 중 가장 뚜렷한 것 하나" },
+  color: { name: "컬러 한마디", how: "색을 적은 옷 5벌 이상(데님 제외)일 때 무채색 비율로" },
+  diag: { name: "나머지 진단", how: "뚜렷한 순서로, 진단 문단 수만큼" },
+  wallet: { name: "지갑(비싼 옷 vs 싼 옷 브랜드)", how: "가격과 브랜드 정보가 있는 옷 8벌 이상" },
   age: { name: "나이 한마디", how: "시작할 때 나이를 적었을 때" },
   last: { name: "마지막 문단", how: "따로 붙일 곳이 없는 질문 답, 없으면 가장 비싼 옷" },
 };
@@ -229,7 +243,7 @@ const LAYOUT_COUNT: Record<string, string> = {
   answers: "질문에 답한 내용을 문단에 덧붙이는 최대 개수(앞에서 물은 질문 순서대로, 붙일 문단이 없는 답은 마지막 문단 하나로만)",
 };
 /** 결과 구성 탭에 같이 보여 주는 고정 문구(결과 페이지 탭과 같은 값) */
-const LAYOUT_FIXED = ["LIST_DUP", "LIST_BRAND", "TOTAL_LEAD", "BASIS_BRAND"];
+const LAYOUT_FIXED = ["LIST_DUP", "LIST_BRAND", "BASIS_BRAND"];
 
 const SUMMARY_NAME: Record<string, string> = {
   achro: "무채색 60% 이상",
@@ -417,8 +431,6 @@ const REPORT_NAME: Record<string, string> = {
   HEADLINE: "첫 줄: 총점 구간별 평가",
   LIST_DUP: "목록 제목: 많이 가진 옷",
   LIST_BRAND: "목록 제목: 많이 산 브랜드",
-  TOTAL_LEAD: "총 옷장 점수(굵게)",
-  TOTAL: "총점 구간별 한마디",
   DUP_RECENT: "같은 옷을 최근에도 또 샀을 때(중복 문단 뒤)",
   BRAND_RECENT: "같은 브랜드를 최근에도 또 샀을 때(브랜드 문단 뒤)",
   color: "컬러 한마디",
@@ -465,7 +477,7 @@ export function textGroups(qText: (qid: string, orders?: boolean) => string | un
     out.push({ id: `questions.${q.id}`, kind: "questions", title: qText(q.id) || (q.id === "quiz" ? "패션 퀴즈(앞 멘트)" : q.id), when: `${q.id} · ${QUESTION_COND[q.id] ?? ""}` });
   for (const [k, name] of Object.entries(REPORT_NAME)) out.push({ id: `report.${k}`, kind: "report", title: name, when: "" });
   for (const [k, v] of Object.entries(REPORT_TEXT.diag)) out.push({ id: `report.diag.${k}`, kind: "report", title: `진단: ${v.title}`, when: k });
-  out.push({ id: "report.layout.order", kind: "layout", title: "섹션 순서", when: "작은 숫자가 위(1~20). 첫 줄(점수 평가)은 항상 맨 위입니다." });
+  out.push({ id: "report.layout.order", kind: "layout", title: "섹션 순서", when: "작은 숫자가 위(1~20). 첫 줄(점수 구간 문장)과 요약 한 문장은 항상 맨 위에 고정입니다." });
   out.push({ id: "report.layout.show", kind: "layout", title: "섹션 켜기·끄기", when: "1이면 보이고 0이면 뺍니다." });
   out.push({ id: "report.layout.point_order", kind: "layout", title: "진단 문단 순서", when: "작은 숫자가 위(1~20). 조건이 안 맞는 문단은 저절로 빠집니다." });
   out.push({ id: "report.layout.point_show", kind: "layout", title: "진단 문단 켜기·끄기", when: "1이면 보이고 0이면 뺍니다." });
@@ -494,6 +506,10 @@ export function textGroups(qText: (qid: string, orders?: boolean) => string | un
     else if (kind === "lines") out.push({ id, kind: "orders", title: `${O}${a} (${SECTION_NAME[LINE_SECTION[a]]})`, when: PATTERN_COND[a] ?? "" });
     else if (kind === "questions")
       out.push({ id, kind: "orders", title: `${O}질문: ${qText(a, true) || (a === "quiz" ? "패션 퀴즈(앞 멘트)" : a)}`, when: `${a} · ${QUESTION_COND[a] ?? ""}` });
+    else if (a === "layout") {
+      const base = out.find((g) => g.id === `report.layout.${b}`)!;
+      out.push({ id, kind: "orders-layout", title: base.title, when: base.when });
+    } else if (LAYOUT_FIXED.includes(a)) out.push({ id, kind: "orders-layout", title: `고정 문구: ${REPORT_NAME[a] ?? a}`, when: "" });
     else if (a === "diag") out.push({ id, kind: "orders", title: `${O}진단: ${REPORT_TEXT.diag[b as keyof typeof REPORT_TEXT.diag]?.title ?? b}`, when: b });
     else out.push({ id, kind: "orders", title: `${O}결과: ${REPORT_NAME[a] ?? a}`, when: "" });
   }
@@ -538,7 +554,7 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
       if (last === "title") return "이름(관리용)";
       return last === "high" ? "뚜렷할 때(하나 고름, 첫 문장은 굵게)" : "반대쪽으로 뚜렷할 때(하나 고름, 첫 문장은 굵게)";
     }
-    if (p[1] === "HEADLINE" || p[1] === "TOTAL") return last === "b90" ? "90점 이상" : last === "b0" ? "10점 미만" : `${last.slice(1)}~${Number(last.slice(1)) + 9}점`;
+    if (p[1] === "HEADLINE") return last === "b90" ? "90점 이상" : last === "b0" ? "10점 미만" : `${last.slice(1)}~${Number(last.slice(1)) + 9}점`;
     if (p[1] === "color") return `${COLOR_NAME[last] ?? last} (하나 고름)`;
     if (p[1] === "fit") return `${FIT_NAME[last] ?? last} (하나 고름)`;
     if (p[1] === "age") return `${AGE_REMARK_NAME[last] ?? last} (하나 고름)`;

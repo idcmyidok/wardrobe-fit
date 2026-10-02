@@ -50,7 +50,6 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
   it("총 옷장 점수는 0~100이고, 질문·퀴즈 답의 증감을 더한다", () => {
     expect(report.total.score).toBeGreaterThanOrEqual(0);
     expect(report.total.score).toBeLessThanOrEqual(100);
-    expect(report.total.lead).toContain(`${report.total.score}점`);
     const plan = buildScript(a, 3, null);
     const q = plan.asked.find((x) => x.options.length && !x.scoreKey)!;
     const opt = q.options[0].id;
