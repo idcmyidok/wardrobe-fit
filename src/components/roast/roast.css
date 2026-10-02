@@ -400,3 +400,36 @@
     animation: none;
   }
 }
+
+/* 훈수 시작 전 버튼: 호버(그림자)·눌림(작아짐+어두워짐). 터치는 눌림만, 동작 줄이기는 색만. */
+.roast .btn,
+.roast .roast-choice {
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    box-shadow 0.15s,
+    transform 0.1s;
+}
+@media (hover: hover) {
+  .roast .btn:hover:not(:disabled),
+  .roast .roast-choice:hover:not(:disabled) {
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 22%, transparent);
+  }
+}
+.roast .btn:active:not(:disabled),
+.roast .roast-choice:active:not(:disabled) {
+  transform: scale(0.97);
+  filter: brightness(0.88);
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .roast .btn,
+  .roast .roast-choice {
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .roast .btn:active:not(:disabled),
+  .roast .roast-choice:active:not(:disabled) {
+    transform: none;
+  }
+}
