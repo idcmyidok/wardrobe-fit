@@ -171,10 +171,10 @@ export const SCORE_RULES = {
   misfit_max: 10,
   gap_months: 4,
   gap_max: 12,
-  basic_mass: 12,
+  basic_mass: 8,
   /** 무채색이 basic_full_pct% 이상이면 basic_mass, basic_pct~그 미만이면 basic_mass_mid */
   basic_full_pct: 95,
-  basic_mass_mid: 6,
+  basic_mass_mid: 4,
   lux_mismatch: 10,
   /** 신발이 shoes_few_n켤레 이하이거나 전부 운동화·스포츠화: 감점 */
   shoes_few_n: 2,
@@ -186,7 +186,7 @@ export const SCORE_RULES = {
   lift_floor: 15,
   /** 옷장 훈수 최종 점수 보정(주문내역은 안 씀): 합계 0점 → floor_min점, 합계 50점 → floor_mid점, 합계 100점 → 100점을 꺾은선으로 잇는다(위 lift 대신) */
   floor_min: 23,
-  floor_mid: 55,
+  floor_mid: 60,
   thin_n: 20,
   thin: 4,
   logo_pct: 20,
