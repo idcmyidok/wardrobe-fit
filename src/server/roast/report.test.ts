@@ -86,9 +86,10 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     expect(up.total.score - base.total.score).toBe(Math.min(15, 100 - base.total.score));
   });
 
-  it("옷장 훈수의 낮은 점수 보정은 그대로다(합계 0이어도 보정만큼 오른다)", () => {
-    const zero = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base: -200 } });
-    expect(zero.total.score).toBe(12);
+  it("낮은 점수 보정은 합계가 낮을수록 줄어 합계 0이면 0점(15점 미만은 비례)", () => {
+    const at = (base: number) => buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base } }).total.score;
+    expect(at(-200)).toBe(0);
+    expect(at(0)).toBeGreaterThanOrEqual(buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base: 0, lift: 0 } }).total.score);
   });
 
   it("핏은 치수가 없어도 직접 적은 핏이 5벌 이상이면 진단한다", () => {
