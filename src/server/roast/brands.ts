@@ -67,6 +67,7 @@ export type BrandGroup =
   | "street"
   | "sports"
   | "outdoor"
+  | "goods"
   | "mass";
 
 export const BRAND_GROUPS: BrandGroup[] = [
@@ -80,6 +81,7 @@ export const BRAND_GROUPS: BrandGroup[] = [
   "street",
   "sports",
   "outdoor",
+  "goods",
   "mass",
 ];
 
@@ -95,6 +97,7 @@ export const GROUP_WORD: Record<BrandGroup, string> = {
   street: "스트릿 브랜드",
   sports: "스포츠 브랜드",
   outdoor: "아웃도어 브랜드",
+  goods: "굿즈 브랜드",
   mass: "SPA·대중 브랜드",
 };
 
@@ -149,13 +152,14 @@ export function brandGroups(b: BrandInfo): BrandGroup[] {
   if (has(b.positions, "럭셔리", "헤리티지 럭셔리")) out.push("luxury");
   if (has(b.positions, "디자이너", "하이엔드 디자이너")) out.push("designer");
   if (has(b.positions, "컨템포러리", "프리미엄")) out.push("contemporary");
-  if (has(b.positions, "프리미엄 캐주얼")) out.push("premium_casual");
+  if (has(b.positions, "프리미엄 캐주얼", "캐주얼")) out.push("premium_casual");
   if (has(b.positions, "전문 브랜드")) out.push("specialist");
   if (b.country === "일본" && (has(b.types, "데님 전문", "워크웨어") || has(b.tags, "아메카지", "워크웨어", "데님"))) out.push("jp_denim");
   if (b.heritage >= 4) out.push("heritage");
   if (has(b.positions, "스트릿")) out.push("street");
   if (has(b.positions, "스포츠")) out.push("sports");
   if (has(b.positions, "아웃도어")) out.push("outdoor");
+  if (has(b.positions, "굿즈")) out.push("goods");
   if (has(b.positions, "SPA", "매스마켓")) out.push("mass");
   return out;
 }
