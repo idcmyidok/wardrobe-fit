@@ -245,6 +245,11 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
     flush();
   }
   if (messy.length) add("size_mess", -R.size_mess, `같은 브랜드에서 ${R.size_gap_months}개월 안에 이어 산 옷의 사이즈가 ${R.size_kinds_n}종 이상 (${[...new Set(messy.map((i) => i.brandLabel))].join("·")})`, messy);
+  // 내 치수에 크게 안 맞는 옷: 내 치수를 입력했고 실측을 읽은 옷만(a.items의 fit은 내 치수로 계산한 것)
+  const fitted = clothes.filter((i) => i.fit != null);
+  const offList = fitted.filter((i) => i.fit!.level === "too_small" || i.fit!.level === "too_big");
+  if (fitted.length >= R.body_off_min_n && (offList.length / fitted.length) * 100 >= R.body_off_pct)
+    add("body_off", -Math.min(R.body_off_max, R.body_off + ((offList.length / fitted.length) * 100 - R.body_off_pct) / 10), `내 치수에 너무 작거나 너무 큰 옷 ${offList.length}벌 / 실측을 읽은 ${fitted.length}벌, ${P(offList.length / fitted.length)} (${R.body_off_pct}% 이상 −${R.body_off}, 10%p 늘 때마다 −1, 최대 −${R.body_off_max})`, offList);
   // 같은 옷 반복: 같은 상품(색만 다른 것 포함)을 같은 실측(실측을 못 찾으면 같은 사이즈)으로 다른 주문에서 또 산 것.
   // 한 주문의 팩(2PACK 등)은 한 번으로 본다.
   const fitKey = (i: Item) => a.orders?.measure[i.id] ?? (i.g.sizeLabel ? `size:${i.g.sizeLabel.toUpperCase().replace(/\s+/g, "")}` : null);

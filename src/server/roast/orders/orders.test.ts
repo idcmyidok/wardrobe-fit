@@ -5,6 +5,7 @@ import { buildReport } from "../report";
 import { LINE_TEXT } from "../lines";
 import { applyTextEdits, DEFAULT_TEXTS, forOrders, orderMirrorKeys, unitAt } from "../texts";
 import { analyzeOrders } from "./analysis";
+import { EMPTY_BODY, type BodyProfile } from "@/lib/fit/body-fit";
 import { orderItemSchema, toGarments, type OrderRoastItem } from "./input";
 import { busiestMonth, isRanking, isStandard, returnStats } from "./metrics";
 import { orderOverride } from "./report";
@@ -271,6 +272,39 @@ describe("주문내역 훈수 목록 → 분석", () => {
     };
     expect(part(2)).toBe(2);
     expect(part(1)).toBeUndefined();
+  });
+});
+
+describe("주문내역 점수: 새 감점", () => {
+  const score = (list: OrderRoastItem[], rules = {}, body: BodyProfile | null = null) => {
+    const { garments, ctx } = toGarments(list);
+    return scoreOrders(analyzeOrders(garments, ctx, 1360, now, undefined, body), { age: 24, rules });
+  };
+  const ids = (s: ReturnType<typeof score>) => s.parts.map((p) => p.id);
+
+  it("극단적 저가: 1만 원 미만 옷이 20% 이상이면 감점", () => {
+    seq = 0;
+    const cheap = [...Array.from({ length: 3 }, () => item({ price: 9_900 })), ...Array.from({ length: 7 }, () => item({ price: 39_000 }))];
+    expect(ids(score(cheap))).toContain("tiny");
+    expect(ids(score(cheap.slice(2)))).not.toContain("tiny");
+  });
+
+  it("사이즈 갈팡질팡: 같은 브랜드 사이즈 3종 이상, 1.5년 이상 떨어진 구매는 따로 본다", () => {
+    seq = 0;
+    const mk = (sizes: string[], dates: string[]) => sizes.map((size, k) => item({ brand: "커버낫", size, date: dates[k], price: 39_000 }));
+    expect(ids(score(mk(["S", "M", "L"], ["2026-01-10", "2026-03-10", "2026-05-10"])))).toContain("size_mess");
+    expect(ids(score(mk(["S", "M", "L"], ["2023-01-10", "2025-03-10", "2026-05-10"])))).not.toContain("size_mess");
+    expect(ids(score(mk(["M", "M", "L"], ["2026-01-10", "2026-03-10", "2026-05-10"])))).not.toContain("size_mess");
+  });
+
+  it("내 치수에 안 맞는 옷: 치수를 입력한 사람만, 실측을 읽은 옷이 5벌 이상일 때 30% 이상이면 감점", () => {
+    seq = 0;
+    const body: BodyProfile = { ...EMPTY_BODY, values: { height: 175, shoulder: 45, chest: 94, waist: 80, hip: 94, thigh: 56 } };
+    const tee = (chest: number) => item({ brand: "커버낫", name: `티 ${seq}`, measure: `chest:${chest}|shoulder:46|length:71`, date: "2026-01-10", price: 39_000 });
+    const list = [...Array.from({ length: 3 }, () => tee(44)), ...Array.from({ length: 4 }, () => tee(52))];
+    expect(ids(score(list, {}, body))).toContain("body_off");
+    expect(ids(score(list))).not.toContain("body_off");
+    expect(ids(score(list.slice(2), {}, body))).not.toContain("body_off");
   });
 });
 

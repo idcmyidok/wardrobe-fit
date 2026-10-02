@@ -131,6 +131,11 @@ export const ORDER_RULES = {
   tiny_won: 1,
   tiny_pct: 20,
   tiny: 3,
+  /** 내 치수에 크게 안 맞는 옷(너무 작음·너무 큼): 치수를 입력한 사람만. 실측을 읽은 옷이 body_off_min_n벌 이상일 때 그 비율이 body_off_pct% 이상이면 body_off점, 10%p 늘 때마다 1점 더, 최대 body_off_max점 */
+  body_off_min_n: 5,
+  body_off_pct: 30,
+  body_off: 2,
+  body_off_max: 6,
   /** 기본 상의만: 반팔·긴팔 티, 맨투맨, 후드가 옷의 basic_tops_pct% 이상 */
   basic_tops_pct: 50,
   basic_tops: 4,

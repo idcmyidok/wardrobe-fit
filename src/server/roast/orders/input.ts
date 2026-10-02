@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { normalizeColorName } from "@/lib/constants/colors";
+import { MEASUREMENT_KEYS, type MeasurementKey } from "@/lib/constants/measurements";
 import type { CategoryId, Garment } from "@/lib/types/domain";
 import type { OrderContext } from "./context";
 
@@ -35,6 +36,17 @@ export const orderItemSchema = z.object({
 export type OrderRoastItem = z.input<typeof orderItemSchema>;
 export const orderListSchema = z.array(orderItemSchema).max(3000);
 
+/** "chest:55|length:70" → 실측(대분류에 있는 항목만). 내 치수와 견줘 크게 안 맞는 옷을 볼 때 쓴다. */
+function measurementsOf(cat: CategoryId, measure: string | null | undefined): Garment["measurements"] {
+  const out: Garment["measurements"] = {};
+  const allowed = MEASUREMENT_KEYS[cat] as readonly string[];
+  for (const part of (measure ?? "").split("|")) {
+    const [k, v] = part.split(":");
+    if (allowed.includes(k) && Number.isFinite(Number(v))) out[k as MeasurementKey] = Number(v);
+  }
+  return out;
+}
+
 /** 목록 → 분석용 옷과 주문내역 정보. 옷은 구매 확정·교환한 것 중 분류가 있는 것만. */
 export function toGarments(list: OrderRoastItem[]): { garments: Garment[]; ctx: OrderContext } {
   const garments: Garment[] = [];
@@ -66,7 +78,7 @@ export function toGarments(list: OrderRoastItem[]): { garments: Garment[]; ctx: 
       purchasePrice: x.price || null,
       productUrl: x.goodsNo ? `https://www.musinsa.com/products/${x.goodsNo}` : null,
       imageUrl: x.image,
-      measurements: {},
+      measurements: measurementsOf(x.categoryId, x.measure),
       fitReview: null,
       shoeFit: null,
     });

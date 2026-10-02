@@ -7,6 +7,7 @@ import { isAuthConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
 import { isAdmin } from "@/server/admin/guard";
 import { getQuotaExemption } from "@/server/admin/is-admin";
+import { getMyBodyProfile } from "@/server/body/queries";
 import { getUsdRate } from "@/server/settings/queries";
 import { MIN_GARMENTS, type Analysis } from "./analyze";
 import { analyzeOrders } from "./orders/analysis";
@@ -48,10 +49,10 @@ async function prepare(items: unknown): Promise<{ a: Analysis; T: RoastTexts; si
     if (!supabase || !user) return { error: "로그인이 필요합니다. 다시 로그인해 주세요." };
     userId = user.id;
   }
-  const [texts, usdRate] = await Promise.all([getRoastTexts(supabase), userId ? getUsdRate() : DEFAULT_USD_KRW]);
+  const [texts, usdRate, body] = await Promise.all([getRoastTexts(supabase), userId ? getUsdRate() : DEFAULT_USD_KRW, userId ? getMyBodyProfile() : null]);
   const T = forOrders(texts);
   const { garments, ctx } = toGarments(parsed.data as OrderRoastItem[]);
-  const a = analyzeOrders(garments, ctx, usdRate, new Date(), T.score.rules as Partial<ScoreRules> | undefined);
+  const a = analyzeOrders(garments, ctx, usdRate, new Date(), T.score.rules as Partial<ScoreRules> | undefined, body);
   return { a, T, signedIn: Boolean(userId), userId };
 }
 
