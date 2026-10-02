@@ -28,8 +28,8 @@ const g = (i: number, over: Partial<Garment> = {}): Garment =>
   }) as Garment;
 
 describe("옷장 최저점 보정", () => {
-  it("0점 23점, 50점 55점, 100점 100점을 꺾은선으로 잇는다", () => {
-    expect([0, 25, 50, 75, 100].map((x) => floorTotal(x))).toEqual([23, 39, 55, 78, 100]);
+  it("0점 23점, 50점 60점, 100점 100점을 꺾은선으로 잇는다", () => {
+    expect([0, 25, 50, 75, 100].map((x) => floorTotal(x))).toEqual([23, 42, 60, 80, 100]);
     expect(floorTotal(-5)).toBe(23);
     expect(tierOf(floorTotal(0))).toBe("low");
   });
@@ -166,13 +166,13 @@ describe("옷장 점수(점수 계획서)", () => {
     expect(SCORE_DELTAS.quiz).toEqual({ right: 0, wrong: -9 });
     expect(SCORE_DELTAS.band_quiz).toEqual({ right: 0, wrong: -9 });
   });
-  it("무채색뿐인데 고급 브랜드 없음: 95% 이상 -12, 85~95% -6", () => {
+  it("무채색뿐인데 고급 브랜드 없음: 95% 이상 -8, 85~95% -4", () => {
     const part = (colored: number) => {
       const list = Array.from({ length: 20 }, (_, i) => g(i, { brand: "UNIQLO", colorName: i < colored ? "네이비" : "블랙" }));
       return scoreWardrobe(analyze(list, null, 1360, now), { age: null }).parts.find((p) => p.id === "basic_mass")?.delta;
     };
-    expect(part(0)).toBe(-12);
-    expect(part(2)).toBe(-6);
+    expect(part(0)).toBe(-8);
+    expect(part(2)).toBe(-4);
     expect(part(5)).toBeUndefined();
   });
 
