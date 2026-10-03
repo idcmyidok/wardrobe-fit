@@ -1,7 +1,7 @@
 import "server-only";
 import { colorCounted, type Analysis, type Item } from "../analyze";
 import { brandLabels, MUSINSA_POPULAR, musinsaLikesCut } from "../brands";
-import { ageAt, bandName, bandOf, isFormalLux, isGood, isHeritage, isMidTier, isNice, isRepro, isTopDesigner, monthIndex, type ScorePart } from "../score";
+import { ageAt, youngNote, youngWeight, bandName, bandOf, isFormalLux, isGood, isHeritage, isMidTier, isNice, isRepro, isTopDesigner, monthIndex, type ScorePart } from "../score";
 import { SCORE_RULES } from "../score-deltas";
 import { won } from "../text";
 import { avgPrice, busiestMonth, isRanking, isStandard, orderRules, returnStats, thirds, topTag } from "./metrics";
@@ -57,7 +57,7 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   const ranking = (i: Item) => isRanking(a, i, R);
   const likesCut = musinsaLikesCut(SCORE_RULES.musinsa_likes_top);
   const isMusinsa = (i: Item) =>
-    !i.groups.includes("mass") && !isStandard(i) && (brandLabels(i.g.brand).includes(MUSINSA_POPULAR) || (likesCut != null && (i.brand?.likes ?? 0) >= likesCut));
+    !(i.groups.includes("mass") || i.groups.includes("spa")) && !isStandard(i) && (brandLabels(i.g.brand).includes(MUSINSA_POPULAR) || (likesCut != null && (i.brand?.likes ?? 0) >= likesCut));
 
   const known = items.filter((i) => i.brand);
   const enough = known.length >= 5;
@@ -115,12 +115,12 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   const reproList = items.filter(isRepro);
   if (reproList.length) add("repro", reproList.length >= R.repro_many_n ? R.repro_many : R.repro, `일본 데님·리바이스 빈티지 ${reproList.length}벌 (${R.repro_many_n}벌 이상이면 +${R.repro_many})`, reproList);
   // 국가를 모르는 브랜드는 해외로 치지 않는다.
-  const isForeign = (i: Item) => Boolean(i.brand!.country) && i.brand!.country !== "한국" && !i.groups.includes("mass") && i.brand!.price >= R.foreign_price;
+  const isForeign = (i: Item) => Boolean(i.brand!.country) && i.brand!.country !== "한국" && !(i.groups.includes("mass") || i.groups.includes("spa")) && i.brand!.price >= R.foreign_price;
   const foreign = share(known, isForeign);
   if (enough && foreign * 100 >= R.foreign_pct) add("foreign", R.foreign, `해외 브랜드(SPA·대중 제외, 가격 레벨 ${R.foreign_price} 이상) ${P(foreign)} (${R.foreign_pct}% 이상)`, known.filter(isForeign));
   const boldList = items.filter((i) => (i.price ?? 0) >= R.bold_won * 10_000);
   if (boldList.length) add("bold", R.bold, `${R.bold_won}만 원 이상 옷 ${boldList.length}벌`, boldList);
-  const regulars = [...byBrand.values()].filter((l) => l.length >= 2 && l.length <= 4 && !isMusinsa(l[0]) && !isStandard(l[0]) && !l[0].groups.includes("mass"));
+  const regulars = [...byBrand.values()].filter((l) => l.length >= 2 && l.length <= 4 && !isMusinsa(l[0]) && !isStandard(l[0]) && !(l[0].groups.includes("mass") || l[0].groups.includes("spa")));
   if (regulars.length >= R.regular_n) add("regular", R.regular, `2~4벌씩 산 단골 브랜드(무신사 인기·스탠다드·대중 제외) ${regulars.length}곳 (${R.regular_n}곳 이상)`, regulars.flat());
   // 색: 데님은 빼고 본다. 기본색 = 무채색
   const colored = items.filter(colorCounted);
@@ -188,11 +188,11 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
     (((i.brand!.likes ?? 0) >= R.popular_likes_10k * 10_000 && i.brand!.price < R.popular_price && i.brand!.pop >= 4) || (i.brand!.positions.includes("SPA") && i.brand!.price <= 3) || isMusinsa(i));
   const isPopular = (i: Item) => !isStandard(i) && (ranking(i) || isPopularBrand(i));
   const popularList = items.filter(isPopular);
-  const popularShare = items.length ? popularList.length / items.length : 0;
+  const popularShare = items.length ? popularList.reduce((s, i) => s + youngWeight(opts.age, i, now, R), 0) / items.length : 0;
   add(
     "popular",
     -over(popularShare, R.popular_from, R.popular_per10, R.popular_max),
-    `인기 쏠림(랭킹템·인기 대중 브랜드·무신사 인기 브랜드) ${P(popularShare)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max}). 랭킹템 = 하트 ${(R.rank_likes_k * 1000).toLocaleString()}개·후기 ${(R.rank_reviews_h * 100).toLocaleString()}개 이상`,
+    `인기 쏠림(랭킹템·인기 대중 브랜드·무신사 인기 브랜드) ${P(popularShare)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max}${opts.age != null ? `, ${youngNote(R)}` : ""}). 랭킹템 = 하트 ${(R.rank_likes_k * 1000).toLocaleString()}개·후기 ${(R.rank_reviews_h * 100).toLocaleString()}개 이상`,
     popularList,
   );
   if (enough) {

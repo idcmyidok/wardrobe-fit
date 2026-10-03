@@ -52,6 +52,7 @@ const ANSWER_TO: Record<string, string[]> = {
   brand_spend_q: ["brand"],
   brand_employee: ["brand"],
   brand_alert: ["brand"],
+  spa_why: ["spa", "brand"],
   color_taste: ["color"],
   black_why: ["color"],
   chroma_love: ["color"],
@@ -177,6 +178,13 @@ export function buildReport(
     const share = t1.n / K;
     if (share >= 0.6) add({ id: "style", side: "high", strength: clamp((share - 0.5) / 0.4) * 0.7, value: `${t1.t} ${pct(t1.n, K)}%`, vars: { tag1: t1.t, pct: pct(t1.n, K) } });
     else if (t3.n / t1.n >= 0.75 && share < 0.45) add({ id: "style", side: "low", strength: 0.4, value: `${t1.t} · ${t2.t} · ${t3.t}`, vars: { tag1: t1.t, tag2: t2.t, tag3: t3.t } });
+  }
+
+  // SPA 브랜드: 브랜드를 아는 옷 중 SPA가 3벌 이상이고 30% 이상이면, 많이 산 SPA 브랜드 이름을 넣어 한 문단
+  const spaList = branded.filter((i) => i.groups.includes("spa"));
+  if (spaList.length >= 3 && spaList.length / Math.max(branded.length, 1) >= 0.3) {
+    const names = countBy(spaList, (i) => i.brand!.name).slice(0, 3).map(([n]) => n);
+    add({ id: "spa", side: "high", strength: clamp((spaList.length / branded.length - 0.2) / 0.5), value: `SPA 브랜드 ${pct(spaList.length, branded.length)}%`, vars: { brands: names.join("·") }, photos: photosOf(spaList) });
   }
 
   // 무신사 동기화도(4.6): 브랜드를 적은 옷 중 무신사 인기 브랜드 표시가 있는 옷
@@ -466,6 +474,7 @@ export function buildReport(
   const fsum = fitSummary(clothes);
   const designerShareAll = known.filter((i) => i.groups.includes("designer") || i.groups.includes("luxury") || i.groups.includes("contemporary")).length / Math.max(K, 1);
   const massShare = known.filter((i) => i.groups.includes("mass")).length / Math.max(K, 1);
+  const spaShare = known.filter((i) => i.groups.includes("spa")).length / Math.max(K, 1);
   const oldShareAll = dated.length ? dated.filter((i) => now - Date.parse(i.date!) >= 3 * 365 * DAY).length / dated.length : 0;
   const colorAp = colored.length ? achro.length / colored.length : 0;
   const blackShare = colored.length ? colored.filter((i) => findColorFamily(i.color) === "블랙").length / colored.length : 0;
@@ -476,6 +485,7 @@ export function buildReport(
     { kind: "brand", key: "brand_one", s: branded.length >= 8 && brandShare >= 0.25 ? clamp((brandShare - 0.2) / 0.4) : 0, vars: { brand: brandName } },
     { kind: "brand", key: "musinsa", s: branded.length >= 8 && musinsaShare >= 0.5 ? clamp((musinsaShare - 0.4) / 0.5) : 0 },
     { kind: "brand", key: "designer", s: enough && designerShareAll >= 0.35 ? clamp((designerShareAll - 0.25) / 0.5) : 0 },
+    { kind: "brand", key: "spa", s: enough && spaShare >= 0.3 ? clamp((spaShare - 0.2) / 0.5) : 0 },
     { kind: "brand", key: "mass", s: enough && massShare >= 0.4 ? clamp((massShare - 0.3) / 0.5) : 0 },
     { kind: "brand", key: "hype", s: enough && hype >= 3.6 ? clamp((hype - 3.3) / 1.2) : 0 },
     { kind: "brand", key: "heritage", s: enough && heritage >= 3.8 ? clamp((heritage - 3.5) / 1.2) : 0 },
