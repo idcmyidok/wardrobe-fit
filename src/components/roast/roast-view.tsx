@@ -397,6 +397,8 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
   // 옷장 훈수에서 시작 버튼을 누르면 바로 아래에서 평가 기준(옷장·주문내역)을 고르게 한다.
   const [picking, setPicking] = useState(false);
   const [pickDone, setPickDone] = useState(false);
+  // 옷장 훈수 시작 화면의 "어떤 기준으로 평가하나요?" 버튼: 누르면 평가 기준 안내를 보여 준다.
+  const [criteria, setCriteria] = useState(false);
   // 맨 처음(옷장 훈수) 시작 화면의 시작 버튼은 선언문에 동의(체크)해야 진행된다. 주문내역 훈수 시작 화면에는 없다.
   const [agreed, setAgreed] = useState(false);
   const [needAgree, setNeedAgree] = useState(false);
@@ -439,6 +441,11 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
           <Typed text={dailyNotice} />
         </p>
       )}
+      {typed && !orders && criteria && (
+        <p className="roast-ai">
+          <Typed text={copy.CRITERIA} />
+        </p>
+      )}
       {typed && enough && !dailyUsed && !asking && !picking && (
         <>
           {!orders && (
@@ -469,6 +476,11 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
             >
               {copy.START_LABEL}
             </button>
+            {!orders && !criteria && (
+              <button type="button" className="roast-choice" onClick={() => setCriteria(true)}>
+                {copy.CRITERIA_LABEL}
+              </button>
+            )}
           </div>
           {!orders && needAgree && !agreed && (
             <p className="text-xs text-red-700" role="alert">
