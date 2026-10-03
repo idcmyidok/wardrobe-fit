@@ -53,6 +53,7 @@ export const REPORT_TEXT = {
     musinsa: ["무신사 인기 브랜드 중심"],
     country: ["{country} 브랜드 중심"],
     designer: ["디자이너 브랜드 중심"],
+    spa: ["SPA 브랜드 중심"],
     mass: ["대중 브랜드 중심"],
     hype: ["요즘 뜨는 브랜드 위주"],
     heritage: ["역사 깊은 브랜드 위주"],
@@ -141,6 +142,10 @@ export const REPORT_TEXT = {
       title: "스타일 일관도",
       high: ["{tag1} 브랜드가 {pct}%입니다. 어디서 샀는지는 달라도 사는 옷은 결국 다 비슷하네요."],
       low: ["옷장에서 {tag1}, {tag2}, {tag3|이} 비슷한 지분을 갖고 있네요. 아직 옷장 내 합의가 끝나지 않았습니다."],
+    },
+    spa: {
+      title: "SPA 브랜드",
+      high: ["SPA 브랜드 {brands|을} 애용합니다. 화려함 대신 기본기로 승부하는 성향일지도요."],
     },
     musinsa: {
       title: "무신사 동기화도",

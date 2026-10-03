@@ -57,7 +57,7 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   const ranking = (i: Item) => isRanking(a, i, R);
   const likesCut = musinsaLikesCut(SCORE_RULES.musinsa_likes_top);
   const isMusinsa = (i: Item) =>
-    !i.groups.includes("mass") && !isStandard(i) && (brandLabels(i.g.brand).includes(MUSINSA_POPULAR) || (likesCut != null && (i.brand?.likes ?? 0) >= likesCut));
+    !(i.groups.includes("mass") || i.groups.includes("spa")) && !isStandard(i) && (brandLabels(i.g.brand).includes(MUSINSA_POPULAR) || (likesCut != null && (i.brand?.likes ?? 0) >= likesCut));
 
   const known = items.filter((i) => i.brand);
   const enough = known.length >= 5;
@@ -115,12 +115,12 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   const reproList = items.filter(isRepro);
   if (reproList.length) add("repro", reproList.length >= R.repro_many_n ? R.repro_many : R.repro, `일본 데님·리바이스 빈티지 ${reproList.length}벌 (${R.repro_many_n}벌 이상이면 +${R.repro_many})`, reproList);
   // 국가를 모르는 브랜드는 해외로 치지 않는다.
-  const isForeign = (i: Item) => Boolean(i.brand!.country) && i.brand!.country !== "한국" && !i.groups.includes("mass") && i.brand!.price >= R.foreign_price;
+  const isForeign = (i: Item) => Boolean(i.brand!.country) && i.brand!.country !== "한국" && !(i.groups.includes("mass") || i.groups.includes("spa")) && i.brand!.price >= R.foreign_price;
   const foreign = share(known, isForeign);
   if (enough && foreign * 100 >= R.foreign_pct) add("foreign", R.foreign, `해외 브랜드(SPA·대중 제외, 가격 레벨 ${R.foreign_price} 이상) ${P(foreign)} (${R.foreign_pct}% 이상)`, known.filter(isForeign));
   const boldList = items.filter((i) => (i.price ?? 0) >= R.bold_won * 10_000);
   if (boldList.length) add("bold", R.bold, `${R.bold_won}만 원 이상 옷 ${boldList.length}벌`, boldList);
-  const regulars = [...byBrand.values()].filter((l) => l.length >= 2 && l.length <= 4 && !isMusinsa(l[0]) && !isStandard(l[0]) && !l[0].groups.includes("mass"));
+  const regulars = [...byBrand.values()].filter((l) => l.length >= 2 && l.length <= 4 && !isMusinsa(l[0]) && !isStandard(l[0]) && !(l[0].groups.includes("mass") || l[0].groups.includes("spa")));
   if (regulars.length >= R.regular_n) add("regular", R.regular, `2~4벌씩 산 단골 브랜드(무신사 인기·스탠다드·대중 제외) ${regulars.length}곳 (${R.regular_n}곳 이상)`, regulars.flat());
   // 색: 데님은 빼고 본다. 기본색 = 무채색
   const colored = items.filter(colorCounted);
