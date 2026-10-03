@@ -205,8 +205,14 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
     // 무신사 좋아요가 많고 고가 미만이면서 대중적인 브랜드(SPA·매스마켓 포함) 쏠림
     const isPopular = (i: Item) =>
       ((i.brand!.likes ?? 0) >= R.popular_likes && i.brand!.price < 5 && i.brand!.pop >= 4) || (i.brand!.positions.includes("SPA") && i.brand!.price <= 3);
-    const popular = share(known, isPopular);
-    add("popular", -over(popular, R.popular_from, R.popular_per10, R.popular_max), `좋아요 ${R.popular_likes.toLocaleString()} 이상·고가 미만·대중적 브랜드, 또는 가격 레벨 3 이하 SPA(좋아요 상관없음) ${P(popular)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max})`, known.filter(isPopular));
+    const popularList = known.filter(isPopular);
+    const popular = known.length ? popularList.reduce((s, i) => s + youngWeight(opts.age, i, now, R), 0) / known.length : 0;
+    add(
+      "popular",
+      -over(popular, R.popular_from, R.popular_per10, R.popular_max),
+      `좋아요 ${R.popular_likes.toLocaleString()} 이상·고가 미만·대중적 브랜드, 또는 가격 레벨 3 이하 SPA(좋아요 상관없음) ${P(popular)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max}${opts.age != null ? `, ${youngNote(R)}` : ""})`,
+      popularList,
+    );
     const isTrendy = (i: Item) => i.brand!.hype >= 4 && i.brand!.pop >= 4;
     const trendy = share(known, isTrendy);
     if (trendy * 100 >= R.trendy_pct) add("trendy", -R.trendy, `하이프·대중성 모두 높은 브랜드 ${P(trendy)} (${R.trendy_pct}% 이상)`, known.filter(isTrendy));
@@ -308,6 +314,19 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
 export function fitContrast(f: ReturnType<typeof fitSummary>): boolean {
   if (f.top.n < 3 || f.bottom.n < 3) return false;
   return (f.top.trimShare >= 0.5 && f.bottom.bigShare >= 0.5) || (f.top.bigShare >= 0.5 && f.bottom.trimShare >= 0.5);
+}
+
+/** 인기 쏠림에서 그 옷을 센 비율: 산 때 나이가 young_age 이하면 young_pct%, young_end까지 1로 서서히 복귀 */
+export function youngWeight(age: number | null, i: Item, now: number, R: { young_age: number; young_end: number; young_pct: number }): number {
+  if (age == null) return 1;
+  const a = ageAt(age, i, now);
+  if (a <= R.young_age) return R.young_pct / 100;
+  if (a >= R.young_end) return 1;
+  return R.young_pct / 100 + ((1 - R.young_pct / 100) * (a - R.young_age)) / (R.young_end - R.young_age);
+}
+
+export function youngNote(R: { young_age: number; young_end: number; young_pct: number }): string {
+  return `${R.young_age}세 이하에 산 옷은 ${R.young_pct}%로 세고 ${R.young_end}세까지 서서히 1배로 복귀`;
 }
 
 export function ageAt(age: number, i: Item, now: number): number {

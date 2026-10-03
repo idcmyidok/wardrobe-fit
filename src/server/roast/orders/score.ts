@@ -1,7 +1,7 @@
 import "server-only";
 import { colorCounted, type Analysis, type Item } from "../analyze";
 import { brandLabels, MUSINSA_POPULAR, musinsaLikesCut } from "../brands";
-import { ageAt, bandName, bandOf, isFormalLux, isGood, isHeritage, isMidTier, isNice, isRepro, isTopDesigner, monthIndex, type ScorePart } from "../score";
+import { ageAt, youngNote, youngWeight, bandName, bandOf, isFormalLux, isGood, isHeritage, isMidTier, isNice, isRepro, isTopDesigner, monthIndex, type ScorePart } from "../score";
 import { SCORE_RULES } from "../score-deltas";
 import { won } from "../text";
 import { avgPrice, busiestMonth, isRanking, isStandard, orderRules, returnStats, thirds, topTag } from "./metrics";
@@ -188,11 +188,11 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
     (((i.brand!.likes ?? 0) >= R.popular_likes_10k * 10_000 && i.brand!.price < R.popular_price && i.brand!.pop >= 4) || (i.brand!.positions.includes("SPA") && i.brand!.price <= 3) || isMusinsa(i));
   const isPopular = (i: Item) => !isStandard(i) && (ranking(i) || isPopularBrand(i));
   const popularList = items.filter(isPopular);
-  const popularShare = items.length ? popularList.length / items.length : 0;
+  const popularShare = items.length ? popularList.reduce((s, i) => s + youngWeight(opts.age, i, now, R), 0) / items.length : 0;
   add(
     "popular",
     -over(popularShare, R.popular_from, R.popular_per10, R.popular_max),
-    `인기 쏠림(랭킹템·인기 대중 브랜드·무신사 인기 브랜드) ${P(popularShare)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max}). 랭킹템 = 하트 ${(R.rank_likes_k * 1000).toLocaleString()}개·후기 ${(R.rank_reviews_h * 100).toLocaleString()}개 이상`,
+    `인기 쏠림(랭킹템·인기 대중 브랜드·무신사 인기 브랜드) ${P(popularShare)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max}${opts.age != null ? `, ${youngNote(R)}` : ""}). 랭킹템 = 하트 ${(R.rank_likes_k * 1000).toLocaleString()}개·후기 ${(R.rank_reviews_h * 100).toLocaleString()}개 이상`,
     popularList,
   );
   if (enough) {

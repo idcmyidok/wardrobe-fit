@@ -139,6 +139,10 @@ export const SCORE_RULES = {
   popular_from: 40,
   popular_per10: 3,
   popular_max: 12,
+  /** 인기 쏠림에서 산 때 나이가 young_age세 이하인 옷은 young_pct%로만 센다. young_age세를 넘으면 young_end세까지 1배로 서서히 돌아온다(나이 모르면 그대로) */
+  young_age: 27,
+  young_end: 33,
+  young_pct: 50,
   musinsa_from: 60,
   musinsa_per10: 3,
   musinsa_max: 9,

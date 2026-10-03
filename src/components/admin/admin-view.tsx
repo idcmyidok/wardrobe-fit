@@ -78,6 +78,10 @@ export function AdminView({
         <Link href="/admin/roast-texts" className="w-fit text-base underline underline-offset-4">
           문장 고치러 가기
         </Link>
+        <p className="text-sm text-neutral-700">옷장·주문내역 훈수의 점수 판정 기준을 코드의 현재 값 그대로 정리해 봅니다.</p>
+        <Link href="/admin/score-criteria" className="w-fit text-base underline underline-offset-4">
+          점수 판정 기준 보기
+        </Link>
       </section>
     </main>
   );
