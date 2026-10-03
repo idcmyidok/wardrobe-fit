@@ -4,7 +4,7 @@ import { analyze, brandKindOf, colorCounted } from "./analyze";
 import { buildReport } from "./report";
 import { REPORT_TEXT } from "./report-text";
 import { SCORE_DELTAS } from "./score-deltas";
-import { ageAt, bandOf, floorTotal, liftedTotal, scoreWardrobe, tierOf } from "./score";
+import { ageAt, bandOf, youngWeight, floorTotal, liftedTotal, scoreWardrobe, tierOf } from "./score";
 
 const now = new Date("2026-09-29T12:00:00+09:00");
 const g = (i: number, over: Partial<Garment> = {}): Garment =>
@@ -26,6 +26,18 @@ const g = (i: number, over: Partial<Garment> = {}): Garment =>
     shoeFit: null,
     ...over,
   }) as Garment;
+
+describe("인기 쏠림 나이 보정", () => {
+  const R = { young_age: 27, young_end: 33, young_pct: 50 };
+  const item = (date: string) => ({ date }) as Parameters<typeof youngWeight>[1];
+  it("27세 이하에 산 옷은 절반, 33세에 1로 서서히 돌아온다", () => {
+    const t = now.getTime();
+    expect(youngWeight(null, item("2026-01-01"), t, R)).toBe(1);
+    expect(youngWeight(25, item("2026-01-01"), t, R)).toBe(0.5);
+    expect(youngWeight(30, item("2026-01-01"), t, R)).toBeCloseTo(0.75);
+    expect(youngWeight(40, item("2026-01-01"), t, R)).toBe(1);
+  });
+});
 
 describe("옷장 최저점 보정", () => {
   it("0점 23점, 50점 60점, 100점 100점을 꺾은선으로 잇는다", () => {
