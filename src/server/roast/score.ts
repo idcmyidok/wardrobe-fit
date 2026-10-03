@@ -206,11 +206,11 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
     const isPopular = (i: Item) =>
       ((i.brand!.likes ?? 0) >= R.popular_likes && i.brand!.price < 5 && i.brand!.pop >= 4) || (i.brand!.positions.includes("SPA") && i.brand!.price <= 3);
     const popularList = known.filter(isPopular);
-    const popular = known.length ? popularList.reduce((s, i) => s + youngWeight(opts.age, i, now, R), 0) / known.length : 0;
+    const popular = known.length ? popularList.reduce((s, i) => s + (i.brand!.positions.includes("SPA") ? 1 : youngWeight(opts.age, i, now, R)), 0) / known.length : 0;
     add(
       "popular",
       -over(popular, R.popular_from, R.popular_per10, R.popular_max),
-      `좋아요 ${R.popular_likes.toLocaleString()} 이상·고가 미만·대중적 브랜드, 또는 가격 레벨 3 이하 SPA(좋아요 상관없음) ${P(popular)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max}${opts.age != null ? `, ${youngNote(R)}` : ""})`,
+      `좋아요 ${R.popular_likes.toLocaleString()} 이상·고가 미만·대중적 브랜드, 또는 가격 레벨 3 이하 SPA(좋아요 상관없음, SPA는 나이 보정 없음) ${P(popular)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max}${opts.age != null ? `, ${youngNote(R)}` : ""})`,
       popularList,
     );
     const isTrendy = (i: Item) => i.brand!.hype >= 4 && i.brand!.pop >= 4;
@@ -326,7 +326,7 @@ export function youngWeight(age: number | null, i: Item, now: number, R: { young
 }
 
 export function youngNote(R: { young_age: number; young_end: number; young_pct: number }): string {
-  return `${R.young_age}세 이하에 산 옷은 ${R.young_pct}%로 세고 ${R.young_end}세까지 서서히 1배로 복귀`;
+  return `${R.young_age}세 이하에 산 옷(SPA 제외)은 ${R.young_pct}%로 세고 ${R.young_end}세까지 서서히 100%로 복귀`;
 }
 
 export function ageAt(age: number, i: Item, now: number): number {

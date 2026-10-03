@@ -188,7 +188,7 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
     (((i.brand!.likes ?? 0) >= R.popular_likes_10k * 10_000 && i.brand!.price < R.popular_price && i.brand!.pop >= 4) || (i.brand!.positions.includes("SPA") && i.brand!.price <= 3) || isMusinsa(i));
   const isPopular = (i: Item) => !isStandard(i) && (ranking(i) || isPopularBrand(i));
   const popularList = items.filter(isPopular);
-  const popularShare = items.length ? popularList.reduce((s, i) => s + youngWeight(opts.age, i, now, R), 0) / items.length : 0;
+  const popularShare = items.length ? popularList.reduce((s, i) => s + (i.brand?.positions.includes("SPA") ? 1 : youngWeight(opts.age, i, now, R)), 0) / items.length : 0;
   add(
     "popular",
     -over(popularShare, R.popular_from, R.popular_per10, R.popular_max),
