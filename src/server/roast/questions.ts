@@ -207,6 +207,8 @@ export const QUESTIONS: QuestionDef[] = [
     when: (a) => stats(pat(a, "trait_formal")) },
   { id: "same_outfit_street", bucket: "brand2", pattern: "group_mass", base: 0.55, options: ["often", "sometimes", "not_yet"],
     when: (a) => (has(a, "group_mass") || has(a, "trait_mainstream") ? {} : null) },
+  { id: "spa_why", bucket: "brand2", pattern: "group_spa", base: 0.55, options: ["price", "no_interest", "basic"],
+    when: (a) => stats(pat(a, "group_spa")) },
   { id: "brand_alert", bucket: "brand", pattern: "brand_focus", base: 0.7, options: ["on", "off", "no_need"],
     when: (a) => stats(pat(a, "brand_focus")) },
   { id: "brand_spend_q", bucket: "brand", pattern: "brand_spend", base: 0.7, options: ["knew", "less", "dont_tell"],
@@ -803,6 +805,21 @@ export const Q_TEXT: Record<string, QuestionText> = {
       yes: ["단정하게 입어야 하는 일을 한다고 하셨습니다. 이해는 되지만, 출근복이 옷장 전체를 점령해서 퇴근 후의 당신까지 회사원으로 만들고 있네요.", "일 때문이라는 핑계는 완벽합니다. 근데 주말 옷까지 넥타이만 안 맨 출근복처럼 보이는 건 설명이 안 되죠."],
       no: ["단정하게 입을 필요가 없는 일이라고 하셨습니다. 아무도 시키지 않았는데 이렇게 단정하다니, 스스로 만든 드레스 코드에 갇혀 계십니다.", "일과 상관없는 단정함이라면 순수한 자발적 선택이네요. 가끔은 단추 하나쯤 풀어도 아무도 안 혼냅니다."],
       like: ["그냥 단정한 게 좋다고 하셨습니다. 좋은 취향이지만, 단정함만 가득한 옷장에서는 가끔 면접 대기실 같은 긴장감이 흐르네요.", "흐트러짐 없는 옷장은 존경스럽습니다. 단정한 취향을 유지하느라 다리미 앞에서 보낸 시간도 존경받아 마땅하고요."],
+    },
+  },
+  spa_why: {
+    lead: [],
+    text: "SPA 브랜드를 자주 사시던데, 이유가 뭔가요?",
+    options: { price: "가격이 합리적이어서", no_interest: "포인트 많은 옷에 관심이 없어서", basic: "기본템으로 잘 입는 게 멋이지" },
+    react: {
+      price: ["합리적인 소비는 죄가 아니죠.", "가성비를 아는 분이시네요."],
+      no_interest: ["포인트 없는 옷이 편하긴 하죠.", "관심이 없다는 말이 제일 솔직하네요."],
+      basic: ["기본이 제일 어렵다는 말도 있죠.", "멋의 정석을 아시네요."],
+    },
+    roast: {
+      price: ["합리적인 가격은 분명 장점입니다. 다만 합리적인 옷만 쌓이면 옷장에는 합리만 남고 설렘은 빠집니다.", "가격이 합리적이라 산다고 하셨습니다. 지갑에는 이성이 있는데 옷장에는 아직 취향이 입주하지 않았네요."],
+      no_interest: ["튀지 않는 게 아니라 튈 생각이 없는 거군요. 그 평온함은 인정합니다. 다만 옷장 입장에서는 존재감 없는 동거인들만 사는 셈입니다.", "포인트 있는 옷에 관심이 없다는 건 솔직한 답입니다. 관심이 없으니 SPA가 편한 것이고, SPA가 편하니 관심이 더 없어지는 순환이네요."],
+      basic: ["기본을 잘 입는 게 멋이라는 말은 맞습니다. 다만 기본은 누구나 입으니, 그 안에서 차이를 만드는 건 핏과 관리뿐입니다.", "멋진 철학입니다. 그 기본이 정말 기본기 있는 기본이었는지는 세탁 몇 번 후에 알게 되겠지만요."],
     },
   },
   same_outfit_street: {

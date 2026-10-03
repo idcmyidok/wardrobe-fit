@@ -48,6 +48,8 @@ export const SCORE_DELTAS: Record<string, Record<string, number>> = {
   niche_known: { nobody: 0, those_who_know: -1, rather_not: -1 },
   formal_job: { yes: 1, no: -1, like: 1 },
   same_outfit_street: { often: -2, sometimes: -1, not_yet: 1 },
+  /** SPA 브랜드를 많이 사는 이유(사용자 요청 2026-10-03) */
+  spa_why: { price: 1, no_interest: -1, basic: 1 },
   brand_alert: { on: 0, off: 0, no_need: 0 },
   brand_spend_q: { knew: 1, less: -1, dont_tell: -2 },
   shoes_q: { all_wear: 2, collect: -2, one_pair: -2 },

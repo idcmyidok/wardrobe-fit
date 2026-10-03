@@ -80,7 +80,7 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
   // 무신사풍: 무신사 인기 태그, 또는 무신사 좋아요 상위 musinsa_likes_top%(좋아요 없는 브랜드는 미입점이라 뺀다). SPA·대중 브랜드는 제외.
   const likesCut = musinsaLikesCut(R.musinsa_likes_top);
   const isMusinsa = (i: Item) =>
-    !i.groups.includes("mass") && (brandLabels(i.g.brand).includes(MUSINSA_POPULAR) || (likesCut != null && (i.brand?.likes ?? 0) >= likesCut));
+    !(i.groups.includes("mass") || i.groups.includes("spa")) && (brandLabels(i.g.brand).includes(MUSINSA_POPULAR) || (likesCut != null && (i.brand?.likes ?? 0) >= likesCut));
 
   const known = items.filter((i) => i.brand);
   const enough = known.length >= 5;
@@ -188,7 +188,7 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
   const repro = reproList.length;
   if (repro) add("repro", repro >= R.repro_many_n ? R.repro_many : R.repro, `일본 데님·리바이스 빈티지 ${repro}벌 (${R.repro_many_n}벌 이상이면 +${R.repro_many})`, reproList);
   // 국가를 모르는 브랜드(편집숍 입점 소규모 브랜드 등)는 해외로 치지 않는다.
-  const isForeign = (i: Item) => Boolean(i.brand!.country) && i.brand!.country !== "한국" && !i.groups.includes("mass") && i.brand!.price >= R.foreign_price;
+  const isForeign = (i: Item) => Boolean(i.brand!.country) && i.brand!.country !== "한국" && !(i.groups.includes("mass") || i.groups.includes("spa")) && i.brand!.price >= R.foreign_price;
   const foreign = share(known, isForeign);
   if (enough && foreign * 100 >= R.foreign_pct) add("foreign", R.foreign, `해외 브랜드(SPA·대중 제외, 가격 레벨 ${R.foreign_price} 이상) ${P(foreign)} (${R.foreign_pct}% 이상)`, known.filter(isForeign));
   const boldList = items.filter((i) => (i.price ?? 0) >= R.bold_won * 10_000);
@@ -197,7 +197,7 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
   // 무신사 좋아요 수는 없는데 중고가 이상인 브랜드(소규모 감각 브랜드일 가능성)
   const noLikes = known.filter((i) => !i.brand!.likes && i.brand!.price >= 4);
   add("nolikes", Math.min(R.nolikes_max, noLikes.length * R.nolikes_each), `무신사 좋아요 없는 중고가 이상 브랜드 ${noLikes.length}벌 × ${R.nolikes_each}점, 최대 ${R.nolikes_max}점`, noLikes);
-  const regulars = [...byBrand.values()].filter((l) => l.length >= 2 && l.length <= 4 && !isMusinsa(l[0]) && !l[0].groups.includes("mass"));
+  const regulars = [...byBrand.values()].filter((l) => l.length >= 2 && l.length <= 4 && !isMusinsa(l[0]) && !(l[0].groups.includes("mass") || l[0].groups.includes("spa")));
   if (regulars.length >= R.regular_n) add("regular", R.regular, `2~4벌씩 산 단골 브랜드(무신사 인기·대중 제외) ${regulars.length}곳 (${R.regular_n}곳 이상)`, regulars.flat());
 
   // 2. 빼는 점수 --------------------------------------------------------------

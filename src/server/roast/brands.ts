@@ -67,6 +67,7 @@ export type BrandGroup =
   | "street"
   | "sports"
   | "outdoor"
+  | "spa"
   | "mass";
 
 export const BRAND_GROUPS: BrandGroup[] = [
@@ -80,6 +81,7 @@ export const BRAND_GROUPS: BrandGroup[] = [
   "street",
   "sports",
   "outdoor",
+  "spa",
   "mass",
 ];
 
@@ -95,7 +97,8 @@ export const GROUP_WORD: Record<BrandGroup, string> = {
   street: "스트릿 브랜드",
   sports: "스포츠 브랜드",
   outdoor: "아웃도어 브랜드",
-  mass: "SPA·대중 브랜드",
+  spa: "SPA 브랜드",
+  mass: "대중 브랜드",
 };
 
 /** 비교용 이름: NFKC → 소문자 → 한글·영문·숫자만 */
@@ -156,7 +159,8 @@ export function brandGroups(b: BrandInfo): BrandGroup[] {
   if (has(b.positions, "스트릿")) out.push("street");
   if (has(b.positions, "스포츠")) out.push("sports");
   if (has(b.positions, "아웃도어")) out.push("outdoor");
-  if (has(b.positions, "SPA", "매스마켓")) out.push("mass");
+  if (has(b.positions, "SPA")) out.push("spa");
+  if (has(b.positions, "매스마켓")) out.push("mass");
   return out;
 }
 

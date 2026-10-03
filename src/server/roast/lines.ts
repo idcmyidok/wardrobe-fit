@@ -119,6 +119,7 @@ export const LINE_SECTION: Record<string, Section> = {
   group_street: "group",
   group_sports: "group",
   group_outdoor: "group",
+  group_spa: "group",
   group_mass: "group",
   country_bias: "brand",
   trait_hype: "trait",
@@ -233,8 +234,11 @@ export const LINE_TEXT: Record<string, PatternLines> = {
   group_outdoor: {
     say: ["아웃도어 브랜드가 {n}벌입니다. 산이 부르면 바로 갈 수 있겠네요, 부를 일은 없겠지만.", "{brand|이} 보입니다. 아웃도어가 {n}벌이고요."],
   },
+  group_spa: {
+    say: ["SPA 브랜드가 {n}벌이네요. 가성비 앞에서는 장사 없죠.", "{brand|이} 보이네요. SPA 브랜드가 {n}벌입니다."],
+  },
   group_mass: {
-    say: ["SPA·대중 브랜드가 {n}벌이네요. 실속파라고 우기기 딱 좋습니다.", "{brand|이} 보이네요. 대중 브랜드가 {n}벌입니다."],
+    say: ["대중 브랜드가 {n}벌이네요. 실속파라고 우기기 딱 좋습니다.", "{brand|이} 보이네요. 대중 브랜드가 {n}벌입니다."],
   },
   country_bias: {
     say: ["브랜드 국적을 보니 {country|이} {pct}%입니다.", "{country} 브랜드가 대부분이네요."],
