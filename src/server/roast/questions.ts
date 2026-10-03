@@ -244,7 +244,8 @@ export const QUESTIONS: QuestionDef[] = [
   { id: "influencer_q", bucket: "self", base: 0.4, options: ["daily", "sometimes", "never"],
     when: (a) => ({ boost: has(a, "trait_trendy") || has(a, "trait_hype") ? 1 : 0 }) },
   // 아래 두 질문은 pickQuestions가 따로 붙인다(질문 수와 상관없이). 침착맨 질문 → 마지막 질문 순서.
-  { id: "chimchak_q", bucket: "chimchak", base: 0, options: ["love", "sometimes", "clothes_only"], when: (a) => chimchakItems(a) },
+  { id: "chimchak_q", bucket: "chimchak", base: 0, options: ["love", "sometimes", "clothes_only"], when: (a) => chimchakItems(a),
+    photos: (a) => photoIds(a, a.items.filter((i) => i.brand?.name === "CHIMCHAKMAN" || i.brand?.name === "얼렁뚱땅 상점").map((i) => i.id)) },
   { id: "fashionable_q", bucket: "last", base: 0, options: ["yes", "normal", "no", "others_say"], when: () => ({}) },
 ];
 
@@ -1151,8 +1152,8 @@ export function pickQuestions(
     .sort((x, y) => y.score - x.score);
   const asked: AskedQuestion[] = [];
   const buckets = new Set<string>();
-  // 질문은 최대 10개(후보가 많으면 8~10개)
-  const want = Math.min(candidates.length, 8 + Math.floor(r.next() * 3));
+  // 질문은 최대 8개(점수 순: 패턴이 뚜렷하고 특이한 질문 우선)
+  const want = Math.min(candidates.length, 8);
   for (const c of candidates) {
     if (asked.length >= want) break;
     if (buckets.has(c.q.bucket)) continue;

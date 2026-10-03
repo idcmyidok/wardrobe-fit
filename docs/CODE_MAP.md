@@ -268,7 +268,7 @@
 
 ### src/lib/roast
 - `bubbles.ts` (31줄) splitSentences:7 joinBubbles:10 bubblesOf:13 isBubbleKey:20
-- `copy.ts` (33줄) ROAST_COPY:5 RoastCopy:28 DISCLAIMER:30 MIN_CLOTHES:31 tooFew:32
+- `copy.ts` (35줄) ROAST_COPY:5 RoastCopy:28 DISCLAIMER:30 MIN_CLOTHES:31 tooFew:32
 - `hash.ts` (41줄) wardrobeHash:7
 - `types.ts` (119줄) RoastOption:6 RoastPriced:18 RoastQuestion:23 RoastStep:39 RoastScript:46 RoastParagraph:53 RoastReport:59 RoastGarmentRef:87 …
 
