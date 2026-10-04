@@ -166,6 +166,8 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
       datedPriced.filter((i) => now - Date.parse(i.date!) <= 365 * DAY),
     );
   }
+  const tsb = totalSpendBonus(items, now, R);
+  if (tsb) add("total_spend", tsb.delta, tsb.why, tsb.list);
 
   const outers = clothes.filter((i) => i.cat === "outer");
   const goodOuters = outers.filter((i) => isTopDesigner(i) || isHeritage(i));
@@ -351,6 +353,23 @@ export function bandOf(age: number): string {
   return key;
 }
 
+/** 총 구매액 가점: (총 구매액 ÷ total_won만 원 − n) × total_each점(0 미만이면 없음, 최대 total_max점). n = 가장 오래된 구매일부터 지금까지 햇수 − total_free_years, n이 음수여도 그대로 계산(처음 몇 년은 더 쉽게 받음), 최대 total_max점 */
+export function totalSpendBonus<T extends { price: number | null; date: string | null }>(
+  items: T[],
+  now: number,
+  R: { total_won: number; total_each: number; total_free_years: number; total_max: number },
+): { delta: number; why: string; list: T[] } | null {
+  const priced = items.filter((i) => i.price != null && i.price > 0);
+  const dates = items.filter((i) => i.date && Date.parse(i.date) <= now).map((i) => Date.parse(i.date!));
+  if (!priced.length || !dates.length) return null;
+  const years = Math.floor((now - Math.min(...dates)) / (365 * DAY));
+  const n = years - R.total_free_years;
+  const totalMan = priced.reduce((s, i) => s + i.price!, 0) / 10_000;
+  const delta = Math.min(R.total_max, Math.round(Math.max(0, totalMan / R.total_won - n) * R.total_each));
+  if (delta <= 0) return null;
+  return { delta, why: `총 구매액 ${Math.round(totalMan)}만 원, 가장 오래된 구매 ${years}년 전 → (${Math.round(totalMan)}만 ÷ ${R.total_won}만 − ${n}) × ${R.total_each}점`, list: priced };
+}
+
 /** 최종 점수(옷장·주문내역 공통): 합계 0→floor_min, 50→floor_mid, 100→100을 꺾은선으로 잇는다(최저점을 보장하면서 100점 근처는 그대로) */
 export function floorTotal(score: number, rules?: Partial<ScoreRules>): number {
   const R = { ...SCORE_RULES, ...(rules ?? {}) };
@@ -389,6 +408,7 @@ export const SCORE_PART_NAME: Record<string, string> = {
   gap: "구매 공백",
   steady: "꾸준한 구매",
   spend: "구매액",
+  total_spend: "총 구매액",
   good_outer: "좋은 아우터",
   leather_shoes: "구두·부츠",
   shoe_set: "신발 구색",
