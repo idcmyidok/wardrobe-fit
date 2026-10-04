@@ -40,17 +40,17 @@ describe("인기 쏠림 나이 보정", () => {
 });
 
 describe("최저점 보정(옷장·주문내역 공통)", () => {
-  it("0점 36점, 50점 60점, 100점 100점을 꺾은선으로 잇는다", () => {
-    expect([0, 25, 50, 75, 100].map((x) => floorTotal(x))).toEqual([36, 48, 60, 80, 100]);
+  it("0점 36점, 50점 87점, 100점 100점을 꺾은선으로 잇는다", () => {
+    expect([0, 25, 50, 75, 100].map((x) => floorTotal(x))).toEqual([36, 62, 87, 94, 100]);
     expect(floorTotal(-5)).toBe(36);
     expect(tierOf(floorTotal(0))).toBe("low");
   });
 });
 
 describe("점수 구간은 보정이 들어간 점수로 정한다", () => {
-  it("보정 전 45점은 낮음이지만 보정 후 점수는 중간", () => {
-    expect(tierOf(45)).toBe("low");
-    expect(tierOf(floorTotal(45))).toBe("mid");
+  it("보정 전 25점은 낮음이지만 보정 후 점수는 중간", () => {
+    expect(tierOf(25)).toBe("low");
+    expect(tierOf(floorTotal(25))).toBe("mid");
     expect(headlineBand(36)).toBe("b0");
     expect(headlineBand(100)).toBe("b90");
     expect(headlineBand(68)).toBe("b50");

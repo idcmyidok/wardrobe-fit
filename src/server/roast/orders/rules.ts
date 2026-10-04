@@ -84,7 +84,7 @@ export const ORDER_RULES = {
   pile_max: 25,
   /** 하이프·대중성 모두 높은 브랜드 비율 */
   trendy_pct: 50,
-  trendy: 10,
+  trendy: 5,
   standard_a_pct: 25,
   standard_a: 3,
   standard_b_pct: 40,
@@ -116,7 +116,7 @@ export const ORDER_RULES = {
   basic_full_pct: 95,
   basic_mass_mid: 6,
   /** 명품 하우스 1~2벌의 스타일이 나머지 주력 스타일과 안 겹침 */
-  lux_mismatch: 5,
+  lux_mismatch: 0,
   /** 구매 공백: 최근 24개월 중 gap_months개월 이상 연속으로 안 산 기간 1개월당 −1, 최대 */
   gap_months: 4,
   gap_max: 12,
