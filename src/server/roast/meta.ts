@@ -2,7 +2,7 @@ import "server-only";
 import { LINE_SECTION } from "./lines";
 import { Q_TEXT, QUESTIONS } from "./questions";
 import { REPORT_TEXT } from "./report-text";
-import { SCORE_DELTAS } from "./score-deltas";
+import { headlineRange, SCORE_DELTAS } from "./score-deltas";
 import { ORDER_QUESTIONS } from "./orders/questions";
 import { ORDER_DELTAS } from "./orders/rules";
 import { groupOf, orderMirrorKeys } from "./texts";
@@ -411,10 +411,8 @@ const RULE_NAME: Record<string, string> = {
   lux_mismatch: "스타일 모르고 산 명품: 감점",
   shoes_few_n: "신발이 적음: 이 켤레 수 이하",
   sneakers_only: "신발이 적거나 전부 운동화: 감점",
-  lift: "최종 점수 보정: 낮은 점수일수록 더 올림 (0~1, 점수+(100-점수)×이 값)",
-  lift_floor: "최종 점수 보정: 합계가 이 점수 미만이면 보정을 합계에 비례해 줄임 (0이면 안 줄임)",
-  floor_min: "옷장 최종 점수 보정: 합계 0점일 때 나오는 최저 점수",
-  floor_mid: "옷장 최종 점수 보정: 합계 50점일 때 나오는 점수 (0점→최저, 50점→이 값, 100점→100점을 직선으로 이음)",
+  floor_min: "최종 점수 보정: 합계 0점일 때 나오는 최저 점수",
+  floor_mid: "최종 점수 보정: 합계 50점일 때 나오는 점수 (0점→최저, 50점→이 값, 100점→100점을 직선으로 이음)",
   thin_n: "옷이 적음: 모자·신발 뺀 옷이 이 벌 수 이하",
   thin: "옷이 적음: 감점",
   logo_pct: "로고 과다: 기준 비율(%)",
@@ -559,7 +557,7 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
   if (p[0] === "orders" && orderMirrorKeys().has(key)) return fieldLabel(key.slice("orders.".length), optionLabel);
   if (p[0] === "orders") {
     const last = p[p.length - 1];
-    if (p[1] === "report" && (p[2] === "HEADLINE")) return last === "b90" ? "90점 이상" : last === "b0" ? "10점 미만" : `${last.slice(1)}~${Number(last.slice(1)) + 9}점`;
+    if (p[1] === "report" && (p[2] === "HEADLINE")) return headlineRange(last);
     if (p[1] === "report" && p.length === 4) return `${ORDER_REPORT_SIDE[last] ?? last} (하나 고름)`;
     return p[1] === "screen" && !["LOADING", "OPENING"].includes(p[2]) ? "문장" : "문장들(하나 고름, LOADING은 차례로 번갈아 나옴)";
   }
@@ -575,8 +573,7 @@ export function fieldLabel(key: string, optionLabel?: (qid: string, opt: string)
       return last === "high" ? "뚜렷할 때(하나 고름, 첫 문장은 굵게)" : "반대쪽으로 뚜렷할 때(하나 고름, 첫 문장은 굵게)";
     }
     if (p[1] === "HEADLINE") {
-      const n = Number(last.slice(1));
-      return last === "b90" ? "91점 이상" : last === "b0" ? "10점 이하" : last === "b10" ? "11~22점" : last === "b20" ? "23~30점" : `${n + 1}~${n + 10}점`;
+      return headlineRange(last);
     }
     if (p[1] === "color") return `${COLOR_NAME[last] ?? last} (하나 고름)`;
     if (p[1] === "fit") return `${FIT_NAME[last] ?? last} (하나 고름)`;

@@ -63,7 +63,7 @@ export const SCORE_DELTAS: Record<string, Record<string, number>> = {
   shop_q: { points: -1, habit: -2, best: 1 },
   vintage_q: { often: 2, browse: 0, no_used: -1 },
   influencer_q: { daily: -2, sometimes: 0, never: 1 },
-  /** 마지막 질문: 옷장 점수 구간(high 70+, mid 40~69, low 40 미만) × 답 */
+  /** 마지막 질문: 옷장 점수 구간(high 79+, mid 57~78, low 57 미만) × 답 */
   fashionable_q: {
     high_yes: 3,
     high_normal: 1,
@@ -163,8 +163,8 @@ export const SCORE_RULES = {
   shift_score: 0,
   trendy_pct: 50,
   trendy: 15,
-  dup_each: 3,
-  dup_max: 15,
+  dup_each: 1.5,
+  dup_max: 7.5,
   scattered_pct: 20,
   scattered: 5,
   /** 핏: 슬림·레귤러가 더 힙한 쪽. 핏을 아는 옷 fit_min벌 이상, 상의·하의 각각 3벌 이상일 때 그쪽을 본다 */
@@ -186,17 +186,13 @@ export const SCORE_RULES = {
   shoes_few_n: 2,
   sneakers_only: 5,
   /** 모자·신발 뺀 옷이 이 벌 수 이하: 감점 */
-  /** 최종 점수 보정: 낮을수록 더 올려 줌 (점수 + (100-점수)×이 값). 옷장·주문내역 공통 */
-  lift: 0.12,
-  /** 합계가 이 점수 미만이면 보정(lift)을 합계에 비례해 줄임(합계 0이면 보정 0). 0이면 줄이지 않음. 옷장·주문내역 공통 */
-  lift_floor: 15,
-  /** 옷장 훈수 최종 점수 보정(주문내역은 안 씀): 합계 0점 → floor_min점, 합계 50점 → floor_mid점, 합계 100점 → 100점을 꺾은선으로 잇는다(위 lift 대신) */
-  floor_min: 23,
+  /** 최종 점수 보정(옷장·주문내역 공통): 합계 0점 → floor_min점, 합계 50점 → floor_mid점, 합계 100점 → 100점을 꺾은선으로 잇는다 */
+  floor_min: 36,
   floor_mid: 60,
   thin_n: 20,
   thin: 4,
   logo_pct: 20,
-  logo: 15,
+  logo: 7.5,
   /** 계절 구멍: 한 계절이라도 입을 수 있는 코디(상의×하의×신발)가 이 수 미만이면 감점. 계절을 안 적은 옷은 사계절로 본다 */
   season_combo_min: 12,
   season_gap: 5,
@@ -206,9 +202,9 @@ export const SCORE_RULES = {
   spend_b: 6,
   spend_c: 10,
   // 마지막 질문("스스로 패셔너블하다고 생각하나요?")의 점수 구간
-  // (옷장: 최저 23점~100점을 3등분)
-  tier_high: 74,
-  tier_low: 49,
+  // (옷장·주문내역 공통: 최저 36점~100점을 3등분)
+  tier_high: 79,
+  tier_low: 57,
 };
 
 export type ScoreRules = typeof SCORE_RULES;
@@ -276,3 +272,17 @@ export const AGE_BANDS: [string, number][] = [
   ["b51", 51],
   ["b61", 61],
 ];
+
+/** 첫 줄(HEADLINE) 구간: 최저 점수~100점을 10칸으로 나눈다(b0 = 가장 낮은 칸 … b90 = 가장 높은 칸). 옷장·주문내역 공통 */
+export function headlineBand(total: number, min: number = SCORE_RULES.floor_min): `b${number}` {
+  const idx = Math.max(0, Math.min(9, Math.floor(((total - min) * 10) / (100 - min))));
+  return `b${idx * 10}`;
+}
+
+/** 첫 줄 구간의 점수 범위 이름(관리자 화면용) */
+export function headlineRange(band: string, min: number = SCORE_RULES.floor_min): string {
+  const i = Number(band.slice(1)) / 10;
+  const lo = Math.ceil(min + (i * (100 - min)) / 10);
+  const hi = i === 9 ? 100 : Math.ceil(min + ((i + 1) * (100 - min)) / 10) - 1;
+  return i === 9 ? `${lo}점 이상` : `${lo}~${hi}점`;
+}

@@ -19,7 +19,7 @@ export const REPORT_TEXT = {
     point_show: { color: 1, fit: 1, wallet: 1, vintage: 1, age: 1, last: 1 },
     count: { diag_min: 3, diag_max: 5, list_rows: 3, dup_min: 3, brand_rows: 3, brand_top_pct: 15, brand_row_pct: 8, photos: 20, photo_blocks: 2, answers: 3 },
   },
-  /** 한 줄 정의: 총점 구간별(b90 = 91점 이상, b80 = 81~90점 … b20 = 23~30점, b10 = 11~22점, b0 = 10점 이하) */
+  /** 한 줄 정의: 총점 구간별(최저 점수~100점을 10칸으로 나눔: b0 = 가장 낮은 칸 … b90 = 가장 높은 칸, 옷장·주문내역 공통) */
   HEADLINE: {
     b90: ["{owner} 옷장은 새로 산 흰 양말만큼만 별로네요."],
     b80: ["{owner} 옷장은 살짝 식은 붕어빵만큼 별로네요."],

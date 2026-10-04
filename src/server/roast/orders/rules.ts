@@ -99,8 +99,8 @@ export const ORDER_RULES = {
   cheap_won: 3,
   cheap: 4,
   /** 같은 옷 반복: 같은 상품을 같은 실측(없으면 같은 사이즈)으로 다른 주문에서 또 산 것 */
-  dup_each: 3,
-  dup_max: 9,
+  dup_each: 1.5,
+  dup_max: 4.5,
   return_high_pct: 25,
   return_high: 3,
   cancel_pct: 20,
@@ -108,7 +108,7 @@ export const ORDER_RULES = {
   scattered_pct: 20,
   scattered: 5,
   logo_pct: 20,
-  logo: 15,
+  logo: 7.5,
   sneakers_only: 5,
   /** 무채색 basic_pct% 이상인데 고급 브랜드(컨템포러리 이상 또는 중고가 이상)가 한 벌도 없음 */
   basic_pct: 85,
@@ -154,8 +154,8 @@ export const ORDER_RULES = {
   spend_b: 6,
   spend_c: 10,
   // 마지막 질문("스스로 패셔너블하다고 생각하나요?")의 점수 구간
-  tier_high: 70,
-  tier_low: 40,
+  tier_high: 79,
+  tier_low: 57,
 };
 export type OrderRules = typeof ORDER_RULES;
 

@@ -6,7 +6,7 @@ import type { Analysis, Pattern } from "./analyze";
 import { familyName, type FamilyId } from "./keywords";
 import { LINE_SECTION, type Section } from "./lines";
 import { pickQuestions, QUESTIONS, type AskedQuestion } from "./questions";
-import { floorTotal, liftedTotal, scoreWardrobe, tierOf } from "./score";
+import { floorTotal, scoreWardrobe, tierOf } from "./score";
 import { ORDER_QUESTIONS } from "./orders/questions";
 import type { OrderRules } from "./orders/rules";
 import { orderTier, scoreOrders } from "./orders/score";
@@ -152,7 +152,7 @@ export function buildScript(a: Analysis, seed: number, name: string | null, T: R
   const rules = T.score.rules as unknown as ScoreRules;
   const orules = T.score.orules as unknown as Partial<OrderRules>;
   const tier = orders
-    ? orderTier(liftedTotal(scoreOrders(a, { age, rules: orules, ageRules: T.score.oage as unknown as Record<string, Record<string, number>> }).score, rules), orules)
+    ? orderTier(floorTotal(scoreOrders(a, { age, rules: orules, ageRules: T.score.oage as unknown as Record<string, Record<string, number>> }).score, rules), orules)
     : tierOf(floorTotal(scoreWardrobe(a, { age, rules, ageRules: T.score.age as unknown as Record<string, Record<string, number>> }).score, rules), rules);
   const defs = orders ? ORDER_QUESTIONS : QUESTIONS;
   const picked = pickQuestions(a, r, fill, T, tier, defs);
