@@ -70,6 +70,7 @@ export const ORDER_RULES = {
   total_won: 300,
   total_each: 2,
   total_free_years: 3,
+  total_max: 5,
   // 빼는 점수
   /** 무신사 좋아요 이 값 × 10,000 이상·고가 미만·대중적~매우 대중적 브랜드(무신사 스탠다드는 따로 셈) 비율 */
   popular_likes_10k: 5,

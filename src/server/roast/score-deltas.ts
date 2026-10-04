@@ -132,10 +132,11 @@ export const SCORE_RULES = {
   shoe_set: 3,
   spend_top_won: 30,
   spend_top: 2,
-  /** 총 구매액 가점: (총 구매액 ÷ total_won만 원 − n) × total_each점. n = 가장 오래된 구매 후 햇수 − total_free_years(햇수가 total_free_years 이상일 때만) */
+  /** 총 구매액 가점: (총 구매액 ÷ total_won만 원 − n) × total_each점. n = 가장 오래된 구매 후 햇수 − total_free_years(마이너스 가능), 최대 total_max점 */
   total_won: 300,
   total_each: 2,
   total_free_years: 3,
+  total_max: 5,
   /** 무신사 좋아요 수가 없는데 중고가 이상인 브랜드: 하나당 가점, 최대 */
   nolikes_each: 2,
   nolikes_max: 3,

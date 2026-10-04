@@ -353,20 +353,19 @@ export function bandOf(age: number): string {
   return key;
 }
 
-/** 총 구매액 가점: (총 구매액 ÷ total_won만 원 − n) × total_each점(0 미만이면 없음). n = 가장 오래된 구매일부터 지금까지 햇수 − total_free_years, 햇수가 total_free_years 이상일 때만 */
+/** 총 구매액 가점: (총 구매액 ÷ total_won만 원 − n) × total_each점(0 미만이면 없음, 최대 total_max점). n = 가장 오래된 구매일부터 지금까지 햇수 − total_free_years, n이 음수여도 그대로 계산(처음 몇 년은 더 쉽게 받음), 최대 total_max점 */
 export function totalSpendBonus<T extends { price: number | null; date: string | null }>(
   items: T[],
   now: number,
-  R: { total_won: number; total_each: number; total_free_years: number },
+  R: { total_won: number; total_each: number; total_free_years: number; total_max: number },
 ): { delta: number; why: string; list: T[] } | null {
   const priced = items.filter((i) => i.price != null && i.price > 0);
   const dates = items.filter((i) => i.date && Date.parse(i.date) <= now).map((i) => Date.parse(i.date!));
   if (!priced.length || !dates.length) return null;
   const years = Math.floor((now - Math.min(...dates)) / (365 * DAY));
-  if (years < R.total_free_years) return null;
   const n = years - R.total_free_years;
   const totalMan = priced.reduce((s, i) => s + i.price!, 0) / 10_000;
-  const delta = Math.round(Math.max(0, totalMan / R.total_won - n) * R.total_each);
+  const delta = Math.min(R.total_max, Math.round(Math.max(0, totalMan / R.total_won - n) * R.total_each));
   if (delta <= 0) return null;
   return { delta, why: `총 구매액 ${Math.round(totalMan)}만 원, 가장 오래된 구매 ${years}년 전 → (${Math.round(totalMan)}만 ÷ ${R.total_won}만 − ${n}) × ${R.total_each}점`, list: priced };
 }
