@@ -197,8 +197,9 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   );
   if (enough) {
     const isTrendy = (i: Item) => i.brand!.hype >= 4 && i.brand!.pop >= 4;
-    const trendy = share(known, isTrendy);
-    if (trendy * 100 >= R.trendy_pct) add("trendy", -R.trendy, `하이프·대중성 모두 높은 브랜드 ${P(trendy)} (${R.trendy_pct}% 이상)`, known.filter(isTrendy));
+    const trendyList = known.filter(isTrendy);
+    const trendy = known.length ? trendyList.reduce((s, i) => s + youngWeight(opts.age, i, now, R), 0) / known.length : 0;
+    if (trendy * 100 >= R.trendy_pct) add("trendy", -R.trendy, `하이프·대중성 모두 높은 브랜드 ${P(trendy)} (${R.trendy_pct}% 이상${opts.age != null ? `, ${youngNote(R)}` : ""})`, trendyList);
     // 스타일 모르고 산 명품: 명품 하우스가 1~2벌뿐인데 그 스타일이 나머지 주문의 주력 스타일(상위 2개)과 안 겹침
     const lux = known.filter((i) => i.groups.includes("luxury"));
     if (lux.length >= 1 && lux.length <= 2) {
