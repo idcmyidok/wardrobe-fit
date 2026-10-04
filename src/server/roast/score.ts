@@ -214,8 +214,9 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
       popularList,
     );
     const isTrendy = (i: Item) => i.brand!.hype >= 4 && i.brand!.pop >= 4;
-    const trendy = share(known, isTrendy);
-    if (trendy * 100 >= R.trendy_pct) add("trendy", -R.trendy, `하이프·대중성 모두 높은 브랜드 ${P(trendy)} (${R.trendy_pct}% 이상)`, known.filter(isTrendy));
+    const trendyList = known.filter(isTrendy);
+    const trendy = known.length ? trendyList.reduce((s, i) => s + youngWeight(opts.age, i, now, R), 0) / known.length : 0;
+    if (trendy * 100 >= R.trendy_pct) add("trendy", -R.trendy, `하이프·대중성 모두 높은 브랜드 ${P(trendy)} (${R.trendy_pct}% 이상${opts.age != null ? `, ${youngNote(R)}` : ""})`, trendyList);
     if (styleTop * 100 < R.scattered_pct && named.length >= 8 && byBrand.size / named.length >= 0.7)
       add("scattered", -R.scattered, `가장 많은 스타일 ${P(styleTop)} (${R.scattered_pct}% 미만) + 옷 ${named.length}벌에 브랜드 ${byBrand.size}곳`, named);
     // 스타일 모르고 산 명품: 디자이너·럭셔리가 1~2벌뿐인데 그 스타일이 나머지 옷의 주력 스타일(상위 2개)과 안 겹침
@@ -316,7 +317,7 @@ export function fitContrast(f: ReturnType<typeof fitSummary>): boolean {
   return (f.top.trimShare >= 0.5 && f.bottom.bigShare >= 0.5) || (f.top.bigShare >= 0.5 && f.bottom.trimShare >= 0.5);
 }
 
-/** 인기 쏠림에서 그 옷을 센 비율: 산 때 나이가 young_age 이하면 young_pct%, young_end까지 1로 서서히 복귀 */
+/** 인기·유행 쏠림에서 그 옷을 센 비율: 산 때 나이가 young_age 이하면 young_pct%, young_end까지 1로 서서히 복귀 */
 export function youngWeight(age: number | null, i: Item, now: number, R: { young_age: number; young_end: number; young_pct: number }): number {
   if (age == null) return 1;
   const a = ageAt(age, i, now);
@@ -326,7 +327,7 @@ export function youngWeight(age: number | null, i: Item, now: number, R: { young
 }
 
 export function youngNote(R: { young_age: number; young_end: number; young_pct: number }): string {
-  return `${R.young_age}세 이하에 산 옷(SPA 제외)은 ${R.young_pct}%로 세고 ${R.young_end}세까지 서서히 100%로 복귀`;
+  return `${R.young_age}세 이하에 산 옷은 ${R.young_pct}%로 세고 ${R.young_end}세까지 서서히 100%로 복귀`;
 }
 
 export function ageAt(age: number, i: Item, now: number): number {
