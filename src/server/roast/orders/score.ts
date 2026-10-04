@@ -1,7 +1,7 @@
 import "server-only";
 import { colorCounted, type Analysis, type Item } from "../analyze";
 import { brandLabels, MUSINSA_POPULAR, musinsaLikesCut } from "../brands";
-import { ageAt, youngNote, youngWeight, bandName, bandOf, isFormalLux, isGood, isHeritage, isMidTier, isNice, isRepro, isTopDesigner, monthIndex, type ScorePart } from "../score";
+import { ageAt, youngNote, youngWeight, bandName, bandOf, isFormalLux, isGood, isHeritage, isMidTier, isNice, isRepro, isTopDesigner, monthIndex, totalSpendBonus, type ScorePart } from "../score";
 import { SCORE_RULES } from "../score-deltas";
 import { won } from "../text";
 import { avgPrice, busiestMonth, isRanking, isStandard, orderRules, returnStats, thirds, topTag } from "./metrics";
@@ -170,6 +170,8 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
       year,
     );
   }
+  const tsb = totalSpendBonus(items, now, R);
+  if (tsb) add("total_spend", tsb.delta, tsb.why, tsb.list);
 
   // 새 브랜드 탐색: 최근 explore_months개월 안에 처음 산 브랜드가 전체 브랜드의 explore_pct% 이상
   if (byBrand.size >= R.explore_min_brands) {

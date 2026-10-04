@@ -67,6 +67,9 @@ export const ORDER_RULES = {
   steady: 1,
   spend_top_won: 25,
   spend_top: 2,
+  total_won: 300,
+  total_each: 2,
+  total_free_years: 3,
   // 빼는 점수
   /** 무신사 좋아요 이 값 × 10,000 이상·고가 미만·대중적~매우 대중적 브랜드(무신사 스탠다드는 따로 셈) 비율 */
   popular_likes_10k: 5,
@@ -154,8 +157,8 @@ export const ORDER_RULES = {
   spend_b: 6,
   spend_c: 10,
   // 마지막 질문("스스로 패셔너블하다고 생각하나요?")의 점수 구간
-  tier_high: 79,
-  tier_low: 57,
+  tier_high: 76,
+  tier_low: 52,
 };
 export type OrderRules = typeof ORDER_RULES;
 
