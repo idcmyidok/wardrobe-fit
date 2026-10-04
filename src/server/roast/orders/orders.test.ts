@@ -282,15 +282,15 @@ describe("주문내역 점수: 새 감점", () => {
   };
   const ids = (s: ReturnType<typeof score>) => s.parts.map((p) => p.id);
 
-  it("주문내역 낮은 점수 보정: 합계가 낮을수록 보정이 줄어 합계 0이면 0점", () => {
+  it("주문내역도 옷장과 같은 최저점 보정: 합계 0이면 36점, 60이면 68점", () => {
     const a = run();
     const seed = 7;
     const total = (base: number) => {
       const score = scoreOrders(a, { age: 38, rules: { base } });
       return buildReport(a, "세현", seed, DEFAULT_TEXTS.report, [], {}, { ...DEFAULT_TEXTS.score, rules: { base: -300 } }, 38, orderOverride(a, seed, DEFAULT_TEXTS, { ...score, score: base })).total.score;
     };
-    expect(total(0)).toBe(0);
-    expect(total(60)).toBe(Math.round(60 + 40 * 0.12));
+    expect(total(0)).toBe(36);
+    expect(total(60)).toBe(68);
   });
 
   it("극단적 저가: 1만 원 미만 옷이 20% 이상이면 감점", () => {
