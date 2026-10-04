@@ -44,8 +44,7 @@ export default async function ScoreCriteriaPage() {
 
   const closet = tables("score");
   const orders = tables("orders");
-  const lift = `최종 점수는 합계 0점 → ${num("rules", "floor_min")}점, 50점 → ${num("rules", "floor_mid")}점, 100점 → 100점을 꺾은선으로 이은 값입니다.`;
-  const liftOrders = `낮은 점수는 점수 + (100 − 점수) × ${num("rules", "lift")} 로 끌어올리고, 합계가 ${num("rules", "lift_floor")}점 미만이면 그 보정을 합계에 비례해 줄입니다.`;
+  const lift = `옷장·주문내역 모두 최종 점수는 합계 0점 → ${num("rules", "floor_min")}점, 50점 → ${num("rules", "floor_mid")}점, 100점 → 100점을 꺾은선으로 이은 값입니다.`;
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-8">
@@ -66,7 +65,7 @@ export default async function ScoreCriteriaPage() {
       <Section title="옷장 훈수" intro={`기본 점수 ${num("rules", "base")}점에서 아래 기준대로 더하고 빼 0~100점으로 자릅니다. ${lift}`} tables={closet} />
       <Section
         title="주문내역 훈수"
-        intro={`기본 점수 ${num("orules", "base")}점에서 아래 기준대로 더하고 빼 0~100점으로 자릅니다. ${liftOrders} 퀴즈·밥과 옷 질문 증감은 옷장의 값을 같이 씁니다.`}
+        intro={`기본 점수 ${num("orules", "base")}점에서 아래 기준대로 더하고 빼 0~100점으로 자릅니다. ${lift} 퀴즈·밥과 옷 질문 증감은 옷장의 값을 같이 씁니다.`}
         tables={orders}
       />
     </main>

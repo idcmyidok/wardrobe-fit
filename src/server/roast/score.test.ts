@@ -3,8 +3,8 @@ import type { Garment } from "@/lib/types/domain";
 import { analyze, brandKindOf, colorCounted } from "./analyze";
 import { buildReport } from "./report";
 import { REPORT_TEXT } from "./report-text";
-import { SCORE_DELTAS } from "./score-deltas";
-import { ageAt, bandOf, youngWeight, floorTotal, liftedTotal, scoreWardrobe, tierOf } from "./score";
+import { headlineBand, headlineRange, SCORE_DELTAS } from "./score-deltas";
+import { ageAt, bandOf, youngWeight, floorTotal, scoreWardrobe, tierOf } from "./score";
 
 const now = new Date("2026-09-29T12:00:00+09:00");
 const g = (i: number, over: Partial<Garment> = {}): Garment =>
@@ -39,10 +39,10 @@ describe("인기 쏠림 나이 보정", () => {
   });
 });
 
-describe("옷장 최저점 보정", () => {
-  it("0점 23점, 50점 60점, 100점 100점을 꺾은선으로 잇는다", () => {
-    expect([0, 25, 50, 75, 100].map((x) => floorTotal(x))).toEqual([23, 42, 60, 80, 100]);
-    expect(floorTotal(-5)).toBe(23);
+describe("최저점 보정(옷장·주문내역 공통)", () => {
+  it("0점 36점, 50점 60점, 100점 100점을 꺾은선으로 잇는다", () => {
+    expect([0, 25, 50, 75, 100].map((x) => floorTotal(x))).toEqual([36, 48, 60, 80, 100]);
+    expect(floorTotal(-5)).toBe(36);
     expect(tierOf(floorTotal(0))).toBe("low");
   });
 });
@@ -51,9 +51,11 @@ describe("점수 구간은 보정이 들어간 점수로 정한다", () => {
   it("보정 전 45점은 낮음이지만 보정 후 점수는 중간", () => {
     expect(tierOf(45)).toBe("low");
     expect(tierOf(floorTotal(45))).toBe("mid");
-    expect(liftedTotal(35)).toBe(43);
-    expect(liftedTotal(0)).toBe(0);
-    expect(liftedTotal(-30)).toBe(0);
+    expect(headlineBand(36)).toBe("b0");
+    expect(headlineBand(100)).toBe("b90");
+    expect(headlineBand(68)).toBe("b50");
+    expect(headlineRange("b0")).toBe("36~42점");
+    expect(headlineRange("b90")).toBe("94점 이상");
   });
 });
 
@@ -94,10 +96,10 @@ describe("옷장 점수(점수 계획서)", () => {
     expect(bandOf(70)).toBe("b61");
   });
 
-  it("마지막 질문의 점수 구간: 23~100을 3등분(74 이상 high, 49 미만 low)", () => {
-    expect(tierOf(74)).toBe("high");
-    expect(tierOf(55)).toBe("mid");
-    expect(tierOf(48)).toBe("low");
+  it("마지막 질문의 점수 구간: 36~100을 3등분(79 이상 high, 57 미만 low)", () => {
+    expect(tierOf(79)).toBe("high");
+    expect(tierOf(60)).toBe("mid");
+    expect(tierOf(56)).toBe("low");
     expect(tierOf(55, { tier_high: 50 })).toBe("high");
   });
 

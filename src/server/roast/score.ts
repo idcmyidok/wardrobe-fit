@@ -206,11 +206,11 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
     const isPopular = (i: Item) =>
       ((i.brand!.likes ?? 0) >= R.popular_likes && i.brand!.price < 5 && i.brand!.pop >= 4) || (i.brand!.positions.includes("SPA") && i.brand!.price <= 3);
     const popularList = known.filter(isPopular);
-    const popular = known.length ? popularList.reduce((s, i) => s + youngWeight(opts.age, i, now, R), 0) / known.length : 0;
+    const popular = known.length ? popularList.reduce((s, i) => s + (i.brand!.positions.includes("SPA") ? 1 : youngWeight(opts.age, i, now, R)), 0) / known.length : 0;
     add(
       "popular",
       -over(popular, R.popular_from, R.popular_per10, R.popular_max),
-      `좋아요 ${R.popular_likes.toLocaleString()} 이상·고가 미만·대중적 브랜드, 또는 가격 레벨 3 이하 SPA(좋아요 상관없음) ${P(popular)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max}${opts.age != null ? `, ${youngNote(R)}` : ""})`,
+      `좋아요 ${R.popular_likes.toLocaleString()} 이상·고가 미만·대중적 브랜드, 또는 가격 레벨 3 이하 SPA(좋아요 상관없음, SPA는 나이 보정 없음) ${P(popular)} (${R.popular_from}% 넘는 10%마다 −${R.popular_per10}, 최대 −${R.popular_max}${opts.age != null ? `, ${youngNote(R)}` : ""})`,
       popularList,
     );
     const isTrendy = (i: Item) => i.brand!.hype >= 4 && i.brand!.pop >= 4;
@@ -326,7 +326,7 @@ export function youngWeight(age: number | null, i: Item, now: number, R: { young
 }
 
 export function youngNote(R: { young_age: number; young_end: number; young_pct: number }): string {
-  return `${R.young_age}세 이하에 산 옷은 ${R.young_pct}%로 세고 ${R.young_end}세까지 서서히 1배로 복귀`;
+  return `${R.young_age}세 이하에 산 옷(SPA 제외)은 ${R.young_pct}%로 세고 ${R.young_end}세까지 서서히 100%로 복귀`;
 }
 
 export function ageAt(age: number, i: Item, now: number): number {
@@ -350,20 +350,7 @@ export function bandOf(age: number): string {
   return key;
 }
 
-/** 낮은 점수 보정: 합계(0~100으로 자른 값)에 (100-합계)×보정 세기를 더한다. 합계가 lift_floor점 미만이면 세기도 합계에 비례해 줄인다(합계 0이면 0). 옷장·주문내역 공통 */
-export function liftOf(raw: number, rules?: Partial<ScoreRules>): number {
-  const R = { ...SCORE_RULES, ...(rules ?? {}) };
-  const floor = Number(R.lift_floor);
-  return Number(R.lift) * (floor > 0 ? Math.min(1, raw / floor) : 1);
-}
-
-/** 보정이 들어간 점수(마지막 질문의 구간을 정할 때도 이 점수를 쓴다) */
-export function liftedTotal(score: number, rules?: Partial<ScoreRules>): number {
-  const raw = Math.max(0, Math.min(100, score));
-  return Math.round(raw + (100 - raw) * liftOf(raw, rules));
-}
-
-/** 옷장 훈수 최종 점수: 합계 0→floor_min, 50→floor_mid, 100→100을 꺾은선으로 잇는다(최저점을 보장하면서 100점 근처는 그대로) */
+/** 최종 점수(옷장·주문내역 공통): 합계 0→floor_min, 50→floor_mid, 100→100을 꺾은선으로 잇는다(최저점을 보장하면서 100점 근처는 그대로) */
 export function floorTotal(score: number, rules?: Partial<ScoreRules>): number {
   const R = { ...SCORE_RULES, ...(rules ?? {}) };
   const raw = Math.max(0, Math.min(100, score));
