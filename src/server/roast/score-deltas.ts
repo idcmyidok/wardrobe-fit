@@ -132,6 +132,11 @@ export const SCORE_RULES = {
   shoe_set: 3,
   spend_top_won: 30,
   spend_top: 2,
+  /** 총 구매액 가점: (총 구매액 ÷ total_won만 원 − n) × total_each점. n = 가장 오래된 구매 후 햇수 − total_free_years(마이너스 가능), 최대 total_max점 */
+  total_won: 300,
+  total_each: 2,
+  total_free_years: 3,
+  total_max: 5,
   /** 무신사 좋아요 수가 없는데 중고가 이상인 브랜드: 하나당 가점, 최대 */
   nolikes_each: 2,
   nolikes_max: 3,
@@ -187,8 +192,8 @@ export const SCORE_RULES = {
   sneakers_only: 5,
   /** 모자·신발 뺀 옷이 이 벌 수 이하: 감점 */
   /** 최종 점수 보정(옷장·주문내역 공통): 합계 0점 → floor_min점, 합계 50점 → floor_mid점, 합계 100점 → 100점을 꺾은선으로 잇는다 */
-  floor_min: 36,
-  floor_mid: 87,
+  floor_min: 28,
+  floor_mid: 66,
   thin_n: 20,
   thin: 4,
   logo_pct: 20,
@@ -202,9 +207,9 @@ export const SCORE_RULES = {
   spend_b: 6,
   spend_c: 10,
   // 마지막 질문("스스로 패셔너블하다고 생각하나요?")의 점수 구간
-  // (옷장·주문내역 공통: 최저 36점~100점을 3등분)
-  tier_high: 79,
-  tier_low: 57,
+  // (옷장·주문내역 공통: 최저 28점~100점을 3등분)
+  tier_high: 76,
+  tier_low: 52,
 };
 
 export type ScoreRules = typeof SCORE_RULES;

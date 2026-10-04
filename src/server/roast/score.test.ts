@@ -40,9 +40,9 @@ describe("인기 쏠림 나이 보정", () => {
 });
 
 describe("최저점 보정(옷장·주문내역 공통)", () => {
-  it("0점 36점, 50점 87점, 100점 100점을 꺾은선으로 잇는다", () => {
-    expect([0, 25, 50, 75, 100].map((x) => floorTotal(x))).toEqual([36, 62, 87, 94, 100]);
-    expect(floorTotal(-5)).toBe(36);
+  it("0점 28점, 50점 66점, 100점 100점을 꺾은선으로 잇는다", () => {
+    expect([0, 25, 50, 75, 100].map((x) => floorTotal(x))).toEqual([28, 47, 66, 83, 100]);
+    expect(floorTotal(-5)).toBe(28);
     expect(tierOf(floorTotal(0))).toBe("low");
   });
 });
@@ -50,12 +50,12 @@ describe("최저점 보정(옷장·주문내역 공통)", () => {
 describe("점수 구간은 보정이 들어간 점수로 정한다", () => {
   it("보정 전 25점은 낮음이지만 보정 후 점수는 중간", () => {
     expect(tierOf(25)).toBe("low");
-    expect(tierOf(floorTotal(25))).toBe("mid");
-    expect(headlineBand(36)).toBe("b0");
+    expect(tierOf(floorTotal(35))).toBe("mid");
+    expect(headlineBand(28)).toBe("b0");
     expect(headlineBand(100)).toBe("b90");
     expect(headlineBand(68)).toBe("b50");
-    expect(headlineRange("b0")).toBe("36~42점");
-    expect(headlineRange("b90")).toBe("94점 이상");
+    expect(headlineRange("b0")).toBe("28~35점");
+    expect(headlineRange("b90")).toBe("93점 이상");
   });
 });
 
@@ -96,10 +96,10 @@ describe("옷장 점수(점수 계획서)", () => {
     expect(bandOf(70)).toBe("b61");
   });
 
-  it("마지막 질문의 점수 구간: 36~100을 3등분(79 이상 high, 57 미만 low)", () => {
-    expect(tierOf(79)).toBe("high");
+  it("마지막 질문의 점수 구간: 28~100을 3등분(76 이상 high, 52 미만 low)", () => {
+    expect(tierOf(76)).toBe("high");
     expect(tierOf(60)).toBe("mid");
-    expect(tierOf(56)).toBe("low");
+    expect(tierOf(51)).toBe("low");
     expect(tierOf(55, { tier_high: 50 })).toBe("high");
   });
 
