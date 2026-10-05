@@ -2,9 +2,15 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import { safeNextPath } from "@/lib/supabase/config";
+import { notifyAdminOfSignup } from "@/server/auth/signup-notify";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const OTP_TYPES: EmailOtpType[] = ["signup", "invite", "magiclink", "recovery", "email_change", "email"];
+
+async function notifySignup(supabase: NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>) {
+  const { data } = await supabase.auth.getUser();
+  if (data.user) await notifyAdminOfSignup(data.user);
+}
 
 /**
  * 가입 인증 / 비밀번호 재설정 메일 링크가 도착하는 곳.
@@ -24,10 +30,16 @@ export async function GET(request: NextRequest) {
 
   if (tokenHash && type && OTP_TYPES.includes(type)) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
-    if (!error) redirect(type === "recovery" ? "/auth/update-password" : next);
+    if (!error) {
+      if (type === "signup") await notifySignup(supabase);
+      redirect(type === "recovery" ? "/auth/update-password" : next);
+    }
   } else if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) redirect(next);
+    if (!error) {
+      if (next !== "/auth/update-password") await notifySignup(supabase);
+      redirect(next);
+    }
   }
 
   redirect(failed);
