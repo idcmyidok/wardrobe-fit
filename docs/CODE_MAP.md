@@ -314,6 +314,7 @@
 ### src/server/auth
 - `actions.ts` (140줄) AuthFormState:11 signIn:51 signUp:77 requestPasswordReset:101 updatePassword:116 signOut:134
 - `messages.ts` (13줄) AUTH_MESSAGES:1
+- `signup-notify.ts` (44줄) notifyAdminOfSignup — 가입 인증 직후 관리자에게 알림 메일(env: ADMIN_NOTIFY_EMAIL·NOTIFY_SMTP_USER·NOTIFY_SMTP_PASS, 없으면 건너뜀). `auth/confirm/route.ts`에서 호출
 - `schemas.ts` (44줄) signInSchema:6 signUpSchema:11 resetRequestSchema:26 updatePasswordSchema:28 fieldErrors:36
 
 ### src/server/body
