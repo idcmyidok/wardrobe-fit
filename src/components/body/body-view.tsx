@@ -24,7 +24,6 @@ import {
 import { LENGTH_GROUP_NAME, LENGTH_LEVELS, LENGTH_LEVEL_NAME, lengthBands, lengthGroupOfFitGroup, type LengthGroup } from "@/lib/fit/length-fit";
 import { formatDate } from "@/lib/format/date";
 import { useBody } from "./body-store";
-import { FIT_COLOR } from "./fit-meter";
 
 const GROUPS = [
   { id: "basic", title: "기본" },
@@ -519,7 +518,7 @@ function Recommendations({
           <tbody>
             {WEARABLE_LEVELS.map((level, row) => (
               <tr key={level}>
-                <td className="font-sans font-semibold whitespace-nowrap" style={{ color: FIT_COLOR[level] }}>
+                <td className="font-sans font-semibold whitespace-nowrap">
                   {fitLevelName(level, group.kind)}
                 </td>
                 {keys.map((key) => {

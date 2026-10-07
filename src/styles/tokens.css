@@ -36,13 +36,24 @@
   --shadow-md: 0 8px 28px rgb(0 0 0 / 0.08);
   --shadow-lg: 0 24px 60px rgb(0 0 0 / 0.16);
 
-  /* 핏 미터기 6칸(너무 작음 → 너무 큼). 가운데 레귤러핏이 초록, 양 끝이 붉은색 */
-  --fit-too-small: #e5484d;
-  --fit-slim: #5e5ce6;
-  --fit-regular: #30a46c;
-  --fit-semi-over: #a3b018;
-  --fit-over: #f5a524;
-  --fit-too-big: #e5484d;
+  /* 핏 미터기 6칸(너무 작음 → 너무 큼): 아이보리·노랑·주황·초록·파랑·보라 파스텔(사용자 지정 2026-10-07).
+     연한 색이라 글자색으로는 쓰지 않고 칸·점·막대 채우기에만 쓴다. */
+  --fit-too-small: #ece3c8;
+  --fit-slim: #f6dc7e;
+  --fit-regular: #f8bb85;
+  --fit-semi-over: #b3dfa6;
+  --fit-over: #a6c8f2;
+  --fit-too-big: #c9b5ef;
+
+  /* 그래프(옷장 분석) 계열색 8개. 화면은 흑백이어도 데이터는 색으로 구분한다. 순서대로만 쓴다(색약 검증된 순서). */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-6: #008300;
+  --chart-7: #4a3aa7;
+  --chart-8: #e34948;
 }
 
 [data-theme="dark"] {
@@ -76,12 +87,24 @@
   --shadow-md: 0 8px 28px rgb(0 0 0 / 0.6);
   --shadow-lg: 0 24px 60px rgb(0 0 0 / 0.7);
 
-  --fit-too-small: #ff6369;
-  --fit-slim: #8e8cff;
-  --fit-regular: #4cc38a;
-  --fit-semi-over: #c6d33a;
-  --fit-over: #ffb84d;
-  --fit-too-big: #ff6369;
+  /* 핏 미터기 6칸(너무 작음 → 너무 큼): 아이보리·노랑·주황·초록·파랑·보라 파스텔(사용자 지정 2026-10-07).
+     연한 색이라 글자색으로는 쓰지 않고 칸·점·막대 채우기에만 쓴다. */
+  --fit-too-small: #e6dcc0;
+  --fit-slim: #f6dc7e;
+  --fit-regular: #f8bb85;
+  --fit-semi-over: #b3dfa6;
+  --fit-over: #a6c8f2;
+  --fit-too-big: #c9b5ef;
+
+  /* 그래프(옷장 분석) 계열색 8개. 화면은 흑백이어도 데이터는 색으로 구분한다. 순서대로만 쓴다(색약 검증된 순서). */
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-6: #008300;
+  --chart-7: #9085e9;
+  --chart-8: #e66767;
 }
 
 /* semantic 토큰: 램프에서 파생하므로 테마가 바뀌면 함께 바뀐다. */
