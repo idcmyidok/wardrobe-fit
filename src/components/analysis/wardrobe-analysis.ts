@@ -19,11 +19,11 @@ const josa = (w: string, a: string, b: string) => {
 };
 
 const CATEGORY_FILL: Record<CategoryId, string> = {
-  outer: "var(--text)",
-  top: "var(--n-500)",
-  bottom: "var(--a-400)",
-  hat: "var(--a-600)",
-  shoes: "var(--n-300)",
+  outer: "var(--chart-1)",
+  top: "var(--chart-2)",
+  bottom: "var(--chart-3)",
+  hat: "var(--chart-4)",
+  shoes: "var(--chart-5)",
 };
 
 /** 6개월 평균 구매액 구간별 제목. [상한(미만), 제목] */
@@ -203,16 +203,17 @@ const tabName = (tab: CategoryTab) => (tab === "all" ? "옷장" : CATEGORY_NAME[
 const tabLabel = (tab: CategoryTab) => (tab === "all" ? "전체" : CATEGORY_NAME[tab]);
 
 const BRAND_PALETTE = [
-  "var(--text)",
-  "var(--a-600)",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+  "var(--chart-7)",
+  "var(--chart-8)",
+  // 9·10위는 새 색을 만들지 않고 회색으로 둔다(범례 이름으로 구분).
   "var(--n-500)",
-  "var(--a-300)",
-  "var(--n-700)",
-  "var(--a-800)",
   "var(--n-400)",
-  "var(--a-500)",
-  "var(--n-300)",
-  "var(--a-200)",
 ];
 
 export function brandSummary(G: Garment[], tab: CategoryTab) {

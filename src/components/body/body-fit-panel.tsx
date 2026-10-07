@@ -122,13 +122,13 @@ function BodyFitDetails({
     <div className="flex flex-col gap-4" data-testid="body-fit">
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="text-lg font-semibold" style={{ color: FIT_COLOR[userFit ?? r.level] }}>
+          <span className="text-lg font-semibold">
             {name(userFit ?? r.level)}
           </span>
           <span className="text-sm text-neutral-700">{userFit ? "내가 표기한 핏" : "예상 핏"}</span>
           {differs && (
             <span className="text-sm text-neutral-700">
-              · 치수로 본 예상 핏은 <strong style={{ color: FIT_COLOR[r.level] }}>{name(r.level)}</strong>
+              · 치수로 본 예상 핏은 <strong>{name(r.level)}</strong>
             </span>
           )}
         </div>

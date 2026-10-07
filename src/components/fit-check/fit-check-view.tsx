@@ -299,7 +299,10 @@ export function FitCheckView() {
                 id="fit-url"
                 className="input min-h-11 text-body"
                 type="url"
-                placeholder="https://"
+                inputMode="url"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="https://…"
                 value={url}
                 disabled={importing}
                 onChange={(e) => setUrl(e.target.value)}

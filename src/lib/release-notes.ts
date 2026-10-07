@@ -34,6 +34,14 @@ export interface ReleaseNote {
 
 const ALL_NOTES: ReleaseNote[] = [
   {
+    version: "1.5.0",
+    date: "2026-10-07",
+    time: "22:02",
+    features: [],
+    changes: ["사이트 디자인을 전체적으로 수정했습니다."],
+    fixes: [],
+  },
+  {
     version: "1.4.2",
     date: "2026-10-03",
     time: "02:27",

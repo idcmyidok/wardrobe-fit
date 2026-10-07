@@ -41,7 +41,7 @@ export function AuthPanel({
       {mode === "signin" && (
         <HelpPopup label="비밀번호 입력 시 사기 사이트라고 뜨는 문제">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/dolphin.jpg" alt="" className="w-full" />
+          <img src="/images/dolphin.jpg" alt="" width={480} height={477} className="h-auto w-full" />
           <p>
             만든 지 얼마 안 된 소규모 사이트라서 구글이 위험 사이트로 판단하는 경우가 있어요.
             아이디·비밀번호·개인정보는 모두 암호화해서 저장하니 안심해 주세요.

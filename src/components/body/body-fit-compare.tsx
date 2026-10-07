@@ -36,7 +36,7 @@ function DimensionCard({ d, kind, verdict }: { d: BodyFitDimension; kind: FitKin
     <div className="flex flex-col gap-3 border border-neutral-300 p-3">
       <div className="flex items-baseline justify-between gap-2">
         <span className="font-semibold">{d.label}</span>
-        <span className="text-sm font-semibold" style={{ color: FIT_COLOR[d.level] }}>
+        <span className="text-sm font-semibold">
           {levelName}
         </span>
       </div>

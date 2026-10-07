@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useBody } from "@/components/body/body-store";
-import { FIT_COLOR, FitMeter } from "@/components/body/fit-meter";
+import { FitMeter } from "@/components/body/fit-meter";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { WEARABLE_LEVELS, fitLevelName, type WearableLevel } from "@/lib/constants/body";
 import { CATEGORIES, SUBCATEGORIES } from "@/lib/constants/categories";
@@ -266,7 +266,10 @@ export function VersusView() {
                 id={`vs-url-${i}`}
                 className="input min-h-11 text-body"
                 type="url"
-                placeholder="https://"
+                inputMode="url"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="https://…"
                 value={u}
                 disabled={importing}
                 onChange={(e) => setUrls((list) => list.map((x, j) => (j === i ? e.target.value : x)))}
@@ -474,7 +477,7 @@ export function VersusView() {
             return cell(
               r?.status === "ok" ? (
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-md font-semibold" style={{ color: FIT_COLOR[r.level] }}>
+                  <span className="text-md font-semibold">
                     {fitLevelName(r.level, k)}
                   </span>
                   <FitMeter level={r.level} kind={k} size="lg" />
@@ -487,7 +490,7 @@ export function VersusView() {
           })}
           {rec(
             <div className="flex flex-col gap-1.5">
-              <span className="text-md font-semibold" style={{ color: FIT_COLOR[target] }}>
+              <span className="text-md font-semibold">
                 {fitLevelName(target, kind)}
               </span>
             </div>,
