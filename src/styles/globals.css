@@ -3,6 +3,16 @@
 @import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 @import "./tokens.css";
 
+/* 글꼴이 오기 전 잠깐 쓰는 대체 글꼴을 Pretendard 크기에 맞춘다(바뀔 때 글줄이 밀리지 않게). 값은 next/font가 계산하던 것과 같다. */
+@font-face {
+  font-family: "Pretendard Fallback";
+  src: local("Arial");
+  ascent-override: 93.76%;
+  descent-override: 23.75%;
+  line-gap-override: 0%;
+  size-adjust: 101.55%;
+}
+
 /*
  * Tailwind 기본 팔레트, radius, 글자 크기를 지우고 토큰만 허용한다.
  */
@@ -97,11 +107,11 @@
   --shadow-popover: var(--shadow-popover);
   --shadow-dialog: var(--shadow-dialog);
 
-  --font-sans: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+  --font-sans: "Pretendard Variable", "Pretendard Fallback", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
     "Noto Sans KR", sans-serif;
   /* 폰트는 Pretendard 하나만 쓴다. 숫자는 tabular-nums로 맞춘다. */
-  --font-display: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
-  --font-mono: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  --font-display: "Pretendard Variable", "Pretendard Fallback", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  --font-mono: "Pretendard Variable", "Pretendard Fallback", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
 
   --ease-standard: var(--ease-standard);
   --default-transition-duration: var(--duration-fast);
