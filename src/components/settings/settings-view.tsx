@@ -15,19 +15,19 @@ export function SettingsView({ email, createdAt }: { email: string | null; creat
       <Link href="/wardrobe" className="btn btn-ghost mb-2 text-sm">
         ← 내 옷장
       </Link>
-      <div className="border-b border-divider pb-4">
-        <h1 className="text-title">계정 설정</h1>
+      <div className="rise pb-2">
+        <h1 className="large-title">계정 설정</h1>
       </div>
 
-      <section className="flex flex-col gap-3 border-b border-neutral-300 py-7">
-        <h2 className="text-lg">계정</h2>
+      <section className="app-card rise mt-4 flex flex-col gap-3 p-6 md:p-8">
+        <h2 className="text-xl font-bold">계정</h2>
         <dl className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-2 text-base">
           <dt className="text-neutral-700">이메일</dt>
           <dd className="break-all">{email ?? "로그인하지 않은 미리보기"}</dd>
           {createdAt && (
             <>
               <dt className="text-neutral-700">가입일</dt>
-              <dd className="font-mono tabular-nums">{createdAt.slice(0, 10)}</dd>
+              <dd className="tabular-nums">{createdAt.slice(0, 10)}</dd>
             </>
           )}
         </dl>
@@ -35,8 +35,8 @@ export function SettingsView({ email, createdAt }: { email: string | null; creat
       </section>
 
       {email && (
-        <section className="flex flex-col gap-3 py-7">
-          <h2 className="text-lg">회원 탈퇴</h2>
+        <section className="app-card rise mt-4 flex flex-col gap-3 p-6 md:p-8">
+          <h2 className="text-xl font-bold">회원 탈퇴</h2>
           <p className="text-base text-neutral-800">
             탈퇴하면 계정과 옷장 기록, 사진, 구매 판단 기록이 바로 삭제되고 되살릴 수 없습니다. 자세한 내용은{" "}
             <Link href="/privacy" className="underline underline-offset-2">

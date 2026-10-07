@@ -1,7 +1,7 @@
-import { CATEGORIES, CATEGORY_NAME, COUNT_UNIT, SUBCATEGORY_NAME } from "@/lib/constants/categories";
+import { CATEGORIES, CATEGORY_NAME, COUNT_UNIT } from "@/lib/constants/categories";
 import { findColorFamily, findColorHex, luminance } from "@/lib/constants/colors";
 import { FOUR_SEASONS, SEASON_NAME, wearsInSeason } from "@/lib/constants/seasons";
-import type { CategoryId, Garment, Season } from "@/lib/types/domain";
+import type { CategoryId, Garment } from "@/lib/types/domain";
 
 /** 옷장 분석 화면의 계산. 서버 통계(PROJECT_SPEC.md 16장)로 옮기기 전까지 클라이언트에서 계산한다. */
 
@@ -301,59 +301,16 @@ export function seasonSummary(G: Garment[]) {
   const least = counts.slice().sort((a, b) => a.count - b.count)[0];
   const most = counts.slice().sort((a, b) => b.count - a.count)[0];
   return {
-    least: least.id,
     bars: counts.map((x) => ({
       id: x.id,
       label: SEASON_NAME[x.id],
       count: x.count,
       pct: G.length ? `${Math.round((x.count / G.length) * 100)}%` : "—",
       height: `${Math.max((x.count / max) * 100, 12).toFixed(1)}%`,
-      isLeast: x.id === least.id,
+      isMost: x.id === most.id,
     })),
     message: G.length
       ? `${SEASON_NAME[most.id]} 옷이 ${most.count}벌로 가장 많고, ${SEASON_NAME[least.id]} 옷은 ${least.count}벌로 가장 적습니다.`
       : "등록한 옷이 없습니다.",
   };
-}
-
-/** 종류별 기본 구성(세부분류, 기본 벌 수, 주로 입는 시즌) */
-const ESSENTIALS: [string, number, Season][] = [
-  ["outer.blouson", 1, "fall"],
-  ["outer.transition_coat", 1, "fall"],
-  ["outer.winter_coat", 1, "winter"],
-  ["outer.short_padding", 1, "winter"],
-  ["outer.cardigan", 1, "spring"],
-  ["top.short_tee", 3, "summer"],
-  ["top.long_tee", 2, "spring"],
-  ["outer.shirt", 2, "spring"],
-  ["top.knit", 2, "winter"],
-  ["top.sweatshirt", 1, "fall"],
-  ["bottom.denim", 2, "fall"],
-  ["bottom.slacks", 2, "spring"],
-  ["bottom.chino", 1, "spring"],
-  ["bottom.shorts", 1, "summer"],
-];
-
-/** 기본 구성 대비 부족한 순으로 3개. 가장 적은 시즌의 옷은 우선순위를 높인다. */
-export function recommendations(G: Garment[], leastSeason: Season) {
-  return ESSENTIALS.map(([sub, target, season]) => {
-    const have = G.filter((g) => g.subcategoryId === sub).length;
-    const def = target - have;
-    return { sub, target, have, season, def, score: def / target + (season === leastSeason ? 0.35 : 0) };
-  })
-    .filter((x) => x.def > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
-    .map((x, i) => ({
-      rank: `0${i + 1}`,
-      label: SUBCATEGORY_NAME[x.sub],
-      category: CATEGORY_NAME[x.sub.split(".")[0] as CategoryId],
-      have: `보유 ${x.have}벌 · 기본 ${x.target}벌`,
-      dots: Array.from({ length: x.target }, (_, j) => j < x.have),
-      reason:
-        (x.have === 0 ? "아직 한 벌도 없습니다. " : `${x.def}벌 더 있으면 기본 구성이 채워집니다. `) +
-        (x.season === leastSeason
-          ? `${SEASON_NAME[x.season]} 옷이 가장 부족해 우선순위를 높였습니다.`
-          : `${SEASON_NAME[x.season]}에 자주 입는 종류입니다.`),
-    }));
 }

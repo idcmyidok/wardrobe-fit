@@ -252,7 +252,7 @@ export function VersusView() {
 
   if (items.length < 2) {
     return (
-      <section className="flex max-w-190 flex-col gap-3 py-7" aria-label="VS 비교 입력">
+      <section className="app-card rise mt-5 flex max-w-190 flex-col gap-3 p-5 md:p-7" aria-label="VS 비교 입력">
         <p className="text-sm text-neutral-700">
           고민 중인 옷의 링크를 2~3개 넣으면 나란히 비교하고, 내 치수와 옷장 기준으로 어떤 옷이 더 맞을지 추천해요. 링크마다 분석 1회가 쓰이고, AI 판단은 1위 옷만 먼저 합니다.
         </p>
@@ -302,12 +302,12 @@ export function VersusView() {
   }
 
   const rowLabel = (text: string, sub?: string) => (
-    <div className="col-span-full border-t border-neutral-300 pt-4 pb-1 text-center font-mono text-xs font-medium tracking-[0.08em] text-neutral-700">
+    <div className="col-span-full border-t border-neutral-200 pt-4 pb-1 text-center text-sm font-semibold text-neutral-600">
       {text}
       {sub && <span className="ml-1 font-sans font-normal text-neutral-600">{sub}</span>}
     </div>
   );
-  const rec = (children: React.ReactNode) => <div className="bg-neutral-100 px-3 py-2 text-center">{children}</div>;
+  const rec = (children: React.ReactNode) => <div className="rounded-sm bg-neutral-100 px-3 py-2 text-center">{children}</div>;
   const cell = (children: React.ReactNode, key: string) => (
     <div key={key} className="px-3 py-2 text-center">
       {children}
@@ -339,9 +339,9 @@ export function VersusView() {
   const activeSize = activeItem ? sizeOf(activeItem) : null;
 
   return (
-    <div className="flex flex-col gap-8 py-7">
+    <div className="mt-5 flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg">VS 비교</h2>
+        <h2 className="text-[28px] font-bold tracking-[-0.02em]">VS 비교</h2>
         <button
           type="button"
           className="btn btn-ghost text-sm"
@@ -362,7 +362,7 @@ export function VersusView() {
         </ul>
       )}
 
-      <div className="overflow-x-auto overscroll-x-contain">
+      <div className="app-card rise overflow-x-auto overscroll-x-contain p-3 md:p-5">
         <div className="grid min-w-fit items-start gap-x-2" style={grid} data-testid="versus-grid">
           {/* 머리: 사진·이름·가격 / 추천 실측 설정 */}
           {items.map((it) => {
@@ -370,9 +370,10 @@ export function VersusView() {
             const isTop = it.key === top;
             return (
               <div key={it.key} className="flex flex-col items-center gap-2 px-3 pb-4 text-center">
-                <div className="grid aspect-[4/5] w-full max-w-44 place-items-center bg-neutral-200">
+                {/* 사진은 원래 비율 그대로(늘이거나 자르지 않음). 사진이 없으면 4:5 빈 칸 */}
+                <div className="flex h-55 w-full max-w-44 items-center justify-center">
                   {/* eslint-disable-next-line @next/next/no-img-element -- 분석 서버가 대신 받아 주는 상품 이미지 */}
-                  {img && <img src={img} alt="" className="size-full object-contain" onError={(e) => (e.currentTarget.style.opacity = "0")} />}
+                  {img ? <img src={img} alt="" className="h-auto max-h-full w-auto max-w-full rounded-sm" onError={(e) => (e.currentTarget.style.opacity = "0")} /> : <div className="aspect-4/5 h-full rounded-sm bg-neutral-200" />}
                 </div>
                 <span className={cn("tag", isTop ? "tag-accent font-semibold" : "invisible")}>추천</span>
                 <span className="text-sm font-semibold">{it.product.brand?.value ?? "—"}</span>
@@ -381,7 +382,7 @@ export function VersusView() {
               </div>
             );
           })}
-          <div className="flex flex-col gap-3 bg-neutral-100 px-3 pt-3 pb-4">
+          <div className="flex flex-col gap-3 rounded-md bg-neutral-100 px-3 pt-3 pb-4">
             <span className="text-center text-base font-semibold">추천 실측</span>
             <div className="field">
               <label htmlFor="vs-group" className="text-xs">
@@ -567,8 +568,8 @@ export function VersusView() {
         </div>
       </div>
 
-      <section className="flex flex-col gap-3 border-t border-divider pt-6" aria-labelledby="vs-rec-title">
-        <h2 id="vs-rec-title" className="text-lg">
+      <section className="app-card rise flex flex-col gap-3 p-5 md:p-7" aria-labelledby="vs-rec-title">
+        <h2 id="vs-rec-title" className="text-xl font-bold">
           어떤 옷이 더 괜찮을까
         </h2>
         <p className="text-quote leading-normal text-pretty" data-testid="versus-summary">
@@ -579,8 +580,8 @@ export function VersusView() {
             const e = entries.find((x) => x.key === r.key)!;
             const it = items.find((x) => x.key === r.key)!;
             return (
-              <li key={r.key} className="grid grid-cols-[2rem_1fr_auto] items-baseline gap-3 border-b border-neutral-300 py-3">
-                <span className="font-mono text-lg font-semibold">{i + 1}</span>
+              <li key={r.key} className="grid grid-cols-[2rem_1fr_auto] items-baseline gap-3 border-b border-neutral-200 py-3 last:border-b-0">
+                <span className="text-xl font-bold tabular-nums">{i + 1}</span>
                 <div className="flex min-w-0 flex-col gap-1">
                   <span className="text-base font-semibold">
                     {e.name} <span className="font-mono font-normal">{sizeOf(it)}</span>
@@ -598,9 +599,9 @@ export function VersusView() {
         </ol>
       </section>
 
-      <section className="flex flex-col gap-4 border-t border-divider pt-6" aria-labelledby="vs-ai-title">
+      <section className="app-card rise flex flex-col gap-4 p-5 md:p-7" aria-labelledby="vs-ai-title">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="vs-ai-title" className="text-lg">
+          <h2 id="vs-ai-title" className="text-xl font-bold">
             AI 구매 판단
           </h2>
           <span className="text-sm text-neutral-700">옷장 기록과 비교 · 옷마다 판단 한도 1회. 추천 1위 옷만 먼저 판단했어요.</span>

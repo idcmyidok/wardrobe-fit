@@ -260,14 +260,14 @@ export function GarmentDetail({
                       type="button"
                       aria-label="사진 크게 보기"
                       onClick={() => setZoomed(true)}
-                      className="aspect-[4/5] w-full cursor-zoom-in bg-neutral-200"
+                      className="flex w-full cursor-zoom-in items-start justify-center"
                     >
                       {/* 불러오지 못하면(서명 주소 만료 등) 깨진 그림 대신 빈 자리만 남긴다. */}
                       {/* eslint-disable-next-line @next/next/no-img-element -- 비공개 bucket의 signed URL */}
-                      <img src={g.imageUrl} alt="" onError={(e) => (e.currentTarget.style.opacity = "0")} className="size-full object-contain" />
+                      <img src={g.imageUrl} alt="" onError={(e) => (e.currentTarget.style.opacity = "0")} className="h-auto max-h-50 w-auto max-w-full rounded-sm" />
                     </button>
                   ) : (
-                    <div className="aspect-[4/5] bg-neutral-200" />
+                    <div className="aspect-4/5 rounded-sm bg-neutral-200" />
                   )}
                   <div className="flex min-w-0 flex-col gap-1.5">
                     {g.brand && <span className="text-base font-semibold">{g.brand}</span>}

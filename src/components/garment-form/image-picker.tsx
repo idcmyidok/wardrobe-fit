@@ -65,7 +65,7 @@ export function ImagePicker({
       >
         {shown ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={shown} alt="옷 사진 미리보기" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={shown} alt="옷 사진 미리보기" className="absolute inset-0 h-full w-full object-contain" />
         ) : (
           placeholder
         )}

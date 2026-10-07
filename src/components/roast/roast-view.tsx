@@ -24,7 +24,11 @@ import "./roast.css";
  */
 
 const PREVIEW_KEY = "wardrobe-fit:roast-result";
-const TYPE_MS = 43;
+/** 말풍선이 떠오르는 시간과 글자당 읽을 틈(ms) */
+const BUBBLE_IN_MS = 450;
+const READ_MS = 14;
+/** 말풍선 앞 "입력 중" 점이 보이는 시간: 긴 말일수록 조금 더 */
+const typingMs = (text: string) => Math.min(1400, 380 + text.length * 16);
 /** 관리자 계정은 출력·대기를 이 배수만큼 빠르게 본다(화면에서 RoastView가 정한다). */
 const pace = { speed: 1 };
 /** 시작 화면에서 선언문에 동의했다는 표시(옷장 → 주문내역으로 넘어갈 때 다시 묻지 않기 위해, 이 탭에서만 유지) */
@@ -141,7 +145,7 @@ export function RoastView({ initialResult, copy = ROAST_COPY, orders, ordersUsed
             onRetry={() => setMode("name")}
           />
         ) : mode === "paste" && orders ? (
-          <div className="roast-mono roast-log mt-8">
+          <div className="roast-log mt-8">
             <OrderPaste
               copy={orders}
               onReady={(items, note) => {
@@ -244,47 +248,33 @@ function richParts(text: string): { t: string; k: "" | "b" | "r" }[] {
   return out;
 }
 
-/** 한 글자씩 출력. 움직임 줄이기 설정이면 바로 전부 보인다. */
+/** 말풍선 글. 한 번에 떠오르고, 읽을 틈을 둔 뒤 다음 말로 넘어간다. 움직임 줄이기 설정이면 바로 넘어간다. */
 function Typed({ text: raw, onDone }: { text: string; onDone?: () => void }) {
   const parts = useMemo(() => richParts(raw), [raw]);
-  const text = useMemo(() => parts.map((p) => p.t).join(""), [parts]);
-  const [n, setN] = useState(0);
-  const done = useRef(false);
+  const done = useRef(onDone);
   useEffect(() => {
-    if (n >= text.length) {
-      if (!done.current) {
-        done.current = true;
-        onDone?.();
-      }
-      return;
-    }
-    // 문장 부호 뒤에서 잠깐 멈춘다.
-    const ch = text[n - 1];
-    const instant = reducedMotion();
-    const t = setTimeout(() => setN((x) => (instant ? text.length : x + 1)), instant ? 0 : (/[.?!,]/.test(ch ?? "") ? TYPE_MS * 8 : TYPE_MS) / pace.speed);
+    done.current = onDone;
+  }, [onDone]);
+  useEffect(() => {
+    const t = setTimeout(() => done.current?.(), reducedMotion() ? 0 : (BUBBLE_IN_MS + Math.min(raw.length * READ_MS, 900)) / pace.speed);
     return () => clearTimeout(t);
-  }, [n, text, onDone]);
-  const starts = parts.map((_, i) => parts.slice(0, i).reduce((sum, x) => sum + x.t.length, 0));
+  }, [raw]);
   return (
     <>
-      {parts.map((p, i) => {
-        const shown = p.t.slice(0, Math.max(0, n - starts[i]));
-        if (!shown) return null;
-        return p.k === "b" ? <strong key={i}>{shown}</strong> : p.k === "r" ? <strong key={i} className="text-red-700">{shown}</strong> : <Fragment key={i}>{shown}</Fragment>;
-      })}
-      {n < text.length && <span className="roast-cursor" aria-hidden />}
+      {parts.map((p, i) =>
+        p.k === "b" ? <strong key={i}>{p.t}</strong> : p.k === "r" ? <strong key={i} className="text-negative">{p.t}</strong> : <Fragment key={i}>{p.t}</Fragment>,
+      )}
     </>
   );
 }
 
+/** 입력 중 말풍선(점 세 개) */
 function Dots() {
   return (
-    <span className="roast-dots" role="status" aria-label="생각하는 중">
-      {Array.from({ length: 6 }, (_, i) => (
-        <span key={i} aria-hidden style={{ animationDelay: `${i * 0.12}s` }}>
-          .
-        </span>
-      ))}
+    <span className="roast-typing" role="status" aria-label="입력하는 중">
+      <span aria-hidden />
+      <span aria-hidden />
+      <span aria-hidden />
     </span>
   );
 }
@@ -422,7 +412,7 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
   const enough = clothes >= MIN_CLOTHES;
 
   return (
-    <div className="roast-mono roast-log mt-8" aria-live="polite">
+    <div className="roast-log mt-8" aria-live="polite">
       <p className="roast-ai"><Typed text={copy.INTRO} onDone={() => setTimeout(() => setTyped(true), reducedMotion() ? 0 : INTRO_PAUSE_MS / pace.speed)} /></p>
       {!skipIntro && copy.CREDIT && <p className="roast-credit">{copy.CREDIT}</p>}
       {typed && !enough && (
@@ -463,7 +453,7 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
             </span>
           </label>
           )}
-          <div className="flex flex-wrap gap-2">
+          <div className="roast-replies roast-replies-row">
             <button
               type="button"
               className="roast-choice"
@@ -482,7 +472,7 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
             )}
           </div>
           {!orders && needAgree && !agreed && (
-            <p className="text-xs text-red-700" role="alert">
+            <p className="text-xs text-negative" role="alert">
               {copy.CONSENT_WARN}
             </p>
           )}
@@ -494,7 +484,7 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
         </p>
       )}
       {typed && picking && pickDone && !asking && (
-        <div className="flex flex-wrap gap-2">
+        <div className="roast-replies roast-replies-row">
           <button type="button" className="roast-choice" onClick={() => setAsking(true)}>
             {copy.PICK_CLOSET}
           </button>
@@ -523,7 +513,7 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
           <p className="roast-ai">
             <Typed text={copy.ASK_NAME} />
           </p>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="roast-replies roast-replies-row items-center">
             <input
               value={name}
               onChange={(e) => setName(e.target.value.slice(0, 20))}
@@ -531,7 +521,7 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
               autoComplete="off"
               aria-label="부를 이름"
               placeholder="예: 세현"
-              className="min-h-12 w-56 max-w-full border border-border bg-surface px-3 text-body"
+              className="min-h-11 w-48 max-w-full rounded-full border border-border bg-surface px-4 text-body"
             />
             <input
               value={age}
@@ -541,14 +531,14 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
               aria-label="나이"
               placeholder="나이"
               required
-              className="min-h-12 w-20 border border-border bg-surface px-3 text-body"
+              className="min-h-11 w-20 rounded-full border border-border bg-surface px-4 text-body"
             />
             <button type="submit" disabled={!ageOk} className={buttonClassName({ variant: "primary", size: "lg" })}>
               시작하기
             </button>
           </div>
-          <span className="text-sm text-neutral-700">{copy.NAME_HINT}</span>
-          {copy.AGE_HINT && <span className="text-sm text-neutral-700">{copy.AGE_HINT}</span>}
+          <span className="self-end text-right text-sm text-neutral-700">{copy.NAME_HINT}</span>
+          {copy.AGE_HINT && <span className="self-end text-right text-sm text-neutral-700">{copy.AGE_HINT}</span>}
         </form>
       )}
     </div>
@@ -596,6 +586,11 @@ function Chat({
   const [typedIds, setTypedIds] = useState<Set<number>>(() => new Set());
   const say = useCallback(
     async (text: string, photos?: string[], gap?: boolean, captions?: Record<string, string>) => {
+      if (!reducedMotion()) {
+        const dots = push({ kind: "dots" });
+        await sleep(typingMs(text));
+        setMsgs((list) => list.filter((m) => m.id !== dots));
+      }
       await new Promise<void>((resolve) => {
         const id = nextId.current;
         typedWaiters.current.set(id, resolve);
@@ -756,7 +751,7 @@ function Chat({
   }, []);
 
   return (
-    <div ref={logRef} className="roast-mono roast-log mt-8" aria-live="polite">
+    <div ref={logRef} className="roast-log mt-8" aria-live="polite">
       {msgs.map((m) =>
         m.kind === "ai" ? (
           <div key={m.id} className="roast-ai" data-gap={m.gap ? "true" : undefined}>
@@ -778,12 +773,13 @@ function Chat({
             </Link>
           </div>
         ) : (
-          <div key={m.id} className="flex flex-col gap-2 sm:max-w-120">
-            {m.q.options.map((o) => (
+          <div key={m.id} className="roast-replies">
+            {m.q.options.map((o, i) => (
               <button
                 key={o.id}
                 type="button"
                 className="roast-choice"
+                style={{ ["--d" as string]: `${i * 0.08}s` }}
                 disabled={m.picked !== null}
                 data-picked={m.picked === o.id}
                 // 퀴즈를 틀리면 정답 선택지를 따로 표시한다.
@@ -853,7 +849,7 @@ function ResultView({
   const copy = useContext(CopyContext);
   const date = useMemo(() => koreanDate(result.createdAt), [result.createdAt]);
   return (
-    <article className="roast-mono roast-result mt-8 flex flex-col gap-6">
+    <article className="roast-result mt-8 flex flex-col gap-6">
       {changed && (
         <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-surface px-4 py-3">
           <span className="text-body">{copy.CHANGED}</span>
@@ -940,7 +936,6 @@ function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string
   return (
     <div className="roast-report">
       <h2 className="roast-headline">
-        <span className="roast-prompt">&gt;</span>
         {report.headline}
       </h2>
       {report.summary && <p className="roast-summary">{report.summary}</p>}

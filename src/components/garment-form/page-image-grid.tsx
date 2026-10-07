@@ -45,7 +45,7 @@ export function PageImageGrid({
                 src={src}
                 alt=""
                 loading="lazy"
-                className="size-full object-cover"
+                className="size-full object-contain"
                 onError={() => onBroken(i)}
                 onLoad={(e) => {
                   if (Math.max(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight) < 150) onBroken(i);

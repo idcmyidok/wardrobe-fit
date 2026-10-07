@@ -10,7 +10,6 @@
 | `src/server/roast/brands.json` | 1.1MB | csv에서 `scripts/build-brands.mjs`로 생성됨. 직접 읽지 말고 csv 기준으로 수정 후 재생성 |
 | `supabase/migrations/…0010_color_names_korean.sql` | 1,948줄 | 색상 이름 일괄 변환용, 볼 일 없음 |
 | `package-lock.json`, `src/lib/supabase/database.types.ts`(832줄, 생성) | | 필요한 테이블만 `grep -n -A20 "테이블명"` |
-| `src/app/(app)/roast/fonts/*.woff2` | | 폰트, 무시 |
 
 ## 핵심 영역 길잡이
 - **훈수(/roast)**: 화면 `src/components/roast/roast-view.tsx`(914), 서버 `src/server/roast/`. 점수 `score.ts`(`scoreWardrobe`)·점수 규칙값 `score-deltas.ts`·등급 `bands.ts`; 분석 `analyze.ts`; 대화 조립 `compose.ts`(`buildScript`, 결과 마무리 `composeResult`)·결과 본문 `report.ts`(`buildReport`)·문장 원문 `lines.ts`(대화 문장 say만)/`report-text.ts`; 질문 `questions.ts`(1295, `QUESTIONS`/`pickQuestions`), 퀴즈 `quiz.ts`(`QUIZ`); 질문 반응(1번·2번…)마다 붙이는 조건·조건별 결과 글 `react-when.ts`(`WHEN_DEFS`/`reactPool`, 저장 키 `questions.<질문>.when|result.<반응>`, 관리자 화면은 `roast-text-editor.tsx`의 `ReactField`·`WhenPicker`); 관리자 편집 단위·조건 `meta.ts`(`textGroups`)·`texts.ts`(저장된 문구 덮어쓰기 `DEFAULT_TEXTS`); 서버 액션 `actions.ts`(`startRoast`/`finishRoast`), 관리자 저장 `admin-actions.ts`. 훈수에는 AI 글쓰기가 없다(2026-10-01 제거; 옛 저장 결과 `headline`/`paragraphs`는 report 없는 결과를 열 때만 쓰임).
@@ -22,7 +21,7 @@
 - **핏 계산**: `src/lib/fit/compute.ts`(`computeFit`/`computeSize`), 내 치수 기반 `body-fit.ts`(`FIT_GROUPS`), 길이 `length-fit.ts`, 신발 `shoes.ts`, VS 비교 `versus.ts`, 비교 대상 선택 `select-comparables.ts`, 서버 `src/server/fit/service.ts`, AI 설명 `src/server/ai/fit-interpreter.ts`.
 - **구매 판단기(핏체크)**: 화면 `src/components/fit-check/`(`fit-check-view`, `fit-result-view`, `versus-view`), API `src/app/api/fit-checks`, 링크 파싱 `src/server/import/`(`parsers/`, `registry.ts`, `service.ts`).
 - **무신사 주문 가져오기**: `src/server/import/musinsa-orders.ts`, `src/lib/import/`, 화면 `src/components/garment-form/order-import-view.tsx`, 북마크 안내 `order-guide.tsx`(`OrderGuide`, 주문내역 훈수와 같이 씀). 옷장 훈수는 이름·나이 뒤 `Chat`이 "옷을 전부 넣었나요?" 질문(`READY_*` 문장, 3번째는 종료+"옷장에 옷 추가하기" 링크)을 먼저 하고, 시작 화면 `Intro`는 동의 체크(`CONSENT`·`CONSENT_WARN`, 맨 처음 옷장 훈수 시작 화면에만 있고 주문내역 시작 화면에는 없음)가 있어야 시작되며 `Typed`는 `**굵게**`·`!!붉은 글씨!!` 표시를 지원한다. 훈수 결과 맨 아래 "분석한 제품 전부 옷장에 넣기"(`roast-view.tsx`)는 `/wardrobe/import-orders?from=roast`로 가며, 훈수가 읽은 결과를 `src/lib/import/order-handoff.ts`로 넘겨 재조회 없이 확인 화면을 연다(`order-import-view.tsx`의 `applyLookup`).
-- **옷장/분석/코디**: `src/components/wardrobe/`, `src/server/garments/`, `src/components/analysis/wardrobe-analysis.ts`, `src/lib/outfit/recommend.ts`.
+- **옷장/분석**: `src/components/wardrobe/`, `src/server/garments/`, `src/components/analysis/wardrobe-analysis.ts`.
 - **업데이트 노트**: `src/lib/release-notes.ts`(342), 화면 `src/components/layout/release-notes-dialog.tsx`. (버전·노트는 사용자 지시 없이 수정 금지)
 - **DB**: `supabase/migrations/`(번호순), 스펙 `PROJECT_SPEC.md`(1189줄, 필요한 절만 `grep -n "^#"`로 찾기).
 
@@ -62,9 +61,6 @@
 
 ### src/app/(app)/fit-check/[id]
 - `page.tsx` (61줄) metadata:8 FitCheckResultPage:11
-
-### src/app/(app)/outfit
-- `page.tsx` (12줄) metadata:6 OutfitPage:8
 
 ### src/app/(app)/roast
 - `layout.tsx` (17줄) RoastLayout:14
@@ -131,8 +127,10 @@
 - `user-actions.tsx` (71줄) UserActions:8
 
 ### src/components/analysis
-- `analysis-view.tsx` (519줄) AnalysisView:34
-- `wardrobe-analysis.ts` (359줄) CategoryTab:8 man:11 won:13 priceComment:56 halfYearAverage:76 recentSixMonths:86 priceSummary:95 monthlySummary:129 …
+- `analysis-view.tsx` (533줄) AnalysisView:34
+- `stack-height.ts` (70줄) LANDMARKS thicknessOf formatHeight stackSummary — 옷 전부 쌓은 높이(세부분류별 두께)와 비슷한 높이의 물건
+- `stack-art.tsx` (192줄) StackArt — 높이 구간별 그림(코드에 내장, 바로 표시)
+- `wardrobe-analysis.ts` (316줄) CategoryTab:8 man:11 won:13 priceComment:56 halfYearAverage:76 recentSixMonths:86 priceSummary:95 monthlySummary:129 …
 
 ### src/components/auth
 - `auth-mode.ts` (6줄) AuthMode:1 parseAuthMode:3
@@ -174,13 +172,14 @@
 - `use-add-held.ts` (63줄) HeldDraft:7 useAddHeld:14
 
 ### src/components/landing
-- `feature-showcase.tsx` (593줄) FeatureShowcase:37 — 첫 화면 대표 기능 탭(옷장 관리·구매 판단·옷장 훈수). 탭 글은 `FEATURES`:551, 예시 화면 WardrobeDemo:277·FitCheckDemo:400·RoastDemo:480. 움직임은 `landing.css`(--d 지연, 자동 넘김 막대 animationend로 다음 탭)
+- `feature-showcase.tsx` (706줄) FeatureShowcase:39 — 첫 화면 대표 기능 탭 5개(옷장 관리·구매 판단·패션 훈수·내 치수·옷장 데이터, 자동 넘김 멈춤 버튼 없음, 탭을 누르면 그 기능부터 다시 넘김). 탭 글은 `FEATURES`:637, 예시 화면 WardrobeDemo:246·FitCheckDemo:369·RoastDemo:449·BodyDemo:512·AnalysisDemo:571. 움직임은 `landing.css`(--d 지연, 자동 넘김 막대 animationend로 다음 탭)
 - `promo-banner.tsx` (120줄) PromoBanner — 로그인 화면 회원가입 줄 아래 새 기능 알림 배너(클릭 없음)(signin·signup 모드). 항목은 `PROMOS` 목록 한 곳에서 추가·수정, 2개 이상이면 5초마다 왼쪽 밀어내기 전환(`landing.css`의 pb-slide), 마우스·포커스 시 멈춤, 점으로 이동
 - `src/components/auth/help-popup.tsx` HelpPopup — 로그인·회원가입 제목 위 빨간 밑줄 안내 + X 달린 팝업(`auth-panel.tsx`에서 사용, 돌고래 사진 `public/images/dolphin.jpg`)
 - `service-intro.tsx` (34줄) ServiceIntro:9 — 로그인 화면 왼쪽(제목·소개 한 줄 + FeatureShowcase)
 
 ### src/components/layout
 - `app-header.tsx` (62줄) AppHeader:20 — 화면 폭 가득한 고정 메뉴바(반투명 회색, `globals.css`의 `.header-bar`). 로고·테마 버튼 없음, 메뉴 좌측 정렬
+- 앱 화면 공통 모양(`globals.css` 끝): `.large-title`·`.page-sub` 큰 제목 머리말, `.app-card` 둥근 카드, `.rise` 들어올 때 떠오름
 - `release-notes-dialog.tsx` (445줄) ReleaseNotesDialog:30
 - `theme-toggle.tsx` (104줄) ThemeToggle:52
 - `user-menu.tsx` (251줄) UserMenu:192 MenuBody:15 useFabHidden:75 MobileAccountButton:100 — 계정 메뉴(화면 모드 선택 포함). PC는 상단 바 버튼+드롭다운, 모바일은 우측 하단 동그란 버튼이 메뉴 창으로 펼쳐짐(body로 portal, 아래 스크롤 시 숨김·3초 멈추거나 위로 스크롤 시 표시, `.fab`/`.fab-panel` 애니메이션)
@@ -189,12 +188,9 @@
 - `legal-page.tsx` (41줄) LegalPage:5 LegalSection:23 LegalList:32
 - `site-footer.tsx` (21줄) SiteFooter:8
 
-### src/components/outfit
-- `outfit-view.tsx` (139줄) OutfitView:20
-
 ### src/components/roast
 - `order-roast.tsx` (198줄) OrderCopy:21 OrderPaste:45
-- `roast-view.tsx` (914줄) RoastView:73(fast prop=관리자 10배 속도, pace.speed)
+- `roast-view.tsx` (1033줄) RoastView:76(fast prop=관리자 10배 속도, pace.speed). 대화는 말풍선 채팅(`roast.css`: `.roast-ai` 말풍선, `.roast-typing` 입력 중 점, `.roast-replies` 오른쪽 답 칸), `Typed`는 글을 한 번에 띄우고 읽을 틈 뒤 onDone
 
 ### src/components/settings
 - `settings-view.tsx` (64줄) SettingsView:11
@@ -212,11 +208,11 @@
 - `filter-state.ts` (207줄) SortableColumn:8 SortDirection:9 ColumnSort:10 WardrobeFilters:19 DEFAULT_SORT:29 DEFAULT_FILTERS:31 isFiltered:40 nextSort:52 …
 - `garment-detail-view.tsx` (28줄) GarmentDetailView:10
 - `garment-drawer.tsx` (714줄) GarmentDrawer:76 GarmentDetail:88
-- `garment-thumbnail.tsx` (40줄) GarmentThumbnail:11
-- `wardrobe-filters.tsx` (181줄) WardrobeFilters:13
+- `garment-thumbnail.tsx` (46줄) GarmentThumbnail:11 (fit "natural" = 원래 사진 비율, 표·목록은 이것만 씀)
+- `wardrobe-filters.tsx` (118줄) MoreFilters:14(세부분류·브랜드·시즌·컬러, 늘 펼침) SearchBox:87
 - `wardrobe-store.tsx` (410줄) GarmentDraft:29 PendingDraft:30 ImageChange:33 SaveResult:36 NETWORK_ERROR:117 WardrobeProvider:137 useOpenGarmentId:381 useWardrobe:385 …
 - `wardrobe-table.tsx` (309줄) WardrobeViewMode:17 GarmentSelection:19 WardrobeTable:33
-- `wardrobe-view.tsx` (431줄) WardrobeView:36
+- `wardrobe-view.tsx` (430줄) WardrobeView:36 (머리말: 왼쪽 제목·검색·필터, 오른쪽 보기 방식·새 옷 추가·옷 삭제)
 
 ### src/lib
 - `account.ts` (3줄) DELETE_CONFIRM_WORD:2
@@ -267,9 +263,6 @@
 
 ### src/lib/mock
 - `garments.ts` (227줄) MOCK_GARMENTS:4
-
-### src/lib/outfit
-- `recommend.ts` (343줄) WearSeason:13 OUTFIT_ORDER:16 OutfitItem:19 OutfitResult:24 seasonOfDate:29 localDateKey:38 fitsSeason:55 recommendOutfit:285
 
 ### src/lib/roast
 - `bubbles.ts` (31줄) splitSentences:7 joinBubbles:10 bubblesOf:13 isBubbleKey:20

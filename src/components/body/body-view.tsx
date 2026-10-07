@@ -102,23 +102,23 @@ export function BodyView() {
 
   return (
     <main className="mx-auto max-w-280 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-divider pb-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-title">내 치수</h1>
-          <p className="text-base text-neutral-700">
+      <div className="rise flex flex-wrap items-end justify-between gap-3 pb-2">
+        <div className="flex flex-col">
+          <h1 className="large-title">내 치수</h1>
+          <p className="page-sub">
             모두 선택 입력이에요. 입력해 두면 옷장의 예상 핏과 구매 판단이 내 몸에 맞게 더 정확해져요.
           </p>
         </div>
-        <span className="font-mono text-sm text-neutral-700 tabular-nums" data-testid="body-updated">
+        <span className="text-sm text-neutral-600 tabular-nums" data-testid="body-updated">
           {profile?.updatedAt ? `마지막 수정 ${formatDate(profile.updatedAt.slice(0, 10))}` : "아직 저장하지 않음"}
         </span>
       </div>
 
       {!profile && <ConsentCard checked={consent} onChange={setConsent} />}
 
-      <section className="flex flex-col gap-5 border-b border-divider py-7">
+      <section className="app-card rise mt-4 flex flex-col gap-5 p-6 md:p-8">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg">신체치수</h2>
+          <h2 className="text-xl font-bold">신체치수</h2>
           {formOpen ? (
             <button type="button" className="btn btn-secondary text-sm" onClick={() => setFillOpen((v) => !v)} aria-expanded={fillOpen}>
               잘 맞는 옷으로 채우기
@@ -254,8 +254,8 @@ function ConsentCard({ checked, onChange }: { checked: boolean; onChange: (v: bo
     ["거부할 권리", "동의하지 않아도 되며, 그 경우 내 치수 기반 추천만 쓸 수 없고 다른 기능은 그대로 이용할 수 있습니다."],
   ];
   return (
-    <section className="mt-6 flex flex-col gap-3 border border-border p-4" aria-labelledby="consent-title">
-      <h2 id="consent-title" className="text-base font-semibold">
+    <section className="app-card rise mt-4 flex flex-col gap-3 p-6 md:p-8" aria-labelledby="consent-title">
+      <h2 id="consent-title" className="text-xl font-bold">
         신체정보 수집·이용 동의 (선택)
       </h2>
       <dl className="grid grid-cols-[88px_1fr] text-sm">
@@ -293,7 +293,7 @@ function FillFromGarments({ onApply }: { onApply: (est: Partial<Record<BodyKey, 
   const keys = Object.keys(est) as BodyKey[];
 
   return (
-    <div className="flex flex-col gap-3 border border-neutral-300 bg-surface p-4">
+    <div className="flex flex-col gap-3 rounded-lg bg-neutral-100 p-5">
       <p className="text-sm text-neutral-800">
         잘 맞는 옷을 몇 벌 고르면 실측에서 몸 치수를 거꾸로 추정해요. 옷에 &ldquo;내 핏&rdquo;을 표기해 두었다면 그 핏 기준으로, 아니면 레귤러핏으로 보고
         계산합니다.
@@ -473,9 +473,9 @@ function Recommendations({
   };
 
   return (
-    <section className="flex flex-col gap-4 border-b border-divider py-7">
+    <section className="app-card rise mt-4 flex flex-col gap-4 p-6 md:p-8">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg">옷 종류별 추천 실측</h2>
+        <h2 className="text-xl font-bold">옷 종류별 추천 실측</h2>
         <span className="text-sm text-neutral-700">cm · 가슴·허리·엉덩이·허벅지는 단면 · 여유분 규칙으로 계산한 참고값</span>
       </div>
       <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="옷 종류">

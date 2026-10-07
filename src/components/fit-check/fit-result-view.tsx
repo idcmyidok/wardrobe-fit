@@ -40,6 +40,9 @@ const CONFIDENCE: Record<Confidence, { text: string; level: number }> = {
 
 const MATCH_TEXT = { subcategory: "동일 세부분류", category: "같은 대분류", similar: "비슷한 분류" } as const;
 
+/** 판단 신뢰도 4칸 색: 낮음 → 높음(주황·노랑·연한 초록·진한 초록) */
+const CONF_COLORS = ["#f39c3d", "#f2c94c", "#8fd18a", "#2f9e57"];
+
 const shortName = (c: ComparableSnapshot) => `${c.brand || c.productName} ${c.sizeLabel ?? ""}`.trim();
 
 function Row({ d, comps, note }: { d: DimensionResult; comps: ComparableSnapshot[]; note?: string }) {
@@ -101,14 +104,14 @@ function ShoeComparison({ size, comps }: { size: SizeReport; comps: ComparableSn
     ["기준", shoe?.basis === "sameBrand" ? "같은 브랜드 신발" : shoe?.basis === "all" ? "가진 신발 전체" : "—"],
   ];
   return (
-    <section className="flex flex-col gap-3 pt-8 pb-2">
+    <section className="app-card rise mt-4 flex flex-col gap-3 p-5 md:p-7">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg">사이즈·착용감 비교</h2>
+        <h2 className="text-xl font-bold">사이즈·착용감 비교</h2>
         <span className="text-sm text-neutral-700">mm · 길이감이 작았던 신발은 +5mm, 컸던 신발은 −5mm를 맞는 사이즈로 봅니다</span>
       </div>
-      <dl className="grid grid-cols-2 border-t border-divider sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {facts.map(([k, v]) => (
-          <div key={k} className="flex flex-col gap-0.5 border-b border-neutral-300 py-2.5">
+          <div key={k} className="flex flex-col gap-0.5 rounded-md bg-neutral-100 px-3.5 py-3">
             <dt className="text-xs text-neutral-700">{k}</dt>
             <dd className={cn("font-mono text-lg font-semibold tabular-nums", k === "차이" && Boolean(shoe?.diffMm) && "text-accent-700")}>{v}</dd>
           </div>
@@ -260,11 +263,11 @@ export function FitResultView({
           ← 구매 판단기
         </Link>
       )}
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-divider pb-4">
+      <div className="rise flex flex-wrap items-end justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
-          <span className="font-mono text-xs font-medium tracking-[0.08em] text-accent-700">AI 구매 판단 · {formatDate(createdAt.slice(0, 10))}</span>
-          <h1 className="text-title">{title}</h1>
-          <span className="text-base text-neutral-700">{sub}</span>
+          <span className="text-sm font-semibold text-neutral-600">AI 구매 판단 · {formatDate(createdAt.slice(0, 10))}</span>
+          <h1 className="large-title">{title}</h1>
+          <span className="page-sub mt-0">{sub}</span>
         </div>
         {computed.sizes.length > 1 && (
           <div className="flex items-center gap-2.5">
@@ -281,11 +284,11 @@ export function FitResultView({
         )}
       </div>
 
-      <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] border-b border-divider">
-        <div className="flex flex-col gap-3 py-7 pr-8 md:col-span-2">
+      <section className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] gap-4">
+        <div className="app-card rise flex flex-col gap-3 p-5 md:col-span-2 md:p-7">
           <div className="flex items-end gap-4">
             <span className="font-display text-display-xl tracking-[-0.03em]">{size.sizeLabel}</span>
-            <h2 className="mb-1.5 font-mono text-xs font-medium tracking-[0.08em] text-neutral-700">예상 핏</h2>
+            <h2 className="mb-1.5 text-sm font-semibold text-neutral-600">예상 핏</h2>
             <span className="mb-1.5 tag tag-neutral" data-testid="summary-source">
               {ai ? "AI 요약" : "치수 비교 요약"}
             </span>
@@ -323,8 +326,8 @@ export function FitResultView({
             </p>
           ))}
         </div>
-        <div className="flex flex-col gap-3 border-divider py-7 md:border-l md:pl-6">
-          <h2 className="font-mono text-sm font-medium tracking-[0.08em] text-neutral-700">판단 신뢰도</h2>
+        <div className="app-card rise flex flex-col gap-3 p-5 md:p-7" style={{ ["--rise" as string]: "80ms" }}>
+          <h2 className="text-sm font-semibold text-neutral-600">판단 신뢰도</h2>
           <div className="flex items-baseline gap-2.5">
             <span className="text-[28px] font-semibold" data-testid="confidence">
               {conf.text}
@@ -332,11 +335,11 @@ export function FitResultView({
             <span className="text-sm text-neutral-700">4단계 중 {conf.level}</span>
           </div>
           <div className="grid grid-cols-4 gap-0.75" aria-hidden>
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className={cn("h-1.5", i < conf.level ? "bg-text" : "bg-neutral-300")} />
+            {CONF_COLORS.map((color, i) => (
+              <div key={color} className="h-1.5 rounded-full bg-neutral-300" style={i < conf.level ? { background: color } : undefined} />
             ))}
           </div>
-          <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-mono text-base tabular-nums">
+          <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-base tabular-nums">
             <dt className="text-neutral-700">비교한 {noun}</dt>
             <dd>
               {comps.length}
@@ -365,9 +368,9 @@ export function FitResultView({
       </section>
 
       {(computed.categoryId === "outer" || computed.categoryId === "top" || computed.categoryId === "bottom") && (
-        <section className="flex flex-col gap-3 border-b border-divider py-7" aria-labelledby="body-fit-title">
+        <section className="app-card rise mt-4 flex flex-col gap-3 p-5 md:p-7" aria-labelledby="body-fit-title">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="body-fit-title" className="text-lg">
+            <h2 id="body-fit-title" className="text-xl font-bold">
               내 몸 기준 예상 핏 · {size.sizeLabel}
             </h2>
             <span className="text-sm text-neutral-700">내 치수와 이 사이즈 실측의 여유분으로 계산 · 기록에는 남기지 않습니다</span>
@@ -377,7 +380,7 @@ export function FitResultView({
       )}
 
       {warning && (
-        <div className="mt-6 flex flex-wrap items-start gap-3 border border-accent px-4 py-3.5">
+        <div className="mt-4 flex flex-wrap items-start gap-3 rounded-lg border border-accent px-5 py-4">
           <span className="tag tag-accent font-semibold">데이터 부족</span>
           <span className="min-w-60 flex-1 text-base text-pretty text-accent-800">{warning}</span>
         </div>
@@ -386,9 +389,9 @@ export function FitResultView({
       {shoes ? (
         <ShoeComparison size={size} comps={comps} />
       ) : (
-        <section className="flex flex-col gap-3 pt-8 pb-2">
+        <section className="app-card rise mt-4 flex flex-col gap-3 p-5 md:p-7">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg">치수별 비교</h2>
+            <h2 className="text-xl font-bold">치수별 비교</h2>
             <span className="text-sm text-neutral-700">{computed.categoryId === "hat" ? "cm" : "cm · 단면"} · 만족 범위는 후기에 불만이 없는 {noun} 기준(후기가 부족하면 기존 {noun} 범위, 참고)</span>
           </div>
           <div className="overflow-x-auto">
@@ -398,8 +401,9 @@ export function FitResultView({
                   <th>치수</th>
                   <th className="text-right text-text">신규 {size.sizeLabel}</th>
                   {comps.map((c) => (
-                    <th key={c.garmentId} className="text-right">
-                      {shortName(c)}
+                    <th key={c.garmentId} className="text-right" title={shortName(c)}>
+                      {/* 옷 이름 칸은 모두 같은 폭, 넘치면 …로 줄인다 */}
+                      <span className="ml-auto block w-28 truncate">{shortName(c)}</span>
                     </th>
                   ))}
                   <th className="text-right">만족 범위</th>
@@ -418,14 +422,14 @@ export function FitResultView({
         </section>
       )}
 
-      <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,380px),1fr))] gap-x-12 pt-8">
-        <div className="flex flex-col">
-          <h2 className="mb-3 border-b border-divider pb-3 text-lg">착용 후기 근거</h2>
+      <section className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,380px),1fr))] gap-4">
+        <div className="app-card rise flex flex-col p-5 md:p-7">
+          <h2 className="mb-1 text-xl font-bold">착용 후기 근거</h2>
           {quotes.length ? (
             quotes.map((q) => {
               const c = comps.find((x) => x.garmentId === q.garmentId);
               return (
-                <figure key={q.key} className="flex flex-col gap-2 border-b border-neutral-300 py-4">
+                <figure key={q.key} className="flex flex-col gap-2 border-b border-neutral-200 py-4 last:border-b-0">
                   <div className="flex items-center gap-2">
                     <span className={q.accent ? "tag tag-accent" : "tag tag-neutral"}>{q.tag}</span>
                     <span className="text-sm text-neutral-700">{c ? [c.brand, c.productName, c.sizeLabel].filter(Boolean).join(" ") : ""}</span>
@@ -439,8 +443,8 @@ export function FitResultView({
             <p className="mt-3 text-base text-neutral-700">비교한 {noun}에 착용 후기가 없습니다. 후기를 남기면 판단 근거로 인용됩니다.</p>
           )}
         </div>
-        <div className="flex flex-col">
-          <h2 className="mb-3 border-b border-divider pb-3 text-lg">비교에 사용한 {noun} ({comps.length})</h2>
+        <div className="app-card rise flex flex-col p-5 md:p-7">
+          <h2 className="mb-1 text-xl font-bold">비교에 사용한 {noun} ({comps.length})</h2>
           {comps.map((c) => {
             const body = (
               <>
@@ -464,21 +468,21 @@ export function FitResultView({
                 key={c.garmentId}
                 type="button"
                 onClick={() => openDrawer(c.garmentId)}
-                className="grid cursor-pointer grid-cols-[1fr_auto] items-center gap-3 border-b border-neutral-300 py-3 text-left hover:bg-neutral-100"
+                className="-mx-2 grid cursor-pointer grid-cols-[1fr_auto] items-center gap-3 rounded-sm border-b border-neutral-200 px-2 py-3 text-left hover:bg-neutral-100"
               >
                 {body}
               </button>
             ) : (
-              <div key={c.garmentId} className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-neutral-300 py-3">
+              <div key={c.garmentId} className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-neutral-200 py-3">
                 {body}
               </div>
             );
           })}
-          <h2 className="mt-8 mb-3 border-b border-divider pb-3 text-lg">데이터 한계</h2>
+          <h2 className="mt-7 mb-1 text-xl font-bold">데이터 한계</h2>
           {size.limitations.length ? (
             <ul className="flex flex-col text-base">
               {size.limitations.map((x) => (
-                <li key={x} className="border-b border-neutral-300 py-2.5">
+                <li key={x} className="border-b border-neutral-200 py-2.5 last:border-b-0">
                   {x}
                 </li>
               ))}
@@ -489,7 +493,7 @@ export function FitResultView({
         </div>
       </section>
 
-      <div className="mt-10 flex flex-wrap items-center gap-2 border-t border-divider pt-4">
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
         <button
           type="button"
           className="btn btn-primary min-h-11"
@@ -533,7 +537,6 @@ export function FitResultView({
             다른 옷 판단하기
           </Link>
         )}
-        <span className="w-full text-sm text-neutral-700">구매가, 구매일, 링크는 AI에 보내지 않습니다.</span>
       </div>
     </Wrapper>
   );
