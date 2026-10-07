@@ -15,7 +15,7 @@ import {
   type CategoryTab,
   type DonutSlice,
 } from "./wardrobe-analysis";
-import { stackSummary } from "./stack-height";
+import { stackSummary, thicknessTable } from "./stack-height";
 import { StackArt } from "./stack-art";
 
 const TABS: { id: CategoryTab; label: string }[] = [
@@ -50,6 +50,8 @@ export function AnalysisView() {
   const colors = colorSummary(garments, colorTab);
   const seasons = seasonSummary(garments);
   const stack = stackSummary(garments);
+  const thick = useMemo(() => thicknessTable(), []);
+  const [thickOpen, setThickOpen] = useState(false);
 
   // 스크롤해서 카드가 화면에 들어오면 나타나게 한다.
   useEffect(() => {
@@ -88,14 +90,14 @@ export function AnalysisView() {
             옷장 총 가격
           </span>
           <div className="flex flex-wrap items-baseline gap-1.5">
-            <span className="font-display text-total tracking-[-0.03em]">{price.totalShort}</span>
+            <span className="-ml-1 font-display text-total tracking-[-0.03em]">{price.totalShort}</span>
             <span className="text-lg">￦</span>
           </div>
           <div className="flex flex-col gap-1 font-mono text-sm text-neutral-700">
             <span>{price.totalFull}</span>
             <span>{price.recentFull}</span>
           </div>
-          <div className="mt-2 flex flex-col gap-1 rounded-md bg-accent-100 px-4 py-3.5">
+          <div className="mt-2 -mx-4 flex flex-col gap-1 rounded-md bg-accent-100 px-4 py-3.5">
             <span className="text-lg font-semibold text-accent-800">{price.tierTitle}</span>
             <span className="text-base text-pretty text-neutral-800">{price.tierBody}</span>
           </div>
@@ -238,7 +240,7 @@ export function AnalysisView() {
             옷을 모두 쌓으면
           </span>
           <p className="font-display text-display-lg">{stack.range}</p>
-          <span className="text-sm text-neutral-700">세부분류별 평균 두께로 접어서 쌓았을 때를 계산한 값이라 ±15% 정도 차이가 날 수 있습니다.</span>
+          <span className="text-sm text-neutral-700">세부분류별 평균 두께로, 접지 않고 그대로 올려 쌓았을 때를 계산했습니다. 모자와 신발은 빼고, ±15% 정도 차이가 날 수 있습니다.</span>
         </div>
         <div className="flex min-w-0 flex-col items-center gap-4 text-center md:col-span-2">
           {stack.near ? (
@@ -251,6 +253,37 @@ export function AnalysisView() {
             </>
           ) : (
             <p className="text-lg">등록한 옷이 없습니다.</p>
+          )}
+        </div>
+        <div className="col-span-full flex flex-col gap-4 border-t border-neutral-200 pt-4">
+          <button
+            type="button"
+            aria-expanded={thickOpen}
+            aria-controls="an-thick"
+            onClick={() => setThickOpen((v) => !v)}
+            className="inline-flex cursor-pointer items-center gap-1 self-start text-sm font-medium text-neutral-700 transition-colors hover:text-text"
+          >
+            종류별 두께
+            <svg viewBox="0 0 16 16" className={cn("size-4 transition-transform", thickOpen && "rotate-180")} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M4 6l4 4 4-4" />
+            </svg>
+          </button>
+          {thickOpen && (
+            <div id="an-thick" className="flex flex-col gap-3">
+              {thick.map((c) => (
+                <div key={c.id} className="flex flex-col gap-1">
+                  <span className={colLabel}>{c.name}</span>
+                  <p className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-neutral-700">
+                    {c.rows.map((r) => (
+                      <span key={r.id} className="whitespace-nowrap">
+                        {r.name} <span className="font-mono text-text tabular-nums">{r.cm}cm</span>
+                      </span>
+                    ))}
+                  </p>
+                </div>
+              ))}
+              <p className="text-xs text-neutral-700">접지 않고 펼친 그대로 한 벌씩 올려 쌓았을 때의 평균 두께입니다. 모자와 신발은 넣지 않습니다.</p>
+            </div>
           )}
         </div>
       </section>
