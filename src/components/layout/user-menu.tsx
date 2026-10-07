@@ -231,11 +231,13 @@ export function UserMenu({
           aria-haspopup="menu"
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="btn btn-secondary max-w-40 font-normal"
+          aria-label={`계정 메뉴 열기 (${email ?? "미리보기"})`}
+          title={email ?? "미리보기"}
+          className="glass flex size-9 items-center justify-center rounded-full text-text transition-transform hover:-translate-y-px active:scale-95"
         >
-          <span className="truncate">{email ? email.split("@")[0] : "미리보기"}</span>
-          <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m6 9 6 6 6-6" />
+          <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="8" r="3.6" />
+            <path d="M4.5 20c1.2-3.6 4-5.2 7.5-5.2s6.3 1.6 7.5 5.2" />
           </svg>
         </button>
         {open && (

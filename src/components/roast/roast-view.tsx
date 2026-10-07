@@ -73,7 +73,6 @@ export function RoastView({ initialResult, copy = ROAST_COPY, orders, ordersUsed
   useLayoutEffect(() => {
     pace.speed = fast ? 10 : 1;
   }, [fast]);
-  const router = useRouter();
   const { garments, signedIn } = useWardrobe();
   const clothes = orders ? MIN_CLOTHES : garments.filter((g) => g.categoryId !== "hat" && g.categoryId !== "shoes").length;
   const [result, setResult] = useState<RoastResult | null>(initialResult);
@@ -186,9 +185,9 @@ export function RoastView({ initialResult, copy = ROAST_COPY, orders, ordersUsed
                 />
                 {orders && signedIn && hasOrderHandoff() && (
                   <div className="mt-8 flex justify-center">
-                    <button type="button" className={buttonClassName({ variant: "primary", size: "lg" })} onClick={() => router.push("/wardrobe/import-orders?from=roast")}>
+                    <Link href="/wardrobe/import-orders?from=roast" className={buttonClassName({ variant: "primary", size: "lg" })}>
                       분석한 제품 전부 옷장에 넣기
-                    </button>
+                    </Link>
                   </div>
                 )}
               </FreshResult>

@@ -125,7 +125,10 @@ export function WardrobeTable({
                   )}
                 >
                   <td className="h-24 border-r border-neutral-300 p-0">
-                    <GarmentThumbnail item={item} />
+                    {/* 호버 확대가 칸 밖으로 넘쳐 표에 세로 스크롤이 생기지 않게 잘라 두고, 사진은 자르지 않고 다 보여 준다. */}
+                    <div className="h-24 overflow-hidden">
+                      <GarmentThumbnail item={item} fit="contain" />
+                    </div>
                   </td>
                   <td className={cn(cell, "truncate")}>{item.subcategoryId ? SUBCATEGORY_NAME[item.subcategoryId] : "—"}</td>
                   <td className={cn(cell, "leading-tight font-semibold")} title={item.brand || undefined}>

@@ -394,9 +394,9 @@ export function GarmentDetail({
                     구매했어요 → 옷장으로
                   </button>
                 ) : (
-                  <button type="button" className="btn btn-secondary" onClick={() => router.push("/fit-check")}>
+                  <Link href="/fit-check" className="btn btn-secondary">
                     이 옷 기준으로 판단
-                  </button>
+                  </Link>
                 )}
                 <button type="button" className="btn btn-danger ml-auto" onClick={() => setConfirmDelete(true)}>
                   삭제

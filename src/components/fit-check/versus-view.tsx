@@ -266,7 +266,10 @@ export function VersusView() {
                 id={`vs-url-${i}`}
                 className="input min-h-11 text-body"
                 type="url"
-                placeholder="https://"
+                inputMode="url"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="https://…"
                 value={u}
                 disabled={importing}
                 onChange={(e) => setUrls((list) => list.map((x, j) => (j === i ? e.target.value : x)))}
