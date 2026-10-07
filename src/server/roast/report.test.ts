@@ -5,6 +5,7 @@ import { buildScript, quotesAnswer } from "./compose";
 import type { AskedQuestion } from "./questions";
 import { buildReport } from "./report";
 import { REPORT_TEXT } from "./report-text";
+import { SCORE_RULES } from "./score-deltas";
 
 const now = new Date("2026-09-29T12:00:00+09:00");
 const g = (i: number, over: Partial<Garment> = {}): Garment =>
@@ -71,7 +72,7 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     const dups = report.points.filter((x) => `${x.lead} ${x.text}`.includes("블랙 반소매 티셔츠"));
     expect(dups).toHaveLength(1);
     expect(dups[0].text).toContain("비슷한 옷을 2벌");
-    expect(dups[0].photos?.length).toBeGreaterThan(0);
+    expect(dups[0].photos).toBeUndefined(); // 결과에는 혼자 다른 옷만 사진을 넣는다
   });
 
   it("첫 줄은 총점 구간 문장, 컬러 한마디는 늘 들어간다", () => {
@@ -82,7 +83,7 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
   it("점수 기준(rules)을 바꾸면 총점이 바뀐다", () => {
     const up = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base: 60, floor_min: 0, floor_mid: 50 } });
     const base = buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { floor_min: 0, floor_mid: 50 } });
-    expect(up.total.score - base.total.score).toBe(Math.min(15, 100 - base.total.score));
+    expect(up.total.score - base.total.score).toBe(Math.min(60 - SCORE_RULES.base, 100 - base.total.score));
   });
 
   it("옷장 점수는 최저 28점이 보장된다(합계 0 이하여도 28점)", () => {
@@ -125,9 +126,9 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     expect(r3.lists.find((l) => l.title === REPORT_TEXT.LIST_BRAND[0])).toBeUndefined();
   });
 
-  it("결과 사진은 가장 특이한 문단 몇 개에만 넣는다", () => {
+  it("결과 사진은 혼자 다른 옷 문단에만 넣는다", () => {
     const withPhotos = report.points.filter((p) => p.photos?.length);
-    expect(withPhotos.length).toBeLessThanOrEqual(REPORT_TEXT.layout.count.photo_blocks);
+    for (const p of withPhotos) expect(p.id).toBe("odd_one");
   });
 
   it("무채색이 많다는 말 뒤에 색 종류가 많다는 말을 잇지 않는다", () => {
@@ -162,7 +163,7 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
 
   it("점수 풀이: 기본 점수 + 항목별 증감이 총점과 맞는다", () => {
     const d = report.scoreDetail!;
-    expect(d.base).toBe(45);
+    expect(d.base).toBe(35);
     const sum = d.base + d.items.reduce((x, i) => x + i.delta, 0);
     expect(Math.abs(Math.max(0, Math.min(100, sum)) - report.total.score)).toBeLessThanOrEqual(1);
     for (const i of d.items) {

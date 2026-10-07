@@ -88,7 +88,7 @@ export const SCORE_DELTAS: Record<string, Record<string, number>> = {
  * 비율은 %, 금액은 만 원, 점수는 정수(감점도 양수로 적는다). 관리자 문장 편집의 "점수" 탭(score.rules)에서 고친다.
  */
 export const SCORE_RULES = {
-  base: 45,
+  base: 35,
   // 더하는 점수
   designer_each: 2,
   designer_max: 6,
