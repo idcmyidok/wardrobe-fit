@@ -36,10 +36,10 @@ test("직접 등록(사진 포함) → 검색·필터 → 수정 → 삭제 → 
   await page.reload();
   await expect(page.locator("table:visible").getByText("501 오리지널 데님")).toBeVisible();
   await page.getByPlaceholder("브랜드, 제품명 검색").fill("");
-  await page.getByRole("group", { name: "대분류" }).locator("label", { hasText: "하의" }).click();
+  await page.getByRole("combobox", { name: "브랜드" }).selectOption("COS");
   await expect(page.locator("table:visible").getByText("501 오리지널 데님")).toHaveCount(0);
   await expect(page.locator("table:visible").getByText("옥스포드 셔츠")).toBeVisible();
-  await page.getByRole("group", { name: "대분류" }).locator("label", { hasText: "하의" }).click();
+  await page.getByRole("combobox", { name: "브랜드" }).selectOption("");
 
   // 수정
   await page.locator("table:visible").getByRole("button", { name: "501 오리지널 데님" }).click();

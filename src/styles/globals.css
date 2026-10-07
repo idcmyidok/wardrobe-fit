@@ -798,3 +798,61 @@ h3 {
 .fab-panel {
   background: var(--surface);
 }
+
+/*
+ * 앱 화면(애플 건강·피트니스 앱처럼): 큰 제목 머리말, 그림자만 있는 둥근 카드, 들어올 때 살짝 떠오르는 움직임.
+ * 화면 구성은 그대로 두고 모양만 바꾼다.
+ */
+@layer components {
+  .page-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 8px;
+  }
+  .large-title {
+    font-size: clamp(32px, 4.2vw, 44px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    word-break: keep-all;
+  }
+  .page-sub {
+    margin-top: 6px;
+    font-size: 17px;
+    line-height: 1.5;
+    color: var(--n-700);
+    text-wrap: pretty;
+  }
+  .app-card {
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.04),
+      0 8px 24px rgb(0 0 0 / 0.05);
+  }
+  [data-theme="dark"] .app-card {
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+  }
+  .rise {
+    animation: app-rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) var(--rise, 0s) both;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .app-card {
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+  }
+}
+@keyframes app-rise {
+  from {
+    opacity: 0.01;
+    transform: translateY(10px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+}
