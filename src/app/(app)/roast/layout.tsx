@@ -1,16 +1,4 @@
-import localFont from "next/font/local";
-
-/** AI 옷장 분석 전용 글꼴(D2Coding, OFL). 이 메뉴에 들어올 때만 불러온다. 한글 서브셋에 없는 글자는 Pretendard로 보인다. */
-const d2coding = localFont({
-  src: [
-    { path: "./fonts/d2coding-subset.woff2", weight: "400" },
-    { path: "./fonts/d2coding-bold-subset.woff2", weight: "700" },
-  ],
-  display: "swap",
-  variable: "--font-d2coding",
-  preload: false,
-});
-
+/** 훈수 화면 묶음. 글꼴은 사이트 기본(Pretendard)이고, 대화 모양은 roast.css의 .roast 아래에만 건다. */
 export default function RoastLayout({ children }: { children: React.ReactNode }) {
-  return <div className={`roast ${d2coding.variable}`}>{children}</div>;
+  return <div className="roast">{children}</div>;
 }

@@ -68,7 +68,7 @@ export const QUIZ: Record<string, QuizEntry> = {
     answer: 0,
     question: "나이키 NOCTA는 어느 아티스트와 함께 만드는 라인일까요?",
     options: ["Drake", "Travis Scott", "Kendrick Lamar", "J. Cole"],
-    correct: ["맞네요. OVO에 이어 나이키에서도 밤을 챙기는 중이죠."],
+    correct: ["맞네요. OVO에 이어 나이키에서도 밤을 챙기는 중입니다."],
     wrong: ["Drake입니다. 트래비스 스캇은 Cactus Jack 쪽이네요."],
   },
   "drewhouse-name": {

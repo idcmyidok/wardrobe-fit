@@ -148,6 +148,28 @@
   }
 }
 
+/* 세로 막대가 바닥에서 자란다 */
+.fs .fs-vbar {
+  transform-origin: center bottom;
+  animation: fs-vbar 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) var(--d, 0s) both;
+}
+@keyframes fs-vbar {
+  from {
+    transform: scaleY(0.02);
+  }
+}
+
+/* 도넛 조각이 차례로 이어 그려진다 */
+.fs .fs-arc {
+  animation: fs-arc 0.5s ease-out var(--d, 0s) both;
+}
+@keyframes fs-arc {
+  from {
+    opacity: 0.01;
+    stroke-width: 4;
+  }
+}
+
 /* 답 고르기: 고른 칸은 진하게, 나머지는 흐리게 */
 .fs .fs-select {
   animation: fs-select 0.25s ease var(--d, 0s) both;
