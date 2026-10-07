@@ -37,7 +37,7 @@ export function AuthPanel({
   configured: boolean;
 }) {
   return (
-    <div className="flex w-full max-w-95 flex-col gap-5">
+    <div className="flex w-full flex-col gap-5">
       {mode === "signin" && (
         <HelpPopup label="비밀번호 입력 시 사기 사이트라고 뜨는 문제">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -53,7 +53,7 @@ export function AuthPanel({
           <p>인증 메일이 보이지 않으면 스팸메일함을 확인해 주세요.</p>
         </HelpPopup>
       )}
-      <h2 className="border-b border-text pb-3 text-[25px]">{TITLE[mode]}</h2>
+      <h2 className="text-[28px] tracking-[-0.04em]">{TITLE[mode]}</h2>
 
       {!configured && <PreviewNotice />}
       {notice && <FormMessage message={notice} />}
@@ -211,7 +211,7 @@ export function SubmitButton({ label, pendingLabel, className }: { label: string
       type="submit"
       disabled={pending}
       aria-disabled={pending}
-      className={`btn btn-primary min-h-11 w-full justify-start disabled:opacity-60 ${className ?? ""}`}
+      className={`btn btn-primary min-h-11 w-full justify-center disabled:opacity-60 ${className ?? ""}`}
     >
       {pending ? pendingLabel : label}
     </button>

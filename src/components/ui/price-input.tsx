@@ -39,7 +39,7 @@ export function PriceInput({
           {...aria}
         />
       </div>
-      <div className="inline-flex shrink-0 border border-text" role="group" aria-label="통화">
+      <div className="inline-flex shrink-0 border border-border" role="group" aria-label="통화">
         {(["KRW", "USD"] as const).map((c) => (
           <button
             key={c}

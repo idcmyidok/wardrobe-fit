@@ -297,7 +297,7 @@ export function OrderImportView() {
       <Link href="/wardrobe/new" className="btn btn-ghost mb-2 text-sm">
         ← 새 옷 추가
       </Link>
-      <div className="flex flex-col gap-1 border-b border-text pb-4">
+      <div className="flex flex-col gap-1 border-b border-divider pb-4">
         <h1 className="text-title">무신사 주문내역으로 추가</h1>
         <p className="text-sm text-neutral-700 text-pretty">
           주문내역에서 구매 확정된 옷만 골라 무신사 상품 정보(사진·실측)를 찾아요. 한 벌씩 확인한 뒤 고른 것만 옷장에 넣어요.
@@ -364,7 +364,7 @@ export function OrderImportView() {
             </details>
           )}
 
-          <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t border-text bg-bg py-3">
+          <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t border-divider bg-bg py-3">
             <span className="text-sm text-neutral-700">
               {phase === "done" ? `${counts.saved}벌을 옷장에 등록했어요.` : "체크한 옷만 등록돼요. 실측이 없는 옷은 나중에 옷장에서 채울 수 있어요."}
             </span>
@@ -383,7 +383,7 @@ export function OrderImportView() {
       )}
       {finished !== null && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 px-4" role="status" aria-live="polite">
-          <div className="flex flex-col items-center gap-2 border border-text bg-bg px-8 py-6 text-center shadow-lg">
+          <div className="flex flex-col items-center gap-2 border border-border bg-bg px-8 py-6 text-center shadow-lg">
             <span className="text-lg">{finished}벌을 옷장에 등록했어요</span>
             <span className="text-sm text-neutral-700">잠시 후 내 옷장으로 이동해요</span>
           </div>

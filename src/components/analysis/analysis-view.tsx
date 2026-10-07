@@ -27,7 +27,7 @@ const TABS: { id: CategoryTab; label: string }[] = [
 ];
 
 const section =
-  "grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-x-12 gap-y-8 border-b border-text py-9";
+  "grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-x-12 gap-y-8 border-b border-divider py-9";
 const sectionTitle = "text-body font-semibold";
 const colLabel = "font-mono text-label font-medium tracking-[0.08em] text-neutral-700";
 
@@ -52,7 +52,7 @@ export function AnalysisView() {
 
   return (
     <main className="mx-auto max-w-320 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-text pb-4">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-divider pb-4">
         <div className="flex flex-col gap-1">
           <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700 uppercase">
             Wardrobe report · 2026.09.27
@@ -193,7 +193,7 @@ export function AnalysisView() {
         <div className="grid min-w-0 grid-cols-4 items-end gap-4 md:col-span-2">
           {seasons.bars.map((x) => (
             <div key={x.id} className="flex flex-col gap-2">
-              <div className="flex h-45 items-end border-b border-text">
+              <div className="flex h-45 items-end border-b border-divider">
                 <div
                   className={cn("flex w-full justify-center rounded-t-sm pt-2", x.isLeast ? "bg-accent-200" : "bg-neutral-300")}
                   style={{ height: x.height }}
@@ -295,7 +295,7 @@ function MonthChart({
       onKeyDown={() => (moved.current = false)}
       onPointerLeave={() => (drag.current = null)}
     >
-      <div className="flex h-65 min-w-max items-end gap-1.5 border-b border-text pt-6">
+      <div className="flex h-65 min-w-max items-end gap-1.5 border-b border-divider pt-6">
         {bars.map((m) => {
           const on = selected === m.key;
           return (
@@ -477,7 +477,7 @@ function DonutSection({
       </div>
 
       <div className="flex min-w-0 flex-col md:col-span-2">
-        <div className={cn("grid gap-2.5 border-b border-text py-2", cols, colLabel)}>
+        <div className={cn("grid gap-2.5 border-b border-divider py-2", cols, colLabel)}>
           <span>순위</span>
           <span />
           <span>{nameHeader}</span>

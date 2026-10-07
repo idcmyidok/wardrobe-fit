@@ -121,16 +121,18 @@ export function WardrobeView() {
 
   return (
     <main className="mx-auto max-w-400 px-[clamp(16px,3vw,32px)] pt-7 pb-12">
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-text pb-4">
+      <div className="tile-dark flex flex-wrap items-end justify-between gap-4 rounded-lg p-6 md:p-10">
         <div className="flex items-baseline gap-3">
-          <span aria-hidden className="font-display text-count tracking-[-0.02em] tabular-nums">
+          <span aria-hidden className="count-num text-display-lg md:text-display-xl">
             {filtered ? items.length : garments.length}
           </span>
           <div className="flex flex-col gap-0.5">
             <h1 className="text-xl">내 옷장</h1>
-            <span className="font-mono text-xs tracking-[0.02em] text-neutral-700 tabular-nums">
-              {filtered ? `${items.length} / ${garments.length}벌` : `${garments.length}벌`}
-            </span>
+            {filtered && (
+              <span className="font-mono text-xs tracking-[0.02em] text-neutral-700 tabular-nums">
+                {items.length} / {garments.length}벌
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -167,7 +169,7 @@ export function WardrobeView() {
               </Link>
             </div>
           </div>
-          <ol className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] border-t border-text">
+          <ol className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] border-t border-divider">
             {EMPTY_STEPS.map((step, i) => (
               <li key={step.title} className={i === 0 ? "border-b border-neutral-300 py-4 pr-4" : "border-b border-l border-b-neutral-300 border-l-divider p-4"}>
                 <div className="font-mono text-sm font-semibold text-accent-700 tabular-nums">0{i + 1}</div>
@@ -182,7 +184,7 @@ export function WardrobeView() {
           <WardrobeFilters value={filters} onChange={setFilters} options={options} />
           <div className="flex items-center justify-end gap-2 pt-4">
             <div role="group" aria-label="보기 방식" className="flex">
-              <div className="inline-flex border border-text">
+              <div className="seg">
                 {VIEW_OPTIONS.map((option) => (
                   <button
                     key={option.id}
@@ -191,8 +193,8 @@ export function WardrobeView() {
                     disabled={deleting}
                     onClick={() => saveView(option.id)}
                     className={cn(
-                      "min-h-9 cursor-pointer px-3 text-sm disabled:cursor-not-allowed",
-                      view === option.id ? "bg-text text-bg" : "text-neutral-700 hover:bg-neutral-100 hover:text-text",
+                      "min-h-8 cursor-pointer rounded-full px-3.5 text-sm font-medium transition disabled:cursor-not-allowed",
+                      view === option.id ? "bg-surface text-text shadow-sm" : "text-neutral-700 hover:text-text",
                     )}
                   >
                     {option.label}
@@ -291,7 +293,7 @@ export function WardrobeView() {
             </div>
           )}
 
-          <div className="mt-6 flex justify-between border-t border-text py-3 font-mono text-sm text-neutral-700 tabular-nums">
+          <div className="mt-6 flex justify-between border-t border-divider py-3 font-mono text-sm text-neutral-700 tabular-nums">
             <span>{filtered ? `${items.length} / ${garments.length}벌` : `${garments.length}벌`}</span>
             <span>{deleting ? "지울 옷을 골라 주세요" : "행을 누르면 상세가 열립니다"}</span>
           </div>
@@ -301,7 +303,7 @@ export function WardrobeView() {
       )}
 
       {deleting && (
-        <div className="fixed right-[clamp(16px,3vw,32px)] bottom-6 z-40 flex items-center gap-2">
+        <div className="fixed right-[max(clamp(16px,3vw,32px),env(safe-area-inset-right))] bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.25rem)] md:bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-40 flex items-center gap-2">
           <button type="button" className="btn btn-secondary bg-bg" onClick={exitDeleting}>
             취소
           </button>
@@ -328,7 +330,7 @@ export function WardrobeView() {
             aria-modal="true"
             aria-labelledby="bulk-delete-title"
             onKeyDown={(e) => e.key === "Escape" && setConfirmDelete(false)}
-            className="flex w-[min(440px,100%)] flex-col gap-3 rounded-lg border border-text bg-bg p-4"
+            className="flex w-[min(440px,100%)] flex-col gap-3 rounded-lg border border-border bg-bg p-4"
           >
             <div id="bulk-delete-title" className="text-lg font-semibold">
               {checkedIds.length}벌을 삭제할까요?

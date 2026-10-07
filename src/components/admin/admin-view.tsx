@@ -5,7 +5,7 @@ import type { AdminOverview, AdminOverviewError } from "@/server/admin/queries";
 import { UsdRateForm } from "./usd-rate-form";
 import { UserActions } from "./user-actions";
 
-const section = "flex flex-col gap-4 border-b border-text py-8";
+const section = "flex flex-col gap-4 border-b border-divider py-8";
 const colLabel = "font-mono text-label font-medium tracking-[0.08em] text-neutral-700";
 const head = "border-r border-b border-neutral-300 bg-neutral-100 px-3 py-2 text-left font-medium whitespace-nowrap";
 const cell = "border-r border-b border-neutral-300 px-3 py-2 align-middle";
@@ -39,7 +39,7 @@ export function AdminView({
 }) {
   return (
     <main className="mx-auto max-w-320 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
-      <div className="flex flex-col gap-1 border-b border-text pb-4">
+      <div className="flex flex-col gap-1 border-b border-divider pb-4">
         <span className={cn(colLabel, "uppercase")}>Admin</span>
         <h1 className="text-title">관리자</h1>
       </div>
@@ -192,7 +192,7 @@ function Users({ overview, myId }: { overview: AdminOverview; myId: string }) {
                 <td className={cn(cell, mono, "text-right")}>{n(u.imports)}</td>
                 <td className={cell}>
                   {u.isAdmin ? "관리자" : u.banned ? <span className="text-negative">정지됨</span> : u.confirmed ? "정상" : "인증 전"}
-                  {u.isTester && !u.isAdmin && <span className="ml-2 border border-text px-1.5 py-0.5 text-xs font-medium">테스터</span>}
+                  {u.isTester && !u.isAdmin && <span className="ml-2 border border-border px-1.5 py-0.5 text-xs font-medium">테스터</span>}
                 </td>
                 <td className={cn(cell, "whitespace-nowrap")}>
                   {u.isAdmin || u.id === myId ? (

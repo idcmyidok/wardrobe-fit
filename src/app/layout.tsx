@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
 import localFont from "next/font/local";
 import { headers } from "next/headers";
@@ -27,6 +27,13 @@ const plexMono = IBM_Plex_Mono({
   display: "swap",
   variable: "--font-plex-mono",
 });
+
+/** 아이폰 노치·다이내믹 아일랜드·홈 바 자리를 화면에서 직접 비켜 가려고 화면 전체를 쓰고 safe-area로 여백을 둔다. */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: "Wardrobe Fit",

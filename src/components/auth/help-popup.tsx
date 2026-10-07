@@ -29,7 +29,7 @@ export function HelpPopup({ label, children }: { label: string; children: ReactN
         onClick={(e) => {
           if (e.target === ref.current) setOpen(false);
         }}
-        className="m-auto w-[min(92vw,22rem)] border border-text bg-surface p-5 text-text backdrop:bg-black/40"
+        className="m-auto w-[min(92vw,22rem)] border border-border bg-surface p-5 text-text backdrop:bg-black/40"
       >
         <button
           type="button"

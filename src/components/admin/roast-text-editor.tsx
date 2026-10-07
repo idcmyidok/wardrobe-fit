@@ -176,7 +176,7 @@ export function RoastTextEditor({
   return (
     <WhenContext.Provider value={whenOptions}>
     <main className="mx-auto max-w-240 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
-      <div className="flex flex-col gap-1 border-b border-text pb-4">
+      <div className="flex flex-col gap-1 border-b border-divider pb-4">
         <Link href="/admin" className={cn(colLabel, "w-fit uppercase")}>
           ← Admin
         </Link>

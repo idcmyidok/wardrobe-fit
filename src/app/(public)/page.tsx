@@ -33,11 +33,11 @@ export default async function LandingPage({
         <SiteFooter />
       </section>
       {/* 한 줄로 쌓이는 좁은 화면(두 칸 440px 미만)에서는 로그인 패널이 먼저 온다(PROJECT_SPEC.md 5.1). */}
-      <section className="relative order-first flex items-center bg-surface p-[clamp(24px,5vw,64px)] min-[880px]:order-none">
+      <section className="relative order-first flex items-center p-[clamp(24px,5vw,64px)] min-[880px]:order-none">
         <div className="absolute top-5 right-[clamp(16px,3vw,32px)]">
           <ThemeToggle />
         </div>
-        <div className="flex w-full flex-col gap-8">
+        <div className="glass mx-auto flex w-full max-w-130 flex-col gap-8 rounded-lg p-[clamp(20px,4vw,40px)]">
           <AuthPanel mode={mode} next={next} notice={notice} savedEmail={savedEmail} configured={isAuthConfigured()} />
           {(mode === "signin" || mode === "signup") && <PromoBanner />}
         </div>

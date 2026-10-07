@@ -109,7 +109,7 @@ export function PromoBanner() {
               className="grid h-5 place-items-center px-0.5"
             >
               <span
-                className={`block h-1.5 rounded-full transition-all ${i === index ? "w-4 bg-text" : "w-1.5 bg-neutral-400 hover:bg-neutral-600"}`}
+                className={`block h-1.5 rounded-full transition-[width,background-color] ${i === index ? "w-4 bg-text" : "w-1.5 bg-neutral-400 hover:bg-neutral-600"}`}
               />
             </button>
           ))}

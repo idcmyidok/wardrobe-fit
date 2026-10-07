@@ -24,7 +24,7 @@ export function OutfitView() {
 
   return (
     <main className="mx-auto max-w-320 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-text pb-4">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-divider pb-4">
         <div className="flex flex-col gap-1">
           <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700 uppercase">
             Today&apos;s outfit{today && ` · ${today.replaceAll("-", ".")} · ${SEASON_NAME[seasonOfDate(today)]}`}

@@ -406,7 +406,7 @@ function FitCheckDemo() {
         <span className="font-semibold">새 자켓 48</span>
         <span className="pl-1.5 text-neutral-500">비교</span>
       </p>
-      <div className="mt-3 grid grid-cols-[2.25rem_2.75rem_2.75rem_minmax(0,1fr)] items-center gap-x-2 border-b border-text pb-1.5 text-label text-neutral-600">
+      <div className="mt-3 grid grid-cols-[2.25rem_2.75rem_2.75rem_minmax(0,1fr)] items-center gap-x-2 border-b border-divider pb-1.5 text-label text-neutral-600">
         <span />
         <span className="text-right">내 옷</span>
         <span className="text-right">새 옷</span>

@@ -396,7 +396,7 @@ export function WardrobeToast() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-6 left-6 z-55 flex items-center gap-5 bg-text px-4 py-3 text-base text-bg"
+      className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-[max(1.5rem,env(safe-area-inset-left))] z-55 flex items-center gap-5 bg-text px-4 py-3 text-base text-bg"
     >
       <span>{toast.message}</span>
       {toast.undo && (

@@ -564,7 +564,7 @@ export function VersusView() {
         </div>
       </div>
 
-      <section className="flex flex-col gap-3 border-t border-text pt-6" aria-labelledby="vs-rec-title">
+      <section className="flex flex-col gap-3 border-t border-divider pt-6" aria-labelledby="vs-rec-title">
         <h2 id="vs-rec-title" className="text-lg">
           어떤 옷이 더 괜찮을까
         </h2>
@@ -595,7 +595,7 @@ export function VersusView() {
         </ol>
       </section>
 
-      <section className="flex flex-col gap-4 border-t border-text pt-6" aria-labelledby="vs-ai-title">
+      <section className="flex flex-col gap-4 border-t border-divider pt-6" aria-labelledby="vs-ai-title">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="vs-ai-title" className="text-lg">
             AI 구매 판단
