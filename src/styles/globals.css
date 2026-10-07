@@ -1,5 +1,17 @@
 @import "tailwindcss";
+/* 한글 전체(2MB)를 한 번에 받지 않고, 화면에 쓰인 글자 묶음만 받는다(unicode-range 분할). */
+@import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 @import "./tokens.css";
+
+/* 글꼴이 오기 전 잠깐 쓰는 대체 글꼴을 Pretendard 크기에 맞춘다(바뀔 때 글줄이 밀리지 않게). 값은 next/font가 계산하던 것과 같다. */
+@font-face {
+  font-family: "Pretendard Fallback";
+  src: local("Arial");
+  ascent-override: 93.76%;
+  descent-override: 23.75%;
+  line-gap-override: 0%;
+  size-adjust: 101.55%;
+}
 
 /*
  * Tailwind 기본 팔레트, radius, 글자 크기를 지우고 토큰만 허용한다.
@@ -43,11 +55,11 @@
 
   --radius-*: initial;
   --radius-none: 0;
-  --radius-xs: 2px;
-  --radius-bar: 3px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 6px;
+  --radius-xs: 6px;
+  --radius-bar: 4px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
   --radius-full: 9999px;
 
   --text-*: initial;
@@ -95,10 +107,11 @@
   --shadow-popover: var(--shadow-popover);
   --shadow-dialog: var(--shadow-dialog);
 
-  --font-sans: var(--font-pretendard), "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+  --font-sans: "Pretendard Variable", "Pretendard Fallback", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
     "Noto Sans KR", sans-serif;
-  --font-display: var(--font-instrument-serif), var(--font-pretendard), serif;
-  --font-mono: var(--font-plex-mono), var(--font-pretendard), ui-monospace, monospace;
+  /* 폰트는 Pretendard 하나만 쓴다. 숫자는 tabular-nums로 맞춘다. */
+  --font-display: "Pretendard Variable", "Pretendard Fallback", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  --font-mono: "Pretendard Variable", "Pretendard Fallback", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
 
   --ease-standard: var(--ease-standard);
   --default-transition-duration: var(--duration-fast);
@@ -130,9 +143,17 @@
   h2,
   h3,
   h4 {
-    letter-spacing: -0.025em;
-    font-weight: 600;
-    line-height: 1.12;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  .font-display {
+    font-weight: 700;
+    letter-spacing: -0.04em;
+  }
+  .font-mono {
+    font-variant-numeric: tabular-nums;
   }
 
   a {
@@ -165,13 +186,15 @@
   /* — buttons — */
   .btn {
     display: inline-flex;
+    width: fit-content;
     align-items: center;
     justify-content: center;
+    text-align: center;
     gap: 6px;
-    min-height: 36px;
-    padding: 8px 14px;
+    min-height: 38px;
+    padding: 8px 18px;
     border: 1px solid transparent;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-full);
     background: transparent;
     color: var(--text);
     font: inherit;
@@ -194,35 +217,67 @@
   .btn-primary {
     background: var(--text);
     color: var(--bg);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.22),
+      0 1px 2px rgb(0 0 0 / 0.2),
+      0 8px 18px rgb(0 0 0 / 0.2);
   }
   .btn-primary:hover {
     background: color-mix(in srgb, var(--text) 86%, var(--bg));
     color: var(--bg);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.22),
+      0 2px 4px rgb(0 0 0 / 0.2),
+      0 12px 26px rgb(0 0 0 / 0.26);
   }
   .btn-primary:active {
     background: color-mix(in srgb, var(--text) 74%, var(--bg));
   }
+  /* 유리 버튼: 반투명 면 + 흐림 + 안쪽 하이라이트 */
   .btn-secondary {
-    border-color: var(--n-400);
+    background: color-mix(in srgb, var(--surface) 62%, transparent);
+    border-color: color-mix(in srgb, var(--n-400) 35%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.6);
+    backdrop-filter: blur(14px) saturate(1.6);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.6),
+      0 1px 2px rgb(0 0 0 / 0.08),
+      0 6px 16px rgb(0 0 0 / 0.08);
   }
   .btn-secondary:hover {
-    background: var(--n-200);
-    border-color: var(--n-500);
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
     color: var(--text);
   }
   .btn-secondary:active {
-    background: var(--n-300);
+    background: var(--n-200);
+  }
+  .glass {
+    background: color-mix(in srgb, var(--surface) 66%, transparent);
+    -webkit-backdrop-filter: blur(24px) saturate(1.7);
+    backdrop-filter: blur(24px) saturate(1.7);
+    border: 1px solid color-mix(in srgb, var(--n-300) 55%, transparent);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.55),
+      0 1px 2px rgb(0 0 0 / 0.04),
+      0 12px 36px rgb(0 0 0 / 0.07);
+  }
+  [data-theme="dark"] .glass,
+  [data-theme="dark"] .btn-secondary {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.09),
+      0 12px 36px rgb(0 0 0 / 0.5);
+  }
+  /* 숫자·제목에 쓰는 색 그라데이션 글자 */
+  .grad-text {
+    color: inherit;
   }
   .btn-ghost {
-    padding-inline: 8px;
-    text-decoration: underline;
-    text-decoration-color: var(--n-400);
-    text-underline-offset: 4px;
+    padding-inline: 12px;
+    color: var(--accent);
   }
   .btn-ghost:hover {
-    background: var(--n-200);
-    text-decoration-color: var(--text);
-    color: var(--text);
+    background: var(--accent-subtle);
+    color: var(--accent-hover);
   }
   .btn-ghost:active {
     background: var(--n-300);
@@ -263,11 +318,12 @@
   }
   .input {
     width: 100%;
-    min-height: 36px;
-    padding: 6px 10px;
-    border: 1px solid var(--n-300);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
+    min-height: 42px;
+    padding: 8px 14px;
+    border: 1px solid color-mix(in srgb, var(--n-400) 45%, transparent);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--surface) 80%, transparent);
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.05);
     color: var(--text);
     font: inherit;
     font-size: 14px;
@@ -275,12 +331,12 @@
     transition: border-color var(--duration-fast);
   }
   .input:hover {
-    border-color: var(--n-500);
+    border-color: var(--n-400);
   }
   .input:focus-visible {
     border-color: var(--accent);
     outline: none;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
   }
   .input:disabled {
     opacity: 0.6;
@@ -302,19 +358,46 @@
     display: inline-flex;
     flex-wrap: wrap;
     gap: 2px;
-    padding: 2px;
-    border: 1px solid var(--n-300);
-    border-radius: var(--radius-md);
-    background: var(--surface);
+    padding: 3px;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: color-mix(in srgb, var(--n-300) 45%, transparent);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+  /* 묶는 도형 없이 알약이 하나씩 떠 있는 칩 줄 */
+  .seg-loose {
+    gap: 8px;
+    padding: 0;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-radius: 0;
+  }
+  .seg-loose .seg-opt {
+    padding: 8px 18px;
+    background: color-mix(in srgb, var(--surface) 62%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.6);
+    backdrop-filter: blur(14px) saturate(1.6);
+    border: 1px solid color-mix(in srgb, var(--n-400) 35%, transparent);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.6),
+      0 1px 2px rgb(0 0 0 / 0.08),
+      0 6px 16px rgb(0 0 0 / 0.08);
+  }
+  .seg-loose .seg-opt:has(input:checked) {
+    background: var(--text);
+    color: var(--bg);
   }
   .seg-opt {
     position: relative;
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 7px 12px;
-    border-radius: var(--radius-sm);
+    padding: 7px 14px;
+    border-radius: var(--radius-full);
     font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
     transition: background-color var(--duration-fast);
   }
@@ -326,11 +409,15 @@
     pointer-events: none;
   }
   .seg-opt:has(input:checked) {
-    background: var(--text);
-    color: var(--bg);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow-sm), 0 0 0 0.5px var(--n-300);
+  }
+  .seg-opt:not(:has(input:checked)) {
+    color: var(--text-muted);
   }
   .seg-opt:not(:has(input:checked)):hover {
-    background: var(--n-200);
+    color: var(--text);
   }
   .seg-opt:has(input:focus-visible) {
     outline: 2px solid var(--accent);
@@ -341,10 +428,10 @@
   .tag {
     display: inline-flex;
     align-items: center;
-    padding: 2px 8px;
-    border-radius: var(--radius-sm);
-    font-family: var(--font-mono);
-    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    font-size: 11.5px;
+    font-weight: 500;
     letter-spacing: 0;
     white-space: nowrap;
   }
@@ -364,13 +451,12 @@
     font-size: 14px;
   }
   .table th {
-    padding: 8px;
-    border-bottom: 1px solid var(--text);
-    color: var(--n-700);
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    font-weight: 500;
-    letter-spacing: 0.06em;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--n-300);
+    color: var(--n-600);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0;
     text-align: left;
   }
   .table td {
@@ -383,11 +469,10 @@
 
   /* — small caption label used above sections — */
   .caption {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.06em;
-    color: var(--n-700);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0;
+    color: var(--n-600);
   }
 
   .elev-md {
@@ -417,4 +502,299 @@
   .skeleton {
     animation: none;
   }
+}
+
+/*
+ * 움직임 레이어(Apple 스타일 전환). 모두 CSS만 쓰고, 움직임 줄이기 설정이면 위 규칙이 꺼 준다.
+ * 요소의 기본 모습이 "다 움직인 뒤" 모습이라 애니메이션이 없어도 화면이 깨지지 않는다.
+ */
+@layer components {
+  @keyframes aurora-drift {
+    to {
+      transform: translateX(-4%) scale(1.06);
+    }
+  }
+
+  /* 화면이 바뀔 때 본문이 아래에서 부드럽게 올라온다. 투명도는 아래 구역별 애니메이션만 맡아(겹쳐 흐려지지 않게) 첫 화면이 늦게 보이지 않는다. */
+  main {
+    animation: page-in 0.55s var(--ease-standard) both;
+  }
+  @keyframes page-in {
+    from {
+      transform: translateY(14px);
+    }
+  }
+
+  /* 제목은 한 박자 늦게, 아래 구역은 순서대로 */
+  main > :is(div, section, nav, dl, form):not([role="dialog"]) {
+    animation: rise-in 0.6s var(--ease-standard) both;
+  }
+  main > :nth-child(1) { animation-delay: 0.04s; }
+  main > :nth-child(2) { animation-delay: 0.1s; }
+  main > :nth-child(3) { animation-delay: 0.16s; }
+  main > :nth-child(4) { animation-delay: 0.22s; }
+  main > :nth-child(n + 5) { animation-delay: 0.28s; }
+  /* 투명도 0에서 시작하면 브라우저가 첫 화면을 "아직 안 그림"으로 봐 표시가 늦게 잡힌다. 거의 0(0.01)에서 시작한다. */
+  @keyframes rise-in {
+    from {
+      opacity: 0.01;
+      transform: translateY(18px);
+    }
+  }
+
+  /* 스크롤하면 구역이 화면에 들어올 때 떠오른다(지원하는 브라우저만). */
+  @supports (animation-timeline: view()) {
+    main > :nth-child(n + 4) {
+      animation: scroll-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 35%;
+      animation-delay: 0s;
+    }
+    @keyframes scroll-rise {
+      from {
+        opacity: 0;
+        transform: translateY(28px) scale(0.985);
+      }
+    }
+  }
+
+  /* 버튼: 올라오고, 누르면 살짝 눌린다 */
+  .btn {
+    transition:
+      background-color var(--duration-fast),
+      border-color var(--duration-fast),
+      color var(--duration-fast),
+      transform var(--duration-base) var(--ease-standard),
+      box-shadow var(--duration-base) var(--ease-standard);
+  }
+  .btn:not(:disabled):hover {
+    transform: translateY(-1px);
+  }
+  .btn:not(:disabled):active {
+    transform: scale(0.97);
+  }
+  .btn-primary:not(:disabled):hover {
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 38%, transparent);
+  }
+
+  /* 카드·버튼처럼 눌리는 면은 호버에 반응한다 */
+  a.rounded-lg,
+  button.rounded-lg,
+  a.rounded-md.border,
+  .lift {
+    transition:
+      transform var(--duration-slow) var(--ease-standard),
+      box-shadow var(--duration-slow) var(--ease-standard),
+      border-color var(--duration-fast);
+  }
+  a.rounded-lg:hover,
+  button.rounded-lg:hover,
+  .lift:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* 표 행: 호버에 색이 번지고, 이미지는 살짝 커진다 */
+  .table tbody tr,
+  tbody tr {
+    transition: background-color var(--duration-base);
+  }
+  tbody tr:hover img {
+    transform: scale(1.06);
+  }
+  tbody tr img {
+    transition: transform var(--duration-slow) var(--ease-standard);
+  }
+
+  /* 입력칸 포커스 */
+  .input {
+    transition:
+      border-color var(--duration-fast),
+      box-shadow var(--duration-base) var(--ease-standard);
+  }
+
+  /* 큰 화면에서는 본문 안 면에 부드러운 그림자 */
+  @media (min-width: 768px) {
+    main section.rounded-lg,
+    main div.rounded-lg.border {
+      box-shadow: var(--shadow-sm);
+    }
+  }
+
+  /* 모바일: 누르는 곳은 크게, 글자는 읽기 좋게 */
+  @media (max-width: 640px) {
+    .btn {
+      min-height: 44px;
+    }
+    .input {
+      min-height: 46px;
+      font-size: 16px;
+    }
+  }
+}
+
+/* Apple식 어두운 타일: 밝은 화면 위에 놓이는 검은 면. 안의 글자·버튼은 흰색 계열로 바뀐다. */
+@layer components {
+  .tile-dark {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    background: #1d1d1f;
+    color: #f5f5f7;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.1),
+      0 24px 60px rgb(0 0 0 / 0.22);
+  }
+  [data-theme="dark"] .tile-dark {
+    background: #1c1c1e;
+  }
+  .tile-dark h1,
+  .tile-dark h2,
+  .tile-dark p,
+  .tile-dark span {
+    color: inherit;
+  }
+  .tile-dark .btn-primary {
+    background: #f5f5f7;
+    color: #1d1d1f;
+  }
+  .tile-dark .btn-primary:hover {
+    background: #ffffff;
+    color: #1d1d1f;
+  }
+  .tile-dark .btn-secondary {
+    background: rgb(255 255 255 / 0.12);
+    border-color: rgb(255 255 255 / 0.18);
+    color: #f5f5f7;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18);
+  }
+  .tile-dark .btn-secondary:hover {
+    background: rgb(255 255 255 / 0.2);
+    color: #fff;
+  }
+  .tile-dark :is(.text-neutral-700, .text-neutral-800, .text-text-muted) {
+    color: rgb(245 245 247 / 0.72) !important;
+  }
+}
+
+/* 큰 숫자: 한글 폰트의 넓은 1 모양 대신 숫자 전용 글꼴로, 글자 사이를 붙여 "13"이 한 덩어리로 보이게 한다. */
+.count-num {
+  font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Arial, "Pretendard Variable", sans-serif;
+  font-weight: 700;
+  font-variant-numeric: proportional-nums lining-nums;
+  letter-spacing: -0.07em;
+  line-height: 0.9;
+}
+
+/* 아이폰 가로 모드: 노치 옆으로 내용이 파고들지 않게 한다(세로에서는 0). */
+body {
+  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+}
+
+/* 상단 메뉴바: 화면 맨 위에 붙어 스크롤해도 따라오는 반투명 옅은 회색 면 */
+.header-bar {
+  background: color-mix(in srgb, var(--n-200) 72%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(1.8);
+  backdrop-filter: blur(22px) saturate(1.8);
+  border-bottom: 1px solid color-mix(in srgb, var(--n-400) 30%, transparent);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.4) inset, 0 8px 24px rgb(0 0 0 / 0.05);
+}
+[data-theme="dark"] .header-bar {
+  background: color-mix(in srgb, var(--n-200) 78%, transparent);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+}
+
+/* 눌러서 여는 목록은 뒤 내용이 비치지 않게 거의 불투명하게 */
+.menu-pop {
+  background: color-mix(in srgb, var(--surface) 99%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 2px 6px rgb(0 0 0 / 0.08), 0 20px 50px rgb(0 0 0 / 0.18);
+}
+
+/* 모바일 계정 버튼: 아래로 스크롤하면 반투명해지며 위로 빠르게 사라지고, 멈추거나 위로 스크롤하면 위에서 내려오듯 돌아온다. */
+.fab {
+  transition:
+    opacity 0.45s var(--ease-standard),
+    transform 0.45s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.fab[data-hidden="true"] {
+  opacity: 0;
+  transform: translateY(-36px) scale(0.92);
+  pointer-events: none;
+  transition:
+    opacity 0.22s ease-in,
+    transform 0.26s ease-in;
+}
+/* 버튼이 작은 메뉴 창으로 커지는 모양(오른쪽 아래 모서리에서 펼쳐짐) */
+.fab-panel {
+  animation: fab-open 0.34s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+.fab-panel[data-closing="true"] {
+  animation: fab-close 0.2s ease-in both;
+}
+@keyframes fab-open {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+    border-radius: 999px;
+  }
+}
+@keyframes fab-close {
+  to {
+    opacity: 0;
+    transform: scale(0.2);
+    border-radius: 999px;
+  }
+}
+
+/* 웹 인터페이스 가이드라인: 터치 지연·탭 하이라이트, 고정 메뉴바에 가려지는 포커스, 건너뛰기 링크, 제목 줄바꿈 */
+html {
+  scroll-padding-top: 4.5rem;
+}
+a,
+button,
+[role="button"],
+label,
+input,
+select,
+summary {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+.menu-pop {
+  overscroll-behavior: contain;
+}
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 14px;
+  transform: translateY(-200%);
+  transition: transform var(--duration-base) var(--ease-standard);
+}
+.skip-link:focus-visible {
+  transform: none;
+}
+
+.fab-scrim {
+  background: rgb(0 0 0 / 0.2);
+  animation: page-in-fade 0.25s ease-out both;
+}
+@keyframes page-in-fade {
+  from {
+    opacity: 0;
+  }
+}
+.fab-panel {
+  background: var(--surface);
 }

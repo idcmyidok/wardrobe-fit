@@ -63,7 +63,7 @@ export function FitMeter({
         {FIT_LEVELS.map((l) => (
           <div
             key={l}
-            className={cn("rounded-sm transition-all", l === level ? "h-4" : "h-2.5 opacity-25")}
+            className={cn("rounded-sm transition-[height,background-color]", l === level ? "h-4" : "h-2.5 opacity-25")}
             style={{ background: FIT_COLOR[l] }}
           />
         ))}

@@ -103,7 +103,7 @@ export function BodyView() {
 
   return (
     <main className="mx-auto max-w-280 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-text pb-4">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-divider pb-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-title">내 치수</h1>
           <p className="text-base text-neutral-700">
@@ -117,7 +117,7 @@ export function BodyView() {
 
       {!profile && <ConsentCard checked={consent} onChange={setConsent} />}
 
-      <section className="flex flex-col gap-5 border-b border-text py-7">
+      <section className="flex flex-col gap-5 border-b border-divider py-7">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg">신체치수</h2>
           {formOpen ? (
@@ -255,7 +255,7 @@ function ConsentCard({ checked, onChange }: { checked: boolean; onChange: (v: bo
     ["거부할 권리", "동의하지 않아도 되며, 그 경우 내 치수 기반 추천만 쓸 수 없고 다른 기능은 그대로 이용할 수 있습니다."],
   ];
   return (
-    <section className="mt-6 flex flex-col gap-3 border border-text p-4" aria-labelledby="consent-title">
+    <section className="mt-6 flex flex-col gap-3 border border-border p-4" aria-labelledby="consent-title">
       <h2 id="consent-title" className="text-base font-semibold">
         신체정보 수집·이용 동의 (선택)
       </h2>
@@ -474,7 +474,7 @@ function Recommendations({
   };
 
   return (
-    <section className="flex flex-col gap-4 border-b border-text py-7">
+    <section className="flex flex-col gap-4 border-b border-divider py-7">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg">옷 종류별 추천 실측</h2>
         <span className="text-sm text-neutral-700">cm · 가슴·허리·엉덩이·허벅지는 단면 · 여유분 규칙으로 계산한 참고값</span>

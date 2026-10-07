@@ -37,8 +37,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     // 내용이 짧아도 법적 고지가 화면 맨 아래에 오도록 세로로 채운다.
     <div className="flex min-h-dvh flex-col">
+      <a href="#content" className="skip-link">본문으로 건너뛰기</a>
       <OfflineBanner />
-      <div className="flex-1">
+      <div id="content" tabIndex={-1} className="flex-1 outline-none">
       {/* 옷 목록을 읽는 동안 머리글과 표 자리(Skeleton)를 먼저 보여 준다. */}
       <Suspense
         fallback={
@@ -54,7 +55,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </Suspense>
       </div>
       {/* 머리글과 같은 좌우 여백으로 PC에서는 화면 왼쪽 끝에 맞춘다. */}
-      <SiteFooter className="px-[clamp(16px,3vw,32px)] pt-6 pb-6" />
+      <SiteFooter className="px-[clamp(16px,3vw,32px)] pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]" />
     </div>
   );
 }

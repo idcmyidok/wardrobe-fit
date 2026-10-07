@@ -5,7 +5,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { ImagePrepareError, prepareGarmentImage } from "@/lib/images/prepare-image";
 import { GARMENT_IMAGE_BUCKET, uploadGarmentImages } from "@/lib/images/upload-garment-image";
 import { goToSignIn, stashDraft } from "@/lib/session-expiry";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { SupabasePublicEnv } from "@/lib/supabase/config";
 import { DEFAULT_USD_KRW } from "@/lib/format/price";
 import type { Garment } from "@/lib/types/domain";
@@ -214,6 +213,8 @@ export function WardrobeProvider({
       }
       if (image === null) return fromAction(await call(() => setGarmentImage(garment.id, null)));
 
+      // 사진을 올릴 때만 Supabase 라이브러리를 받는다(옷장 첫 로딩에서 빠지게).
+      const { createSupabaseBrowserClient } = await import("@/lib/supabase/client");
       const supabase = createSupabaseBrowserClient(supabaseEnv);
       if (!supabase) return { ok: false, error: "사진을 올릴 수 없습니다." };
       try {
@@ -396,7 +397,7 @@ export function WardrobeToast() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-6 left-6 z-55 flex items-center gap-5 bg-text px-4 py-3 text-base text-bg"
+      className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-[max(1.5rem,env(safe-area-inset-left))] z-55 flex items-center gap-5 bg-text px-4 py-3 text-base text-bg"
     >
       <span>{toast.message}</span>
       {toast.undo && (

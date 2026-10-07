@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { FEATURES } from "@/lib/features";
 import type { ReleaseNoteEdits, ReleaseNoteImages } from "@/lib/release-notes";
-import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
 const NAV = [
@@ -31,13 +30,10 @@ export function AppHeader({
 }) {
   const pathname = usePathname();
   return (
-    <header className="sticky top-0 z-30 border-b border-text bg-bg">
+    <header className="header-bar sticky top-0 z-30 pt-[calc(env(safe-area-inset-top)+0.25rem)] md:pt-[env(safe-area-inset-top)]">
       {/* 좁은 화면에서는 메뉴가 두 번째 줄로 내려간다. */}
-      <div className="relative flex min-h-14 flex-wrap items-center gap-x-7 gap-y-1 px-[clamp(16px,3vw,32px)] md:flex-nowrap">
-        <Link href="/wardrobe" className="py-2 font-display text-brand whitespace-nowrap text-text no-underline">
-          Wardrobe Fit
-        </Link>
-        <nav aria-label="주요 메뉴" className="order-last -mx-2 flex w-full gap-1 md:order-none md:mx-0 md:mr-auto md:w-auto md:gap-5">
+      <div className="relative mx-auto flex min-h-12 max-w-400 flex-wrap items-center gap-x-6 gap-y-0 py-1.5 md:py-0 px-[clamp(16px,3vw,32px)] md:flex-nowrap">
+        <nav aria-label="주요 메뉴" className="-mx-1.5 flex w-[calc(100%+0.75rem)] flex-wrap justify-between md:mx-0 md:mr-auto md:w-auto md:flex-nowrap md:gap-1">
           {NAV.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -46,10 +42,10 @@ export function AppHeader({
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "px-2 py-2.5 text-base whitespace-nowrap no-underline transition-colors md:px-0",
+                  "rounded-full px-1.5 py-1.5 text-[12.5px] whitespace-nowrap no-underline transition-colors md:px-3 md:text-sm",
                   active
-                    ? "text-text underline decoration-1 underline-offset-[6px]"
-                    : "text-text hover:text-accent-700",
+                    ? "bg-surface-muted font-semibold text-text"
+                    : "text-text-muted hover:text-text",
                 )}
               >
                 {item.label}
@@ -57,10 +53,7 @@ export function AppHeader({
             );
           })}
         </nav>
-        <div className="ml-auto flex items-center gap-3 md:ml-0">
-          <div className="hidden sm:block">
-            <ThemeToggle />
-          </div>
+        <div className="ml-auto flex items-center gap-3 md:ml-0 md:flex">
           <UserMenu email={email} admin={admin} releaseNoteEdits={releaseNoteEdits} releaseNoteImages={releaseNoteImages} />
         </div>
       </div>

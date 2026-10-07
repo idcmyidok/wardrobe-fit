@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const supabase = await createSupabaseServerClient();
   const user = supabase ? await getActiveUser(supabase) : null;
-  if (!supabase || !user) return Response.json({ error: "signed_out" }, { status: 401 });
+  // 로그인 전(미리보기 포함)에는 보여 줄 사용량이 없다. 오류 대신 빈 응답이라 브라우저 콘솔에 실패가 남지 않는다.
+  if (!supabase || !user) return new Response(null, { status: 204 });
   return Response.json(await getUsage(supabase, user.id), { headers: { "cache-control": "no-store" } });
 }

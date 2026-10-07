@@ -188,7 +188,7 @@ export function GarmentFields({
 
   return (
     <>
-          <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-6 border-b border-text py-7">
+          <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-6 border-b border-divider py-7">
             <div className="flex max-w-60 flex-col gap-2">
               <ImagePicker
                 currentUrl={chosenUrl ?? moving?.imageUrl ?? null}
@@ -308,7 +308,7 @@ export function GarmentFields({
             </div>
           </section>
 
-          <section className="flex flex-col gap-4 border-b border-text py-7">
+          <section className="flex flex-col gap-4 border-b border-divider py-7">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-lg">{held ? "고민 중인 옵션" : "구매한 옵션"}</h2>
               <span className="text-sm text-neutral-700">사이즈를 고르면 사이즈표의 실측이 아래에 채워집니다. 맞는 사이즈가 없으면 직접 입력하세요</span>
@@ -373,7 +373,7 @@ export function GarmentFields({
           </section>
 
           {form.categoryId === "shoes" ? (
-            <section className="flex flex-col gap-4 border-b border-text py-7">
+            <section className="flex flex-col gap-4 border-b border-divider py-7">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="text-lg">착용감</h2>
                 <span className="text-sm text-neutral-700">선택 입력 · 신어 본 느낌을 남기면 다음 신발 사이즈를 고를 때 씁니다</span>
@@ -381,7 +381,7 @@ export function GarmentFields({
               <ShoeFitPicker idPrefix={i("f-shoe")} value={form.shoeFit} onChange={(v) => update("shoeFit", v)} />
             </section>
           ) : (
-            <section className="flex flex-col gap-4 border-b border-text py-7">
+            <section className="flex flex-col gap-4 border-b border-divider py-7">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="text-lg">실측</h2>
                 <span className="text-sm text-neutral-700">
@@ -415,7 +415,7 @@ export function GarmentFields({
           )}
 
           {isClothes(form.categoryId) && !held && (
-            <section className="flex flex-col gap-4 border-b border-text py-7">
+            <section className="flex flex-col gap-4 border-b border-divider py-7">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 id={i("f-user-fit")} className="text-lg">
                   내 핏

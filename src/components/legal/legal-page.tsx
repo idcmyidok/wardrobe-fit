@@ -9,7 +9,7 @@ export function LegalPage({ title, effectiveDate, children }: { title: string; e
         <Link href="/" className="btn btn-ghost mb-2 text-sm">
           ← 처음으로
         </Link>
-        <div className="flex flex-col gap-1.5 border-b border-text pb-4">
+        <div className="flex flex-col gap-1.5 border-b border-divider pb-4">
           <h1 className="text-title">{title}</h1>
           <p className="text-sm text-neutral-700">시행일 {effectiveDate}</p>
         </div>
