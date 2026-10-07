@@ -2,6 +2,27 @@
  * 내 패션 훈수(/roast) 전용 스타일. 모든 규칙을 .roast 안에만 걸어 다른 화면에 영향이 없게 한다.
  * 대화는 첫 화면 기능 소개의 훈수 예시처럼 말풍선 채팅으로 보인다(글꼴은 사이트 기본 Pretendard).
  */
+/* 말풍선 색: 예전 iMessage 색(받은 말 회색, 보낸 말 파랑) */
+.roast {
+  --rb-ai: #e9e9eb;
+  --rb-ai-text: #000;
+  --rb-me: #007aff;
+  --rb-me-hover: #0a6fe0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .roast {
+    --rb-ai: #26252a;
+    --rb-ai-text: #fff;
+    --rb-me: #0a84ff;
+    --rb-me-hover: #3b9bff;
+  }
+}
+:root[data-theme="dark"] .roast {
+  --rb-ai: #26252a;
+  --rb-ai-text: #fff;
+  --rb-me: #0a84ff;
+  --rb-me-hover: #3b9bff;
+}
 .roast .roast-log {
   display: flex;
   flex-direction: column;
@@ -17,7 +38,8 @@
   max-width: min(88%, 36em);
   padding: 8px 14px;
   border-radius: 4px 14px 14px;
-  background: var(--n-200);
+  background: var(--rb-ai);
+  color: var(--rb-ai-text);
   white-space: pre-wrap;
   word-break: keep-all;
   overflow-wrap: anywhere;
@@ -56,7 +78,7 @@
   height: 36px;
   padding: 0 14px;
   border-radius: 4px 14px 14px;
-  background: var(--n-200);
+  background: var(--rb-ai);
   animation: roast-in 0.3s ease-out both;
 }
 .roast .roast-typing span {
@@ -125,12 +147,12 @@
   justify-content: flex-end;
 }
 .roast .roast-replies > * {
-  animation: roast-pop 0.4s cubic-bezier(0.3, 1.5, 0.5, 1) var(--d, 0s) both;
+  animation: roast-slide 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) var(--d, 0s) both;
 }
-@keyframes roast-pop {
+@keyframes roast-slide {
   from {
     opacity: 0.01;
-    transform: scale(0.85);
+    transform: translateX(-16px);
   }
 }
 
@@ -204,17 +226,44 @@
   max-width: min(88%, 30em);
   min-height: 44px;
   padding: 9px 16px;
-  border: 1px solid var(--n-300);
+  border: 1.5px solid var(--rb-me);
   border-radius: 22px;
   background: var(--surface);
-  color: var(--text);
+  color: var(--rb-me);
   text-align: left;
   font-size: 15px;
   line-height: 1.4;
-  transition: background-color 0.15s;
+  cursor: pointer;
+  transition:
+    background-color 0.18s,
+    color 0.18s,
+    transform 0.18s,
+    box-shadow 0.18s;
 }
 .roast .roast-choice:hover:not(:disabled) {
-  background: var(--n-100);
+  background: var(--rb-me);
+  color: #fff;
+  transform: translateX(-3px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--rb-me) 28%, transparent);
+}
+.roast .roast-choice:active:not(:disabled) {
+  background: var(--rb-me-hover);
+  transform: translateX(-3px) scale(0.97);
+}
+.roast .roast-choice:focus-visible {
+  outline: 2px solid var(--rb-me);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .roast .roast-replies > * {
+    animation: none;
+  }
+  .roast .roast-choice,
+  .roast .roast-choice:hover:not(:disabled),
+  .roast .roast-choice:active:not(:disabled) {
+    transform: none;
+    transition: none;
+  }
 }
 .roast .roast-choice:disabled {
   cursor: default;
@@ -228,9 +277,9 @@
 }
 .roast .roast-choice[data-picked="true"] {
   opacity: 1;
-  border-color: var(--text);
-  background: var(--text);
-  color: var(--bg);
+  border-color: var(--rb-me);
+  background: var(--rb-me);
+  color: #fff;
 }
 /* 퀴즈를 틀렸을 때 고른 오답: 어둡게 */
 .roast .roast-choice[data-wrong="true"] {
