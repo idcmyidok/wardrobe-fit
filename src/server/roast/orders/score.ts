@@ -1,7 +1,7 @@
 import "server-only";
-import { colorCounted, type Analysis, type Item } from "../analyze";
+import { colorCounted, fitSummary, type Analysis, type Item } from "../analyze";
 import { brandLabels, MUSINSA_POPULAR, musinsaLikesCut } from "../brands";
-import { ageAt, youngNote, youngWeight, bandName, bandOf, isFormalLux, isGood, isHeritage, isMidTier, isNice, isRepro, isTopDesigner, monthIndex, totalSpendBonus, type ScorePart } from "../score";
+import { ageAt, fitContrast, youngNote, youngWeight, bandName, bandOf, isFormalLux, isGood, isHeritage, isMidTier, isNice, isRepro, isTopDesigner, monthIndex, totalSpendBonus, type ScorePart } from "../score";
 import { SCORE_RULES } from "../score-deltas";
 import { won } from "../text";
 import { avgPrice, busiestMonth, isRanking, isStandard, orderRules, returnStats, thirds, topTag } from "./metrics";
@@ -259,6 +259,9 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   const offList = fitted.filter((i) => i.fit!.level === "too_small" || i.fit!.level === "too_big");
   if (fitted.length >= R.body_off_min_n && (offList.length / fitted.length) * 100 >= R.body_off_pct)
     add("body_off", -Math.min(R.body_off_max, R.body_off + ((offList.length / fitted.length) * 100 - R.body_off_pct) / 10), `내 치수에 너무 작거나 너무 큰 옷 ${offList.length}벌 / 실측을 읽은 ${fitted.length}벌, ${P(offList.length / fitted.length)} (${R.body_off_pct}% 이상 −${R.body_off}, 10%p 늘 때마다 −1, 최대 −${R.body_off_max})`, offList);
+  // 위아래 실루엣 대비: 내 치수를 입력해 핏을 알 수 있는 옷만
+  const fitSum = fitSummary(clothes);
+  if (fitSum.fitted.length >= R.fit_min && fitContrast(fitSum)) add("fit_contrast", R.fit_contrast, "위아래 실루엣 대비: 한쪽은 슬림·레귤러, 다른 쪽은 오버·와이드가 절반 이상");
   // 같은 옷 반복: 같은 상품(색만 다른 것 포함)을 같은 실측(실측을 못 찾으면 같은 사이즈)으로 다른 주문에서 또 산 것.
   // 한 주문의 팩(2PACK 등)은 한 번으로 본다.
   const fitKey = (i: Item) => a.orders?.measure[i.id] ?? (i.g.sizeLabel ? `size:${i.g.sizeLabel.toUpperCase().replace(/\s+/g, "")}` : null);

@@ -148,6 +148,9 @@ export const ORDER_RULES = {
   body_off_pct: 30,
   body_off: 2,
   body_off_max: 6,
+  /** 위아래 실루엣 대비(한쪽은 슬림·레귤러, 다른 쪽은 오버·와이드): 치수를 입력한 사람만. 핏을 아는 옷이 fit_min벌 이상일 때 가점 */
+  fit_min: 5,
+  fit_contrast: 2,
   /** 기본 상의만: 반팔·긴팔 티, 맨투맨, 후드가 옷의 basic_tops_pct% 이상 */
   basic_tops_pct: 50,
   basic_tops: 4,

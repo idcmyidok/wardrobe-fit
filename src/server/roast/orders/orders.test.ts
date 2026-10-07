@@ -362,3 +362,16 @@ describe("주문내역 전용 문장 칸(옷장 훈수 문장 복사)", () => {
     expect(unitAt("orders.questions.fashionable_q.when.high_yes") ?? unitAt("orders.questions.fashionable_q.react.high_yes")).not.toBeNull();
   });
 });
+
+describe("주문내역 실루엣 대비", () => {
+  it("내 치수가 있고 상의는 슬림, 하의는 와이드면 가점(치수 없으면 없음)", () => {
+    seq = 0;
+    const body: BodyProfile = { ...EMPTY_BODY, values: { height: 175, shoulder: 45, chest: 94, waist: 80, hip: 94, thigh: 56 } };
+    const top = (chest: number) => item({ brand: "커버낫", name: `티 ${seq}`, measure: `chest:${chest}|shoulder:46|length:71`, date: "2026-01-10", price: 39_000 });
+    const pants = (thigh: number) => item({ brand: "커버낫", name: `팬츠 ${seq}`, categoryId: "bottom", subcategoryId: "bottom.denim", measure: `thigh:${thigh}|waist:40|length:100`, date: "2026-01-10", price: 49_000 });
+    const list = [...Array.from({ length: 3 }, () => top(50)), ...Array.from({ length: 3 }, () => pants(36))];
+    const s = (b: BodyProfile | null) => scoreOrders(analyzeOrders(toGarments(list).garments, toGarments(list).ctx, 1360, now, undefined, b), { age: 24 });
+    expect(s(body).parts.find((p) => p.id === "fit_contrast")?.delta).toBe(2);
+    expect(s(null).parts.map((p) => p.id)).not.toContain("fit_contrast");
+  });
+});
