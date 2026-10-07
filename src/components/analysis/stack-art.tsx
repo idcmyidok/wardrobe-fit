@@ -29,11 +29,58 @@ const ART: Record<string, React.ReactNode> = {
       <rect x="86" y="66" width="28" height="22" fill={C1} opacity=".6" />
     </>
   ),
-  ruler: (
+  coins: (
     <>
-      <rect x="86" y="10" width="28" height="110" rx="3" fill={SOFT} stroke="currentColor" strokeWidth="2" />
-      {Array.from({ length: 11 }, (_, i) => (
-        <path key={i} d={`M86 ${18 + i * 9.5}h${i % 5 === 0 ? 12 : 7}`} stroke="currentColor" strokeWidth="1.5" />
+      {Array.from({ length: 10 }, (_, i) => (
+        <rect key={i} x="72" y={106 - i * 4.4} width="56" height="4" rx="2" fill={i % 2 ? "#c9ccd1" : "#aeb2b8"} stroke="currentColor" strokeWidth="1" />
+      ))}
+    </>
+  ),
+  pingpong: (
+    <>
+      <circle cx="100" cy="100" r="18" fill="#fff" stroke="currentColor" strokeWidth="2.5" />
+      <path d="M90 92c4-4 12-4 16 0" fill="none" stroke={MID} strokeWidth="2" strokeLinecap="round" />
+    </>
+  ),
+  tennis: (
+    <>
+      <circle cx="100" cy="92" r="26" fill="#d4e157" stroke="currentColor" strokeWidth="2" />
+      <path d="M78 76c14 10 14 30 0 40M122 76c-14 10-14 30 0 40" fill="none" stroke="#fff" strokeWidth="3" />
+    </>
+  ),
+  mug: (
+    <>
+      <rect x="70" y="62" width="52" height="58" rx="6" fill={C2} />
+      <path d="M122 76h8a12 12 0 0 1 0 24h-8" fill="none" stroke={C2} strokeWidth="7" />
+      <path d="M86 52c-4-6 4-8 0-14M100 52c-4-6 4-8 0-14" fill="none" stroke={MID} strokeWidth="2.5" strokeLinecap="round" />
+    </>
+  ),
+  phone: (
+    <>
+      <rect x="78" y="24" width="44" height="92" rx="8" fill="#1d1d1f" />
+      <rect x="82" y="32" width="36" height="76" rx="3" fill={C1} opacity=".75" />
+      <rect x="94" y="27" width="12" height="3" rx="1.5" fill="#444" />
+    </>
+  ),
+  pencil: (
+    <>
+      <rect x="95" y="20" width="12" height="82" fill="#f2c94c" />
+      <rect x="95" y="20" width="12" height="10" fill="#e88a8a" />
+      <path d="M95 102h12l-6 14z" fill="#f4cfb0" />
+      <path d="M99 110l2 6 2-6z" fill="currentColor" />
+    </>
+  ),
+  basketball: (
+    <>
+      <circle cx="100" cy="82" r="36" fill="#e8873a" stroke="currentColor" strokeWidth="2" />
+      <path d="M64 82h72M100 46v72M74 54c10 14 10 44 0 56M126 54c-10 14-10 44 0 56" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    </>
+  ),
+  a4: (
+    <>
+      <rect x="76" y="12" width="48" height="106" rx="2" fill="#fff" stroke="currentColor" strokeWidth="2" />
+      {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+        <path key={i} d={`M84 ${28 + i * 12}h32`} stroke={MID} strokeWidth="2" strokeLinecap="round" />
       ))}
     </>
   ),
@@ -75,6 +122,33 @@ const ART: Record<string, React.ReactNode> = {
       <rect x="48" y="60" width="7" height="60" fill={MID} />
       <rect x="145" y="60" width="7" height="60" fill={MID} />
       <rect x="84" y="36" width="34" height="16" rx="2" fill={SOFT} stroke="currentColor" strokeWidth="2" />
+    </>
+  ),
+  counter: (
+    <>
+      <rect x="40" y="46" width="120" height="10" rx="3" fill="#b7bcc4" />
+      <rect x="46" y="56" width="108" height="64" fill={SOFT} stroke="currentColor" strokeWidth="2" />
+      <path d="M100 56v64" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="92" cy="88" r="2" fill="currentColor" />
+      <circle cx="108" cy="88" r="2" fill="currentColor" />
+      <path d="M62 46v-8a8 8 0 0 1 8-8h6" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </>
+  ),
+  schooler: (
+    <>
+      <circle cx="100" cy="18" r="12" fill="#f4cfb0" />
+      <rect x="85" y="32" width="30" height="46" rx="10" fill={C3} />
+      <rect x="88" y="78" width="10" height="42" rx="4" fill="currentColor" opacity=".7" />
+      <rect x="102" y="78" width="10" height="42" rx="4" fill="currentColor" opacity=".7" />
+      <rect x="116" y="42" width="14" height="30" rx="4" fill={C2} />
+    </>
+  ),
+  fridge: (
+    <>
+      <rect x="62" y="14" width="76" height="106" rx="5" fill="#dfe3e8" stroke="currentColor" strokeWidth="2" />
+      <path d="M100 14v106M62 52h76" stroke="currentColor" strokeWidth="1.8" />
+      <rect x="92" y="28" width="3" height="16" rx="1.5" fill="currentColor" />
+      <rect x="105" y="28" width="3" height="16" rx="1.5" fill="currentColor" />
     </>
   ),
   toddler: (

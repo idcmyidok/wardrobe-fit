@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type Dispatch, type SetStateAction } from "react";
+import { useMemo, useRef, type Dispatch, type SetStateAction } from "react";
 import { ImagePicker } from "./image-picker";
 import { PageImageGrid } from "./page-image-grid";
 import { DateLabel } from "./date-label";
@@ -155,6 +155,8 @@ export function formToDraft(form: FormState, held: boolean, fitCheckId: string |
   } as GarmentDraft;
 }
 
+const VINTAGE = "빈티지";
+
 export function GarmentFields({
   idp = "",
   state,
@@ -183,6 +185,13 @@ export function GarmentFields({
   const setImageIndex = (v: number) => onChange((s) => ({ ...s, imageIndex: v }));
   const setCustomSize = (v: boolean) => onChange((s) => ({ ...s, customSize: v }));
   const dropImage = (n: number) => onChange((s) => (s.badImages.includes(n) ? s : { ...s, badImages: [...s.badImages, n] }));
+  // 빈티지: 체크하면 브랜드가 "빈티지"로 채워지고 더는 입력할 수 없다. 해제하면 직전에 적던 브랜드로 돌아간다.
+  const vintage = form.brand.trim() === VINTAGE;
+  const brandBeforeVintage = useRef("");
+  const toggleVintage = (on: boolean) => {
+    if (on) brandBeforeVintage.current = form.brand;
+    update("brand", on ? VINTAGE : brandBeforeVintage.current);
+  };
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
   const moving = currentImageUrl ? { imageUrl: currentImageUrl } : undefined;
 
@@ -248,8 +257,14 @@ export function GarmentFields({
                   </select>
                 </div>
                 <div className="field">
-                  <label htmlFor={i("f-brand")}>브랜드</label>
-                  <input id={i("f-brand")} className="input" aria-invalid={Boolean(fieldErrors.brand)} aria-describedby={fieldErrors.brand ? i("e-brand") : undefined} value={form.brand} onChange={(e) => update("brand", e.target.value)} />
+                  <div className="mb-[5px] flex items-baseline justify-between gap-2 text-[12px] text-neutral-700">
+                    <label htmlFor={i("f-brand")}>브랜드</label>
+                    <label className="flex cursor-pointer items-center gap-1.5">
+                      <input type="checkbox" checked={vintage} onChange={(e) => toggleVintage(e.target.checked)} className="size-3.5" />
+                      빈티지
+                    </label>
+                  </div>
+                  <input id={i("f-brand")} className="input" disabled={vintage} aria-invalid={Boolean(fieldErrors.brand)} aria-describedby={fieldErrors.brand ? i("e-brand") : undefined} value={form.brand} onChange={(e) => update("brand", e.target.value)} />
                   <FieldError id={i("e-brand")} message={fieldErrors.brand} />
                 </div>
                 <div className="field sm:col-span-2">
