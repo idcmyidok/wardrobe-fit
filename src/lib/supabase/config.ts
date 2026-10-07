@@ -75,7 +75,7 @@ export function safeNextPath(value: unknown, fallback = "/wardrobe"): string {
 }
 
 /** 로그인해야 들어갈 수 있는 경로. `(app)` 그룹과 비밀번호 변경 화면. */
-const PROTECTED_PREFIXES = ["/wardrobe", "/fit-check", "/analysis", "/outfit", "/admin", "/settings", "/body", "/auth/update-password"];
+const PROTECTED_PREFIXES = ["/wardrobe", "/fit-check", "/analysis", "/admin", "/settings", "/body", "/auth/update-password"];
 
 export function isProtectedPath(pathname: string) {
   return PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));

@@ -311,8 +311,8 @@ export function NewGarmentView() {
       <Link href={held ? "/fit-check#held" : "/wardrobe"} className="btn btn-ghost mb-2 text-sm">
         {held ? "← 구매 판단기" : "← 내 옷장"}
       </Link>
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-divider pb-4">
-        <h1 className="text-title">{held ? "구매 보류 옷 추가" : movingId ? "옷장으로 옮기기" : "새 옷 추가"}</h1>
+      <div className="rise flex max-w-190 flex-wrap items-end justify-between gap-4 pb-2">
+        <h1 className="large-title">{held ? "구매 보류 옷 추가" : movingId ? "옷장으로 옮기기" : "새 옷 추가"}</h1>
         {movingId ? null : <div className="seg" role="radiogroup" aria-label="추가 방법">
           <label className="seg-opt px-4 py-2 text-base">
             <input type="radio" name="addmode" checked={phase !== "manual"} onChange={() => { cancelRequest(); setPhase("url"); }} />
@@ -326,7 +326,7 @@ export function NewGarmentView() {
       </div>
 
       {(phase === "url" || phase === "analyzing" || phase === "failed") && (
-        <section className="flex max-w-190 flex-col gap-3 py-8">
+        <section className="app-card rise mt-5 flex max-w-190 flex-col gap-3 p-5 md:p-8">
           <div className="field">
             <label htmlFor="new-url" className="text-sm">
               상품 URL
@@ -448,10 +448,10 @@ export function NewGarmentView() {
             </button>
           </div>
           {items.map((m, n) => (
-            <article key={m.key} className="flex flex-col gap-4 border-t border-divider py-7" aria-label={`${n + 1}번째 옷`}>
+            <article key={m.key} className="app-card mb-4 flex flex-col gap-4 p-5 md:p-8" aria-label={`${n + 1}번째 옷`}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-lg">
-                  <span className="font-mono tabular-nums">{n + 1}</span>. {m.status === "ready" && m.state.form.productName ? m.state.form.productName : "링크"}
+                <h2 className="text-xl font-bold">
+                  <span className="tabular-nums">{n + 1}</span>. {m.status === "ready" && m.state.form.productName ? m.state.form.productName : "링크"}
                 </h2>
                 <button type="button" className="btn btn-ghost text-sm" onClick={() => setItems((list) => list.filter((x) => x.key !== m.key))}>
                   이 옷 빼기
@@ -519,9 +519,9 @@ export function NewGarmentView() {
       )}
 
       {showForm && (
-        <>
+        <div className="app-card rise mt-5 flex flex-col gap-4 p-5 md:p-8">
           {isReview && (
-            <div className="flex flex-col gap-0.5 border-b border-neutral-300 py-4">
+            <div className="flex flex-col gap-0.5 border-b border-neutral-200 pb-4">
               <span className="text-base">
                 {partial ? "읽지 못한 칸은 직접 채워 주세요." : movingId ? "구매일·시즌·실제 구매가를 넣고 등록하세요." : held ? "고민 중인 사이즈와 컬러를 고른 뒤 추가하세요." : "구매한 사이즈와 컬러를 고른 뒤 등록하세요."}
               </span>
@@ -557,7 +557,7 @@ export function NewGarmentView() {
               </button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </main>
   );

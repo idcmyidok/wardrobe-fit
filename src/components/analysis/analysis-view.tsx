@@ -11,11 +11,12 @@ import {
   colorSummary,
   monthlySummary,
   priceSummary,
-  recommendations,
   seasonSummary,
   type CategoryTab,
   type DonutSlice,
 } from "./wardrobe-analysis";
+import { stackSummary } from "./stack-height";
+import { StackArt } from "./stack-art";
 
 const TABS: { id: CategoryTab; label: string }[] = [
   { id: "all", label: "전체" },
@@ -27,9 +28,9 @@ const TABS: { id: CategoryTab; label: string }[] = [
 ];
 
 const section =
-  "grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-x-12 gap-y-8 border-b border-divider py-9";
-const sectionTitle = "text-body font-semibold";
-const colLabel = "font-mono text-label font-medium tracking-[0.08em] text-neutral-700";
+  "app-card reveal mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-x-12 gap-y-8 p-6 md:p-8";
+const sectionTitle = "text-xl font-bold tracking-[-0.01em]";
+const colLabel = "text-xs font-semibold text-neutral-600";
 
 export function AnalysisView() {
   const { garments: owned, usdRate } = useWardrobe();
@@ -48,18 +49,36 @@ export function AnalysisView() {
   const brands = brandSummary(garments, brandTab);
   const colors = colorSummary(garments, colorTab);
   const seasons = seasonSummary(garments);
-  const recs = recommendations(garments, seasons.least);
+  const stack = stackSummary(garments);
+
+  // 스크롤해서 카드가 화면에 들어오면 나타나게 한다.
+  useEffect(() => {
+    const els = document.querySelectorAll<HTMLElement>(".reveal");
+    if (typeof IntersectionObserver === "undefined") {
+      els.forEach((el) => el.classList.add("in"));
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("in");
+            io.unobserve(e.target);
+          }
+        }),
+      { threshold: 0.12 },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
 
   return (
     <main className="mx-auto max-w-320 px-[clamp(16px,3vw,32px)] pt-6 pb-16">
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-divider pb-4">
-        <div className="flex flex-col gap-1">
-          <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700 uppercase">
-            Wardrobe report · 2026.09.27
-          </span>
-          <h1 className="text-title">옷장 데이터</h1>
-        </div>
-        <span className="text-sm text-neutral-700">{garments.length}벌 기준 · 구매가·구매일이 있는 옷만 금액에 포함</span>
+      <div className="rise pb-2">
+        <h1 className="large-title">옷장 데이터</h1>
+        <p className="page-sub">
+          <span className="font-semibold text-text tabular-nums">{garments.length}벌</span> 기준입니다. 구매가·구매일이 있는 옷만 금액에 넣습니다.
+        </p>
       </div>
 
       {/* 가격 */}
@@ -195,10 +214,10 @@ export function AnalysisView() {
             <div key={x.id} className="flex flex-col gap-2">
               <div className="flex h-45 items-end border-b border-divider">
                 <div
-                  className={cn("flex w-full justify-center rounded-t-sm pt-2", x.isLeast ? "bg-[color-mix(in_oklab,var(--chart-1)_35%,var(--surface))]" : "bg-neutral-300")}
+                  className={cn("rv-bar flex w-full justify-center rounded-t-sm pt-2", x.isMost ? "bg-[color-mix(in_oklab,var(--chart-1)_35%,var(--surface))]" : "bg-neutral-300")}
                   style={{ height: x.height }}
                 >
-                  <span className={cn("font-display text-[32px] leading-none", x.isLeast ? "text-accent-800" : "text-text")}>
+                  <span className={cn("font-display text-[32px] leading-none", x.isMost ? "text-accent-800" : "text-text")}>
                     {x.count}
                   </span>
                 </div>
@@ -212,31 +231,27 @@ export function AnalysisView() {
         </div>
       </section>
 
-      {/* 추천 */}
-      <section className="flex flex-col gap-4 py-9" aria-labelledby="an-rec">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span id="an-rec" className={sectionTitle}>
-            지금 필요한 옷
+      {/* 쌓은 높이 */}
+      <section className={section} aria-labelledby="an-stack">
+        <div className="flex flex-col gap-2.5">
+          <span id="an-stack" className={sectionTitle}>
+            옷을 모두 쌓으면
           </span>
-          <span className="text-xs text-neutral-700">종류별 기본 구성 대비 부족한 순</span>
+          <p className="font-display text-display-lg">{stack.range}</p>
+          <span className="text-sm text-neutral-700">세부분류별 평균 두께로 접어서 쌓았을 때를 계산한 값이라 ±15% 정도 차이가 날 수 있습니다.</span>
         </div>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,280px),1fr))]">
-          {recs.map((r) => (
-            <div key={r.label} className="flex flex-col gap-2 border-b border-neutral-300 py-5 pr-5">
-              <div className="flex items-baseline gap-2.5">
-                <span className="font-display text-display">{r.rank}</span>
-                <span className="text-xs text-neutral-700">{r.category}</span>
+        <div className="flex min-w-0 flex-col items-center gap-4 text-center md:col-span-2">
+          {stack.near ? (
+            <>
+              <div className="rv-pop flex w-full justify-center">
+                <StackArt name={stack.near.art} />
               </div>
-              <span className="text-lg font-semibold">{r.label}</span>
-              <div className="flex gap-0.75" aria-hidden>
-                {r.dots.map((filled, i) => (
-                  <span key={i} className={cn("h-1.5 w-4.5 rounded-xs", filled ? "bg-text" : "bg-neutral-300")} />
-                ))}
-              </div>
-              <span className="font-mono text-sm text-neutral-700">{r.have}</span>
-              <span className="text-base text-pretty text-neutral-800">{r.reason}</span>
-            </div>
-          ))}
+              <p className="text-xl font-bold">{stack.near.name}</p>
+              <p className="max-w-110 text-lg leading-normal text-pretty">{stack.near.desc}</p>
+            </>
+          ) : (
+            <p className="text-lg">등록한 옷이 없습니다.</p>
+          )}
         </div>
       </section>
     </main>
