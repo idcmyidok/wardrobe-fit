@@ -297,15 +297,15 @@ export function OrderImportView() {
       <Link href="/wardrobe/new" className="btn btn-ghost mb-2 text-sm">
         ← 새 옷 추가
       </Link>
-      <div className="flex flex-col gap-1 border-b border-divider pb-4">
-        <h1 className="text-title">무신사 주문내역으로 추가</h1>
-        <p className="text-sm text-neutral-700 text-pretty">
+      <div className="rise flex flex-col pb-2">
+        <h1 className="large-title">무신사 주문내역으로 추가</h1>
+        <p className="page-sub">
           주문내역에서 구매 확정된 옷만 골라 무신사 상품 정보(사진·실측)를 찾아요. 한 벌씩 확인한 뒤 고른 것만 옷장에 넣어요.
         </p>
       </div>
 
       {phase === "input" && (
-        <section className="flex max-w-190 flex-col gap-4 py-8">
+        <section className="app-card rise mt-5 flex max-w-190 flex-col gap-4 p-5 md:p-8">
           <OrderGuide />
           <textarea
             className="input font-mono text-sm"
@@ -427,10 +427,10 @@ function ItemRow({
         disabled={disabled || !it.categoryId}
         onChange={(e) => onChange(() => (duplicate ? { keepDup: e.target.checked, include: e.target.checked || it.include } : { include: e.target.checked }))}
       />
-      <div className="size-20 shrink-0 overflow-hidden bg-neutral-100">
+      <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden">
         {it.hasImage && it.importId && (
           // eslint-disable-next-line @next/next/no-img-element -- 분석 이미지 프록시(로그인 필요)라 next/image 최적화를 쓰지 않는다.
-          <img src={importImageUrl(it.importId, 0)} alt="" className="size-full object-cover" loading="lazy" />
+          <img src={importImageUrl(it.importId, 0)} alt="" className="h-auto max-h-full w-auto max-w-full rounded-xs" loading="lazy" />
         )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-2">

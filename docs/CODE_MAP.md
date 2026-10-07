@@ -21,7 +21,7 @@
 - **핏 계산**: `src/lib/fit/compute.ts`(`computeFit`/`computeSize`), 내 치수 기반 `body-fit.ts`(`FIT_GROUPS`), 길이 `length-fit.ts`, 신발 `shoes.ts`, VS 비교 `versus.ts`, 비교 대상 선택 `select-comparables.ts`, 서버 `src/server/fit/service.ts`, AI 설명 `src/server/ai/fit-interpreter.ts`.
 - **구매 판단기(핏체크)**: 화면 `src/components/fit-check/`(`fit-check-view`, `fit-result-view`, `versus-view`), API `src/app/api/fit-checks`, 링크 파싱 `src/server/import/`(`parsers/`, `registry.ts`, `service.ts`).
 - **무신사 주문 가져오기**: `src/server/import/musinsa-orders.ts`, `src/lib/import/`, 화면 `src/components/garment-form/order-import-view.tsx`, 북마크 안내 `order-guide.tsx`(`OrderGuide`, 주문내역 훈수와 같이 씀). 옷장 훈수는 이름·나이 뒤 `Chat`이 "옷을 전부 넣었나요?" 질문(`READY_*` 문장, 3번째는 종료+"옷장에 옷 추가하기" 링크)을 먼저 하고, 시작 화면 `Intro`는 동의 체크(`CONSENT`·`CONSENT_WARN`, 맨 처음 옷장 훈수 시작 화면에만 있고 주문내역 시작 화면에는 없음)가 있어야 시작되며 `Typed`는 `**굵게**`·`!!붉은 글씨!!` 표시를 지원한다. 훈수 결과 맨 아래 "분석한 제품 전부 옷장에 넣기"(`roast-view.tsx`)는 `/wardrobe/import-orders?from=roast`로 가며, 훈수가 읽은 결과를 `src/lib/import/order-handoff.ts`로 넘겨 재조회 없이 확인 화면을 연다(`order-import-view.tsx`의 `applyLookup`).
-- **옷장/분석/코디**: `src/components/wardrobe/`, `src/server/garments/`, `src/components/analysis/wardrobe-analysis.ts`, `src/lib/outfit/recommend.ts`.
+- **옷장/분석**: `src/components/wardrobe/`, `src/server/garments/`, `src/components/analysis/wardrobe-analysis.ts`.
 - **업데이트 노트**: `src/lib/release-notes.ts`(342), 화면 `src/components/layout/release-notes-dialog.tsx`. (버전·노트는 사용자 지시 없이 수정 금지)
 - **DB**: `supabase/migrations/`(번호순), 스펙 `PROJECT_SPEC.md`(1189줄, 필요한 절만 `grep -n "^#"`로 찾기).
 
@@ -61,9 +61,6 @@
 
 ### src/app/(app)/fit-check/[id]
 - `page.tsx` (61줄) metadata:8 FitCheckResultPage:11
-
-### src/app/(app)/outfit
-- `page.tsx` (12줄) metadata:6 OutfitPage:8
 
 ### src/app/(app)/roast
 - `layout.tsx` (17줄) RoastLayout:14
@@ -130,8 +127,10 @@
 - `user-actions.tsx` (71줄) UserActions:8
 
 ### src/components/analysis
-- `analysis-view.tsx` (519줄) AnalysisView:34
-- `wardrobe-analysis.ts` (359줄) CategoryTab:8 man:11 won:13 priceComment:56 halfYearAverage:76 recentSixMonths:86 priceSummary:95 monthlySummary:129 …
+- `analysis-view.tsx` (533줄) AnalysisView:34
+- `stack-height.ts` (70줄) LANDMARKS thicknessOf formatHeight stackSummary — 옷 전부 쌓은 높이(세부분류별 두께)와 비슷한 높이의 물건
+- `stack-art.tsx` (192줄) StackArt — 높이 구간별 그림(코드에 내장, 바로 표시)
+- `wardrobe-analysis.ts` (316줄) CategoryTab:8 man:11 won:13 priceComment:56 halfYearAverage:76 recentSixMonths:86 priceSummary:95 monthlySummary:129 …
 
 ### src/components/auth
 - `auth-mode.ts` (6줄) AuthMode:1 parseAuthMode:3
@@ -188,9 +187,6 @@
 ### src/components/legal
 - `legal-page.tsx` (41줄) LegalPage:5 LegalSection:23 LegalList:32
 - `site-footer.tsx` (21줄) SiteFooter:8
-
-### src/components/outfit
-- `outfit-view.tsx` (139줄) OutfitView:20
 
 ### src/components/roast
 - `order-roast.tsx` (198줄) OrderCopy:21 OrderPaste:45
@@ -267,9 +263,6 @@
 
 ### src/lib/mock
 - `garments.ts` (227줄) MOCK_GARMENTS:4
-
-### src/lib/outfit
-- `recommend.ts` (343줄) WearSeason:13 OUTFIT_ORDER:16 OutfitItem:19 OutfitResult:24 seasonOfDate:29 localDateKey:38 fitsSeason:55 recommendOutfit:285
 
 ### src/lib/roast
 - `bubbles.ts` (31줄) splitSentences:7 joinBubbles:10 bubblesOf:13 isBubbleKey:20

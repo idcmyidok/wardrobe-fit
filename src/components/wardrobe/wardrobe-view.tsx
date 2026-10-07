@@ -122,12 +122,12 @@ export function WardrobeView() {
   return (
     <main className="mx-auto max-w-400 px-[clamp(16px,3vw,32px)] pt-7 pb-12">
       {/*
-        왼쪽: 제목·벌 수·검색·필터(늘 펼침). 오른쪽(PC): 위는 보기 방식(제목 윗선에 맞춤), 아래는 새 옷 추가·옷 삭제(필터 줄 아랫선에 맞춤).
-        모바일: 같은 순서로 쌓고, 보기 방식·새 옷 추가·옷 삭제를 한 줄에 왼쪽 정렬.
+        왼쪽: 제목·벌 수·검색·필터(늘 펼침). 오른쪽(PC): 보기 방식은 검색 아랫선, 새 옷 추가·옷 삭제는 필터 줄 아랫선에 맞춤.
+        모바일: 같은 순서로 쌓고, 보기 방식은 왼쪽, 새 옷 추가·옷 삭제는 오른쪽에 붙임.
       */}
-      <div className="rise flex flex-col gap-4 md:flex-row md:items-stretch md:justify-between">
-        <div className="flex min-w-0 flex-col gap-4">
-          <div>
+      <div className="rise flex flex-col gap-4 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:gap-x-6">
+        <div className="flex min-w-0 flex-col gap-4 md:contents">
+          <div className="md:col-start-1 md:row-start-1">
             <h1 className="large-title">내 옷장</h1>
             <p className="page-sub">
               <span className="font-semibold text-text tabular-nums">{filtered ? `${items.length} / ${garments.length}` : garments.length}벌</span>
@@ -136,14 +136,18 @@ export function WardrobeView() {
           </div>
           {!empty && (
             <>
-              <SearchBox value={filters.q} onCommit={(q) => setFilters({ ...filters, q })} />
-              <MoreFilters value={filters} onChange={setFilters} options={options} />
+              <div className="md:col-start-1 md:row-start-2">
+                <SearchBox value={filters.q} onCommit={(q) => setFilters({ ...filters, q })} />
+              </div>
+              <div className="md:col-start-1 md:row-start-3 md:self-end">
+                <MoreFilters value={filters} onChange={setFilters} options={options} />
+              </div>
             </>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2 md:flex-col md:flex-nowrap md:items-end md:justify-between">
+        <div className="flex flex-wrap items-center gap-2 md:contents">
           {!empty && (
-            <div role="group" aria-label="보기 방식" className="seg">
+            <div role="group" aria-label="보기 방식" className="seg md:col-start-2 md:row-start-2 md:self-end">
               {VIEW_OPTIONS.map((option) => (
                 <button
                   key={option.id}
@@ -162,8 +166,8 @@ export function WardrobeView() {
             </div>
           )}
           {/* 모바일에서는 보기 방식과 한 줄에 놓이도록 감싸는 상자를 없앤다(contents) */}
-          <div className="contents md:flex md:flex-wrap md:items-center md:gap-2">
-            <Link href="/wardrobe/new" className={cn(buttonClassName({ variant: "primary" }), "max-md:min-h-10 max-md:px-3.5 max-md:text-sm")}>
+          <div className="contents md:col-start-2 md:row-start-3 md:flex md:flex-wrap md:items-center md:gap-2 md:self-end">
+            <Link href="/wardrobe/new" className={cn(buttonClassName({ variant: "primary" }), "max-md:ml-auto max-md:min-h-10 max-md:px-3.5 max-md:text-sm")}>
               + 새 옷 추가
             </Link>
             {!empty && (

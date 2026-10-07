@@ -34,12 +34,12 @@ export function MoreFilters({
       <FilterSelect label="브랜드" width="w-37.5" value={value.brand} onChange={(v) => set("brand", v)} options={toOptions(options.brands)} />
       <FilterSelect
         label="시즌"
-        width="w-30"
+        width="w-37.5"
         value={value.season}
         onChange={(v) => set("season", v as Season | "")}
         options={SEASONS.map((s) => ({ value: s.id, name: s.name }))}
       />
-      <FilterSelect label="컬러" width="w-32.5" value={value.color} onChange={(v) => set("color", v)} options={toOptions(options.colors)} />
+      <FilterSelect label="컬러" width="w-37.5" value={value.color} onChange={(v) => set("color", v)} options={toOptions(options.colors)} />
       {isFiltered(value) && (
         <button type="button" className="btn btn-ghost text-sm" onClick={() => onChange(DEFAULT_FILTERS)}>
           필터 초기화
