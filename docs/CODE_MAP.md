@@ -10,7 +10,6 @@
 | `src/server/roast/brands.json` | 1.1MB | csv에서 `scripts/build-brands.mjs`로 생성됨. 직접 읽지 말고 csv 기준으로 수정 후 재생성 |
 | `supabase/migrations/…0010_color_names_korean.sql` | 1,948줄 | 색상 이름 일괄 변환용, 볼 일 없음 |
 | `package-lock.json`, `src/lib/supabase/database.types.ts`(832줄, 생성) | | 필요한 테이블만 `grep -n -A20 "테이블명"` |
-| `src/app/(app)/roast/fonts/*.woff2` | | 폰트, 무시 |
 
 ## 핵심 영역 길잡이
 - **훈수(/roast)**: 화면 `src/components/roast/roast-view.tsx`(914), 서버 `src/server/roast/`. 점수 `score.ts`(`scoreWardrobe`)·점수 규칙값 `score-deltas.ts`·등급 `bands.ts`; 분석 `analyze.ts`; 대화 조립 `compose.ts`(`buildScript`, 결과 마무리 `composeResult`)·결과 본문 `report.ts`(`buildReport`)·문장 원문 `lines.ts`(대화 문장 say만)/`report-text.ts`; 질문 `questions.ts`(1295, `QUESTIONS`/`pickQuestions`), 퀴즈 `quiz.ts`(`QUIZ`); 질문 반응(1번·2번…)마다 붙이는 조건·조건별 결과 글 `react-when.ts`(`WHEN_DEFS`/`reactPool`, 저장 키 `questions.<질문>.when|result.<반응>`, 관리자 화면은 `roast-text-editor.tsx`의 `ReactField`·`WhenPicker`); 관리자 편집 단위·조건 `meta.ts`(`textGroups`)·`texts.ts`(저장된 문구 덮어쓰기 `DEFAULT_TEXTS`); 서버 액션 `actions.ts`(`startRoast`/`finishRoast`), 관리자 저장 `admin-actions.ts`. 훈수에는 AI 글쓰기가 없다(2026-10-01 제거; 옛 저장 결과 `headline`/`paragraphs`는 report 없는 결과를 열 때만 쓰임).
@@ -174,7 +173,7 @@
 - `use-add-held.ts` (63줄) HeldDraft:7 useAddHeld:14
 
 ### src/components/landing
-- `feature-showcase.tsx` (593줄) FeatureShowcase:37 — 첫 화면 대표 기능 탭(옷장 관리·구매 판단·옷장 훈수). 탭 글은 `FEATURES`:551, 예시 화면 WardrobeDemo:277·FitCheckDemo:400·RoastDemo:480. 움직임은 `landing.css`(--d 지연, 자동 넘김 막대 animationend로 다음 탭)
+- `feature-showcase.tsx` (706줄) FeatureShowcase:39 — 첫 화면 대표 기능 탭 5개(옷장 관리·구매 판단·패션 훈수·내 치수·옷장 데이터, 자동 넘김 멈춤 버튼 없음, 탭을 누르면 그 기능부터 다시 넘김). 탭 글은 `FEATURES`:637, 예시 화면 WardrobeDemo:246·FitCheckDemo:369·RoastDemo:449·BodyDemo:512·AnalysisDemo:571. 움직임은 `landing.css`(--d 지연, 자동 넘김 막대 animationend로 다음 탭)
 - `promo-banner.tsx` (120줄) PromoBanner — 로그인 화면 회원가입 줄 아래 새 기능 알림 배너(클릭 없음)(signin·signup 모드). 항목은 `PROMOS` 목록 한 곳에서 추가·수정, 2개 이상이면 5초마다 왼쪽 밀어내기 전환(`landing.css`의 pb-slide), 마우스·포커스 시 멈춤, 점으로 이동
 - `src/components/auth/help-popup.tsx` HelpPopup — 로그인·회원가입 제목 위 빨간 밑줄 안내 + X 달린 팝업(`auth-panel.tsx`에서 사용, 돌고래 사진 `public/images/dolphin.jpg`)
 - `service-intro.tsx` (34줄) ServiceIntro:9 — 로그인 화면 왼쪽(제목·소개 한 줄 + FeatureShowcase)
@@ -194,7 +193,7 @@
 
 ### src/components/roast
 - `order-roast.tsx` (198줄) OrderCopy:21 OrderPaste:45
-- `roast-view.tsx` (914줄) RoastView:73(fast prop=관리자 10배 속도, pace.speed)
+- `roast-view.tsx` (1033줄) RoastView:76(fast prop=관리자 10배 속도, pace.speed). 대화는 말풍선 채팅(`roast.css`: `.roast-ai` 말풍선, `.roast-typing` 입력 중 점, `.roast-replies` 오른쪽 답 칸), `Typed`는 글을 한 번에 띄우고 읽을 틈 뒤 onDone
 
 ### src/components/settings
 - `settings-view.tsx` (64줄) SettingsView:11

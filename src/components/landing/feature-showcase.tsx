@@ -9,6 +9,8 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
+import { FIT_COLOR } from "@/components/body/fit-meter";
+import { FIT_LEVELS } from "@/lib/constants/body";
 
 /** 미리보기 조각이 움직이기 시작하는 시각(초). landing.css의 애니메이션이 --d만큼 기다린다. */
 const at = (seconds: number, extra?: Record<string, string>) =>
@@ -36,7 +38,6 @@ type Feature = {
 /** 첫 화면 왼쪽의 대표 기능 소개. 탭을 누르거나 자동으로 넘기며 각 기능의 예시 화면을 움직여 보여 준다. */
 export function FeatureShowcase({ style }: { style?: CSSProperties }) {
   const [active, setActive] = useState(0);
-  const [autoplay, setAutoplay] = useState(true);
   // 같은 탭이라도 다시 고르면 미리보기를 처음부터 다시 움직이려고 key로 쓴다.
   const [run, setRun] = useState(0);
   const [onScreen, setOnScreen] = useState(true);
@@ -47,7 +48,7 @@ export function FeatureShowcase({ style }: { style?: CSSProperties }) {
     () => window.matchMedia(REDUCED_MOTION).matches,
     () => false,
   );
-  const cycling = autoplay && !reduced;
+  const cycling = !reduced;
 
   useEffect(() => {
     const root = rootRef.current;
@@ -64,15 +65,8 @@ export function FeatureShowcase({ style }: { style?: CSSProperties }) {
     setActive(index);
     setRun((r) => r + 1);
   };
-  // 사람이 직접 고르면 자동 넘김을 멈춘다.
-  const choose = (index: number) => {
-    setAutoplay(false);
-    show(index);
-  };
-  const toggleAutoplay = () => {
-    if (!autoplay) setRun((r) => r + 1);
-    setAutoplay(!autoplay);
-  };
+  // 직접 고르면 그 기능부터 다시 보여 주고, 자동 넘김은 거기서 이어 간다(마우스를 올려 두면 멈춘다).
+  const choose = (index: number) => show(index);
 
   const onTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const last = FEATURES.length - 1;
@@ -108,7 +102,7 @@ export function FeatureShowcase({ style }: { style?: CSSProperties }) {
           role="tablist"
           aria-label="대표 기능"
           onKeyDown={onTabKeyDown}
-          className="grid flex-1 grid-cols-3"
+          className="grid flex-1 grid-cols-5"
         >
           {FEATURES.map((feature, index) => {
             const selected = index === active;
@@ -125,7 +119,7 @@ export function FeatureShowcase({ style }: { style?: CSSProperties }) {
                 aria-controls={`fs-panel-${feature.id}`}
                 tabIndex={selected ? 0 : -1}
                 onClick={() => choose(index)}
-                className={`relative flex items-center gap-1.5 pt-1 pb-3 text-left text-[15px] font-medium transition-colors ${
+                className={`relative flex flex-col items-center gap-1 pt-1 pb-2.5 text-center text-[13px] font-medium whitespace-nowrap transition-colors min-[400px]:text-sm ${
                   selected ? "text-text" : "text-neutral-600 hover:text-text"
                 }`}
               >
@@ -158,31 +152,6 @@ export function FeatureShowcase({ style }: { style?: CSSProperties }) {
             );
           })}
         </div>
-        {!reduced && (
-          <button
-            type="button"
-            onClick={toggleAutoplay}
-            aria-label={
-              autoplay
-                ? "기능 소개 자동 넘김 멈추기"
-                : "기능 소개 자동 넘김 켜기"
-            }
-            title={autoplay ? "자동 넘김 멈추기" : "자동 넘김 켜기"}
-            className="mb-2 grid size-7 shrink-0 place-items-center self-center rounded-sm text-neutral-600 transition-colors hover:bg-neutral-200 hover:text-text"
-          >
-            <svg
-              aria-hidden
-              viewBox="0 0 16 16"
-              className="size-3.5 fill-current"
-            >
-              {autoplay ? (
-                <path d="M4 3h3v10H4zM9 3h3v10H9z" />
-              ) : (
-                <path d="M4.5 2.5v11l9-5.5z" />
-              )}
-            </svg>
-          </button>
-        )}
       </div>
 
       {/* 예시 화면은 눈으로 보는 그림이다. 같은 내용을 아래 글로 설명한다. */}
@@ -534,6 +503,123 @@ function RoastDemo() {
   );
 }
 
+const FIT_NAMES = ["너무 작음", "슬림", "레귤러", "세미오버", "오버", "너무 큼"];
+const BODY_ROWS = [
+  ["어깨", "47 ~ 49"],
+  ["가슴", "58 ~ 61"],
+];
+
+function BodyDemo() {
+  return (
+    <DemoFrame title="내 치수" note="워크 자켓 · 레귤러핏">
+      <div className="flex flex-col gap-4">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-neutral-600">
+              <th className="pb-1.5 font-medium">부위</th>
+              <th className="pb-1.5 font-medium">맞는 실측(cm)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {BODY_ROWS.map(([part, range], i) => (
+              <tr key={part} className="fs-in border-t border-neutral-300" style={at(0.2 + i * 0.15)}>
+                <td className="py-1.5">{part}</td>
+                <td className="py-1.5 font-semibold tabular-nums">{range}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="flex flex-col gap-1.5">
+          <span className="fs-in text-xs text-neutral-600" style={at(0.85)}>
+            옷장의 이 자켓은
+          </span>
+          <div className="grid grid-cols-6 gap-1">
+            {FIT_LEVELS.map((level, i) => (
+              <span key={level} className="fs-pop" style={at(1.0 + i * 0.07)}>
+                <span
+                  className={`block h-3 rounded-bar ${i === 2 ? "" : "fs-dim opacity-35"}`}
+                  style={at(1.9, { background: FIT_COLOR[level] })}
+                />
+              </span>
+            ))}
+          </div>
+          <div className="grid grid-cols-6 gap-1 text-center text-2xs text-neutral-600">
+            {FIT_NAMES.map((name, i) => (
+              <span key={name} className={i === 2 ? "fs-in font-semibold text-text" : undefined} style={i === 2 ? at(2.0) : undefined}>
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </DemoFrame>
+  );
+}
+
+const SLICES = [
+  ["아우터", 34, "var(--chart-1)"],
+  ["상의", 28, "var(--chart-2)"],
+  ["하의", 20, "var(--chart-3)"],
+  ["신발", 12, "var(--chart-4)"],
+  ["모자", 6, "var(--chart-5)"],
+] as const;
+const MONTHS = [30, 52, 18, 76, 40, 24];
+const RING = 2 * Math.PI * 34;
+/** 조각마다 시작 위치(앞 조각들의 길이 합) */
+const SLICE_START = SLICES.map((_, i) => SLICES.slice(0, i).reduce((sum, x) => sum + (x[1] / 100) * RING, 0));
+
+function AnalysisDemo() {
+  return (
+    <DemoFrame title="옷장 데이터" note="최근 6개월">
+      <div className="flex items-center gap-5">
+        <svg viewBox="0 0 88 88" className="size-24 shrink-0 -rotate-90">
+          {SLICES.map(([name, pct, color], i) => {
+            const len = (pct / 100) * RING;
+            return (
+              <circle
+                key={name}
+                className="fs-arc"
+                cx="44"
+                cy="44"
+                r="34"
+                fill="none"
+                stroke={color}
+                strokeWidth="14"
+                strokeDasharray={`${Math.max(len - 1.5, 0)} ${RING}`}
+                strokeDashoffset={-SLICE_START[i]}
+                style={at(0.2 + i * 0.12)}
+              />
+            );
+          })}
+        </svg>
+        <ul className="flex flex-1 flex-col gap-1 text-sm">
+          {SLICES.map(([name, pct, color], i) => (
+            <li key={name} className="fs-in flex items-center gap-2" style={at(0.3 + i * 0.12)}>
+              <span className="size-2.5 shrink-0 rounded-xs" style={{ background: color }} />
+              <span className="flex-1">{name}</span>
+              <span className="text-neutral-700 tabular-nums">{pct}%</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="mt-4 flex flex-col gap-1.5">
+        <span className="fs-in text-xs text-neutral-600" style={at(1.1)}>
+          한 달 평균 <b className="text-text">18만 원</b>
+        </span>
+        <div className="flex h-14 items-end gap-1.5 border-b border-neutral-300">
+          {MONTHS.map((h, i) => (
+            <span
+              key={i}
+              className="fs-vbar flex-1 rounded-t-bar"
+              style={at(1.2 + i * 0.08, { height: `${h}%`, background: i === 3 ? "var(--chart-1)" : "var(--n-300)" })}
+            />
+          ))}
+        </div>
+      </div>
+    </DemoFrame>
+  );
+}
+
 function Icon({ children }: { children: ReactNode }) {
   return (
     <svg
@@ -589,5 +675,32 @@ const FEATURES: Feature[] = [
       </Icon>
     ),
     Demo: RoastDemo,
+  },
+  {
+    id: "body",
+    label: "내 치수",
+    title: "내 몸에 맞는 치수를 알려 줍니다",
+    body: "어깨, 가슴, 허리 같은 내 몸 치수를 넣으면 옷 종류와 핏마다 맞는 실측 치수를 표로 보여 줍니다. 옷장에 넣은 옷은 내 몸에 입으면 슬림부터 오버까지 어떤 핏인지 여섯 칸 막대로 표시됩니다.",
+    seconds: 6,
+    icon: (
+      <Icon>
+        <circle cx="12" cy="5.5" r="2.5" />
+        <path d="M7 21v-6.5L5.5 10c1.8-.7 4-1 6.5-1s4.7.3 6.5 1L17 14.5V21M12 13v8" />
+      </Icon>
+    ),
+    Demo: BodyDemo,
+  },
+  {
+    id: "analysis",
+    label: "옷장 데이터",
+    title: "내 옷장을 그래프로 봅니다",
+    body: "어떤 종류의 옷이 몇 벌인지, 어떤 브랜드를 많이 샀는지, 최근 6개월 동안 한 달에 평균 얼마를 썼는지 그래프로 보여 줍니다. 색깔과 계절별로도 나눠 볼 수 있습니다.",
+    seconds: 6,
+    icon: (
+      <Icon>
+        <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" />
+      </Icon>
+    ),
+    Demo: AnalysisDemo,
   },
 ];
