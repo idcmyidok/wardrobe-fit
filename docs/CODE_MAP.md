@@ -128,8 +128,8 @@
 
 ### src/components/analysis
 - `analysis-view.tsx` (533줄) AnalysisView:34
-- `stack-height.ts` (70줄) LANDMARKS thicknessOf formatHeight stackSummary — 옷 전부 쌓은 높이(세부분류별 두께)와 비슷한 높이의 물건
-- `stack-art.tsx` (192줄) StackArt — 높이 구간별 그림(코드에 내장, 바로 표시)
+- `stack-height.ts` (95줄) LANDMARKS thicknessOf formatHeight stackSummary — 옷 전부 쌓은 높이(세부분류별 두께)와 비슷한 높이의 물건
+- `stack-art.tsx` (266줄) StackArt — 높이 구간별 그림(코드에 내장, 바로 표시)
 - `wardrobe-analysis.ts` (316줄) CategoryTab:8 man:11 won:13 priceComment:56 halfYearAverage:76 recentSixMonths:86 priceSummary:95 monthlySummary:129 …
 
 ### src/components/auth
