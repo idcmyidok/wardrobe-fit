@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* 한글 전체(2MB)를 한 번에 받지 않고, 화면에 쓰인 글자 묶음만 받는다(unicode-range 분할). */
+@import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 @import "./tokens.css";
 
 /*
@@ -95,11 +97,11 @@
   --shadow-popover: var(--shadow-popover);
   --shadow-dialog: var(--shadow-dialog);
 
-  --font-sans: var(--font-pretendard), "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+  --font-sans: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
     "Noto Sans KR", sans-serif;
   /* 폰트는 Pretendard 하나만 쓴다. 숫자는 tabular-nums로 맞춘다. */
-  --font-display: var(--font-pretendard), "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
-  --font-mono: var(--font-pretendard), "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  --font-display: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  --font-mono: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
 
   --ease-standard: var(--ease-standard);
   --default-transition-duration: var(--duration-fast);
@@ -503,13 +505,12 @@
     }
   }
 
-  /* 화면이 바뀔 때 본문이 아래에서 부드럽게 올라온다. */
+  /* 화면이 바뀔 때 본문이 아래에서 부드럽게 올라온다. 투명도는 아래 구역별 애니메이션만 맡아(겹쳐 흐려지지 않게) 첫 화면이 늦게 보이지 않는다. */
   main {
     animation: page-in 0.55s var(--ease-standard) both;
   }
   @keyframes page-in {
     from {
-      opacity: 0;
       transform: translateY(14px);
     }
   }
@@ -523,9 +524,10 @@
   main > :nth-child(3) { animation-delay: 0.16s; }
   main > :nth-child(4) { animation-delay: 0.22s; }
   main > :nth-child(n + 5) { animation-delay: 0.28s; }
+  /* 투명도 0에서 시작하면 브라우저가 첫 화면을 "아직 안 그림"으로 봐 표시가 늦게 잡힌다. 거의 0(0.01)에서 시작한다. */
   @keyframes rise-in {
     from {
-      opacity: 0;
+      opacity: 0.01;
       transform: translateY(18px);
     }
   }
@@ -668,7 +670,7 @@
 
 /* 큰 숫자: 한글 폰트의 넓은 1 모양 대신 숫자 전용 글꼴로, 글자 사이를 붙여 "13"이 한 덩어리로 보이게 한다. */
 .count-num {
-  font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Arial, var(--font-pretendard), sans-serif;
+  font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Arial, "Pretendard Variable", sans-serif;
   font-weight: 700;
   font-variant-numeric: proportional-nums lining-nums;
   letter-spacing: -0.07em;

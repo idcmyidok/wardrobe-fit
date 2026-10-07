@@ -1,32 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
-import localFont from "next/font/local";
 import { headers } from "next/headers";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "@/styles/globals.css";
-
-const pretendard = localFont({
-  src: "../../node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2",
-  weight: "45 920",
-  display: "swap",
-  variable: "--font-pretendard",
-});
-
-/** 서비스 이름, 옷장 개수 같은 디스플레이 숫자·제목 전용 */
-const instrumentSerif = Instrument_Serif({
-  weight: "400",
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-instrument-serif",
-});
-
-/** 표 헤더, 실측·가격·날짜 같은 숫자 데이터 전용 */
-const plexMono = IBM_Plex_Mono({
-  weight: ["400", "500"],
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-plex-mono",
-});
 
 /** 아이폰 노치·다이내믹 아일랜드·홈 바 자리를 화면에서 직접 비켜 가려고 화면 전체를 쓰고 safe-area로 여백을 둔다. */
 export const viewport: Viewport = {
@@ -47,11 +22,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     // data-theme은 아래 스크립트가 hydration 전에 채운다.
-    <html
-      lang="ko"
-      suppressHydrationWarning
-      className={`${pretendard.variable} ${instrumentSerif.variable} ${plexMono.variable}`}
-    >
+    <html lang="ko" suppressHydrationWarning>
       <head>
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>

@@ -3,7 +3,7 @@
  * 글꼴은 D2Coding(이 경로의 layout에서만 불러옴), 없는 글자는 Pretendard.
  */
 .roast .roast-mono {
-  font-family: var(--font-d2coding), var(--font-pretendard), ui-monospace, monospace;
+  font-family: var(--font-d2coding), "Pretendard Variable", ui-monospace, monospace;
   letter-spacing: -0.01em;
 }
 
