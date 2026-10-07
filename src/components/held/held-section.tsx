@@ -65,7 +65,7 @@ export function HeldSection() {
   })).filter((group) => group.items.length > 0);
 
   return (
-    <section id="held" aria-labelledby="held-title" className="mt-12 scroll-mt-20 border-t-2 border-text pt-6">
+    <section id="held" aria-labelledby="held-title" className="mt-12 scroll-mt-20 border-t border-divider pt-6">
       <div className="flex flex-wrap items-end justify-between gap-3 pb-2">
         <div className="flex flex-col gap-1">
           <div className="flex items-baseline gap-2.5">
@@ -126,7 +126,7 @@ export function HeldSection() {
 
       {deleting && <div aria-hidden className="h-20" />}
       {deleting && (
-        <div className="fixed right-[clamp(16px,3vw,32px)] bottom-6 z-40 flex items-center gap-2">
+        <div className="fixed right-[max(clamp(16px,3vw,32px),env(safe-area-inset-right))] bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.25rem)] md:bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-40 flex items-center gap-2">
           <button type="button" className="btn btn-secondary bg-bg" onClick={exitDeleting}>
             취소
           </button>
@@ -153,7 +153,7 @@ export function HeldSection() {
             aria-modal="true"
             aria-labelledby="held-delete-title"
             onKeyDown={(e) => e.key === "Escape" && setConfirmDelete(false)}
-            className="flex w-[min(440px,100%)] flex-col gap-3 rounded-lg border border-text bg-bg p-4"
+            className="flex w-[min(440px,100%)] flex-col gap-3 rounded-lg border border-border bg-bg p-4"
           >
             <div id="held-delete-title" className="text-lg font-semibold">
               구매 보류 옷 {checkedIds.length}벌을 삭제할까요?

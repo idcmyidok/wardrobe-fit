@@ -2,11 +2,11 @@
 export function WardrobeSkeleton() {
   return (
     <main aria-busy="true" aria-label="옷장을 불러오는 중" className="mx-auto max-w-400 px-[clamp(16px,3vw,32px)] pt-7 pb-12">
-      <div className="flex items-end justify-between gap-4 border-b border-text pb-4">
+      <div className="flex items-end justify-between gap-4 border-b border-divider pb-4">
         <div className="skeleton h-10 w-40 rounded-sm" />
         <div className="skeleton h-10 w-28 rounded-sm" />
       </div>
-      <div className="mt-6 border-t border-text">
+      <div className="mt-6 border-t border-divider">
         <div className="grid grid-cols-[80px_1fr_1fr_120px] gap-4 border-b border-neutral-300 py-2 text-xs text-neutral-700">
           <span>사진</span>
           <span>브랜드</span>

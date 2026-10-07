@@ -14,10 +14,10 @@ export function ServiceIntro() {
           Personal fit archive
         </div>
         <h1
-          className="lp-rise font-display text-hero font-normal tracking-[-0.02em]"
+          className="lp-rise font-display text-hero font-extrabold tracking-[-0.05em] bg-linear-to-r from-text via-text to-accent bg-clip-text text-transparent"
           style={rise(80)}
         >
-          Wardrobe <em>Fit</em>
+          Wardrobe <span className="not-italic">Fit</span>
         </h1>
         <p
           className="lp-rise text-[19px] leading-normal text-pretty text-neutral-800"

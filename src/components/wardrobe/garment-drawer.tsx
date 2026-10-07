@@ -25,7 +25,7 @@ import type { FitLevel } from "@/lib/constants/body";
 /** Drawer 안 소제목. 시안의 모노 라벨 + 잉크 밑줄 */
 function SectionTitle({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
   return (
-    <div className="mb-2 flex items-baseline justify-between border-b border-text pb-2">
+    <div className="mb-2 flex items-baseline justify-between border-b border-divider pb-2">
       <h3 className="font-mono text-sm font-medium tracking-[0.08em] text-neutral-700">{children}</h3>
       {aside}
     </div>
@@ -224,7 +224,7 @@ export function GarmentDetail({
   return (
     <>
       <Frame variant={variant} onClose={onClose}>
-          <div className={cn("flex items-start justify-between border-b border-text bg-bg px-6 py-3", variant === "drawer" && "sticky top-0 z-1")}>
+          <div className={cn("flex items-start justify-between border-b border-divider bg-bg px-6 py-3", variant === "drawer" && "sticky top-0 z-1")}>
             <div className="flex items-baseline gap-2.5">
               <span id="drawer-title" className="text-body font-semibold">
                 {held ? "구매 보류 옷" : "옷 정보"}
@@ -386,7 +386,7 @@ export function GarmentDetail({
             </section>
           </div>
 
-          <div className="sticky bottom-0 flex gap-2 border-t border-text bg-bg px-6 py-3">
+          <div className="sticky bottom-0 flex gap-2 border-t border-divider bg-bg px-6 py-3">
             {!info ? (
               <>
                 {held ? (
@@ -427,7 +427,7 @@ export function GarmentDetail({
             aria-modal="true"
             aria-labelledby="delete-title"
             onKeyDown={(e) => e.key === "Escape" && setConfirmDelete(false)}
-            className="flex w-[min(440px,100%)] flex-col gap-3 rounded-lg border border-text bg-bg p-4">
+            className="flex w-[min(440px,100%)] flex-col gap-3 rounded-lg border border-border bg-bg p-4">
             <div id="delete-title" className="text-lg font-semibold">
               이 옷을 삭제할까요?
             </div>
@@ -551,7 +551,7 @@ function Frame({ variant, onClose, children }: { variant: "drawer" | "page"; onC
         aria-labelledby="drawer-title"
         tabIndex={-1}
         onKeyDown={trapTab}
-        className="relative flex h-full w-[min(560px,100%)] flex-col overflow-y-auto border-l border-text bg-bg outline-none"
+        className="relative flex h-full w-[min(560px,100%)] flex-col overflow-y-auto border-l border-divider bg-bg outline-none"
       >
         {children}
       </aside>

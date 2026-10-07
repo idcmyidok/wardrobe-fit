@@ -180,10 +180,10 @@
 - `service-intro.tsx` (34줄) ServiceIntro:9 — 로그인 화면 왼쪽(제목·소개 한 줄 + FeatureShowcase)
 
 ### src/components/layout
-- `app-header.tsx` (70줄) AppHeader:21
+- `app-header.tsx` (62줄) AppHeader:20 — 화면 폭 가득한 고정 메뉴바(반투명 회색, `globals.css`의 `.header-bar`). 로고·테마 버튼 없음, 메뉴 좌측 정렬
 - `release-notes-dialog.tsx` (445줄) ReleaseNotesDialog:30
 - `theme-toggle.tsx` (104줄) ThemeToggle:52
-- `user-menu.tsx` (107줄) UserMenu:11
+- `user-menu.tsx` (251줄) UserMenu:192 MenuBody:15 useFabHidden:75 MobileAccountButton:100 — 계정 메뉴(화면 모드 선택 포함). PC는 상단 바 버튼+드롭다운, 모바일은 우측 하단 동그란 버튼이 메뉴 창으로 펼쳐짐(body로 portal, 아래 스크롤 시 숨김·3초 멈추거나 위로 스크롤 시 표시, `.fab`/`.fab-panel` 애니메이션)
 
 ### src/components/legal
 - `legal-page.tsx` (41줄) LegalPage:5 LegalSection:23 LegalList:32

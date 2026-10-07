@@ -16,7 +16,7 @@ export function UsageNote({ kind, className }: { kind: "import" | "fit"; classNa
     const load = async () => {
       try {
         const res = await fetch("/api/usage", { cache: "no-store" });
-        if (res.ok && alive) {
+        if (res.status === 200 && alive) {
           setUsage((await res.json()) as Usage);
           setNow(Date.now());
         }

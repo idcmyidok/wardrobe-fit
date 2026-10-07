@@ -3,85 +3,85 @@
  * 원시 램프(--n-*, --a-*)를 라이트·다크 두 벌로 두고, 컴포넌트는 semantic 토큰만 쓴다.
  * 테마는 <html data-theme="light|dark">로 고른다. 속성이 없으면 기기 설정을 따른다.
  */
+/* Apple 스타일: 흰색·연회색 면 + 검정 글씨 + 파란 포인트. 유채색은 포인트와 상태색에만 쓴다. */
 :root,
 [data-theme="light"] {
   color-scheme: light;
-  --bg: #f4f2ee;
-  --surface: #fbfaf8;
-  --text: #1c1b19;
-  --divider: #d8d4cc;
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --text: #1d1d1f;
+  --divider: #d2d2d7;
 
-  --n-100: #efece7;
-  --n-200: #e5e1da;
-  --n-300: #d3cec5;
-  --n-400: #b5afa5;
-  --n-500: #948e84;
-  --n-600: #77726a;
-  --n-700: #5c5852;
-  --n-800: #42403b;
-  --n-900: #2b2a27;
+  --n-100: #f5f5f7;
+  --n-200: #ebebed;
+  --n-300: #d2d2d7;
+  --n-400: #b0b0b6;
+  --n-500: #8e8e93;
+  --n-600: #6e6e73;
+  --n-700: #515154;
+  --n-800: #3a3a3c;
+  --n-900: #1d1d1f;
 
-  --a-100: #eef0e6;
-  --a-200: #e0e3d1;
-  --a-300: #c8cdb0;
-  --a-400: #a6ad86;
-  --a-500: #838b61;
-  --a-600: #5b6340;
-  --a-700: #4a5134;
-  --a-800: #363b26;
-  --a-900: #24271a;
+  --a-100: #f2f2f4;
+  --a-200: #e6e6ea;
+  --a-300: #d2d2d7;
+  --a-400: #aeaeb4;
+  --a-500: #86868b;
+  --a-600: #1d1d1f;
+  --a-700: #000000;
+  --a-800: #000000;
+  --a-900: #000000;
 
-  --shadow-sm: 0 1px 2px rgb(28 27 25 / 0.06);
-  --shadow-md: 0 6px 20px rgb(28 27 25 / 0.08);
-  --shadow-lg: 0 16px 40px rgb(28 27 25 / 0.12);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+  --shadow-md: 0 8px 28px rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 24px 60px rgb(0 0 0 / 0.16);
 
-  /* 핏 미터기 6칸(너무 작음 → 너무 큼). 가운데 레귤러핏이 초록, 양 끝이 붉은 흙색 */
-  --fit-too-small: #b4533f;
-  --fit-slim: #4a7ca3;
-  --fit-regular: #3f8350;
-  --fit-semi-over: #7d8a2f;
-  --fit-over: #b07a22;
-  --fit-too-big: #b4533f;
+  /* 핏 미터기 6칸(너무 작음 → 너무 큼). 가운데 레귤러핏이 초록, 양 끝이 붉은색 */
+  --fit-too-small: #e5484d;
+  --fit-slim: #5e5ce6;
+  --fit-regular: #30a46c;
+  --fit-semi-over: #a3b018;
+  --fit-over: #f5a524;
+  --fit-too-big: #e5484d;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: #141412;
-  --surface: #1c1c19;
-  --text: #ebe8e1;
-  --divider: #34332f;
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --text: #f5f5f7;
+  --divider: #38383a;
 
-  --n-100: #1f1e1b;
-  --n-200: #292825;
-  --n-300: #373632;
-  --n-400: #4f4d48;
-  --n-500: #6e6b65;
-  --n-600: #8e8a83;
-  --n-700: #aeaaa2;
-  --n-800: #cbc7bf;
-  --n-900: #e2dfd8;
+  --n-100: #151517;
+  --n-200: #232325;
+  --n-300: #38383a;
+  --n-400: #55555a;
+  --n-500: #7c7c82;
+  --n-600: #98989f;
+  --n-700: #b4b4ba;
+  --n-800: #d1d1d6;
+  --n-900: #f5f5f7;
 
-  --a-100: #22251a;
-  --a-200: #2e3222;
-  --a-300: #414730;
-  --a-400: #5d6545;
-  --a-500: #7f885f;
-  --a-600: #b3bb8c;
-  --a-700: #c6cca3;
-  --a-800: #dadfc0;
-  --a-900: #eceedd;
+  --a-100: #1c1c1e;
+  --a-200: #2a2a2d;
+  --a-300: #3a3a3c;
+  --a-400: #5a5a5e;
+  --a-500: #86868b;
+  --a-600: #f5f5f7;
+  --a-700: #ffffff;
+  --a-800: #ffffff;
+  --a-900: #ffffff;
 
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-  --shadow-md: 0 6px 20px rgb(0 0 0 / 0.45);
-  --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.55);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-md: 0 8px 28px rgb(0 0 0 / 0.6);
+  --shadow-lg: 0 24px 60px rgb(0 0 0 / 0.7);
 
-  /* 핏 미터기 6칸(너무 작음 → 너무 큼). 가운데 레귤러핏이 초록, 양 끝이 붉은 흙색 */
-  --fit-too-small: #d0806c;
-  --fit-slim: #7fa6c4;
-  --fit-regular: #7fb28a;
-  --fit-semi-over: #b3bb6a;
-  --fit-over: #d4a95c;
-  --fit-too-big: #d0806c;
+  --fit-too-small: #ff6369;
+  --fit-slim: #8e8cff;
+  --fit-regular: #4cc38a;
+  --fit-semi-over: #c6d33a;
+  --fit-over: #ffb84d;
+  --fit-too-big: #ff6369;
 }
 
 /* semantic 토큰: 램프에서 파생하므로 테마가 바뀌면 함께 바뀐다. */
@@ -94,16 +94,16 @@
   --accent: var(--a-600);
   --accent-hover: var(--a-700);
   --accent-subtle: var(--a-100);
-  --positive: #3e6b4f;
-  --caution: #9a6b1f;
-  --negative: #a23b2c;
+  --positive: #248a3d;
+  --caution: #b25e09;
+  --negative: #d70015;
   --focus-ring: var(--a-600);
   --overlay: color-mix(in srgb, var(--n-900) 35%, transparent);
 
   --shadow-popover: var(--shadow-md);
   --shadow-dialog: var(--shadow-lg);
 
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
   --duration-fast: 120ms;
   --duration-base: 180ms;
   --duration-slow: 220ms;

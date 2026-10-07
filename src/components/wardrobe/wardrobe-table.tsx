@@ -61,6 +61,11 @@ export function WardrobeTable({
     <SortHeader key={key} column={key} label={label} active={sort.key === key ? sort.dir : null} onSort={onSort} className={className} narrow={narrow} />
   );
 
+  // 고정 폭 열의 합 + 제품명 최소 폭. 화면이 이보다 넓으면 가로 스크롤 없이 오른쪽 끝까지 보인다.
+  const tableMinWidth =
+    64 + 80 + 96 + 56 + 88 + (held ? 0 : 88) + measurements.length * 48 +
+    (categoryId === "shoes" ? SHOE_FIT_FIELDS.length * 48 : 0) + (fitColumn ? 80 : 0) + (held ? 0 : 96) + 96 + 160;
+
   return (
     <>
       <MobileList
@@ -71,40 +76,40 @@ export function WardrobeTable({
         className={view === "simple" ? undefined : view === "detail" ? "hidden" : "md:hidden"}
       />
       <div className={cn("overflow-x-auto overscroll-x-contain", view === "simple" ? "hidden" : view === "detail" ? undefined : "hidden md:block")}>
-        <table className="w-full min-w-312 table-fixed border-collapse border-t border-l border-neutral-300 bg-surface text-sm">
+        <table style={{ minWidth: tableMinWidth }} className="w-full table-fixed border-collapse border-t border-r border-l border-neutral-300 bg-surface text-sm">
           <thead>
             <tr>
-              <th scope="col" className={cn(head, "w-20 py-2")}>
+              <th scope="col" className={cn(head, "w-16 py-2")}>
                 이미지
               </th>
-              <th scope="col" className={cn(head, "w-25")}>
+              <th scope="col" className={cn(head, "w-20")}>
                 세부분류
               </th>
-              {sortHead("brand", "브랜드", "w-28")}
-              <th scope="col" className={cn(head, "w-44")}>
+              {sortHead("brand", "브랜드", "w-24")}
+              <th scope="col" className={cn(head, "w-auto")}>
                 제품명
               </th>
-              {sortHead("size", "사이즈", "w-15", true)}
-              {sortHead("color", "컬러", "w-24")}
+              {sortHead("size", "사이즈", "w-14", true)}
+              {sortHead("color", "컬러", "w-22")}
               {!held && (
-                <th scope="col" className={cn(head, "w-26")}>
+                <th scope="col" className={cn(head, "w-22")}>
                   시즌
                 </th>
               )}
-              {measurements.map((m) => sortHead(m.key, m.label, "bg-neutral-100", true))}
+              {measurements.map((m) => sortHead(m.key, m.label, "w-12 bg-neutral-100", true))}
               {categoryId === "shoes" &&
                 SHOE_FIT_FIELDS.map((f) => (
-                  <th key={f.key} scope="col" className={cn(head, "bg-neutral-100 px-0 text-2xs tracking-[-0.02em]")}>
+                  <th key={f.key} scope="col" className={cn(head, "w-12 bg-neutral-100 px-0 text-2xs tracking-[-0.02em]")}>
                     {f.label}
                   </th>
                 ))}
               {fitColumn && (
-                <th scope="col" className={cn(head, "w-24")}>
+                <th scope="col" className={cn(head, "w-20")}>
                   핏
                 </th>
               )}
-              {!held && sortHead("purchasedOn", "구매일", "w-32")}
-              {sortHead("price", held ? "가격" : "구매가", "w-32")}
+              {!held && sortHead("purchasedOn", "구매일", "w-24")}
+              {sortHead("price", held ? "가격" : "구매가", "w-24")}
             </tr>
           </thead>
           <tbody>
@@ -218,7 +223,7 @@ function MobileList({
   className?: string;
 }) {
   return (
-    <ul className={cn("border-t border-text", className)}>
+    <ul className={cn("border-t border-divider", className)}>
       {items.map((item) => {
         const checked = selection?.selected.has(item.id) ?? false;
         const row = cn(

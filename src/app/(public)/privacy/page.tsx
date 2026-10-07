@@ -75,7 +75,7 @@ export default function PrivacyPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-120 border-collapse text-sm">
             <thead>
-              <tr className="border-b border-text text-left">
+              <tr className="border-b border-divider text-left">
                 <th className="py-2 pr-3 font-medium">받는 자(국가)</th>
                 <th className="py-2 pr-3 font-medium">이전 항목</th>
                 <th className="py-2 font-medium">목적</th>

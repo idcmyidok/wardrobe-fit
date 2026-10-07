@@ -126,7 +126,7 @@ export function RoastView({ initialResult, copy = ROAST_COPY, orders, ordersUsed
   return (
     <CopyContext.Provider value={copy}>
       <main className="mx-auto max-w-200 px-[clamp(16px,3vw,32px)] pt-6 pb-20">
-        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-text pb-4">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-divider pb-4">
           <div className="flex flex-col gap-1">
             <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700 uppercase">{orders ? "Order roast" : "Wardrobe roast"}</span>
             <h1 className="text-title">{orders ? "무신사 주문내역 훈수" : "내 패션 훈수"}</h1>
@@ -532,7 +532,7 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
               autoComplete="off"
               aria-label="부를 이름"
               placeholder="예: 세현"
-              className="min-h-12 w-56 max-w-full border border-text bg-surface px-3 text-body"
+              className="min-h-12 w-56 max-w-full border border-border bg-surface px-3 text-body"
             />
             <input
               value={age}
@@ -542,7 +542,7 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
               aria-label="나이"
               placeholder="나이"
               required
-              className="min-h-12 w-20 border border-text bg-surface px-3 text-body"
+              className="min-h-12 w-20 border border-border bg-surface px-3 text-body"
             />
             <button type="submit" disabled={!ageOk} className={buttonClassName({ variant: "primary", size: "lg" })}>
               시작하기
@@ -856,7 +856,7 @@ function ResultView({
   return (
     <article className="roast-mono roast-result mt-8 flex flex-col gap-6">
       {changed && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border border-text bg-surface px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-surface px-4 py-3">
           <span className="text-body">{copy.CHANGED}</span>
           <button type="button" className={buttonClassName({ size: "sm" })} onClick={onRetry}>
             {copy.RETRY_LABEL}

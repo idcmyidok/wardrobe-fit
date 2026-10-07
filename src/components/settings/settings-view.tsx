@@ -15,7 +15,7 @@ export function SettingsView({ email, createdAt }: { email: string | null; creat
       <Link href="/wardrobe" className="btn btn-ghost mb-2 text-sm">
         ← 내 옷장
       </Link>
-      <div className="border-b border-text pb-4">
+      <div className="border-b border-divider pb-4">
         <h1 className="text-title">계정 설정</h1>
       </div>
 

@@ -311,7 +311,7 @@ export function NewGarmentView() {
       <Link href={held ? "/fit-check#held" : "/wardrobe"} className="btn btn-ghost mb-2 text-sm">
         {held ? "← 구매 판단기" : "← 내 옷장"}
       </Link>
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-text pb-4">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-divider pb-4">
         <h1 className="text-title">{held ? "구매 보류 옷 추가" : movingId ? "옷장으로 옮기기" : "새 옷 추가"}</h1>
         {movingId ? null : <div className="seg" role="radiogroup" aria-label="추가 방법">
           <label className="seg-opt px-4 py-2 text-base">
@@ -374,7 +374,7 @@ export function NewGarmentView() {
           )}
 
           {phase === "analyzing" && (
-            <div className="mt-4 border-t border-text" aria-live="polite">
+            <div className="mt-4 border-t border-divider" aria-live="polite">
               <div className="relative h-0.5 bg-neutral-300">
                 <div
                   className="absolute inset-y-0 left-0 bg-accent transition-[width] duration-600 ease-standard"
@@ -448,7 +448,7 @@ export function NewGarmentView() {
             </button>
           </div>
           {items.map((m, n) => (
-            <article key={m.key} className="flex flex-col gap-4 border-t border-text py-7" aria-label={`${n + 1}번째 옷`}>
+            <article key={m.key} className="flex flex-col gap-4 border-t border-divider py-7" aria-label={`${n + 1}번째 옷`}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="text-lg">
                   <span className="font-mono tabular-nums">{n + 1}</span>. {m.status === "ready" && m.state.form.productName ? m.state.form.productName : "링크"}
@@ -502,7 +502,7 @@ export function NewGarmentView() {
               )}
             </article>
           ))}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-text pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-divider pt-4">
             <span role={error ? "alert" : undefined} className={cn("text-sm", error ? "text-accent-700" : "text-neutral-700")}>
               {error ?? (held ? "추가 전까지 저장되지 않습니다." : "등록 전까지 저장되지 않습니다.")}
             </span>
@@ -544,7 +544,7 @@ export function NewGarmentView() {
             currentImageUrl={moving?.imageUrl}
           />
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-text pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-divider pt-4">
             <span role={error ? "alert" : undefined} className={cn("text-sm", error ? "text-accent-700" : "text-neutral-700")}>
               {hint}
             </span>

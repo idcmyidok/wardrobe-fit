@@ -98,7 +98,7 @@ export function PromoBanner() {
       </div>
 
       {PROMOS.length > 1 && (
-        <div className="flex justify-center gap-1.5">
+        <div className="flex justify-center gap-0">
           {PROMOS.map((promo, i) => (
             <button
               key={promo.id}
@@ -106,10 +106,10 @@ export function PromoBanner() {
               onClick={() => go(i)}
               aria-label={`${i + 1}번째 소개 보기: ${promo.title}`}
               aria-current={i === index}
-              className="grid h-5 place-items-center px-0.5"
+              className="grid h-6 min-w-6 place-items-center"
             >
               <span
-                className={`block h-1.5 rounded-full transition-all ${i === index ? "w-4 bg-text" : "w-1.5 bg-neutral-400 hover:bg-neutral-600"}`}
+                className={`block h-1.5 rounded-full transition-[width,background-color] ${i === index ? "w-4 bg-text" : "w-1.5 bg-neutral-400 hover:bg-neutral-600"}`}
               />
             </button>
           ))}

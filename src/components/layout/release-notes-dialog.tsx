@@ -17,7 +17,6 @@ import {
   RELEASE_NOTE_IMAGE_BUCKET,
 } from "@/lib/release-notes";
 import { ImagePrepareError, prepareGarmentImage } from "@/lib/images/prepare-image";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const FIXES_TITLE = "수정사항";
 import { removeReleaseNoteImage, resetReleaseNoteEdit, saveReleaseNoteEdit, saveReleaseNoteImage } from "@/server/release-notes/actions";
@@ -88,9 +87,9 @@ export function ReleaseNotesDialog({
         aria-modal="true"
         aria-labelledby="release-notes-title"
         tabIndex={-1}
-        className="relative flex max-h-[min(640px,85dvh)] w-[min(480px,100%)] flex-col border border-text bg-bg outline-none"
+        className="relative flex max-h-[min(640px,85dvh)] w-[min(480px,100%)] flex-col border border-border bg-bg outline-none"
       >
-        <div className="flex items-center justify-between gap-3 border-b border-text px-5 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-divider px-5 py-3">
           <h2 id="release-notes-title" className="text-body font-semibold">
             업데이트 노트
           </h2>
@@ -282,6 +281,8 @@ function PhotoField({
     setBusy(true);
     setError(null);
     try {
+      // 업로드할 때만 Supabase 라이브러리를 받는다(모든 화면 첫 로딩에서 빠지게).
+      const { createSupabaseBrowserClient } = await import("@/lib/supabase/client");
       const supabase = createSupabaseBrowserClient();
       if (!supabase) throw new Error("no client");
       const { image: prepared } = await prepareGarmentImage(file);

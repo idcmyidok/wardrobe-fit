@@ -106,7 +106,7 @@ function ShoeComparison({ size, comps }: { size: SizeReport; comps: ComparableSn
         <h2 className="text-lg">사이즈·착용감 비교</h2>
         <span className="text-sm text-neutral-700">mm · 길이감이 작았던 신발은 +5mm, 컸던 신발은 −5mm를 맞는 사이즈로 봅니다</span>
       </div>
-      <dl className="grid grid-cols-2 border-t border-text sm:grid-cols-4">
+      <dl className="grid grid-cols-2 border-t border-divider sm:grid-cols-4">
         {facts.map(([k, v]) => (
           <div key={k} className="flex flex-col gap-0.5 border-b border-neutral-300 py-2.5">
             <dt className="text-xs text-neutral-700">{k}</dt>
@@ -260,7 +260,7 @@ export function FitResultView({
           ← 구매 판단기
         </Link>
       )}
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-text pb-4">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-divider pb-4">
         <div className="flex min-w-0 flex-col gap-1">
           <span className="font-mono text-xs font-medium tracking-[0.08em] text-accent-700">AI 구매 판단 · {formatDate(createdAt.slice(0, 10))}</span>
           <h1 className="text-title">{title}</h1>
@@ -281,7 +281,7 @@ export function FitResultView({
         )}
       </div>
 
-      <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] border-b border-text">
+      <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] border-b border-divider">
         <div className="flex flex-col gap-3 py-7 pr-8 md:col-span-2">
           <div className="flex items-end gap-4">
             <span className="font-display text-display-xl tracking-[-0.03em]">{size.sizeLabel}</span>
@@ -365,7 +365,7 @@ export function FitResultView({
       </section>
 
       {(computed.categoryId === "outer" || computed.categoryId === "top" || computed.categoryId === "bottom") && (
-        <section className="flex flex-col gap-3 border-b border-text py-7" aria-labelledby="body-fit-title">
+        <section className="flex flex-col gap-3 border-b border-divider py-7" aria-labelledby="body-fit-title">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="body-fit-title" className="text-lg">
               내 몸 기준 예상 핏 · {size.sizeLabel}
@@ -420,7 +420,7 @@ export function FitResultView({
 
       <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,380px),1fr))] gap-x-12 pt-8">
         <div className="flex flex-col">
-          <h2 className="mb-3 border-b border-text pb-3 text-lg">착용 후기 근거</h2>
+          <h2 className="mb-3 border-b border-divider pb-3 text-lg">착용 후기 근거</h2>
           {quotes.length ? (
             quotes.map((q) => {
               const c = comps.find((x) => x.garmentId === q.garmentId);
@@ -440,7 +440,7 @@ export function FitResultView({
           )}
         </div>
         <div className="flex flex-col">
-          <h2 className="mb-3 border-b border-text pb-3 text-lg">비교에 사용한 {noun} ({comps.length})</h2>
+          <h2 className="mb-3 border-b border-divider pb-3 text-lg">비교에 사용한 {noun} ({comps.length})</h2>
           {comps.map((c) => {
             const body = (
               <>
@@ -474,7 +474,7 @@ export function FitResultView({
               </div>
             );
           })}
-          <h2 className="mt-8 mb-3 border-b border-text pb-3 text-lg">데이터 한계</h2>
+          <h2 className="mt-8 mb-3 border-b border-divider pb-3 text-lg">데이터 한계</h2>
           {size.limitations.length ? (
             <ul className="flex flex-col text-base">
               {size.limitations.map((x) => (
@@ -489,7 +489,7 @@ export function FitResultView({
         </div>
       </section>
 
-      <div className="mt-10 flex flex-wrap items-center gap-2 border-t border-text pt-4">
+      <div className="mt-10 flex flex-wrap items-center gap-2 border-t border-divider pt-4">
         <button
           type="button"
           className="btn btn-primary min-h-11"

@@ -184,7 +184,7 @@ export function OrderPaste({ copy, onReady }: { copy: OrderCopy; onReady: (items
         rows={8}
         aria-label="무신사 주문내역"
         placeholder="주문내역 전체를 붙여 넣어 주세요"
-        className="w-full border border-text bg-surface p-3 text-body"
+        className="w-full border border-border bg-surface p-3 text-body"
       />
       {error && (
         <p className="roast-ai" role="alert">

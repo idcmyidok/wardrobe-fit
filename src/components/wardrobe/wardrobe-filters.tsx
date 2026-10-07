@@ -38,7 +38,7 @@ export function WardrobeFilters({
   return (
     <div className="flex flex-col gap-2.5 border-b border-neutral-300 py-4">
       <div className="flex flex-wrap items-center gap-2.5">
-        <div className="seg" role="group" aria-label="대분류">
+        <div className="seg seg-loose" role="group" aria-label="대분류">
           {CATEGORIES.map((c) => (
             <label key={c.id} className="seg-opt px-4 py-2 text-base">
               <input
