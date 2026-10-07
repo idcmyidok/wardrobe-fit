@@ -45,7 +45,7 @@ export function FitMeter({
             />
           ))}
         </span>
-        <span className="text-2xs leading-none font-semibold whitespace-nowrap" style={{ color: FIT_COLOR[level] }} aria-hidden>
+        <span className="text-2xs leading-none font-semibold whitespace-nowrap" aria-hidden>
           {name}
         </span>
         {mine && (
@@ -73,7 +73,7 @@ export function FitMeter({
           <span
             key={l}
             className={cn("text-2xs leading-tight break-keep", l === level ? "font-semibold" : "text-neutral-600")}
-            style={l === level ? { color: FIT_COLOR[l] } : undefined}
+           
           >
             {fitLevelName(l, kind)}
           </span>

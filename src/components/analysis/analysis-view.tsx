@@ -195,7 +195,7 @@ export function AnalysisView() {
             <div key={x.id} className="flex flex-col gap-2">
               <div className="flex h-45 items-end border-b border-divider">
                 <div
-                  className={cn("flex w-full justify-center rounded-t-sm pt-2", x.isLeast ? "bg-accent-200" : "bg-neutral-300")}
+                  className={cn("flex w-full justify-center rounded-t-sm pt-2", x.isLeast ? "bg-[color-mix(in_oklab,var(--chart-1)_35%,var(--surface))]" : "bg-neutral-300")}
                   style={{ height: x.height }}
                 >
                   <span className={cn("font-display text-[32px] leading-none", x.isLeast ? "text-accent-800" : "text-text")}>
@@ -319,7 +319,7 @@ function MonthChart({
               <span
                 className={cn(
                   "block min-h-1 w-7 rounded-t-bar transition-[width,opacity] group-hover:w-8",
-                  m.isTop ? "bg-accent" : "bg-text",
+                  m.isTop ? "bg-[var(--chart-1)]" : "bg-neutral-400",
                   selected && !on && "opacity-35",
                 )}
                 style={{ height: m.height }}
