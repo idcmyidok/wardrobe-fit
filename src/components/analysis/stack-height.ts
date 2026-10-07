@@ -1,21 +1,21 @@
 import { CATEGORIES, SUBCATEGORIES } from "@/lib/constants/categories";
 import type { CategoryId, Garment } from "@/lib/types/domain";
 
-/** 접어서 쌓았을 때 한 벌의 평균 두께(cm). 세부분류별이고, 없으면 대분류 평균을 쓴다. */
+/** 접지 않고 펼친 그대로 포개 쌓았을 때 한 벌의 평균 두께(cm). 세부분류별이고, 없으면 대분류 평균을 쓴다. 모자·신발은 계산에 넣지 않는다. */
 const THICKNESS: Record<string, number> = {
-  "outer.hood_zip": 6, "outer.blouson": 6, "outer.leather": 6, "outer.blazer": 5, "outer.cardigan": 3,
-  "outer.light_padding": 5, "outer.safari": 4, "outer.trucker": 4, "outer.stadium": 5, "outer.coach": 2.5,
-  "outer.training": 3, "outer.anorak": 3, "outer.fleece": 5, "outer.transition_coat": 6, "outer.vest": 3,
-  "outer.mustang": 10, "outer.single_coat": 7, "outer.double_coat": 8, "outer.winter_coat": 7,
-  "outer.short_padding": 12, "outer.long_padding": 15, "outer.shirt": 2, "outer.etc": 5,
-  "top.long_tee": 1.5, "top.sweatshirt": 3, "top.hoodie": 5, "top.short_tee": 1, "top.polo": 1.5,
-  "top.knit": 4, "top.sleeveless": 0.8, "top.etc": 2,
-  "bottom.denim": 4, "bottom.chino": 3, "bottom.slacks": 3, "bottom.sweatpants": 3.5, "bottom.shorts": 2,
-  "bottom.leggings": 1, "bottom.jumpsuit": 5, "bottom.etc": 3,
-  "hat.cap": 8, "hat.beanie": 4, "hat.etc": 6,
-  "shoes.sneakers": 12, "shoes.sports": 12, "shoes.dress": 11, "shoes.boots": 15, "shoes.sandals": 6, "shoes.etc": 12,
+  "outer.hood_zip": 3, "outer.blouson": 3, "outer.leather": 3, "outer.blazer": 2.5, "outer.cardigan": 1.5,
+  "outer.light_padding": 3, "outer.safari": 2, "outer.trucker": 2, "outer.stadium": 2.5, "outer.coach": 1,
+  "outer.training": 1.5, "outer.anorak": 1.5, "outer.fleece": 2.5, "outer.transition_coat": 3, "outer.vest": 1.5,
+  "outer.mustang": 5, "outer.single_coat": 3.5, "outer.double_coat": 4, "outer.winter_coat": 3.5,
+  "outer.short_padding": 6, "outer.long_padding": 8, "outer.shirt": 0.8, "outer.etc": 2.5,
+  "top.long_tee": 0.8, "top.sweatshirt": 1.5, "top.hoodie": 2.5, "top.short_tee": 0.5, "top.polo": 0.8,
+  "top.knit": 2, "top.sleeveless": 0.4, "top.etc": 1,
+  "bottom.denim": 1.5, "bottom.chino": 1, "bottom.slacks": 1, "bottom.sweatpants": 1.5, "bottom.shorts": 0.8,
+  "bottom.leggings": 0.5, "bottom.jumpsuit": 2, "bottom.etc": 1,
 };
-const CATEGORY_THICKNESS: Record<CategoryId, number> = { outer: 6, top: 2, bottom: 3, hat: 6, shoes: 12 };
+const CATEGORY_THICKNESS: Partial<Record<CategoryId, number>> = { outer: 3, top: 1, bottom: 1.2 };
+/** 쌓는 계산에 넣는 대분류(모자·신발 제외) */
+const STACKED: CategoryId[] = ["outer", "top", "bottom"];
 
 /** 구간별로 비슷한 높이의 것. 오름차순. art는 stack-art.tsx의 그림 이름. */
 export const LANDMARKS: { cm: number; art: string; name: string; desc: string }[] = [
@@ -40,33 +40,34 @@ export const LANDMARKS: { cm: number; art: string; name: string; desc: string }[
   { cm: 2000, art: "apartment", name: "6~7층 아파트", desc: "6~7층 아파트 높이(약 20m)와 비슷합니다." },
 ];
 
-/** 종류별 두께 표: 대분류별로 묶고, 내 옷장에 있는 종류는 벌 수를 붙인다. */
-export function thicknessTable(G: Pick<Garment, "subcategoryId">[]) {
-  return CATEGORIES.map((c) => ({
+/** 종류별 두께 표: 쌓는 대분류별로 세부분류마다 두께(cm)만 담는다. */
+export function thicknessTable() {
+  return CATEGORIES.filter((c) => STACKED.includes(c.id)).map((c) => ({
     id: c.id,
     name: c.name,
     rows: SUBCATEGORIES.filter((s) => s.categoryId === c.id).map((s) => ({
       id: s.id,
       name: s.name,
-      cm: THICKNESS[s.id] ?? CATEGORY_THICKNESS[c.id],
-      have: G.filter((g) => g.subcategoryId === s.id).length,
+      cm: THICKNESS[s.id] ?? CATEGORY_THICKNESS[c.id] ?? 0,
     })),
   }));
 }
 
 export function thicknessOf(g: Pick<Garment, "categoryId" | "subcategoryId">) {
-  return (g.subcategoryId && THICKNESS[g.subcategoryId]) || CATEGORY_THICKNESS[g.categoryId] || 3;
+  return (g.subcategoryId && THICKNESS[g.subcategoryId]) || CATEGORY_THICKNESS[g.categoryId] || 0;
 }
 
-/** 두께는 접는 방식에 따라 달라지므로 ±15%를 범위로 보여 준다. */
+/** 100cm 미만은 cm, 이상은 m로 보여 준다. */
 export function formatHeight(cm: number) {
+  if (cm < 10) return `${Number(cm.toFixed(1))}cm`;
   if (cm < 100) return `${Math.round(cm)}cm`;
   const m = cm / 100;
   return `${m >= 10 ? Math.round(m) : m.toFixed(1)}m`;
 }
 
-export function stackSummary(G: Garment[]) {
-  const byCategory = CATEGORIES.map((c) => {
+export function stackSummary(all: Garment[]) {
+  const G = all.filter((g) => STACKED.includes(g.categoryId));
+  const byCategory = CATEGORIES.filter((c) => STACKED.includes(c.id)).map((c) => {
     const list = G.filter((g) => g.categoryId === c.id);
     return { id: c.id, name: c.name, count: list.length, cm: list.reduce((s, g) => s + thicknessOf(g), 0) };
   }).filter((x) => x.count > 0);
