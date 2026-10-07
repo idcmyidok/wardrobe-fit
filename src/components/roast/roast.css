@@ -540,10 +540,22 @@
 .roast .roast-vs {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 8px;
+  gap: 0 8px;
 }
 .roast .roast-vs-side {
+  display: contents;
+}
+.roast .roast-vs-l > * {
+  grid-column: 1;
+}
+.roast .roast-vs-r > * {
+  grid-column: 3;
+}
+.roast .roast-vs-label {
+  grid-row: 1;
+}
+.roast .roast-vs-photos {
+  grid-row: 2;
   min-width: 0;
 }
 .roast .roast-vs-label {
@@ -563,25 +575,18 @@
   object-fit: cover;
   border: 1px solid var(--divider);
 }
-.roast .roast-vs-badge {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  background: var(--text);
-  color: var(--bg);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+.roast .roast-vs-mark {
+  width: 56px;
+  height: auto;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
 }
 @media (max-width: 480px) {
   .roast .roast-vs-photos {
     gap: 2px;
   }
-  .roast .roast-vs-badge {
-    width: 28px;
-    height: 28px;
-    font-size: 11px;
+  .roast .roast-vs-mark {
+    width: 40px;
   }
 }

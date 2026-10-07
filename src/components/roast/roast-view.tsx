@@ -977,10 +977,10 @@ function ScoreDetail({ detail }: { detail: NonNullable<RoastReport["scoreDetail"
 
 /** 무채색·유채색이 반반인 옷장: 왼쪽 무채색, 오른쪽 유채색 사진을 가운데 VS를 두고 마주 보게 한다. */
 function ColorVs({ achro, chroma, photoOf }: { achro: string[]; chroma: string[]; photoOf: (id: string) => string | null }) {
-  const side = (ids: string[], label: string) => {
+  const side = (ids: string[], label: string, at: "l" | "r") => {
     const urls = ids.map(photoOf).filter((u): u is string => Boolean(u));
     return (
-      <div className="roast-vs-side">
+      <div className={`roast-vs-side roast-vs-${at}`}>
         <p className="roast-vs-label">{label}</p>
         <div className="roast-vs-photos">
           {urls.map((u) => (
@@ -992,11 +992,9 @@ function ColorVs({ achro, chroma, photoOf }: { achro: string[]; chroma: string[]
   };
   return (
     <div className="roast-vs mt-3" data-testid="roast-color-vs">
-      {side(achro, "무채색")}
-      <span className="roast-vs-badge" aria-label="대 (versus)">
-        VS
-      </span>
-      {side(chroma, "유채색")}
+      {side(achro, "무채색", "l")}
+      <img src="/images/roast-vs.png" alt="VS" className="roast-vs-mark" draggable={false} />
+      {side(chroma, "유채색", "r")}
     </div>
   );
 }

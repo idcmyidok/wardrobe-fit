@@ -427,6 +427,13 @@ export function buildReport(
     if (t) put("vintage", { id: "vintage", ...splitLead(t), photos: photosOf(vintage) });
   }
 
+  // 혼자 스타일이 다른 옷은 사진과 함께 보여 준다(주문내역은 질문에서 따로 보여 줌).
+  if (!override && a.oddOne?.item.hasPhoto) {
+    const o = a.oddOne;
+    const t = tryFill(r, R.ODD_ONE, { brand: o.item.brandLabel || "이", name: o.item.g.productName, reason: o.reason || "이 옷의 특성" });
+    if (t) put("odd", { id: "odd_one", ...splitLead(t), photos: [o.item.id] });
+  }
+
   // 총 옷장 점수: 옷장 점수(score.ts) + 질문·퀴즈 답별 증감
   const wardrobe: Pick<WardrobeScore, "score" | "parts" | "age"> = override
     ? { ...override.score, age: null }
@@ -577,6 +584,7 @@ export function buildReport(
  * 특이한 순서: 같은 옷·가장 비싼 옷·비슷한 옷처럼 옷 자체가 증거인 문단부터.
  */
 const PHOTO_PRIORITY = ["identical", "top_item", "similar", "duplicate", "vintage", "fruits", "bunjang", "binge", "wallet", "polar", "subcat", "country", "country_kr", "brand", "musinsa", "burst", "category", "color", "fit"];
+const PHOTO_ONLY = ["odd_one"];
 export function limitPhotos<P extends { id: string; photos?: string[] }>(points: P[], max: number): P[] {
   const rank = (id: string) => {
     const k = PHOTO_PRIORITY.indexOf(id);
@@ -584,7 +592,7 @@ export function limitPhotos<P extends { id: string; photos?: string[] }>(points:
   };
   const keep = new Set(
     points
-      .filter((p) => p.photos?.length)
+      .filter((p) => p.photos?.length && PHOTO_ONLY.includes(p.id))
       .sort((x, y) => rank(x.id) - rank(y.id))
       .slice(0, Math.max(0, max))
       .map((p) => p.id),
