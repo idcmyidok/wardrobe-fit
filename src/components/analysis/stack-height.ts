@@ -1,4 +1,4 @@
-import { CATEGORIES } from "@/lib/constants/categories";
+import { CATEGORIES, SUBCATEGORIES } from "@/lib/constants/categories";
 import type { CategoryId, Garment } from "@/lib/types/domain";
 
 /** 접어서 쌓았을 때 한 벌의 평균 두께(cm). 세부분류별이고, 없으면 대분류 평균을 쓴다. */
@@ -39,6 +39,20 @@ export const LANDMARKS: { cm: number; art: string; name: string; desc: string }[
   { cm: 1000, art: "building", name: "3층 건물", desc: "3층 건물 높이(약 10m)와 비슷합니다." },
   { cm: 2000, art: "apartment", name: "6~7층 아파트", desc: "6~7층 아파트 높이(약 20m)와 비슷합니다." },
 ];
+
+/** 종류별 두께 표: 대분류별로 묶고, 내 옷장에 있는 종류는 벌 수를 붙인다. */
+export function thicknessTable(G: Pick<Garment, "subcategoryId">[]) {
+  return CATEGORIES.map((c) => ({
+    id: c.id,
+    name: c.name,
+    rows: SUBCATEGORIES.filter((s) => s.categoryId === c.id).map((s) => ({
+      id: s.id,
+      name: s.name,
+      cm: THICKNESS[s.id] ?? CATEGORY_THICKNESS[c.id],
+      have: G.filter((g) => g.subcategoryId === s.id).length,
+    })),
+  }));
+}
 
 export function thicknessOf(g: Pick<Garment, "categoryId" | "subcategoryId">) {
   return (g.subcategoryId && THICKNESS[g.subcategoryId]) || CATEGORY_THICKNESS[g.categoryId] || 3;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Garment } from "@/lib/types/domain";
-import { formatHeight, stackSummary } from "./stack-height";
+import { formatHeight, stackSummary, thicknessTable } from "./stack-height";
 
 const g = (categoryId: Garment["categoryId"], subcategoryId: string | null) => ({ categoryId, subcategoryId }) as Garment;
 
@@ -18,6 +18,11 @@ describe("stackSummary", () => {
     const s = stackSummary([]);
     expect(s.near).toBeNull();
     expect(s.range).toBe("—");
+  });
+  it("종류별 두께 표에 보유 벌 수를 붙인다", () => {
+    const t = thicknessTable([g("top", "top.short_tee"), g("top", "top.short_tee")]);
+    const tee = t.find((c) => c.id === "top")?.rows.find((r) => r.id === "top.short_tee");
+    expect(tee).toMatchObject({ cm: 1, have: 2 });
   });
   it("100cm부터 m로 보여 준다", () => {
     expect(formatHeight(85)).toBe("85cm");

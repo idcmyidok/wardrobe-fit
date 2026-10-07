@@ -2,7 +2,7 @@
  * 내 패션 훈수(/roast) 전용 스타일. 모든 규칙을 .roast 안에만 걸어 다른 화면에 영향이 없게 한다.
  * 대화는 첫 화면 기능 소개의 훈수 예시처럼 말풍선 채팅으로 보인다(글꼴은 사이트 기본 Pretendard).
  */
-/* 말풍선 색: 예전 iMessage 색(받은 말 회색, 보낸 말 파랑) */
+/* 말풍선 색: iMessage(받은 말 회색, 보낸 말=내가 고른 답 파랑) */
 .roast {
   --rb-ai: #e9e9eb;
   --rb-ai-text: #000;
@@ -224,30 +224,25 @@
 
 .roast .roast-choice {
   max-width: min(88%, 30em);
-  min-height: 44px;
-  padding: 9px 16px;
-  border: 1.5px solid var(--rb-me);
-  border-radius: 22px;
-  background: var(--surface);
-  color: var(--rb-me);
+  min-height: 0;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 18px 18px 4px 18px;
+  background: var(--rb-me);
+  color: #fff;
   text-align: left;
   font-size: 15px;
-  line-height: 1.4;
+  line-height: 1.5;
   cursor: pointer;
   transition:
     background-color 0.18s,
-    color 0.18s,
-    transform 0.18s,
-    box-shadow 0.18s;
+    transform 0.18s;
 }
 .roast .roast-choice:hover:not(:disabled) {
-  background: var(--rb-me);
-  color: #fff;
+  background: var(--rb-me-hover);
   transform: translateX(-3px);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--rb-me) 28%, transparent);
 }
 .roast .roast-choice:active:not(:disabled) {
-  background: var(--rb-me-hover);
   transform: translateX(-3px) scale(0.97);
 }
 .roast .roast-choice:focus-visible {
@@ -514,8 +509,7 @@
 }
 
 /* 훈수 시작 전 버튼: 호버(그림자)·눌림(작아짐+어두워짐). 터치는 눌림만, 동작 줄이기는 색만. */
-.roast .btn,
-.roast .roast-choice {
+.roast .btn {
   transition:
     background-color 0.15s,
     border-color 0.15s,
@@ -524,24 +518,20 @@
     transform 0.1s;
 }
 @media (hover: hover) {
-  .roast .btn:hover:not(:disabled),
-  .roast .roast-choice:hover:not(:disabled) {
+  .roast .btn:hover:not(:disabled) {
     box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 22%, transparent);
   }
 }
-.roast .btn:active:not(:disabled),
-.roast .roast-choice:active:not(:disabled) {
+.roast .btn:active:not(:disabled) {
   transform: scale(0.97);
   filter: brightness(0.88);
   box-shadow: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  .roast .btn,
-  .roast .roast-choice {
+  .roast .btn {
     transition: background-color 0.15s, border-color 0.15s, color 0.15s;
   }
-  .roast .btn:active:not(:disabled),
-  .roast .roast-choice:active:not(:disabled) {
+  .roast .btn:active:not(:disabled) {
     transform: none;
   }
 }

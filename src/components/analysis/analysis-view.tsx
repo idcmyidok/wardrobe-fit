@@ -15,7 +15,7 @@ import {
   type CategoryTab,
   type DonutSlice,
 } from "./wardrobe-analysis";
-import { stackSummary } from "./stack-height";
+import { stackSummary, thicknessTable } from "./stack-height";
 import { StackArt } from "./stack-art";
 
 const TABS: { id: CategoryTab; label: string }[] = [
@@ -50,6 +50,8 @@ export function AnalysisView() {
   const colors = colorSummary(garments, colorTab);
   const seasons = seasonSummary(garments);
   const stack = stackSummary(garments);
+  const thick = useMemo(() => thicknessTable(garments), [garments]);
+  const [thickOpen, setThickOpen] = useState(false);
 
   // 스크롤해서 카드가 화면에 들어오면 나타나게 한다.
   useEffect(() => {
@@ -88,14 +90,14 @@ export function AnalysisView() {
             옷장 총 가격
           </span>
           <div className="flex flex-wrap items-baseline gap-1.5">
-            <span className="font-display text-total tracking-[-0.03em]">{price.totalShort}</span>
+            <span className="-ml-1 font-display text-total tracking-[-0.03em]">{price.totalShort}</span>
             <span className="text-lg">￦</span>
           </div>
           <div className="flex flex-col gap-1 font-mono text-sm text-neutral-700">
             <span>{price.totalFull}</span>
             <span>{price.recentFull}</span>
           </div>
-          <div className="mt-2 flex flex-col gap-1 rounded-md bg-accent-100 px-4 py-3.5">
+          <div className="mt-2 -mx-4 flex flex-col gap-1 rounded-md bg-accent-100 px-4 py-3.5">
             <span className="text-lg font-semibold text-accent-800">{price.tierTitle}</span>
             <span className="text-base text-pretty text-neutral-800">{price.tierBody}</span>
           </div>
@@ -251,6 +253,36 @@ export function AnalysisView() {
             </>
           ) : (
             <p className="text-lg">등록한 옷이 없습니다.</p>
+          )}
+        </div>
+        <div className="col-span-full flex flex-col gap-4 border-t border-neutral-200 pt-5">
+          <button
+            type="button"
+            aria-expanded={thickOpen}
+            aria-controls="an-thick"
+            onClick={() => setThickOpen((v) => !v)}
+            className="btn btn-secondary self-start"
+          >
+            종류별 두께 {thickOpen ? "접기" : "보기"}
+          </button>
+          {thickOpen && (
+            <div id="an-thick" className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-5">
+              {thick.map((c) => (
+                <div key={c.id} className="flex flex-col">
+                  <span className={colLabel}>{c.name}</span>
+                  {c.rows.map((r) => (
+                    <div key={r.id} className={cn("flex items-baseline justify-between gap-3 border-b border-neutral-200 py-2 text-sm", r.have ? "text-text" : "text-neutral-600")}>
+                      <span>
+                        {r.name}
+                        {r.have ? <span className="ml-1.5 text-xs text-accent-800">{r.have}벌</span> : null}
+                      </span>
+                      <span className="font-mono tabular-nums">{r.cm}cm</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+              <p className="col-span-full text-xs text-neutral-700">한 벌을 접어서 쌓았을 때의 평균 두께입니다.</p>
+            </div>
           )}
         </div>
       </section>
