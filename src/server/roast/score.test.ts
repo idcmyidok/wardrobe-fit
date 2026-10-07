@@ -3,7 +3,7 @@ import type { Garment } from "@/lib/types/domain";
 import { analyze, brandKindOf, colorCounted } from "./analyze";
 import { buildReport } from "./report";
 import { REPORT_TEXT } from "./report-text";
-import { headlineBand, headlineRange, SCORE_DELTAS } from "./score-deltas";
+import { headlineBand, headlineRange, SCORE_DELTAS, SCORE_RULES } from "./score-deltas";
 import { ageAt, bandOf, youngWeight, floorTotal, scoreWardrobe, tierOf } from "./score";
 
 const now = new Date("2026-09-29T12:00:00+09:00");
@@ -115,7 +115,7 @@ describe("옷장 점수(점수 계획서)", () => {
     const a = analyze(Array.from({ length: 10 }, (_, i) => g(i)), null, 1360, now);
     const s = scoreWardrobe(a, { age: null });
     const s2 = scoreWardrobe(a, { age: null, rules: { base: 60 } });
-    expect(s2.score - s.score).toBe(15);
+    expect(s2.score - s.score).toBe(60 - SCORE_RULES.base);
     const r = buildReport(a, null, 1, REPORT_TEXT, [], {}, { rules: { base: 500 } });
     expect(r.total.score).toBe(100);
   });

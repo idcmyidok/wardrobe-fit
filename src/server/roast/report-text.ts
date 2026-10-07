@@ -15,8 +15,8 @@ export const REPORT_TEXT = {
   layout: {
     order: { lists: 1, points: 2, notes: 3 },
     show: { summary: 1, lists: 1, notes: 1 },
-    point_order: { diag_lead: 1, color: 2, fit: 3, diag: 4, wallet: 5, vintage: 6, age: 7, last: 8 },
-    point_show: { color: 1, fit: 1, wallet: 1, vintage: 1, age: 1, last: 1 },
+    point_order: { diag_lead: 1, color: 2, fit: 3, diag: 4, wallet: 5, vintage: 6, age: 7, last: 8, odd: 9 },
+    point_show: { color: 1, fit: 1, wallet: 1, vintage: 1, age: 1, last: 1, odd: 1 },
     count: { diag_min: 3, diag_max: 5, list_rows: 3, dup_min: 3, brand_rows: 3, brand_top_pct: 15, brand_row_pct: 8, photos: 20, photo_blocks: 2, answers: 3 },
   },
   /** 한 줄 정의: 총점 구간별(최저 점수~100점을 10칸으로 나눔: b0 = 가장 낮은 칸 … b90 = 가장 높은 칸, 옷장·주문내역 공통) */
@@ -105,6 +105,8 @@ export const REPORT_TEXT = {
   /** 브랜드 자료에 없는 이름이 많을 때(브랜드를 적은 옷의 30% 이상, 3벌 이상). 점수와 상관없음 */
   /** 브랜드를 빈티지·구제로 적은 옷이 3벌 이상. 점수와 상관없음 */
   VINTAGE: ["브랜드 칸에 빈티지·구제라고 적은 옷이 {n}벌이네요. 그 옷들의 전생은 아무도 모르지만, 지금 주인의 안목은 대충 알 것 같습니다."],
+  /** 옷장에서 혼자 스타일이 다른 옷(사진과 함께). 옷장 훈수에만 나옴 */
+  ODD_ONE: ["{brand} {name}, 이 옷만 옷장에서 혼자 노네요. {reason}이(가) 다른 옷들과 거의 안 겹치거든요."],
   /** 나이 한마디: 나이 기준에서 가장 크게 걸린 것 */
   age: {
     street: ["{age}세에 스트릿·하이프 브랜드가 {pct}%입니다. 마음만은 아직 홍대 앞이네요."],

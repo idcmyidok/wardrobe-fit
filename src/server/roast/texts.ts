@@ -73,8 +73,8 @@ const ORDER_MIRROR = toOrders({
     // 주문내역에는 핏·빈티지 문단이 나올 수 없어 순서·켜기 칸에서 뺀다.
     layout: {
       ...REPORT_TEXT.layout,
-      point_order: omit<unknown>(REPORT_TEXT.layout.point_order, ["fit", "vintage"]),
-      point_show: omit<unknown>(REPORT_TEXT.layout.point_show, ["fit", "vintage"]),
+      point_order: omit<unknown>(REPORT_TEXT.layout.point_order, ["fit", "vintage", "odd"]),
+      point_show: omit<unknown>(REPORT_TEXT.layout.point_show, ["fit", "vintage", "odd"]),
     },
   },
 });

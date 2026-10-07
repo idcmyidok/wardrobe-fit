@@ -232,6 +232,7 @@ export const LAYOUT_POINT: Record<string, { name: string; how: string }> = {
   diag: { name: "나머지 진단", how: "뚜렷한 순서로, 진단 문단 수만큼" },
   wallet: { name: "지갑(비싼 옷 vs 싼 옷 브랜드)", how: "가격과 브랜드 정보가 있는 옷 8벌 이상" },
   vintage: { name: "빈티지·구제", how: "브랜드를 빈티지·구제로 적은 옷 3벌 이상" },
+  odd: { name: "혼자 다른 옷", how: "옷장에서 혼자 스타일이 다른 옷이 있을 때, 그 옷 사진과 함께" },
   age: { name: "나이 한마디", how: "시작할 때 나이를 적었을 때" },
   last: { name: "마지막 문단", how: "따로 붙일 곳이 없는 질문 답, 없으면 가장 비싼 옷" },
 };
@@ -457,6 +458,7 @@ const REPORT_NAME: Record<string, string> = {
   color: "컬러 한마디",
   fit: "핏 한마디",
   VINTAGE: "브랜드를 빈티지·구제로 적은 옷이 많을 때",
+  ODD_ONE: "옷장에서 혼자 스타일이 다른 옷이 있을 때(그 옷 사진과 함께)",
   age: "나이 한마디(나이를 적었을 때)",
   wallet: "비싼 옷과 싼 옷의 브랜드 비교",
   SUMMARY_3: "요약 한 문장(특징 세 개)",

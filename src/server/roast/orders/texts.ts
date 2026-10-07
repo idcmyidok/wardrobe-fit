@@ -16,7 +16,7 @@ export const ORDER_SKIP_PATTERNS = new Set(["count_small", "count_many", "count_
  */
 export const ORDER_MIRROR_SCREEN = ["CREDIT", "NAME_HINT", "AGE_HINT", "WRITING", "CONSENT", "CONSENT_WARN"] as const;
 export const ORDER_MIRROR_QUESTIONS = ["quiz", "food_vs_clothes", "fashionable_q"] as const;
-export const ORDER_MIRROR_REPORT_SKIP = ["HEADLINE", "fit", "age", "VINTAGE"] as const;
+export const ORDER_MIRROR_REPORT_SKIP = ["HEADLINE", "fit", "age", "VINTAGE", "ODD_ONE"] as const;
 
 /** 화면 문구: 옷장 훈수 화면 문구(screen) 위에 덮어쓴다. PASTE_*·LOADING은 주문내역 훈수에만 있다. */
 export const ORDER_SCREEN = {
