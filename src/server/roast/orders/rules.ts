@@ -18,20 +18,24 @@ export const ORDER_RULES = {
   hidden_brand_k: 10,
   // 더하는 점수(옷장 훈수 점수 기준 v4와 같은 것은 같은 값)
   designer_each: 2,
-  designer_max: 6,
+  designer_max: 12,
   /** 컨템포러리·디자이너·스트릿 중고가(대중적 제외): 1벌당 가점, 최대 */
   mid_each: 1,
-  mid_max: 3,
+  mid_max: 6,
   style_mid_pct: 40,
   style_mid: 2,
   style_high_pct: 60,
   style_high: 4,
   taste_full: 20,
-  taste_max: 3,
+  taste_max: 5,
   /** 시기별 비교: 오래된 1/3과 최근 1/3이 각각 이 벌 수 이상일 때만 */
   shift_min_n: 4,
   hipper_pp: 15,
   hipper: 3,
+  /** 항상 힙한 사람: 오래된 1/3과 최근 1/3 모두 좋은 브랜드가 always_hip_pct% 이상이고 랭킹템이 always_rank_pct% 이하(점점 힙해짐에 안 걸릴 때만) */
+  always_hip_pct: 40,
+  always_rank_pct: 25,
+  always_hip: 4,
   pricier_pct: 30,
   pricier: 2,
   return_min_orders: 20,
