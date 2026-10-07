@@ -321,7 +321,11 @@ export function buildReport(
     ];
     const first = tryFill(r, main, { pct: ap, colorPct: 100 - ap });
     const extra = extras.filter(([ok]) => ok).map(([, list, v]) => tryFill(r, list, v)).find(Boolean);
-    if (first) colorPoint = { id: "color", ...splitLead([first, extra].filter(Boolean).join(" ")), photos: photosOf(achroMain ? achro : chroma) };
+    // 무채색·유채색이 반반이면 양쪽 사진 3장씩을 VS로 보여 준다(그 밖의 결과엔 색 사진을 넣지 않는다).
+    const vsLeft = photosOf(achro).slice(0, 3);
+    const vsRight = photosOf(chroma).slice(0, 3);
+    const half = ap >= 40 && !achroMain && vsLeft.length > 0 && vsRight.length > 0;
+    if (first) colorPoint = { id: "color", ...splitLead([first, extra].filter(Boolean).join(" ")), ...(half ? { vs: { achro: vsLeft, chroma: vsRight } } : {}) };
   }
 
   // 핏 한마디: 주력 핏으로 한 문장, 눈에 띄는 경우가 있으면 한 문장 더

@@ -912,6 +912,7 @@ function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string
         </p>
         {p.answer && <p className="roast-answer">{p.answer}</p>}
         <PhotoRow ids={p.photos} photoOf={photoOf} />
+        {p.vs && <ColorVs achro={p.vs.achro} chroma={p.vs.chroma} photoOf={photoOf} />}
       </div>
     )),
     // 예전 결과만 옷장 DNA가 있다(새 결과는 제목 아래 요약 한 문장).
@@ -971,6 +972,32 @@ function ScoreDetail({ detail }: { detail: NonNullable<RoastReport["scoreDetail"
         </li>
       </ul>
     </section>
+  );
+}
+
+/** 무채색·유채색이 반반인 옷장: 왼쪽 무채색, 오른쪽 유채색 사진을 가운데 VS를 두고 마주 보게 한다. */
+function ColorVs({ achro, chroma, photoOf }: { achro: string[]; chroma: string[]; photoOf: (id: string) => string | null }) {
+  const side = (ids: string[], label: string) => {
+    const urls = ids.map(photoOf).filter((u): u is string => Boolean(u));
+    return (
+      <div className="roast-vs-side">
+        <p className="roast-vs-label">{label}</p>
+        <div className="roast-vs-photos">
+          {urls.map((u) => (
+            <img key={u} src={u} alt="" draggable={false} />
+          ))}
+        </div>
+      </div>
+    );
+  };
+  return (
+    <div className="roast-vs mt-3" data-testid="roast-color-vs">
+      {side(achro, "무채색")}
+      <span className="roast-vs-badge" aria-label="대 (versus)">
+        VS
+      </span>
+      {side(chroma, "유채색")}
+    </div>
   );
 }
 

@@ -535,3 +535,53 @@
     transform: none;
   }
 }
+
+/* 무채색 vs 유채색: 좌우에 사진 3장씩, 가운데 VS */
+.roast .roast-vs {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.roast .roast-vs-side {
+  min-width: 0;
+}
+.roast .roast-vs-label {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+.roast .roast-vs-photos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.roast .roast-vs-photos img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border: 1px solid var(--divider);
+}
+.roast .roast-vs-badge {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+@media (max-width: 480px) {
+  .roast .roast-vs-photos {
+    gap: 2px;
+  }
+  .roast .roast-vs-badge {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+}
