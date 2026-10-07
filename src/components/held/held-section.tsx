@@ -65,14 +65,14 @@ export function HeldSection() {
   })).filter((group) => group.items.length > 0);
 
   return (
-    <section id="held" aria-labelledby="held-title" className="mt-12 scroll-mt-20 border-t border-divider pt-6">
+    <section id="held" aria-labelledby="held-title" className="mt-14 scroll-mt-20">
       <div className="flex flex-wrap items-end justify-between gap-3 pb-2">
         <div className="flex flex-col gap-1">
           <div className="flex items-baseline gap-2.5">
-            <h2 id="held-title" className="text-xl">
+            <h2 id="held-title" className="text-[28px] font-bold tracking-[-0.02em]">
               구매 보류 옷
             </h2>
-            <span className="font-mono text-base text-neutral-700 tabular-nums">{heldGarments.length}벌</span>
+            <span className="text-base text-neutral-600 tabular-nums">{heldGarments.length}벌</span>
           </div>
           <p className="text-sm text-neutral-700">
             살까 말까 고민 중인 옷을 옷장과 따로 모아 둡니다. 옷을 누르면 정보를 고치거나, 샀을 때 옷장으로 옮길 수 있어요.
@@ -96,7 +96,7 @@ export function HeldSection() {
       </div>
 
       {groups.length === 0 ? (
-        <p className="border-t border-neutral-300 py-8 text-base text-neutral-700">
+        <p className="app-card mt-3 px-6 py-8 text-base text-neutral-700">
           아직 구매 보류 옷이 없습니다. 판단 결과 아래 &ldquo;구매 보류 옷에 추가&rdquo;를 누르거나 위 버튼으로 직접 담을 수 있어요.
         </p>
       ) : (

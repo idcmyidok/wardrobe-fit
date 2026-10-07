@@ -15,13 +15,19 @@ export function GarmentThumbnail({
 }: {
   item: Pick<Garment, "brand" | "productName" | "imageUrl" | "thumbUrl">;
   className?: string;
-  /** contain이면 사진을 자르지 않고 칸 안에 전부 담는다(남는 자리는 중립 배경). */
-  fit?: "cover" | "contain";
+  /**
+   * contain이면 사진을 자르지 않고 칸 안에 전부 담는다(남는 자리는 중립 배경).
+   * natural이면 원래 사진 비율 그대로(늘이거나 자르지 않음), className으로 최대 크기만 정한다.
+   */
+  fit?: "cover" | "contain" | "natural";
 }) {
   const src = item.thumbUrl ?? item.imageUrl;
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   if (src && failedSrc !== src) {
     // 비공개 bucket의 signed URL(1시간)이라 next/image 최적화 캐시를 거치지 않고 그대로 쓴다.
+    if (fit === "natural")
+      // eslint-disable-next-line @next/next/no-img-element
+      return <img src={src} alt="" loading="lazy" onError={() => setFailedSrc(src)} className={cn("block h-auto w-auto max-w-full", className ?? "max-h-24")} />;
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={src} alt="" loading="lazy" onError={() => setFailedSrc(src)} className={cn("w-full", className ?? "h-24", fit === "contain" ? "bg-neutral-100 object-contain" : "object-cover")} />;
   }
@@ -30,7 +36,8 @@ export function GarmentThumbnail({
       aria-hidden
       className={cn(
         "flex w-full items-end bg-neutral-200 px-1.25 py-1 text-2xs font-semibold text-neutral-600",
-        className ?? "h-24",
+        // 사진이 없을 때 자리: natural이면 옷 사진에 흔한 4:5 비율 칸
+        fit === "natural" ? cn("aspect-4/5 h-full w-auto", className) : (className ?? "h-24"),
       )}
     >
       {(item.brand || item.productName).slice(0, 1)}

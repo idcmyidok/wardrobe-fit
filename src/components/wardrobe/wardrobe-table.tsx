@@ -21,8 +21,8 @@ export interface GarmentSelection {
   onToggle: (id: string) => void;
 }
 
-const cell = "border-r border-neutral-300 px-2 py-2 text-center align-middle";
-const head = "border-r border-b border-r-neutral-300 border-b-text bg-surface font-mono text-[10.5px] font-medium tracking-[0.06em] text-neutral-700";
+const cell = "px-2 py-2 text-center align-middle";
+const head = "border-b border-neutral-200 bg-surface text-[11.5px] font-medium text-neutral-600";
 const mono = "font-mono tabular-nums whitespace-nowrap";
 
 /**
@@ -63,7 +63,7 @@ export function WardrobeTable({
 
   // 고정 폭 열의 합 + 제품명 최소 폭. 화면이 이보다 넓으면 가로 스크롤 없이 오른쪽 끝까지 보인다.
   const tableMinWidth =
-    64 + 80 + 96 + 56 + 88 + (held ? 0 : 88) + measurements.length * 48 +
+    80 + 80 + 96 + 56 + 88 + (held ? 0 : 88) + measurements.length * 48 +
     (categoryId === "shoes" ? SHOE_FIT_FIELDS.length * 48 : 0) + (fitColumn ? 80 : 0) + (held ? 0 : 96) + 96 + 160;
 
   return (
@@ -75,11 +75,11 @@ export function WardrobeTable({
         selection={selection}
         className={view === "simple" ? undefined : view === "detail" ? "hidden" : "md:hidden"}
       />
-      <div className={cn("overflow-x-auto overscroll-x-contain", view === "simple" ? "hidden" : view === "detail" ? undefined : "hidden md:block")}>
-        <table style={{ minWidth: tableMinWidth }} className="w-full table-fixed border-collapse border-t border-r border-l border-neutral-300 bg-surface text-sm">
+      <div className={cn("app-card overflow-x-auto overscroll-x-contain", view === "simple" ? "hidden" : view === "detail" ? undefined : "hidden md:block")}>
+        <table style={{ minWidth: tableMinWidth }} className="w-full table-fixed border-collapse text-sm">
           <thead>
             <tr>
-              <th scope="col" className={cn(head, "w-16 py-2")}>
+              <th scope="col" className={cn(head, "w-20 py-2")}>
                 이미지
               </th>
               <th scope="col" className={cn(head, "w-20")}>
@@ -120,14 +120,14 @@ export function WardrobeTable({
                   key={item.id}
                   onClick={() => onOpen(item.id)}
                   className={cn(
-                    "cursor-pointer border-b border-neutral-300 transition-colors hover:bg-neutral-100",
+                    "cursor-pointer border-b border-neutral-200 transition-colors last:border-b-0 hover:bg-neutral-100",
                     selectedId === item.id && "bg-accent-100 hover:bg-accent-100",
                   )}
                 >
-                  <td className="h-24 border-r border-neutral-300 p-0">
-                    {/* 호버 확대가 칸 밖으로 넘쳐 표에 세로 스크롤이 생기지 않게 잘라 두고, 사진은 자르지 않고 다 보여 준다. */}
-                    <div className="h-24 overflow-hidden">
-                      <GarmentThumbnail item={item} fit="contain" />
+                  <td className="h-24 p-1.5">
+                    {/* 사진은 원래 비율 그대로(늘이거나 자르지 않음). 호버 확대가 칸 밖으로 넘쳐 세로 스크롤이 생기지 않게 칸은 잘라 둔다. */}
+                    <div className="flex h-21 items-center justify-center overflow-hidden">
+                      <GarmentThumbnail item={item} className="max-h-21 rounded-xs" fit="natural" />
                     </div>
                   </td>
                   <td className={cn(cell, "truncate")}>{item.subcategoryId ? SUBCATEGORY_NAME[item.subcategoryId] : "—"}</td>
@@ -226,7 +226,7 @@ function MobileList({
   className?: string;
 }) {
   return (
-    <ul className={cn("border-t border-divider", className)}>
+    <ul className={cn("app-card overflow-hidden px-3", className)}>
       {items.map((item) => {
         const checked = selection?.selected.has(item.id) ?? false;
         const row = cn(
@@ -236,7 +236,9 @@ function MobileList({
         );
         const body = (
           <>
-            <GarmentThumbnail item={item} className="h-17.5" fit="contain" />
+            <span className="flex h-17.5 items-center justify-center">
+              <GarmentThumbnail item={item} className="max-h-17.5 rounded-xs" fit="natural" />
+            </span>
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="truncate text-base">
                 {item.brand && <span className="font-semibold">{item.brand} </span>}
@@ -256,7 +258,7 @@ function MobileList({
           </>
         );
         return (
-          <li key={item.id} className="border-b border-neutral-300">
+          <li key={item.id} className="border-b border-neutral-200 last:border-b-0">
             {selection ? (
               <label className={row}>
                 <input

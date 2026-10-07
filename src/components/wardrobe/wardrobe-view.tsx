@@ -23,7 +23,7 @@ import {
   type WardrobeFilters as Filters,
   type WardrobeState,
 } from "./filter-state";
-import { WardrobeFilters } from "./wardrobe-filters";
+import { MoreFilters, SearchBox } from "./wardrobe-filters";
 import { useOpenGarmentId, useWardrobe } from "./wardrobe-store";
 import { WardrobeTable, type GarmentSelection, type WardrobeViewMode } from "./wardrobe-table";
 
@@ -121,33 +121,62 @@ export function WardrobeView() {
 
   return (
     <main className="mx-auto max-w-400 px-[clamp(16px,3vw,32px)] pt-7 pb-12">
-      <div className="tile-dark flex flex-wrap items-end justify-between gap-4 rounded-lg p-6 md:p-10">
-        <div className="flex items-baseline gap-3">
-          <span aria-hidden className="count-num text-display-lg md:text-display-xl">
-            {filtered ? items.length : garments.length}
-          </span>
-          <div className="flex flex-col gap-0.5">
-            <h1 className="text-xl">내 옷장</h1>
-            {filtered && (
-              <span className="font-mono text-xs tracking-[0.02em] text-neutral-700 tabular-nums">
-                {items.length} / {garments.length}벌
-              </span>
+      {/*
+        왼쪽: 제목·벌 수·검색·필터(늘 펼침). 오른쪽(PC): 위는 보기 방식(제목 윗선에 맞춤), 아래는 새 옷 추가·옷 삭제(필터 줄 아랫선에 맞춤).
+        모바일: 같은 순서로 쌓고, 보기 방식·새 옷 추가·옷 삭제를 한 줄에 왼쪽 정렬.
+      */}
+      <div className="rise flex flex-col gap-4 md:flex-row md:items-stretch md:justify-between">
+        <div className="flex min-w-0 flex-col gap-4">
+          <div>
+            <h1 className="large-title">내 옷장</h1>
+            <p className="page-sub">
+              <span className="font-semibold text-text tabular-nums">{filtered ? `${items.length} / ${garments.length}` : garments.length}벌</span>
+              {filtered ? "이 조건에 맞습니다." : "을 기록해 두었습니다."}
+            </p>
+          </div>
+          {!empty && (
+            <>
+              <SearchBox value={filters.q} onCommit={(q) => setFilters({ ...filters, q })} />
+              <MoreFilters value={filters} onChange={setFilters} options={options} />
+            </>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 md:flex-col md:flex-nowrap md:items-end md:justify-between">
+          {!empty && (
+            <div role="group" aria-label="보기 방식" className="seg">
+              {VIEW_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  aria-pressed={view === option.id}
+                  disabled={deleting}
+                  onClick={() => saveView(option.id)}
+                  className={cn(
+                    "min-h-8 cursor-pointer rounded-full px-3 text-sm font-medium transition disabled:cursor-not-allowed md:px-3.5",
+                    view === option.id ? "bg-surface text-text shadow-sm" : "text-neutral-700 hover:text-text",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {/* 모바일에서는 보기 방식과 한 줄에 놓이도록 감싸는 상자를 없앤다(contents) */}
+          <div className="contents md:flex md:flex-wrap md:items-center md:gap-2">
+            <Link href="/wardrobe/new" className={cn(buttonClassName({ variant: "primary" }), "max-md:min-h-10 max-md:px-3.5 max-md:text-sm")}>
+              + 새 옷 추가
+            </Link>
+            {!empty && (
+              <button
+                type="button"
+                aria-pressed={deleting}
+                onClick={() => (deleting ? exitDeleting() : setDeleting(true))}
+                className={cn("btn max-md:min-h-10 max-md:px-3.5 max-md:text-sm", deleting ? "btn-secondary" : "btn-danger")}
+              >
+                {deleting ? "삭제 취소" : "옷 삭제"}
+              </button>
             )}
           </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {empty ? (
-            <button type="button" className={buttonClassName({ variant: "secondary" })} disabled>
-              구매 판단기
-            </button>
-          ) : (
-            <Link href="/fit-check" className={buttonClassName({ variant: "secondary" })}>
-              구매 판단기
-            </Link>
-          )}
-          <Link href="/wardrobe/new" className={buttonClassName({ variant: "primary" })}>
-            + 새 옷 추가
-          </Link>
         </div>
       </div>
 
@@ -181,46 +210,15 @@ export function WardrobeView() {
         </>
       ) : (
         <>
-          <WardrobeFilters value={filters} onChange={setFilters} options={options} />
-          <div className="flex items-center justify-end gap-2 pt-4">
-            <div role="group" aria-label="보기 방식" className="flex">
-              <div className="seg">
-                {VIEW_OPTIONS.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    aria-pressed={view === option.id}
-                    disabled={deleting}
-                    onClick={() => saveView(option.id)}
-                    className={cn(
-                      "min-h-8 cursor-pointer rounded-full px-3.5 text-sm font-medium transition disabled:cursor-not-allowed",
-                      view === option.id ? "bg-surface text-text shadow-sm" : "text-neutral-700 hover:text-text",
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button
-              type="button"
-              aria-pressed={deleting}
-              onClick={() => (deleting ? exitDeleting() : setDeleting(true))}
-              className={cn("btn min-h-9 px-3 text-sm", deleting ? "btn-secondary" : "btn-danger")}
-            >
-              {deleting ? "삭제 취소" : "옷 삭제"}
-            </button>
-          </div>
-
           {groups.map((group) => {
             const open = !collapsed.has(group.id);
             return (
-              <section key={group.id} aria-labelledby={`group-${group.id}`} className="pt-6">
-                <div className="flex items-baseline gap-2.5 pb-2">
-                  <h2 id={`group-${group.id}`} className="text-lg">
+              <section key={group.id} aria-labelledby={`group-${group.id}`} className="rise pt-8">
+                <div className="flex items-baseline gap-2 pb-3">
+                  <h2 id={`group-${group.id}`} className="text-[22px] font-bold tracking-[-0.015em]">
                     {group.name}
                   </h2>
-                  <span className="font-mono text-base text-neutral-700 tabular-nums">{group.total}{COUNT_UNIT[group.id]}</span>
+                  <span className="text-base text-neutral-600 tabular-nums">{group.total}{COUNT_UNIT[group.id]}</span>
                   <button
                     type="button"
                     aria-expanded={open}

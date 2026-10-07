@@ -268,10 +268,12 @@ export function FitCheckView() {
       <Link href="/wardrobe" className="btn btn-ghost mb-2 text-sm">
         ← 내 옷장
       </Link>
-      <div className="tile-dark flex flex-col gap-1.5 rounded-lg p-6 md:p-10">
-        <h1 className="grad-text text-title md:text-display">구매 판단기</h1>
-        <p className="text-body text-neutral-800">사려는 옷의 링크와 고민 중인 사이즈를 넣으면, 옷장에 기록한 옷과 치수별로 비교합니다.</p>
-        <UsageNote kind="fit" />
+      <div className="page-head rise">
+        <div>
+          <h1 className="large-title">구매 판단기</h1>
+          <p className="page-sub">사려는 옷의 링크와 고민 중인 사이즈를 넣으면, 옷장에 기록한 옷과 치수별로 비교합니다.</p>
+          <UsageNote kind="fit" />
+        </div>
       </div>
 
       <div className="seg mt-5" role="radiogroup" aria-label="판단 방식">
@@ -289,7 +291,7 @@ export function FitCheckView() {
       ) : (
       <>
       {!manual ? (
-        <section className="flex max-w-190 flex-col gap-3 py-7">
+        <section className="app-card rise mt-5 flex max-w-190 flex-col gap-3 p-5 md:p-7">
           <div className="field">
             <label htmlFor="fit-url" className="text-sm">
               상품 URL
@@ -326,7 +328,7 @@ export function FitCheckView() {
           </button>
         </section>
       ) : (
-        <section className="flex flex-col gap-5 border-b border-neutral-300 py-7">
+        <section className="app-card rise mt-5 flex flex-col gap-5 p-5 md:p-7">
           <div className="flex flex-col items-start gap-1.5">
             <h2 className="text-lg">사려는 옷 직접 입력</h2>
             <button type="button" className="btn btn-ghost pl-0 text-sm" onClick={() => { setManual(false); setPicks({}); setError(null); }}>
@@ -396,7 +398,7 @@ export function FitCheckView() {
 
       {!manual && product && (
         <>
-          <section className="flex flex-col gap-4 border-t border-b border-t-text border-b-neutral-300 py-5">
+          <section className="app-card rise mt-5 flex flex-col gap-4 p-5 md:p-7">
             <div className="flex min-w-0 flex-col gap-1">
               <span className="text-xs text-neutral-700">{imported?.domain}에서 읽은 상품</span>
               <span className="text-base font-semibold">{product.brand?.value ?? "브랜드 없음"}</span>
@@ -417,7 +419,7 @@ export function FitCheckView() {
             </div>
           </section>
           {chartRows.length ? (
-            <section className="flex flex-col gap-3 border-b border-neutral-300 py-6">
+            <section className="app-card rise mt-5 flex flex-col gap-3 p-5 md:p-7">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="text-lg">고민 중인 사이즈</h2>
                 <span className="text-sm text-neutral-700">최대 {MAX_FIT_SIZES}개까지 함께 비교할 수 있습니다.</span>
@@ -480,7 +482,7 @@ export function FitCheckView() {
       )}
 
       {showCompare && (
-        <section className="flex flex-col gap-3 py-6">
+        <section className="app-card rise mt-5 flex flex-col gap-3 p-5 md:p-7">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-lg">비교할 {noun}</h2>
             <span className="text-sm text-neutral-700" data-testid="comparable-note">

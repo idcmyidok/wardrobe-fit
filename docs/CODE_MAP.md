@@ -180,6 +180,7 @@
 
 ### src/components/layout
 - `app-header.tsx` (62줄) AppHeader:20 — 화면 폭 가득한 고정 메뉴바(반투명 회색, `globals.css`의 `.header-bar`). 로고·테마 버튼 없음, 메뉴 좌측 정렬
+- 앱 화면 공통 모양(`globals.css` 끝): `.large-title`·`.page-sub` 큰 제목 머리말, `.app-card` 둥근 카드, `.rise` 들어올 때 떠오름
 - `release-notes-dialog.tsx` (445줄) ReleaseNotesDialog:30
 - `theme-toggle.tsx` (104줄) ThemeToggle:52
 - `user-menu.tsx` (251줄) UserMenu:192 MenuBody:15 useFabHidden:75 MobileAccountButton:100 — 계정 메뉴(화면 모드 선택 포함). PC는 상단 바 버튼+드롭다운, 모바일은 우측 하단 동그란 버튼이 메뉴 창으로 펼쳐짐(body로 portal, 아래 스크롤 시 숨김·3초 멈추거나 위로 스크롤 시 표시, `.fab`/`.fab-panel` 애니메이션)
@@ -211,11 +212,11 @@
 - `filter-state.ts` (207줄) SortableColumn:8 SortDirection:9 ColumnSort:10 WardrobeFilters:19 DEFAULT_SORT:29 DEFAULT_FILTERS:31 isFiltered:40 nextSort:52 …
 - `garment-detail-view.tsx` (28줄) GarmentDetailView:10
 - `garment-drawer.tsx` (714줄) GarmentDrawer:76 GarmentDetail:88
-- `garment-thumbnail.tsx` (40줄) GarmentThumbnail:11
-- `wardrobe-filters.tsx` (181줄) WardrobeFilters:13
+- `garment-thumbnail.tsx` (46줄) GarmentThumbnail:11 (fit "natural" = 원래 사진 비율, 표·목록은 이것만 씀)
+- `wardrobe-filters.tsx` (118줄) MoreFilters:14(세부분류·브랜드·시즌·컬러, 늘 펼침) SearchBox:87
 - `wardrobe-store.tsx` (410줄) GarmentDraft:29 PendingDraft:30 ImageChange:33 SaveResult:36 NETWORK_ERROR:117 WardrobeProvider:137 useOpenGarmentId:381 useWardrobe:385 …
 - `wardrobe-table.tsx` (309줄) WardrobeViewMode:17 GarmentSelection:19 WardrobeTable:33
-- `wardrobe-view.tsx` (431줄) WardrobeView:36
+- `wardrobe-view.tsx` (430줄) WardrobeView:36 (머리말: 왼쪽 제목·검색·필터, 오른쪽 보기 방식·새 옷 추가·옷 삭제)
 
 ### src/lib
 - `account.ts` (3줄) DELETE_CONFIRM_WORD:2
