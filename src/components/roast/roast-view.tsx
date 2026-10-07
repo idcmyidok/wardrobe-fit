@@ -27,8 +27,6 @@ const PREVIEW_KEY = "wardrobe-fit:roast-result";
 /** 말풍선이 떠오르는 시간과 글자당 읽을 틈(ms) */
 const BUBBLE_IN_MS = 450;
 const READ_MS = 14;
-/** 말풍선 앞 "입력 중" 점이 보이는 시간: 긴 말일수록 조금 더 */
-const typingMs = (text: string) => Math.min(1400, 380 + text.length * 16);
 /** 관리자 계정은 출력·대기를 이 배수만큼 빠르게 본다(화면에서 RoastView가 정한다). */
 const pace = { speed: 1 };
 /** 시작 화면에서 선언문에 동의했다는 표시(옷장 → 주문내역으로 넘어갈 때 다시 묻지 않기 위해, 이 탭에서만 유지) */
@@ -45,7 +43,7 @@ type DistOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
 type NewMsg = DistOmit<Msg, "id">;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms / pace.speed));
 /** 소개 문구가 끝난 뒤 다음 말(버튼·이름 묻기)이 나오기까지 쉬는 시간 */
-const INTRO_PAUSE_MS = 1100;
+const INTRO_DOTS_MS = 1000;
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /** 화면 문구(관리자가 고친 문장 포함). */
@@ -129,11 +127,8 @@ export function RoastView({ initialResult, copy = ROAST_COPY, orders, ordersUsed
   return (
     <CopyContext.Provider value={copy}>
       <main className="mx-auto max-w-200 px-[clamp(16px,3vw,32px)] pt-6 pb-20">
-        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-divider pb-4">
-          <div className="flex flex-col gap-1">
-            <span className="font-mono text-label font-medium tracking-[0.08em] text-neutral-700 uppercase">{orders ? "Order roast" : "Wardrobe roast"}</span>
-            <h1 className="text-title">{orders ? "무신사 주문내역 훈수" : "내 패션 훈수"}</h1>
-          </div>
+        <div className="rise pb-2">
+          <h1 className="large-title">{orders ? "무신사 주문내역 훈수" : "내 패션 훈수"}</h1>
         </div>
 
         {mode === "result" && result ? (
@@ -381,7 +376,12 @@ function Photos({
 function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: { clothes: number; skipIntro: boolean; orders: boolean; dailyNotice: string | null; dailyUsed: string | null; onStart: (name: string | null, age: number | null) => void }) {
   const copy = useContext(CopyContext);
   // 다시 분석할 때도 소개 문구부터 타이핑한다.
+  // 맨 처음에는 입력 중 점이 먼저 나오고, 소개 말풍선과 아래 체크·선택지가 함께 나온다.
   const [typed, setTyped] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setTyped(true), reducedMotion() ? 0 : INTRO_DOTS_MS / pace.speed);
+    return () => clearTimeout(t);
+  }, []);
   const [asking, setAsking] = useState(false);
   // 옷장 훈수에서 시작 버튼을 누르면 바로 아래에서 평가 기준(옷장·주문내역)을 고르게 한다.
   const [picking, setPicking] = useState(false);
@@ -413,8 +413,8 @@ function Intro({ clothes, skipIntro, orders, dailyNotice, dailyUsed, onStart }: 
 
   return (
     <div className="roast-log mt-8" aria-live="polite">
-      <p className="roast-ai"><Typed text={copy.INTRO} onDone={() => setTimeout(() => setTyped(true), reducedMotion() ? 0 : INTRO_PAUSE_MS / pace.speed)} /></p>
-      {!skipIntro && copy.CREDIT && <p className="roast-credit">{copy.CREDIT}</p>}
+      {typed ? <p className="roast-ai"><Typed text={copy.INTRO} /></p> : <div><Dots /></div>}
+      {typed && !skipIntro && copy.CREDIT && <p className="roast-credit">{copy.CREDIT}</p>}
       {typed && !enough && (
         <p className="roast-ai">
           <Typed text={tooFew(copy, clothes)} />
@@ -586,11 +586,6 @@ function Chat({
   const [typedIds, setTypedIds] = useState<Set<number>>(() => new Set());
   const say = useCallback(
     async (text: string, photos?: string[], gap?: boolean, captions?: Record<string, string>) => {
-      if (!reducedMotion()) {
-        const dots = push({ kind: "dots" });
-        await sleep(typingMs(text));
-        setMsgs((list) => list.filter((m) => m.id !== dots));
-      }
       await new Promise<void>((resolve) => {
         const id = nextId.current;
         typedWaiters.current.set(id, resolve);
@@ -653,7 +648,6 @@ function Chat({
           push({ kind: "choices", q, picked: null });
         });
         readyPick = picked;
-        await think(600);
         await sayBubbles({ all: copy.READY_ALL_SAY, some: copy.READY_SOME_SAY, later: copy.READY_LATER_SAY }[picked] ?? "");
         if (picked === "later") {
           // 훈수는 여기서 끝내고, 옷장에 옷을 넣으러 갈 버튼만 보여 준다.
@@ -728,7 +722,6 @@ function Chat({
             push({ kind: "choices", q, picked: null });
           });
           answers[q.id] = picked;
-          await think(600);
           // "~에 쓴 돈, 알고 있었나요?"는 반응 아래에 그 옷들 사진과 가격을 붙인다.
           const reveal = q.reveal?.length ? q.reveal : undefined;
           await sayBubbles(

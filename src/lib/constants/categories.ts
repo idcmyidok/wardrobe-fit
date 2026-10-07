@@ -37,7 +37,7 @@ export const SUBCATEGORIES: { id: string; categoryId: CategoryId; name: string }
   { id: "outer.cardigan", categoryId: "outer", name: "카디건" },
   { id: "outer.light_padding", categoryId: "outer", name: "경량 패딩/패딩 베스트" },
   { id: "outer.safari", categoryId: "outer", name: "사파리/헌팅 재킷" },
-  { id: "outer.trucker", categoryId: "outer", name: "트러커 재킷" },
+  { id: "outer.trucker", categoryId: "outer", name: "트러커/데님 자켓" },
   { id: "outer.stadium", categoryId: "outer", name: "스타디움 재킷" },
   { id: "outer.coach", categoryId: "outer", name: "나일론/코치 재킷" },
   { id: "outer.training", categoryId: "outer", name: "트레이닝 재킷" },
