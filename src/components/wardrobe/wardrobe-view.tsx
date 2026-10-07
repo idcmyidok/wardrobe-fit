@@ -147,7 +147,7 @@ export function WardrobeView() {
         </div>
         <div className="flex flex-wrap items-center gap-2 md:contents">
           {!empty && (
-            <div role="group" aria-label="보기 방식" className="seg md:col-start-2 md:row-start-2 md:self-end">
+            <div role="group" aria-label="보기 방식" className="seg md:col-start-2 md:row-start-2 md:self-end md:justify-self-end">
               {VIEW_OPTIONS.map((option) => (
                 <button
                   key={option.id}
