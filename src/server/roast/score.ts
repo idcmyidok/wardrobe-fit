@@ -2,6 +2,7 @@ import "server-only";
 import { FOUR_SEASONS, wearsInSeason } from "@/lib/constants/seasons";
 import { colorCounted, fitSummary, type Analysis, type Item } from "./analyze";
 import { brandLabels, isTrueHeritage, MUSINSA_POPULAR, musinsaLikesCut } from "./brands";
+import { thirds } from "./orders/metrics";
 import { detectTasteShift } from "./shift";
 import { AGE_BANDS, AGE_RULES, SCORE_RULES, type ScoreRules } from "./score-deltas";
 
@@ -201,6 +202,13 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
   add("nolikes", Math.min(R.nolikes_max, noLikes.length * R.nolikes_each), `무신사 좋아요 없는 중고가 이상 브랜드 ${noLikes.length}벌 × ${R.nolikes_each}점, 최대 ${R.nolikes_max}점`, noLikes);
   const regulars = [...byBrand.values()].filter((l) => l.length >= 2 && l.length <= 4 && !isMusinsa(l[0]) && !(l[0].groups.includes("mass") || l[0].groups.includes("spa")));
   if (regulars.length >= R.regular_n) add("regular", R.regular, `2~4벌씩 산 단골 브랜드(무신사 인기·대중 제외) ${regulars.length}곳 (${R.regular_n}곳 이상)`, regulars.flat());
+  // 항상 힙한 사람: 오래된 1/3과 최근 1/3 모두 좋은 브랜드가 많고 무신사풍이 적다
+  const th = thirds(a, R.shift_min_n);
+  if (th) {
+    const [oldHip, newHip, oldRank, newRank] = [share(th.old, isGood), share(th.recent, isGood), share(th.old, isMusinsa), share(th.recent, isMusinsa)];
+    if (oldHip * 100 >= R.always_hip_pct && newHip * 100 >= R.always_hip_pct && oldRank * 100 <= R.always_rank_pct && newRank * 100 <= R.always_rank_pct)
+      add("always_hip", R.always_hip, `좋은 브랜드 비율 ${th.from} ${P(oldHip)}·${th.to} ${P(newHip)} (둘 다 ${R.always_hip_pct}% 이상), 무신사풍 ${P(oldRank)}·${P(newRank)} (둘 다 ${R.always_rank_pct}% 이하)`, th.recent.filter(isGood));
+  }
 
   // 2. 빼는 점수 --------------------------------------------------------------
   if (enough) {
@@ -247,10 +255,12 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
   const shift = detectTasteShift(clothes, now, R);
   if (shift && R.shift_score)
     add("shift", R.shift_score, `${shift.fromLabel}(${shift.fromStyle}, 가격 레벨 ${shift.fromPrice.toFixed(1)}) → ${shift.toLabel}(${shift.toStyle}, ${shift.toPrice.toFixed(1)})로 ${shift.kind === "style" ? "주 스타일이 바뀜" : "가격대가 바뀜"}`, shift.list);
-  const sameKind = [...groupBy(clothes.filter((i) => i.sub && i.color), (i) => `${i.sub}|${i.color}`).values()].filter((l) => l.length > 2);
-  const sameProduct = [...groupBy(items, (i) => (i.g.productName ? `${i.brandLabel}|${i.g.productName}|${i.color ?? ""}`.toLowerCase() : null)).values()].filter((l) => l.length > 1);
+  // 체형에 맞는 옷(핏을 알고 너무 작거나 크지 않음)은 합리적으로 또 산 것이라 반복에서 뺀다
+  const bodyFit = (i: Item) => i.fit != null && i.fit.level !== "too_small" && i.fit.level !== "too_big";
+  const sameKind = [...groupBy(clothes.filter((i) => i.sub && i.color && !bodyFit(i)), (i) => `${i.sub}|${i.color}`).values()].filter((l) => l.length > 2);
+  const sameProduct = [...groupBy(items.filter((i) => !bodyFit(i)), (i) => (i.g.productName ? `${i.brandLabel}|${i.g.productName}|${i.color ?? ""}`.toLowerCase() : null)).values()].filter((l) => l.length > 1);
   const copies = sameKind.reduce((n, l) => n + l.length - 2, 0) + sameProduct.reduce((n, l) => n + l.length - 1, 0);
-  add("dup", -Math.min(R.dup_max, copies * R.dup_each), `같은 종류·색 3벌째부터, 같은 제품 2벌째부터 ${copies}벌 × ${R.dup_each}점, 최대 ${R.dup_max}점`, [...new Set([...sameKind.flat(), ...sameProduct.flat()])]);
+  add("dup", -Math.min(R.dup_max, copies * R.dup_each), `같은 종류·색 3벌째부터, 같은 제품 2벌째부터(체형에 맞는 옷 제외) ${copies}벌 × ${R.dup_each}점, 최대 ${R.dup_max}점`, [...new Set([...sameKind.flat(), ...sameProduct.flat()])]);
   const fit = fitSummary(clothes);
   add("misfit", -Math.min(R.misfit_max, fit.misfit.length * R.misfit_each), `치수에 안 맞는 옷 ${fit.misfit.length}벌 × ${R.misfit_each}점, 최대 ${R.misfit_max}점`, fit.misfit);
   if (fit.fitted.length >= R.fit_min) {
@@ -264,6 +274,7 @@ export function scoreWardrobe(a: Analysis, opts: ScoreOptions): WardrobeScore {
     const bigSide = look.find((p) => p.bigShare === bigMax)!;
     if (trimMax * 100 >= R.fit_trim_pct) add("fit_trim", R.fit_trim, `${side} 슬림·레귤러핏 ${P(trimMax)} (${R.fit_trim_pct}% 이상)`, trimSide.trim);
     else if (bigMax * 100 >= R.fit_big_pct) add("fit_big", -R.fit_big, `${side} 세미오버핏 이상 ${P(bigMax)} (${R.fit_big_pct}% 이상)`, bigSide.big);
+    if (fitContrast(fit)) add("fit_contrast", R.fit_contrast, "위아래 실루엣 대비: 한쪽은 슬림·레귤러, 다른 쪽은 오버·와이드가 절반 이상");
   }
   const logo = share(clothes, isLogo);
   if (clothes.length && logo * 100 >= R.logo_pct) add("logo", -R.logo, `제품명에 '로고'가 든 옷 ${P(logo)} (${R.logo_pct}% 이상)`, clothes.filter(isLogo));
@@ -429,6 +440,8 @@ export const SCORE_PART_NAME: Record<string, string> = {
   misfit: "안 맞는 옷",
   fit_trim: "슬림·레귤러핏",
   fit_big: "큰 핏 쏠림",
+  fit_contrast: "위아래 실루엣 대비",
+  always_hip: "항상 힙함",
   logo: "로고 옷",
   season_gap: "계절 코디 부족",
   age_street: "나이: 스트릿",

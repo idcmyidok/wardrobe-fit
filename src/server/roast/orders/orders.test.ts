@@ -282,15 +282,15 @@ describe("주문내역 점수: 새 감점", () => {
   };
   const ids = (s: ReturnType<typeof score>) => s.parts.map((p) => p.id);
 
-  it("주문내역도 옷장과 같은 최저점 보정: 합계 0이면 28점, 60이면 73점", () => {
+  it("주문내역도 옷장과 같은 최저점 보정: 합계 0이면 32점, 60이면 74점", () => {
     const a = run();
     const seed = 7;
     const total = (base: number) => {
       const score = scoreOrders(a, { age: 38, rules: { base } });
       return buildReport(a, "세현", seed, DEFAULT_TEXTS.report, [], {}, { ...DEFAULT_TEXTS.score, rules: { base: -300 } }, 38, orderOverride(a, seed, DEFAULT_TEXTS, { ...score, score: base })).total.score;
     };
-    expect(total(0)).toBe(28);
-    expect(total(60)).toBe(73);
+    expect(total(0)).toBe(32);
+    expect(total(60)).toBe(74);
   });
 
   it("극단적 저가: 1만 원 미만 옷이 20% 이상이면 감점", () => {
@@ -360,5 +360,18 @@ describe("주문내역 전용 문장 칸(옷장 훈수 문장 복사)", () => {
   it("전용 칸은 모두 고칠 수 있는 칸이고, 질문 반응 조건 칸도 있다", () => {
     for (const k of orderMirrorKeys()) expect(unitAt(k)).not.toBeNull();
     expect(unitAt("orders.questions.fashionable_q.when.high_yes") ?? unitAt("orders.questions.fashionable_q.react.high_yes")).not.toBeNull();
+  });
+});
+
+describe("주문내역 실루엣 대비", () => {
+  it("내 치수가 있고 상의는 슬림, 하의는 와이드면 가점(치수 없으면 없음)", () => {
+    seq = 0;
+    const body: BodyProfile = { ...EMPTY_BODY, values: { height: 175, shoulder: 45, chest: 94, waist: 80, hip: 94, thigh: 56 } };
+    const top = (chest: number) => item({ brand: "커버낫", name: `티 ${seq}`, measure: `chest:${chest}|shoulder:46|length:71`, date: "2026-01-10", price: 39_000 });
+    const pants = (thigh: number) => item({ brand: "커버낫", name: `팬츠 ${seq}`, categoryId: "bottom", subcategoryId: "bottom.denim", measure: `thigh:${thigh}|waist:40|length:100`, date: "2026-01-10", price: 49_000 });
+    const list = [...Array.from({ length: 3 }, () => top(50)), ...Array.from({ length: 3 }, () => pants(36))];
+    const s = (b: BodyProfile | null) => scoreOrders(analyzeOrders(toGarments(list).garments, toGarments(list).ctx, 1360, now, undefined, b), { age: 24 });
+    expect(s(body).parts.find((p) => p.id === "fit_contrast")?.delta).toBe(2);
+    expect(s(null).parts.map((p) => p.id)).not.toContain("fit_contrast");
   });
 });

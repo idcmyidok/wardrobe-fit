@@ -118,11 +118,13 @@ export function FitCheckView() {
       ? shoeSizeMm(man.size) != null
       : candidateKeys(candidate.categoryId, candidate.sizes).length > 0
     : candidate.sizes.length > 0;
-  const { selected, lacking } = selectComparables(candidate, garments);
+  const { selected, lacking } = selectComparables(candidate, garments, { all: true });
+  const autoIds = new Set(selectComparables(candidate, garments).selected.map((s) => s.garment.id));
   // 같은 세부분류 옷만 처음부터 비교에 넣고, 나머지는 사용자가 체크해야 넣는다.
   const isPicked = (s: (typeof selected)[number]) => picks[s.garment.id] ?? s.matchLevel === "subcategory";
   const included = selected.filter(isPicked);
   const excluded = selected.filter((s) => !isPicked(s)).map((s) => s.garment.id);
+  const added = included.filter((s) => !autoIds.has(s.garment.id)).map((s) => s.garment.id);
   const levels = new Set(selected.map((s) => s.matchLevel));
   const refName = candidate.subcategoryId ? SUBCATEGORY_NAME[candidate.subcategoryId] : CATEGORY_NAME[candidate.categoryId];
 
@@ -193,7 +195,7 @@ export function FitCheckView() {
     setBusy(true);
     let shown = false;
     const r = await streamFitCheck(
-      { candidate: cand, importId: manual ? null : (imported?.importId ?? null), excludedGarmentIds: excluded },
+      { candidate: cand, importId: manual ? null : (imported?.importId ?? null), excludedGarmentIds: excluded, includedGarmentIds: added },
       {
         signal: controller.signal,
         onComputed: (e) => {
@@ -507,9 +509,9 @@ export function FitCheckView() {
             </span>
           </div>
           {selected.length > 0 && (
-            <div className="overflow-x-auto">
+            <div className="max-h-105 overflow-auto" data-testid="comparable-list">
               <table className="table min-w-160">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-surface">
                   <tr>
                     <th className="w-10">
                       <span className="sr-only">포함</span>

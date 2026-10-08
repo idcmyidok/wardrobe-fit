@@ -53,6 +53,8 @@ export const fitRequestSchema = z.object({
   candidate: fitCandidateSchema,
   importId: z.uuid().nullish(),
   excludedGarmentIds: z.array(z.uuid()).max(200).default([]),
+  /** 자동 선정 밖의 같은 대분류 옷 중 사용자가 직접 체크해 넣은 것 */
+  includedGarmentIds: z.array(z.uuid()).max(200).default([]),
 });
 
 export type FitRequest = z.infer<typeof fitRequestSchema>;

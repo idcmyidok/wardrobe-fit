@@ -60,9 +60,11 @@ export async function runFitCheck(supabase: Client, userId: string, req: FitRequ
   if (error) return send({ type: "error", code: "unknown" });
   const garments = rows.map((r) => rowToGarment(r, { imageUrl: null, thumbUrl: null }));
 
-  const { selected, lacking } = selectComparables(req.candidate, garments);
+  const auto = new Set(selectComparables(req.candidate, garments).selected.map((s) => s.garment.id));
+  const { selected, lacking } = selectComparables(req.candidate, garments, { all: true });
   const excluded = new Set(req.excludedGarmentIds);
-  const included = selected.filter((s) => !excluded.has(s.garment.id));
+  const added = new Set(req.includedGarmentIds);
+  const included = selected.filter((s) => (auto.has(s.garment.id) && !excluded.has(s.garment.id)) || added.has(s.garment.id));
   const computed = computeFit(req.candidate, included, lacking.length);
 
   const id = crypto.randomUUID();

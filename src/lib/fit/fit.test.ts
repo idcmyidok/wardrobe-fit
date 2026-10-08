@@ -85,6 +85,12 @@ describe("비교 대상 선정", () => {
     const { selected } = selectComparables({ ...cand, categoryId: "outer", subcategoryId: "outer.cardigan" }, [knit, pants]);
     expect(selected.map((s) => [s.garment.brand, s.matchLevel])).toEqual([["E", "similar"]]);
   });
+  it("all 옵션이면 10벌 제한 없이 같은 대분류 옷을 전부 돌려준다", () => {
+    const many = Array.from({ length: 12 }, (_, i) => g({ brand: `M${i}`, measurements: { shoulder: 45, chest: 57, length: 69 } }));
+    expect(selectComparables(cand, [...many, blazer]).selected).toHaveLength(10);
+    const { selected } = selectComparables(cand, [...many, blazer, coat], { all: true });
+    expect(selected).toHaveLength(14);
+  });
   it("세부분류가 충분하면 넓히지 않는다", () => {
     const more = [...jackets, g({ brand: "H", measurements: { shoulder: 45, chest: 57, length: 69 } })];
     const { selected } = selectComparables(cand, [...more, blazer]);
