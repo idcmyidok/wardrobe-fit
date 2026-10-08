@@ -18,7 +18,10 @@ describe("stackSummary", () => {
     const s = stackSummary([g("hat", "hat.cap"), g("shoes", "shoes.sneakers")]);
     expect(s.total).toBe(0);
     expect(s.near).toBeNull();
-    expect(s.range).toBe("—");
+    expect(s.height).toBe("—");
+  });
+  it("높이는 범위 없이 숫자 하나로 나온다", () => {
+    expect(stackSummary([g("top", "top.short_tee"), g("top", "top.short_tee"), g("outer", "outer.long_padding")]).height).toBe("9cm");
   });
   it("옷이 없으면 비운다", () => {
     expect(stackSummary([]).near).toBeNull();
