@@ -19,7 +19,7 @@ export const FIT_ERROR_TEXT: Record<FitClientError, string> = {
  * AI 요약과 저장이 끝난 done을 돌려준다.
  */
 export async function streamFitCheck(
-  body: { candidate: FitRequest["candidate"]; importId?: string | null; excludedGarmentIds?: string[] },
+  body: { candidate: FitRequest["candidate"]; importId?: string | null; excludedGarmentIds?: string[]; includedGarmentIds?: string[] },
   { onComputed, signal }: { onComputed: (e: { id: string; computed: FitComputed; aiEnabled: boolean }) => void; signal?: AbortSignal },
 ): Promise<{ ok: true; done: FitDone } | { ok: false; error: FitClientError }> {
   let res: Response;

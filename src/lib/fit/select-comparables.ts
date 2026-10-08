@@ -40,6 +40,8 @@ export interface Selection {
 export function selectComparables(
   candidate: { categoryId: CategoryId; subcategoryId: string | null; sizes: Array<{ measurements: Measurements }> },
   garments: Garment[],
+  /** all: 3벌 채우기·10벌 제한 없이 같은 대분류 옷을 전부 돌려준다(구매 판단기 목록용). */
+  { all = false }: { all?: boolean } = {},
 ): Selection {
   const keys = candidateKeys(candidate.categoryId, candidate.sizes);
   const group = groupOf(candidate.categoryId);
@@ -70,9 +72,9 @@ export function selectComparables(
   // 세부분류가 없으면 같은 대분류부터 본다.
   const order: MatchLevel[] = candidate.subcategoryId ? ["subcategory", "category", "similar"] : ["category", "similar"];
   for (const level of order) {
-    if (selected.length >= MIN_COMPARABLES) break;
+    if (!all && selected.length >= MIN_COMPARABLES) break;
     selected.push(...byLevel[level].sort((a, b) => b.sharedDims - a.sharedDims));
     lacking.push(...lackingByLevel[level]);
   }
-  return { selected: selected.slice(0, MAX_COMPARABLES), lacking };
+  return { selected: all ? selected : selected.slice(0, MAX_COMPARABLES), lacking };
 }
