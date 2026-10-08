@@ -82,13 +82,11 @@ export function stackSummary(all: Garment[]) {
     return { id: c.id, name: c.name, count: list.length, cm: list.reduce((s, g) => s + thicknessOf(g), 0) };
   }).filter((x) => x.count > 0);
   const total = byCategory.reduce((s, x) => s + x.cm, 0);
-  const low = total * 0.85;
-  const high = total * 1.15;
   // 가운데 값과 가장 가까운 것을 비슷한 높이로 본다.
   const near = LANDMARKS.reduce((a, b) => (Math.abs(Math.log(b.cm / total)) < Math.abs(Math.log(a.cm / total)) ? b : a));
   return {
     total,
-    range: G.length ? (formatHeight(low) === formatHeight(high) ? formatHeight(total) : `${formatHeight(low)}~${formatHeight(high)}`) : "—",
+    height: G.length ? formatHeight(total) : "—",
     near: G.length ? near : null,
     byCategory,
   };

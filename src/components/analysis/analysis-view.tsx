@@ -239,8 +239,8 @@ export function AnalysisView() {
           <span id="an-stack" className={sectionTitle}>
             옷을 모두 쌓으면
           </span>
-          <p className="font-display text-display-lg">{stack.range}</p>
-          <span className="text-sm text-neutral-700">세부분류별 평균 두께로, 접지 않고 그대로 올려 쌓았을 때를 계산했습니다. 모자와 신발은 빼고, ±15% 정도 차이가 날 수 있습니다.</span>
+          <p className="font-display text-display-lg">{stack.height}</p>
+          <span className="text-sm text-neutral-700">세부분류별 평균 두께로, 접지 않고 그대로 올려 쌓았을 때를 계산했습니다. 모자와 신발은 제외했습니다.</span>
         </div>
         <div className="flex min-w-0 flex-col items-center gap-4 text-center md:col-span-2">
           {stack.near ? (

@@ -34,6 +34,14 @@ export interface ReleaseNote {
 
 const ALL_NOTES: ReleaseNote[] = [
   {
+    version: "1.5.1",
+    date: "2026-10-08",
+    time: "12:30",
+    features: [],
+    changes: [],
+    fixes: ["분석 화면의 \"옷을 모두 쌓으면\" 높이가 \"7~9cm\"처럼 범위로 나오던 것을 \"8cm\"처럼 숫자 하나로 보여 줍니다."],
+  },
+  {
     version: "1.5.0",
     date: "2026-10-07",
     time: "22:02",
