@@ -40,9 +40,9 @@ describe("인기 쏠림 나이 보정", () => {
 });
 
 describe("최저점 보정(옷장·주문내역 공통)", () => {
-  it("0점 28점, 50점 66점, 100점 100점을 꺾은선으로 잇는다", () => {
-    expect([0, 25, 50, 75, 100].map((x) => floorTotal(x))).toEqual([28, 47, 66, 83, 100]);
-    expect(floorTotal(-5)).toBe(28);
+  it("0점 32점, 50점 68점, 100점 100점을 꺾은선으로 잇는다", () => {
+    expect([0, 25, 50, 75, 100].map((x) => floorTotal(x))).toEqual([32, 50, 68, 84, 100]);
+    expect(floorTotal(-5)).toBe(32);
     expect(tierOf(floorTotal(0))).toBe("low");
   });
 });
@@ -51,11 +51,11 @@ describe("점수 구간은 보정이 들어간 점수로 정한다", () => {
   it("보정 전 25점은 낮음이지만 보정 후 점수는 중간", () => {
     expect(tierOf(25)).toBe("low");
     expect(tierOf(floorTotal(35))).toBe("mid");
-    expect(headlineBand(28)).toBe("b0");
+    expect(headlineBand(32)).toBe("b0");
     expect(headlineBand(100)).toBe("b90");
     expect(headlineBand(68)).toBe("b50");
-    expect(headlineRange("b0")).toBe("28~35점");
-    expect(headlineRange("b90")).toBe("93점 이상");
+    expect(headlineRange("b0")).toBe("32~38점");
+    expect(headlineRange("b90")).toBe("94점 이상");
   });
 });
 
@@ -120,13 +120,13 @@ describe("옷장 점수(점수 계획서)", () => {
     expect(r.total.score).toBe(100);
   });
 
-  it("중고가 가점: 스트릿·컨템포러리 중고가는 하나당 +1(최대 +3), 대중적 브랜드는 제외", () => {
+  it("중고가 가점: 스트릿·컨템포러리 중고가는 하나당 +1(최대 +6), 대중적 브랜드는 제외", () => {
     const part = (brand: string, n: number) => {
       const a = analyze(Array.from({ length: n }, (_, i) => g(i, { brand })), null, 1360, now);
       return scoreWardrobe(a, { age: null }).parts.find((p) => p.id === "mid")?.delta;
     };
     expect(part("Pop Trading Company", 2)).toBe(2);
-    expect(part("Pop Trading Company", 8)).toBe(3);
+    expect(part("Pop Trading Company", 8)).toBe(6);
     expect(part("COS", 6)).toBeUndefined();
   });
 
@@ -149,6 +149,31 @@ describe("옷장 점수(점수 계획서)", () => {
     expect(scoreWardrobe(trim, { age: null }).parts.find((p) => p.id === "fit_trim")?.delta).toBe(3);
     expect(scoreWardrobe(big, { age: null }).parts.find((p) => p.id === "fit_big")?.delta).toBe(-2);
     expect(buildReport(trim, null, 1, REPORT_TEXT).points.map((p) => p.id)).toContain("fit");
+  });
+
+  it("체형에 맞는 옷은 같은 제품을 여러 벌 사도 복붙 감점에서 뺀다", () => {
+    const dup = (userFit?: "regular") => {
+      const list = Array.from({ length: 6 }, (_, i) => g(i, { productName: "프린트 같은 티셔츠", ...(userFit ? { userFit } : {}) }));
+      return scoreWardrobe(analyze(list, null, 1360, now), { age: null }).parts.find((p) => p.id === "dup")?.delta;
+    };
+    expect(dup()).toBeLessThan(0);
+    expect(dup("regular")).toBeUndefined();
+  });
+
+  it("실루엣 대비: 상의는 슬림, 하의는 와이드면 가점", () => {
+    const list = [
+      ...Array.from({ length: 4 }, (_, i) => g(i, { userFit: "slim" })),
+      ...Array.from({ length: 4 }, (_, i) => g(10 + i, { categoryId: "bottom", subcategoryId: "bottom.denim", productName: `와이드 데님 ${i}`, userFit: "over" })),
+    ];
+    const s = scoreWardrobe(analyze(list, null, 1360, now), { age: null });
+    expect(s.parts.find((p) => p.id === "fit_contrast")?.delta).toBe(SCORE_RULES.fit_contrast);
+  });
+
+  it("항상 힙한 사람: 오래된 쪽·최근 쪽 모두 좋은 브랜드면 가점", () => {
+    const list = (brand: string) => Array.from({ length: 12 }, (_, i) => g(i, { brand, purchasedOn: `${2023 + Math.floor(i / 4)}-0${(i % 4) + 1}-10` }));
+    const part = (brand: string) => scoreWardrobe(analyze(list(brand), null, 1360, now), { age: null }).parts.find((p) => p.id === "always_hip");
+    expect(part("Pop Trading Company")?.delta).toBe(SCORE_RULES.always_hip);
+    expect(part("COS")).toBeUndefined();
   });
 
   it("결과 구성: 섹션 순서와 문단 켜기·끄기를 따른다", () => {

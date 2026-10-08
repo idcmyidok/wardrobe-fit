@@ -1,7 +1,7 @@
 import "server-only";
-import { colorCounted, type Analysis, type Item } from "../analyze";
+import { colorCounted, fitSummary, type Analysis, type Item } from "../analyze";
 import { brandLabels, MUSINSA_POPULAR, musinsaLikesCut } from "../brands";
-import { ageAt, youngNote, youngWeight, bandName, bandOf, isFormalLux, isGood, isHeritage, isMidTier, isNice, isRepro, isTopDesigner, monthIndex, totalSpendBonus, type ScorePart } from "../score";
+import { ageAt, fitContrast, youngNote, youngWeight, bandName, bandOf, isFormalLux, isGood, isHeritage, isMidTier, isNice, isRepro, isTopDesigner, monthIndex, totalSpendBonus, type ScorePart } from "../score";
 import { SCORE_RULES } from "../score-deltas";
 import { won } from "../text";
 import { avgPrice, busiestMonth, isRanking, isStandard, orderRules, returnStats, thirds, topTag } from "./metrics";
@@ -92,6 +92,12 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
     const diff = (newRank - oldRank) * 100;
     if (-diff >= R.hipper_pp) add("hipper", R.hipper, `랭킹템 비율 ${t.from} ${P(oldRank)} → ${t.to} ${P(newRank)} (${R.hipper_pp}%p 이상 줄어듦)`, t.recent.filter((i) => !ranking(i)));
     else if (diff >= R.mainstream_pp) add("mainstream", -R.mainstream, `랭킹템 비율 ${t.from} ${P(oldRank)} → ${t.to} ${P(newRank)} (${R.mainstream_pp}%p 이상 늘어남)`, t.recent.filter(ranking));
+    else {
+      // 항상 힙한 사람: 오래된 쪽·최근 쪽 모두 좋은 브랜드가 많고 랭킹템이 적다
+      const [oldHip, newHip] = [share(t.old, isGood), share(t.recent, isGood)];
+      if (oldHip * 100 >= R.always_hip_pct && newHip * 100 >= R.always_hip_pct && oldRank * 100 <= R.always_rank_pct && newRank * 100 <= R.always_rank_pct)
+        add("always_hip", R.always_hip, `좋은 브랜드 비율 ${t.from} ${P(oldHip)}·${t.to} ${P(newHip)} (둘 다 ${R.always_hip_pct}% 이상), 랭킹템 ${P(oldRank)}·${P(newRank)} (둘 다 ${R.always_rank_pct}% 이하)`, t.recent.filter(isGood));
+    }
     const oldAvg = avgPrice(t.old);
     const newAvg = avgPrice(t.recent);
     if (oldAvg > 0 && newAvg >= oldAvg * (1 + R.pricier_pct / 100))
@@ -253,14 +259,18 @@ export function scoreOrders(a: Analysis, opts: { age: number | null; rules?: Par
   const offList = fitted.filter((i) => i.fit!.level === "too_small" || i.fit!.level === "too_big");
   if (fitted.length >= R.body_off_min_n && (offList.length / fitted.length) * 100 >= R.body_off_pct)
     add("body_off", -Math.min(R.body_off_max, R.body_off + ((offList.length / fitted.length) * 100 - R.body_off_pct) / 10), `내 치수에 너무 작거나 너무 큰 옷 ${offList.length}벌 / 실측을 읽은 ${fitted.length}벌, ${P(offList.length / fitted.length)} (${R.body_off_pct}% 이상 −${R.body_off}, 10%p 늘 때마다 −1, 최대 −${R.body_off_max})`, offList);
+  // 위아래 실루엣 대비: 내 치수를 입력해 핏을 알 수 있는 옷만
+  const fitSum = fitSummary(clothes);
+  if (fitSum.fitted.length >= R.fit_min && fitContrast(fitSum)) add("fit_contrast", R.fit_contrast, "위아래 실루엣 대비: 한쪽은 슬림·레귤러, 다른 쪽은 오버·와이드가 절반 이상");
   // 같은 옷 반복: 같은 상품(색만 다른 것 포함)을 같은 실측(실측을 못 찾으면 같은 사이즈)으로 다른 주문에서 또 산 것.
   // 한 주문의 팩(2PACK 등)은 한 번으로 본다.
   const fitKey = (i: Item) => a.orders?.measure[i.id] ?? (i.g.sizeLabel ? `size:${i.g.sizeLabel.toUpperCase().replace(/\s+/g, "")}` : null);
-  const sameProduct = [...groupBy(items, (i) => (i.g.productName && fitKey(i) ? `${i.brandLabel}|${i.g.productName}|${fitKey(i)}`.toLowerCase() : null)).values()]
+  const bodyFit = (i: Item) => i.fit != null && i.fit.level !== "too_small" && i.fit.level !== "too_big";
+  const sameProduct = [...groupBy(items.filter((i) => !bodyFit(i)), (i) => (i.g.productName && fitKey(i) ? `${i.brandLabel}|${i.g.productName}|${fitKey(i)}`.toLowerCase() : null)).values()]
     .map((l) => [...groupBy(l, (i) => String(a.orders?.orderOf[i.id] ?? i.id)).values()].map((g) => g[0]))
     .filter((l) => l.length > 1);
   const copies = sameProduct.reduce((n, l) => n + l.length - 1, 0);
-  add("dup", -Math.min(R.dup_max, copies * R.dup_each), `같은 상품을 같은 실측(없으면 사이즈)으로 다른 주문에서 또 산 것 ${copies}벌 × ${R.dup_each}점, 최대 ${R.dup_max}점`, sameProduct.flat());
+  add("dup", -Math.min(R.dup_max, copies * R.dup_each), `같은 상품을 같은 실측(없으면 사이즈)으로 다른 주문에서 또 산 것(내 치수에 맞는 옷 제외) ${copies}벌 × ${R.dup_each}점, 최대 ${R.dup_max}점`, sameProduct.flat());
   if (rs.orders >= 8 && rs.returnPct >= R.return_high_pct) add("return_high", -R.return_high, `주문 ${rs.orders}건 중 반품 ${rs.returned}건·교환 ${rs.exchanged}건(${rs.returnPct}%, ${R.return_high_pct}% 이상)`);
   if (rs.orders >= 8 && rs.cancelPct >= R.cancel_pct) add("cancel", -R.cancel, `주문 ${rs.orders}건 중 취소 ${rs.cancelled}건(${rs.cancelPct}%, ${R.cancel_pct}% 이상)`);
   if (enough && styleTop * 100 < R.scattered_pct && named.length >= 8 && byBrand.size / named.length >= 0.7)

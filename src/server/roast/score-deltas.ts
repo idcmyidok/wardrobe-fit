@@ -91,16 +91,20 @@ export const SCORE_RULES = {
   base: 35,
   // 더하는 점수
   designer_each: 2,
-  designer_max: 6,
+  designer_max: 12,
   /** 컨템포러리·디자이너·스트릿 중고가(대중적 제외): 하나당 가점, 합쳐서 최대 */
   mid_each: 1,
-  mid_max: 3,
+  mid_max: 6,
   style_mid_pct: 40,
   style_mid: 2,
   style_high_pct: 60,
   style_high: 4,
   taste_full: 20,
-  taste_max: 3,
+  taste_max: 5,
+  /** 항상 힙한 사람: 오래된 1/3과 최근 1/3 모두 좋은 브랜드가 always_hip_pct% 이상이고 무신사풍이 always_rank_pct% 이하(구매일 있는 옷이 각 몫 shift_min_n벌 이상일 때) */
+  always_hip_pct: 40,
+  always_rank_pct: 25,
+  always_hip: 4,
   fruits_n: 3,
   fruits: 3,
   accent_basic_pct: 70,
@@ -178,6 +182,8 @@ export const SCORE_RULES = {
   fit_trim: 3,
   fit_big_pct: 60,
   fit_big: 2,
+  /** 위아래 실루엣 대비(한쪽은 슬림·레귤러, 다른 쪽은 오버·와이드): 가점 */
+  fit_contrast: 2,
   misfit_each: 2,
   misfit_max: 10,
   gap_months: 4,
@@ -192,8 +198,8 @@ export const SCORE_RULES = {
   sneakers_only: 5,
   /** 모자·신발 뺀 옷이 이 벌 수 이하: 감점 */
   /** 최종 점수 보정(옷장·주문내역 공통): 합계 0점 → floor_min점, 합계 50점 → floor_mid점, 합계 100점 → 100점을 꺾은선으로 잇는다 */
-  floor_min: 28,
-  floor_mid: 66,
+  floor_min: 32,
+  floor_mid: 68,
   thin_n: 20,
   thin: 4,
   logo_pct: 20,
@@ -207,7 +213,7 @@ export const SCORE_RULES = {
   spend_b: 6,
   spend_c: 10,
   // 마지막 질문("스스로 패셔너블하다고 생각하나요?")의 점수 구간
-  // (옷장·주문내역 공통: 최저 28점~100점을 3등분)
+  // (옷장·주문내역 공통: 최저 32점~100점 기준, 값은 관리자 화면에서 조정)
   tier_high: 76,
   tier_low: 52,
 };

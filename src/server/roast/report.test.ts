@@ -86,9 +86,9 @@ describe("결과 페이지(옷장 진단 리포트)", () => {
     expect(up.total.score - base.total.score).toBe(Math.min(60 - SCORE_RULES.base, 100 - base.total.score));
   });
 
-  it("옷장 점수는 최저 28점이 보장된다(합계 0 이하여도 28점)", () => {
+  it("옷장 점수는 최저 32점이 보장된다(합계 0 이하여도 32점)", () => {
     const at = (base: number) => buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base } }).total.score;
-    expect(at(-200)).toBe(28);
+    expect(at(-200)).toBe(32);
     expect(at(0)).toBeGreaterThanOrEqual(buildReport(a, "세현", 1, REPORT_TEXT, [], {}, { rules: { base: 0, floor_min: 0, floor_mid: 50 } }).total.score);
   });
 
