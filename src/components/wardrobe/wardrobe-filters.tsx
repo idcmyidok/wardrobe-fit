@@ -67,7 +67,7 @@ function FilterSelect({
   return (
     <select
       aria-label={label}
-      className={`input min-h-8 py-1 text-sm ${width} ${value ? "border-accent text-accent-700" : ""}`}
+      className={`input keep-font min-h-8 py-1 text-sm ${width} ${value ? "border-accent text-accent-700" : ""}`}
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >

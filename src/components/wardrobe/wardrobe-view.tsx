@@ -229,7 +229,7 @@ export function WardrobeView() {
                     aria-controls={`group-body-${group.id}`}
                     aria-label={`${group.name} 표 ${open ? "접기" : "펼치기"}`}
                     onClick={() => toggleGroup(group.id)}
-                    className="inline-flex size-7 cursor-pointer items-center justify-center self-center rounded-sm text-neutral-700 hover:bg-neutral-100 hover:text-text"
+                    className="touch-hit inline-flex size-7 cursor-pointer items-center justify-center self-center rounded-sm text-neutral-700 hover:bg-neutral-100 hover:text-text"
                   >
                     <svg
                       aria-hidden

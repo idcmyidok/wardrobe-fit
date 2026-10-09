@@ -386,7 +386,7 @@ export function GarmentDetail({
             </section>
           </div>
 
-          <div className="sticky bottom-0 flex gap-2 border-t border-divider bg-bg px-6 py-3">
+          <div className="sticky bottom-0 flex gap-2 border-t border-divider bg-bg px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
             {!info ? (
               <>
                 {held ? (
