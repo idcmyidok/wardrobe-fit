@@ -26,6 +26,22 @@ const NUM = /^\d{1,3}(?:\.\d)?(?:[~\-–]\d{1,3}(?:\.\d)?)?$/;
 /** 모델 착용 정보 줄("모델 180cm 70kg, 허리 30 L 착용")은 옷 실측이 아니다. */
 const MODEL_LINE = /모델|model|착용|몸무게|키\s*\d|\d\s*kg/i;
 
+/** 항목명 줄 바로 아래 줄에 값만 있는 모양("어깨 너비" 다음 줄 "47 cm") */
+const VALUE_ONLY = /^\d{1,3}(?:\.\d)?(?:\s*[~\-–]\s*\d{1,3}(?:\.\d)?)?\s*(?:cm|CM|㎝)?$/;
+
+/** 항목명 줄과 값 줄을 "항목명 값" 한 줄로 합친다. */
+function joinLabelValueLines(lines: string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const next = lines[i + 1];
+    if (next && VALUE_ONLY.test(next) && !/\d/.test(lines[i]) && mapHeader(lines[i])) {
+      out.push(`${lines[i]} ${next}`);
+      i++;
+    } else out.push(lines[i]);
+  }
+  return out;
+}
+
 const tokens = (line: string) => line.split(/[\s|/,·]+/).filter(Boolean);
 
 function pairsOf(text: string): Array<[string, string]> {
@@ -128,10 +144,12 @@ const cellCount = (c: RawSizeChart) => c.rows.reduce((n, r) => n + r.slice(1).fi
 
 /** 본문 텍스트에서 사이즈표를 찾는다. 여러 모양 중 값이 가장 많은 것. */
 export function sizeChartFromText(text: string): RawSizeChart | undefined {
-  const lines = text
-    .split(/\n+/)
-    .map((l) => l.replace(/\s+/g, " ").trim())
-    .filter((l) => l && !MODEL_LINE.test(l));
+  const lines = joinLabelValueLines(
+    text
+      .split(/\n+/)
+      .map((l) => l.replace(/\s+/g, " ").trim())
+      .filter((l) => l && !MODEL_LINE.test(l)),
+  );
   const found = [textTable(lines), bySizeLines(lines)].filter((c): c is RawSizeChart => Boolean(c));
   if (found.length) return found.sort((a, b) => cellCount(b) - cellCount(a))[0];
   return singleSize(lines);
