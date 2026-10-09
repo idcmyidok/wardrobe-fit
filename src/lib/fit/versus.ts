@@ -83,7 +83,7 @@ export function rankVersus(entries: VersusEntry[], target: WearableLevel): Versu
         r.level === target
           ? `원하는 ${name(target)}으로 입을 수 있어요(${score}점).`
           : `원하는 ${name(target)}보다 ${name(r.level)}에 가까워요(${name(target)} ${r.scores[target]}점).`,
-        ...r.issues.filter((i) => i.severe).map((i) => i.text),
+        ...r.issues.filter((i) => i.severe || i.caution).map((i) => i.text),
       ];
       return { key: e.key, score, basis: "body", reasons };
     }

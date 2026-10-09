@@ -9,9 +9,9 @@ const ok = (r: ReturnType<typeof computeLengthFit>) => {
 };
 
 describe("총장 길이감", () => {
-  it("키 177 기준 이너: 크롭 60~64, 세미크롭 64~67, 정핏 67~71, 세미오버 71~74, 오버핏 74~78", () => {
+  it("키 177 기준 이너: 크롭 59~63, 세미크롭 63~67, 정핏 67~71, 세미오버 71~75, 오버핏 75~79", () => {
     const b = lengthBands("inner", 177);
-    expect(b).toEqual({ crop: [60, 64], semi_crop: [64, 67], regular: [67, 71], semi_over: [71, 74], over: [74, 78] });
+    expect(b).toEqual({ crop: [59, 63], semi_crop: [63, 67], regular: [67, 71], semi_over: [71, 75], over: [75, 79] });
     expect(ok(computeLengthFit(tee(62), 177)).level).toBe("crop");
     expect(ok(computeLengthFit(tee(66), 177)).level).toBe("semi_crop");
     expect(ok(computeLengthFit(tee(69), 177)).level).toBe("regular");
@@ -19,11 +19,11 @@ describe("총장 길이감", () => {
     expect(ok(computeLengthFit(tee(72), 177)).level).toBe("semi_over");
     expect(ok(computeLengthFit(tee(76), 177)).level).toBe("over");
   });
-  it("아우터는 이너보다 2cm 길게 본다", () => {
-    expect(lengthBands("outer", 177).regular).toEqual([69, 73]);
+  it("아우터: 크롭 58~63, 정핏은 이너와 같고 오버핏만 80까지", () => {
+    expect(lengthBands("outer", 177)).toEqual({ crop: [58, 63], semi_crop: [63, 67], regular: [67, 71], semi_over: [71, 75], over: [75, 80] });
+    expect(ok(computeLengthFit(jacket(65), 177)).level).toBe("semi_crop");
     expect(ok(computeLengthFit(jacket(70), 177)).level).toBe("regular");
-    expect(ok(computeLengthFit(tee(72), 177)).level).toBe("semi_over");
-    expect(ok(computeLengthFit(jacket(72), 177)).level).toBe("regular");
+    expect(ok(computeLengthFit(jacket(77), 177)).level).toBe("over");
   });
   it("키에 비례해 기준이 바뀐다", () => {
     expect(lengthBands("inner", 170).regular).toEqual([64.5, 68]);

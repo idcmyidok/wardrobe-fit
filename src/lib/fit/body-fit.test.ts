@@ -71,7 +71,7 @@ describe("예상 핏(내 치수)", () => {
     expect(r.issues).toEqual([]);
   });
   it("하의: 품과 실루엣, 배기", () => {
-    const wide = ok(computeBodyFit(pants({ waist: 41, hip: 55, thigh: 36, legOpening: 22 }), body));
+    const wide = ok(computeBodyFit(pants({ waist: 41, hip: 58, thigh: 38, legOpening: 22 }), body));
     expect(wide.kind).toBe("bottom");
     expect(wide.level).toBe("over");
     expect(wide.silhouette).toBe("tapered");
@@ -95,17 +95,29 @@ describe("예상 핏(내 치수)", () => {
 });
 
 describe("상의: 가슴이 기본 축, 어깨는 실루엣", () => {
-  it("가슴 레귤러 + 어깨 너무 큼 → 한 단계만 올려 세미오버(드롭형 가능성)", () => {
-    const r = ok(computeBodyFit(tee(51.5, 56), body));
+  it("셔츠(어깨 비중 35%): 가슴 레귤러 + 어깨 너무 큼 → 한 단계만 올려 세미오버(드롭형 가능성)", () => {
+    const shirt = (chest: number, shoulder: number) => ({ categoryId: "outer" as const, subcategoryId: "outer.shirt", measurements: { chest, shoulder } });
+    const r = ok(computeBodyFit(shirt(51.5, 56), body));
     expect(r.dimensions.find((d) => d.key === "shoulder")!.level).toBe("too_big");
     expect(r.level).toBe("semi_over");
     expect(r.basis.rule).toBe("axis_shift");
     expect(bodyFitReasons(r).at(-1)!.text).toContain("드롭형");
   });
-  it("가슴 레귤러 + 어깨 너무 작음 → 전체를 너무 작음으로 만들지 않는다", () => {
-    const r = ok(computeBodyFit(tee(51.5, 43), body));
-    expect(r.dimensions.find((d) => d.key === "shoulder")!.level).toBe("too_small");
-    expect(r.level).toBe("slim");
+  it("어깨 비중이 낮은 상의(반팔 20%)는 어깨가 아주 넓어도 가슴 기준 핏을 옮기지 않는다", () => {
+    const r = ok(computeBodyFit(tee(51.5, 56), body));
+    expect(r.dimensions.find((d) => d.key === "shoulder")!.level).toBe("too_big");
+    expect(r.basis.rule).toBe("average");
+  });
+  it("어깨만 범위를 크게 벗어나면 감점 없이 주의로만 알린다", () => {
+    const wide = ok(computeBodyFit(tee(51.5, 56), body));
+    const issue = wide.issues.find((i) => i.key === "shoulder")!;
+    expect(issue.severe).toBe(false);
+    expect(issue.caution).toBe(true);
+    expect(issue.text).toContain("드롭숄더");
+    const narrow = ok(computeBodyFit(tee(51.5, 43), body));
+    expect(narrow.dimensions.find((d) => d.key === "shoulder")!.level).toBe("too_small");
+    expect(narrow.level).toBe("regular");
+    expect(narrow.issues.find((i) => i.key === "shoulder")).toMatchObject({ severe: false, caution: true });
   });
   it("가슴 너무 작음은 어깨가 넉넉해도 전체 너무 작음", () => {
     expect(ok(computeBodyFit(tee(47, 49), body)).level).toBe("too_small");
@@ -124,28 +136,28 @@ describe("상의: 가슴이 기본 축, 어깨는 실루엣", () => {
   it("가슴·어깨 모두 너무 큼 → 너무 큼", () => {
     expect(ok(computeBodyFit(tee(62, 57), body)).basis.rule).toBe("both_big");
   });
-  it("패딩은 가슴 단면 60 초중반이 레귤러(가슴둘레 98 기준)", () => {
+  it("패딩은 가슴 단면 57~61이 레귤러(가슴둘레 98 기준)", () => {
     const b98: BodyProfile = { ...body, values: { chest: 98 } };
     const padding = (chest: number) => ok(computeBodyFit({ categoryId: "outer", subcategoryId: "outer.short_padding", measurements: { chest } }, b98)).level;
-    expect(padding(61)).toBe("slim");
-    expect(padding(63)).toBe("regular");
-    expect(padding(66)).toBe("regular");
-    expect(padding(68)).toBe("semi_over");
+    expect(padding(55)).toBe("slim");
+    expect(padding(58)).toBe("regular");
+    expect(padding(61)).toBe("regular");
+    expect(padding(63)).toBe("semi_over");
   });
-  it("종류마다 가중치가 다르다(패딩은 가슴 75%)", () => {
+  it("종류마다 가중치가 다르다(패딩은 가슴 85%)", () => {
     const r = ok(computeBodyFit({ categoryId: "outer", subcategoryId: "outer.short_padding", measurements: { chest: 60, shoulder: 47 } }, body));
-    expect(r.basis.weights).toEqual({ chest: 75, shoulder: 25 });
+    expect(r.basis.weights).toEqual({ chest: 85, shoulder: 15 });
   });
 });
 
 describe("하의: 허벅지가 기본 축, 허리는 크기만", () => {
   it("엉덩이만 너무 큼이면 전체 너무 큼으로 만들지 않는다", () => {
-    const r = ok(computeBodyFit(pants({ hip: 60, thigh: 33 }), body));
+    const r = ok(computeBodyFit(pants({ hip: 63, thigh: 33 }), body));
     expect(r.dimensions.find((d) => d.key === "hip")!.level).toBe("too_big");
     expect(r.level).toBe("over");
   });
   it("엉덩이·허벅지 모두 너무 큼이면 너무 큼", () => {
-    expect(ok(computeBodyFit(pants({ hip: 60, thigh: 40 }), body)).level).toBe("too_big");
+    expect(ok(computeBodyFit(pants({ hip: 63, thigh: 42 }), body)).level).toBe("too_big");
   });
   it("허벅지가 내 몸보다 좁으면 전체 너무 작음", () => {
     const r = ok(computeBodyFit(pants({ hip: 52, thigh: 27 }), body));
@@ -168,10 +180,10 @@ describe("하의: 허벅지가 기본 축, 허리는 크기만", () => {
     }
   });
   it("반바지는 긴 바지와 기준이 다르다", () => {
-    // 허벅지 여유 +5cm: 반바지는 슬림(3~5), 긴 바지는 레귤러(4~8)
-    const shorts = ok(computeBodyFit({ categoryId: "bottom", subcategoryId: "bottom.shorts", measurements: { hip: 50, thigh: 30.5 } }, body));
-    expect(shorts.dimensions.find((d) => d.key === "thigh")!.level).toBe("slim");
-    expect(ok(computeBodyFit(pants({ hip: 50, thigh: 30.5 }), body)).dimensions.find((d) => d.key === "thigh")!.level).toBe("regular");
+    // 허벅지 여유 +24cm: 반바지는 오버 상한(+23)을 넘어 너무 큼, 긴 바지는 오버(15~24)
+    const shorts = ok(computeBodyFit({ categoryId: "bottom", subcategoryId: "bottom.shorts", measurements: { hip: 55, thigh: 40 } }, body));
+    expect(shorts.dimensions.find((d) => d.key === "thigh")!.level).toBe("too_big");
+    expect(ok(computeBodyFit(pants({ hip: 55, thigh: 40 }), body)).dimensions.find((d) => d.key === "thigh")!.level).toBe("over");
   });
 });
 
@@ -200,7 +212,7 @@ describe("추천 치수·보정·역산", () => {
     const est = estimateBodyFromGarments([tee(51.5, 44.5), { categoryId: "bottom", subcategoryId: "bottom.denim", measurements: { waist: 41, hip: 51, thigh: 32, length: 103 } }]);
     expect(est.chest).toBe(94);
     expect(est.shoulder).toBe(42.5);
-    expect(est.hip).toBe(94);
+    expect(est.hip).toBe(92);
     expect(est.waist).toBe(82);
   });
   it("세부분류 묶음", () => {
@@ -225,7 +237,7 @@ describe("예상 핏 판단 근거", () => {
     expect(reasons.find((x) => x.key === "shoulder")!.text).toContain("내 어깨너비 45cm보다 1cm 넓어요");
     const overall = reasons.at(-1)!;
     expect(overall.key).toBe("overall");
-    expect(overall.text).toBe("가슴 60%·어깨 40% 비중으로 합치면 레귤러핏이에요.");
+    expect(overall.text).toBe("가슴 80%·어깨 20% 비중으로 합치면 레귤러핏이에요.");
   });
   it("너무 작으면 그 치수 때문이라고 쓴다", () => {
     const body = { ...EMPTY_BODY, values: { hip: 100, thigh: 60, waist: 80 } };

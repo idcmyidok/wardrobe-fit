@@ -72,18 +72,18 @@ interface GroupDef {
 }
 
 export const FIT_GROUPS: GroupDef[] = [
-  { id: "short_tee", name: "반팔 티셔츠", kind: "top", width: { chest: [2, 6, 12, 20, 28], shoulder: [-1, 1, 3, 6, 10] }, weight: { chest: 0.6, shoulder: 0.4 } },
-  { id: "long_tee", name: "긴팔·맨투맨·후드", kind: "top", width: { chest: [4, 8, 14, 22, 32], shoulder: [-1, 1.5, 4, 8, 13] }, weight: { chest: 0.55, shoulder: 0.45 } },
-  { id: "knit", name: "니트·카디건", kind: "top", width: { chest: [3, 7, 13, 20, 28], shoulder: [-1, 1, 3, 6, 10] }, weight: { chest: 0.65, shoulder: 0.35 } },
-  { id: "shirt", name: "셔츠", kind: "top", width: { chest: [4, 8, 14, 22, 30], shoulder: [-0.5, 1.5, 3, 6, 10] }, weight: { chest: 0.55, shoulder: 0.45 } },
-  { id: "light_outer", name: "가벼운 아우터·바람막이", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: [-0.5, 2, 4, 8, 13] }, weight: { chest: 0.65, shoulder: 0.35 } },
-  { id: "leather", name: "레더·무스탕", kind: "top", width: { chest: [4, 8, 14, 20, 28], shoulder: [-0.5, 1, 3, 6, 10] }, weight: { chest: 0.6, shoulder: 0.4 } },
-  { id: "coat", name: "코트", kind: "top", width: { chest: [10, 16, 24, 32, 42], shoulder: [-0.5, 2, 4, 8, 14] }, weight: { chest: 0.65, shoulder: 0.35 } },
-  { id: "padding", name: "패딩", kind: "top", width: { chest: [16, 24, 34, 44, 56], shoulder: [-0.5, 2, 5, 9, 14] }, weight: { chest: 0.75, shoulder: 0.25 } },
+  { id: "short_tee", name: "반팔 티셔츠", kind: "top", width: { chest: [2, 6, 12, 20, 28], shoulder: [-1, 1, 3, 6, 10] }, weight: { chest: 0.8, shoulder: 0.2 } },
+  { id: "long_tee", name: "긴팔·맨투맨·후드", kind: "top", width: { chest: [4, 8, 14, 22, 32], shoulder: [-1, 1.5, 4, 8, 13] }, weight: { chest: 0.85, shoulder: 0.15 } },
+  { id: "knit", name: "니트·카디건", kind: "top", width: { chest: [3, 7, 13, 20, 28], shoulder: [-1, 1, 3, 6, 10] }, weight: { chest: 0.8, shoulder: 0.2 } },
+  { id: "shirt", name: "셔츠", kind: "top", width: { chest: [4, 8, 14, 22, 30], shoulder: [-1, 1, 3, 6, 10] }, weight: { chest: 0.65, shoulder: 0.35 } },
+  { id: "light_outer", name: "가벼운 아우터·바람막이", kind: "top", width: { chest: [6, 12, 18, 26, 36], shoulder: [-1, 2, 5, 9, 14] }, weight: { chest: 0.75, shoulder: 0.25 } },
+  { id: "leather", name: "레더·무스탕", kind: "top", width: { chest: [4, 8, 14, 22, 30], shoulder: [-1, 1, 4, 7, 11] }, weight: { chest: 0.75, shoulder: 0.25 } },
+  { id: "coat", name: "코트", kind: "top", width: { chest: [10, 16, 24, 32, 42], shoulder: [-1, 2, 5, 9, 15] }, weight: { chest: 0.7, shoulder: 0.3 } },
+  { id: "padding", name: "패딩", kind: "top", width: { chest: [10, 16, 24, 34, 46], shoulder: [-1, 3, 6, 10, 16] }, weight: { chest: 0.85, shoulder: 0.15 } },
   // 롱패딩: 품 기준은 패딩과 같고, 길이가 취향이라 총장 길이감은 보지 않는다.
-  { id: "long_padding", name: "롱패딩", kind: "top", width: { chest: [16, 24, 34, 44, 56], shoulder: [-0.5, 2, 5, 9, 14] }, weight: { chest: 0.75, shoulder: 0.25 } },
-  { id: "pants", name: "긴 바지", kind: "bottom", width: { hip: [2, 6, 10, 16, 24], thigh: [2, 4, 8, 14, 22] }, weight: { thigh: 0.55, hip: 0.45 } },
-  { id: "shorts", name: "반바지", kind: "bottom", width: { hip: [3, 6, 11, 17, 25], thigh: [3, 5, 9, 15, 23] }, weight: { thigh: 0.6, hip: 0.4 } },
+  { id: "long_padding", name: "롱패딩", kind: "top", width: { chest: [10, 16, 24, 34, 46], shoulder: [-1, 3, 6, 10, 16] }, weight: { chest: 0.85, shoulder: 0.15 } },
+  { id: "pants", name: "긴 바지", kind: "bottom", width: { hip: [4, 8, 12, 20, 28], thigh: [3, 5, 9, 15, 24] }, weight: { thigh: 0.55, hip: 0.45 } },
+  { id: "shorts", name: "반바지", kind: "bottom", width: { hip: [4, 8, 12, 18, 26], thigh: [3, 5, 9, 15, 23] }, weight: { thigh: 0.55, hip: 0.45 } },
 ];
 
 /** 하의 허리 적정 여유(cm). 추천 실측 표와 내 치수 추정에만 쓰고 핏 판정에는 쓰지 않는다. */
@@ -96,6 +96,10 @@ const LEVEL_INDEX: Record<FitLevel, number> = { too_small: -1, slim: 0, regular:
 const INDEX_LEVEL: FitLevel[] = ["too_small", "slim", "regular", "semi_over", "over", "too_big"];
 /** 경계에서 이만큼(cm) 안이면 경계로 본다. 상의 가슴이 슬림 하한보다 이만큼 안으로 작으면 너무 작음 대신 슬림. */
 const BOUNDARY_CM = 1;
+/** 어깨는 범위를 벗어나도 가슴보다 완만하게 감점한다(드롭숄더 등 어깨만 넓은 옷이 있어서). 범위 밖 거리에 곱한다. */
+const SHOULDER_OUTSIDE = 0.5;
+/** 상의에서 보조 축(어깨) 비중이 이 값 미만이면 두 단계 이상 차이가 나도 기본 축을 옮기지 않는다. */
+const SHIFT_MIN_WEIGHT = 0.3;
 /** "정확하지 않아요" 치수는 이만큼(cm) 느슨하게 본다. */
 const UNCERTAIN_TOLERANCE = 3;
 
@@ -260,13 +264,13 @@ function classify(ease: number, t: Thresholds, tol: number): FitLevel {
  * 여유를 연속 점수로: 구간 한가운데가 그 단계 점수(슬림 0 … 오버 3), 경계는 ±0.5.
  * 경계 근처에서 1cm 차이로 결과가 갑자기 바뀌지 않게 가중 평균에 이 값을 쓴다.
  */
-function positionOf(ease: number, t: Thresholds, tol: number): number {
+function positionOf(ease: number, t: Thresholds, tol: number, outside = 1): number {
   let e = ease;
   if (e < t[0] && e >= t[0] - tol) e = t[0];
   if (e > t[4] && e <= t[4] + tol) e = t[4];
   const w = (i: number) => Math.max(t[i + 1] - t[i], 0.5);
-  if (e < t[0]) return Math.max(-1.5, -0.5 - (t[0] - e) / w(0));
-  if (e > t[4]) return Math.min(4.5, 3.5 + (e - t[4]) / w(3));
+  if (e < t[0]) return Math.max(-1.5, -0.5 - ((t[0] - e) / w(0)) * outside);
+  if (e > t[4]) return Math.min(4.5, 3.5 + ((e - t[4]) / w(3)) * outside);
   for (let i = 0; i < 4; i++) if (e <= t[i + 1]) return i - 0.5 + (e - t[i]) / w(i);
   return 3.5;
 }
@@ -303,6 +307,8 @@ export interface BodyFitIssue {
   text: string;
   /** 너무 작음·너무 큼처럼 입기 어려운 문제 */
   severe: boolean;
+  /** 어깨가 범위를 크게 벗어남: 감점 없이 주의로만 알린다(비교 화면에도 한 줄 보여 준다) */
+  caution?: boolean;
 }
 
 export type Silhouette = "tapered" | "straight" | "flare";
@@ -425,7 +431,7 @@ function combine(kind: FitKind, dims: Scored[]): { level: FitLevel; basis: FitBa
   const otherIndex = LEVEL_INDEX[other.level];
   let index: number;
   let rule: FitRule;
-  if (Math.abs(axisIndex - otherIndex) >= 2) {
+  if (Math.abs(axisIndex - otherIndex) >= 2 && !(kind === "top" && other.weight < SHIFT_MIN_WEIGHT)) {
     index = axisIndex + Math.sign(otherIndex - axisIndex);
     rule = "axis_shift";
   } else {
@@ -498,7 +504,7 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile): Body
 
     const t = thresholdsOf(bands, WEARABLE_LEVELS.filter((l) => body.overrides[groupId]?.[l]?.[key]));
     const level = classify(ease, t, tol);
-    const position = positionOf(ease, t, tol);
+    const position = positionOf(ease, t, tol, key === "shoulder" ? SHOULDER_OUTSIDE : 1);
     const boundary = t.some((x) => Math.abs(ease - x) <= BOUNDARY_CM);
     const dim: BodyFitDimension = { key, label, ease, level, uncertain, ...facts, bands, position: round1(position), boundary };
     dimensions.push(dim);
@@ -513,10 +519,11 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile): Body
   for (const d of scored) {
     if (d.level === "too_small") {
       const gap = d.t[0] - d.ease;
-      issues.push({ key: d.key, severe: true, text: `${iga(d.label)} ${name("slim")} 기준보다도 ${formatNum(round1(gap))}cm 작아요. 끼거나 입기 어려울 수 있어요.` });
+      // 어깨만으로 입기 어렵다고 단정하지 않는다: 주의 표시만.
+      issues.push({ key: d.key, severe: d.key !== "shoulder", caution: d.key === "shoulder", text: `${iga(d.label)} ${name("slim")} 기준보다도 ${formatNum(round1(gap))}cm 작아요. ${d.key === "shoulder" ? "어깨가 불편할 수 있어요." : "끼거나 입기 어려울 수 있어요."}` });
     } else if (d.level === "too_big") {
       const gap = d.ease - d.t[4];
-      issues.push({ key: d.key, severe: true, text: `${iga(d.label)} ${name("over")} 기준보다도 ${formatNum(round1(gap))}cm 커요.` });
+      issues.push({ key: d.key, severe: d.key !== "shoulder", caution: d.key === "shoulder", text: `${iga(d.label)} ${name("over")} 기준보다도 ${formatNum(round1(gap))}cm 커요.${d.key === "shoulder" ? " 드롭숄더 디자인일 수 있어요." : ""}` });
     } else if (level !== "too_small" && level !== "too_big" && d.level !== level) {
       issues.push({ key: d.key, severe: false, text: `${eunNeun(d.label)} ${name(d.level)}에 가까워요(전체는 ${name(level)}).` });
     }
