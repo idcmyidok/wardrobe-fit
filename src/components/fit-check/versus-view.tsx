@@ -7,7 +7,8 @@ import { FitMeter } from "@/components/body/fit-meter";
 import { useWardrobe } from "@/components/wardrobe/wardrobe-store";
 import { WEARABLE_LEVELS, fitLevelName, type WearableLevel } from "@/lib/constants/body";
 import { CATEGORIES, SUBCATEGORIES } from "@/lib/constants/categories";
-import { BOTTOM_MEASUREMENTS, MEASUREMENT_LABELS, TOP_MEASUREMENTS, formatCm, formatNum, type MeasurementKey } from "@/lib/constants/measurements";
+import { UnitInput } from "@/components/ui/input";
+import { BOTTOM_MEASUREMENTS, MEASUREMENT_LABELS, TOP_MEASUREMENTS, formatCm, formatNum, measurementFields, type MeasurementKey } from "@/lib/constants/measurements";
 import { cn } from "@/lib/cn";
 import { FIT_GROUPS, computeBodyFit, fitGroupKind, fitGroupOf, garmentRange, type Band, type FitGroupId, type RecKey } from "@/lib/fit/body-fit";
 import { FIT_ERROR_TEXT, streamFitCheck } from "@/lib/fit/client";
@@ -49,6 +50,22 @@ interface Item {
   manualSize: boolean;
 }
 
+/** 사이즈표를 찾지 못해 실측을 직접 입력받는 옷 */
+interface Missing {
+  /** 링크 순서(비교 열 순서를 지키려고) */
+  index: number;
+  url: string;
+  importId: string;
+  domain: string | null;
+  product: Product;
+  categoryId: CategoryId;
+  subcategoryId: string;
+  size: string;
+  m: Record<string, string>;
+  /** 비교에서 뺀 옷 */
+  skipped: boolean;
+}
+
 interface AiResult {
   sizeLabel: string;
   candidate: FitCandidate;
@@ -85,6 +102,8 @@ export function VersusView() {
   const [ai, setAi] = useState<Record<string, AiResult>>({});
   const [tab, setTab] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  /** 사이즈표를 찾은 옷(ready)과 못 찾은 옷(missing). missing이 있으면 실측 입력 단계를 거친다. */
+  const [step, setStep] = useState<{ ready: Item[]; missing: Missing[] } | null>(null);
   const request = useRef<AbortController | null>(null);
   useEffect(() => () => request.current?.abort(), []);
 
@@ -144,6 +163,7 @@ export function VersusView() {
     setAi({});
     setTab(null);
     setGroupId(null);
+    setStep(null);
     const outcomes = await Promise.all(
       list.map((u) => streamImport(u, { signal: controller.signal, purpose: "fit_check" }).catch(() => null)),
     );
@@ -152,6 +172,7 @@ export function VersusView() {
     notifyUsageChanged();
     if (outcomes.some((o) => o?.errorCode === "signed_out")) return goToSignIn();
     const next: Item[] = [];
+    const missing: Missing[] = [];
     const errs: string[] = [];
     outcomes.forEach((o, i) => {
       const label = `${i + 1}번 링크`;
@@ -167,16 +188,56 @@ export function VersusView() {
         return;
       }
       const rows = p.sizeChart?.rows ?? [];
+      const sub = p.subcategoryId?.value && SUBCATEGORIES.some((s) => s.id === p.subcategoryId!.value && s.categoryId === cat) ? p.subcategoryId.value : firstSub(cat);
       if (!rows.length) {
-        errs.push(`${label}: 사이즈표를 찾지 못해 비교에서 뺐어요.`);
+        missing.push({ index: i, url: list[i], importId: o.importId, domain: o.domain, product: p, categoryId: cat, subcategoryId: sub, size: "", m: {}, skipped: false });
         return;
       }
-      const sub = p.subcategoryId?.value && SUBCATEGORIES.some((s) => s.id === p.subcategoryId!.value && s.categoryId === cat) ? p.subcategoryId.value : firstSub(cat);
       next.push({ key: `${i}-${o.importId}`, url: list[i], importId: o.importId, domain: o.domain, product: p, categoryId: cat, subcategoryId: sub, rows, size: null, manualSize: false });
     });
+    if (missing.length > 0 && next.length + missing.length >= 2) {
+      setErrors(errs);
+      setStep({ ready: next, missing });
+      return;
+    }
     if (next.length === 1) errs.push("비교할 수 있는 옷이 1벌뿐이에요. 다른 링크를 넣어 주세요.");
     setErrors(errs);
     setItems(next.length >= 2 ? next : []);
+  };
+
+  const updateMissing = (index: number, patch: Partial<Missing>) =>
+    setStep((st) => (st ? { ...st, missing: st.missing.map((x) => (x.index === index ? { ...x, ...patch } : x)) } : st));
+
+  /** 직접 입력한 실측(숫자만) */
+  const measuredOf = (x: Missing): Measurements => {
+    const m: Measurements = {};
+    for (const [k, v] of Object.entries(x.m)) if (v.trim() !== "" && !isNaN(Number(v)) && Number(v) > 0) m[k as MeasurementKey] = Number(v);
+    return m;
+  };
+  const filled = (x: Missing) => x.size.trim() !== "" && Object.keys(measuredOf(x)).length > 0;
+  const activeMissing = step ? step.missing.filter((x) => !x.skipped) : [];
+  const stepCount = step ? step.ready.length + activeMissing.length : 0;
+  const stepReady = !!step && stepCount >= 2 && activeMissing.every(filled);
+
+  /** 입력한 실측을 사이즈표 한 줄로 삼아 비교 화면으로 넘어간다 */
+  const continueWithManual = () => {
+    if (!step || !stepReady) return;
+    const added: Item[] = activeMissing.map((x) => ({
+      key: `${x.index}-${x.importId}`,
+      url: x.url,
+      importId: x.importId,
+      domain: x.domain,
+      product: x.product,
+      categoryId: x.categoryId,
+      subcategoryId: x.subcategoryId,
+      rows: [{ sizeLabel: x.size.trim(), measurements: measuredOf(x) }],
+      size: x.size.trim(),
+      manualSize: true,
+    }));
+    const order = (key: string) => Number(key.split("-")[0]);
+    setErrors([]);
+    setItems([...step.ready, ...added].sort((a, b) => order(a.key) - order(b.key)));
+    setStep(null);
   };
 
   const update = (key: string, patch: Partial<Item>) => setItems((list) => list.map((it) => (it.key === key ? { ...it, ...patch } : it)));
@@ -249,6 +310,113 @@ export function VersusView() {
   };
   const cols = items.length + 1;
   const grid = { gridTemplateColumns: `repeat(${cols}, minmax(190px, 1fr))` };
+
+  if (step && items.length < 2) {
+    const productName = (p: Product, domain: string | null) => [p.brand?.value, p.productName?.value].filter(Boolean).join(" ") || domain || "상품";
+    return (
+      <section className="app-card rise mt-5 flex max-w-190 flex-col gap-5 p-5 md:p-7" aria-label="실측 직접 입력">
+        <div className="flex flex-col gap-1.5">
+          <h2 className="text-lg">사이즈표를 찾지 못한 옷이 있어요</h2>
+          <p className="text-sm text-neutral-700">
+            아래 옷은 상품 페이지에서 사이즈표를 읽지 못했습니다. 상품 페이지의 실측을 직접 입력하면 나머지 옷과 함께 비교할 수 있어요. 입력하지 않으려면 &lsquo;이 옷 빼기&rsquo;를 누르세요.
+          </p>
+        </div>
+        {step.ready.length > 0 && (
+          <p className="text-sm text-neutral-700">
+            사이즈표를 찾은 옷: {step.ready.map((it) => productName(it.product, it.domain)).join(", ")}
+          </p>
+        )}
+        {step.missing.map((x) => {
+          const id = `vs-man-${x.index}`;
+          return (
+            <div key={x.index} className={cn("flex flex-col gap-4 border border-neutral-300 p-4", x.skipped && "opacity-60")}>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 className="text-md">
+                  {x.index + 1}번 링크 · {productName(x.product, x.domain)}
+                </h3>
+                <button type="button" className="btn btn-ghost text-sm" onClick={() => updateMissing(x.index, { skipped: !x.skipped })}>
+                  {x.skipped ? "다시 넣기" : "이 옷 빼기"}
+                </button>
+              </div>
+              {!x.skipped && (
+                <>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
+                    <div className="field">
+                      <label htmlFor={`${id}-cat`}>종류</label>
+                      <select
+                        id={`${id}-cat`}
+                        className="input"
+                        value={x.categoryId}
+                        onChange={(e) => {
+                          const categoryId = e.target.value as CategoryId;
+                          updateMissing(x.index, { categoryId, subcategoryId: firstSub(categoryId), m: {} });
+                        }}
+                      >
+                        {CLOTHES.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label htmlFor={`${id}-sub`}>세부분류</label>
+                      <select id={`${id}-sub`} className="input" value={x.subcategoryId} onChange={(e) => updateMissing(x.index, { subcategoryId: e.target.value })}>
+                        {SUBCATEGORIES.filter((s) => s.categoryId === x.categoryId).map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label htmlFor={`${id}-size`}>고민 중인 사이즈</label>
+                      <input id={`${id}-size`} className="input" placeholder="예: M, 48, 32" maxLength={30} value={x.size} onChange={(e) => updateMissing(x.index, { size: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h4 className="text-base">실측</h4>
+                    <span className="text-sm text-neutral-700">cm · 단면 기준 · 비워 둔 치수는 판단하지 않습니다.</span>
+                  </div>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
+                    {measurementFields(x.categoryId).map((f) => (
+                      <div key={f.key} className="field">
+                        <label htmlFor={`${id}-m-${f.key}`}>{f.label}</label>
+                        <UnitInput
+                          id={`${id}-m-${f.key}`}
+                          unit="cm"
+                          inputMode="decimal"
+                          className="text-body"
+                          value={x.m[f.key] ?? ""}
+                          onChange={(e) => updateMissing(x.index, { m: { ...x.m, [f.key]: e.target.value } })}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+        {stepCount < 2 && <p className="text-sm text-accent-800">비교하려면 옷이 2벌 이상 필요해요. 뺀 옷을 다시 넣거나 처음으로 돌아가 다른 링크를 넣어 주세요.</p>}
+        {errors.length > 0 && (
+          <ul className="flex flex-col gap-1 text-sm text-neutral-700">
+            {errors.map((e) => (
+              <li key={e}>{e}</li>
+            ))}
+          </ul>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn btn-primary min-h-11 min-w-45" disabled={!stepReady} onClick={continueWithManual}>
+            입력한 실측으로 비교하기
+          </button>
+          <button type="button" className="btn btn-ghost min-h-11" onClick={() => { setStep(null); setErrors([]); }}>
+            ← 링크 다시 넣기
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   if (items.length < 2) {
     return (
