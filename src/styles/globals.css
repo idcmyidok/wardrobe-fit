@@ -914,9 +914,9 @@ h3 {
 
 /* UI 점검 보완(U-01·06·11): 층(layer) 밖에 둬서 글자 크기 유틸리티(text-sm 등)보다 먼저 적용된다. */
 @media (max-width: 640px) {
-  /* 입력·선택 칸은 16px 미만이면 아이폰이 화면을 확대한다 */
+  /* 입력·선택 칸은 16px 미만이면 아이폰이 화면을 확대한다(.keep-font는 디자인상 작은 글자를 유지하는 옷장 필터 칸) */
   input:not([type="checkbox"], [type="radio"], [type="range"], [type="hidden"]),
-  select,
+  select:not(.keep-font),
   textarea {
     font-size: 16px;
   }
