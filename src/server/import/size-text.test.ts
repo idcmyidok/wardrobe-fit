@@ -43,6 +43,12 @@ describe("글로 적힌 사이즈 정보", () => {
     ]);
   });
 
+  it("항목명과 값이 줄마다 따로 적힌 실측(후르츠패밀리 모양)", () => {
+    expect(rowsOf("실측\n\n측정 방법에 따라 ±1~3cm 오차가 있을 수 있어요.\n\n총장(상의)\n69 cm\n어깨 너비\n47 cm\n가슴 단면\n55 cm\n소매 길이\n66 cm")).toEqual([
+      { sizeLabel: "FREE", measurements: { length: 69, shoulder: 47, chest: 55, sleeve: 66 } },
+    ]);
+  });
+
   it("사이즈 정보가 없으면 없음", () => {
     expect(sizeChartFromText("부드러운 코튼 소재\n세탁은 단독 손세탁\n배송 2~3일")).toBeUndefined();
   });
