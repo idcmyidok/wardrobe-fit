@@ -222,13 +222,15 @@
       0 1px 2px rgb(0 0 0 / 0.2),
       0 8px 18px rgb(0 0 0 / 0.2);
   }
-  .btn-primary:hover {
-    background: color-mix(in srgb, var(--text) 86%, var(--bg));
-    color: var(--bg);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.22),
-      0 2px 4px rgb(0 0 0 / 0.2),
-      0 12px 26px rgb(0 0 0 / 0.26);
+  @media (hover: hover) and (pointer: fine) {
+    .btn-primary:hover {
+      background: color-mix(in srgb, var(--text) 86%, var(--bg));
+      color: var(--bg);
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.22),
+        0 2px 4px rgb(0 0 0 / 0.2),
+        0 12px 26px rgb(0 0 0 / 0.26);
+    }
   }
   .btn-primary:active {
     background: color-mix(in srgb, var(--text) 74%, var(--bg));
@@ -244,9 +246,11 @@
       0 1px 2px rgb(0 0 0 / 0.08),
       0 6px 16px rgb(0 0 0 / 0.08);
   }
-  .btn-secondary:hover {
-    background: color-mix(in srgb, var(--surface) 88%, transparent);
-    color: var(--text);
+  @media (hover: hover) and (pointer: fine) {
+    .btn-secondary:hover {
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+      color: var(--text);
+    }
   }
   .btn-secondary:active {
     background: var(--n-200);
@@ -275,9 +279,11 @@
     padding-inline: 12px;
     color: var(--accent);
   }
-  .btn-ghost:hover {
-    background: var(--accent-subtle);
-    color: var(--accent-hover);
+  @media (hover: hover) and (pointer: fine) {
+    .btn-ghost:hover {
+      background: var(--accent-subtle);
+      color: var(--accent-hover);
+    }
   }
   .btn-ghost:active {
     background: var(--n-300);
@@ -287,9 +293,11 @@
     background: var(--negative);
     color: #ffffff;
   }
-  .btn-danger:hover {
-    background: color-mix(in srgb, var(--negative) 86%, #000000);
-    color: #ffffff;
+  @media (hover: hover) and (pointer: fine) {
+    .btn-danger:hover {
+      background: color-mix(in srgb, var(--negative) 86%, #000000);
+      color: #ffffff;
+    }
   }
   .btn-danger:active {
     background: color-mix(in srgb, var(--negative) 74%, #000000);
@@ -300,8 +308,10 @@
     min-height: 0;
     padding: 0;
   }
-  .btn-icon:hover {
-    background: var(--n-200);
+  @media (hover: hover) and (pointer: fine) {
+    .btn-icon:hover {
+      background: var(--n-200);
+    }
   }
 
   /* — forms — */
@@ -330,8 +340,10 @@
     caret-color: var(--accent);
     transition: border-color var(--duration-fast);
   }
-  .input:hover {
-    border-color: var(--n-400);
+  @media (hover: hover) and (pointer: fine) {
+    .input:hover {
+      border-color: var(--n-400);
+    }
   }
   .input:focus-visible {
     border-color: var(--accent);
@@ -416,8 +428,10 @@
   .seg-opt:not(:has(input:checked)) {
     color: var(--text-muted);
   }
-  .seg-opt:not(:has(input:checked)):hover {
-    color: var(--text);
+  @media (hover: hover) and (pointer: fine) {
+    .seg-opt:not(:has(input:checked)):hover {
+      color: var(--text);
+    }
   }
   .seg-opt:has(input:focus-visible) {
     outline: 2px solid var(--accent);
@@ -463,8 +477,10 @@
     padding: 8px;
     border-bottom: 1px solid var(--n-300);
   }
-  .table tbody tr:hover {
-    background: var(--n-100);
+  @media (hover: hover) and (pointer: fine) {
+    .table tbody tr:hover {
+      background: var(--n-100);
+    }
   }
 
   /* — small caption label used above sections — */
@@ -542,22 +558,6 @@
     }
   }
 
-  /* 스크롤하면 구역이 화면에 들어올 때 떠오른다(지원하는 브라우저만). */
-  @supports (animation-timeline: view()) {
-    main > :nth-child(n + 4) {
-      animation: scroll-rise linear both;
-      animation-timeline: view();
-      animation-range: entry 0% entry 35%;
-      animation-delay: 0s;
-    }
-    @keyframes scroll-rise {
-      from {
-        opacity: 0;
-        transform: translateY(28px) scale(0.985);
-      }
-    }
-  }
-
   /* 버튼: 올라오고, 누르면 살짝 눌린다 */
   .btn {
     transition:
@@ -567,31 +567,32 @@
       transform var(--duration-base) var(--ease-standard),
       box-shadow var(--duration-base) var(--ease-standard);
   }
-  .btn:not(:disabled):hover {
-    transform: translateY(-1px);
+  @media (hover: hover) and (pointer: fine) {
+    .btn:not(:disabled):hover {
+      transform: translateY(-1px);
+    }
   }
   .btn:not(:disabled):active {
     transform: scale(0.97);
   }
-  .btn-primary:not(:disabled):hover {
-    box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 38%, transparent);
+  @media (hover: hover) and (pointer: fine) {
+    .btn-primary:not(:disabled):hover {
+      box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 38%, transparent);
+    }
   }
 
-  /* 카드·버튼처럼 눌리는 면은 호버에 반응한다 */
-  a.rounded-lg,
-  button.rounded-lg,
-  a.rounded-md.border,
+  /* 카드처럼 눌리는 면은 .lift를 붙이면 호버에 반응한다(앱 화면에는 해당하는 곳이 없어 의도치 않은 링크가 뜨지 않게 클래스로만 켠다) */
   .lift {
     transition:
       transform var(--duration-slow) var(--ease-standard),
       box-shadow var(--duration-slow) var(--ease-standard),
       border-color var(--duration-fast);
   }
-  a.rounded-lg:hover,
-  button.rounded-lg:hover,
-  .lift:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-md);
+  @media (hover: hover) and (pointer: fine) {
+    .lift:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-md);
+    }
   }
 
   /* 표 행: 호버에 색이 번지고, 이미지는 살짝 커진다 */
@@ -599,8 +600,10 @@
   tbody tr {
     transition: background-color var(--duration-base);
   }
-  tbody tr:hover img {
-    transform: scale(1.06);
+  @media (hover: hover) and (pointer: fine) {
+    tbody tr:hover img {
+      transform: scale(1.06);
+    }
   }
   tbody tr img {
     transition: transform var(--duration-slow) var(--ease-standard);
@@ -659,9 +662,11 @@
     background: #f5f5f7;
     color: #1d1d1f;
   }
-  .tile-dark .btn-primary:hover {
-    background: #ffffff;
-    color: #1d1d1f;
+  @media (hover: hover) and (pointer: fine) {
+    .tile-dark .btn-primary:hover {
+      background: #ffffff;
+      color: #1d1d1f;
+    }
   }
   .tile-dark .btn-secondary {
     background: rgb(255 255 255 / 0.12);
@@ -669,9 +674,11 @@
     color: #f5f5f7;
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18);
   }
-  .tile-dark .btn-secondary:hover {
-    background: rgb(255 255 255 / 0.2);
-    color: #fff;
+  @media (hover: hover) and (pointer: fine) {
+    .tile-dark .btn-secondary:hover {
+      background: rgb(255 255 255 / 0.2);
+      color: #fff;
+    }
   }
   .tile-dark :is(.text-neutral-700, .text-neutral-800, .text-text-muted) {
     color: rgb(245 245 247 / 0.72) !important;
@@ -714,35 +721,35 @@ body {
 /* 모바일 계정 버튼: 아래로 스크롤하면 반투명해지며 위로 빠르게 사라지고, 멈추거나 위로 스크롤하면 위에서 내려오듯 돌아온다. */
 .fab {
   transition:
-    opacity 0.45s var(--ease-standard),
-    transform 0.45s cubic-bezier(0.2, 0.9, 0.25, 1);
+    opacity 0.25s cubic-bezier(0.23, 1, 0.32, 1),
+    transform 0.25s cubic-bezier(0.23, 1, 0.32, 1);
 }
 .fab[data-hidden="true"] {
   opacity: 0;
   transform: translateY(-36px) scale(0.92);
   pointer-events: none;
   transition:
-    opacity 0.22s ease-in,
-    transform 0.26s ease-in;
+    opacity 0.18s cubic-bezier(0.23, 1, 0.32, 1),
+    transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
 }
 /* 버튼이 작은 메뉴 창으로 커지는 모양(오른쪽 아래 모서리에서 펼쳐짐) */
 .fab-panel {
-  animation: fab-open 0.34s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  animation: fab-open 0.28s cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 .fab-panel[data-closing="true"] {
-  animation: fab-close 0.2s ease-in both;
+  animation: fab-close 0.16s cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 @keyframes fab-open {
   from {
     opacity: 0;
-    transform: scale(0.2);
+    transform: scale(0.5);
     border-radius: 999px;
   }
 }
 @keyframes fab-close {
   to {
     opacity: 0;
-    transform: scale(0.2);
+    transform: scale(0.5);
     border-radius: 999px;
   }
 }
@@ -863,21 +870,21 @@ h3 {
     opacity: 0.01;
     transform: translateY(40px) scale(0.985);
     transition:
-      opacity 0.8s ease,
-      transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+      opacity 0.5s ease,
+      transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
   }
   .reveal > * {
     opacity: 0.01;
     transform: translateY(22px);
     transition:
-      opacity 0.7s ease 0.15s,
-      transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s;
+      opacity 0.45s ease 0.1s,
+      transform 0.55s cubic-bezier(0.23, 1, 0.32, 1) 0.1s;
   }
   .reveal > :nth-child(2) {
-    transition-delay: 0.3s;
+    transition-delay: 0.2s;
   }
   .reveal > :nth-child(3) {
-    transition-delay: 0.45s;
+    transition-delay: 0.3s;
   }
   .reveal.in,
   .reveal.in > * {
@@ -887,7 +894,7 @@ h3 {
   .reveal .rv-bar {
     transform: scaleY(0.04);
     transform-origin: bottom;
-    transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.5s;
+    transition: transform 0.7s cubic-bezier(0.23, 1, 0.32, 1) 0.3s;
   }
   .reveal.in .rv-bar {
     transform: none;
@@ -896,11 +903,59 @@ h3 {
     opacity: 0.01;
     transform: translateY(18px) scale(0.9);
     transition:
-      opacity 0.7s ease 0.5s,
-      transform 0.9s cubic-bezier(0.2, 1.2, 0.3, 1) 0.5s;
+      opacity 0.45s ease 0.3s,
+      transform 0.55s cubic-bezier(0.23, 1, 0.32, 1) 0.3s;
   }
   .reveal.in .rv-pop {
     opacity: 1;
     transform: none;
   }
+}
+
+/* UI 점검 보완(U-01·06·11): 층(layer) 밖에 둬서 글자 크기 유틸리티(text-sm 등)보다 먼저 적용된다. */
+@media (max-width: 640px) {
+  /* 입력·선택 칸은 16px 미만이면 아이폰이 화면을 확대한다(.keep-font는 디자인상 작은 글자를 유지하는 옷장 필터 칸) */
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="hidden"]),
+  select:not(.keep-font),
+  textarea {
+    font-size: 16px;
+  }
+}
+@media (pointer: coarse) {
+  /* 작은 눌림 영역은 보이는 크기는 그대로 두고 터치 영역만 44px에 가깝게 넓힌다 */
+  .btn-icon,
+  .touch-hit,
+  .seg > button {
+    position: relative;
+  }
+  .btn-icon::after,
+  .touch-hit::after,
+  .seg > button::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+  .header-bar nav a {
+    position: relative;
+  }
+  .header-bar nav a::after {
+    content: "";
+    position: absolute;
+    inset: -7px 0;
+  }
+}
+/* 버튼·탭 글자는 길게 눌러도 선택되지 않게(본문은 그대로 선택 가능) */
+.btn,
+.seg-opt,
+.header-bar nav a,
+button {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+p {
+  text-wrap: pretty;
 }

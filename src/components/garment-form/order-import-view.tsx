@@ -364,7 +364,7 @@ export function OrderImportView() {
             </details>
           )}
 
-          <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t border-divider bg-bg py-3">
+          <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t border-divider bg-bg pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
             <span className="text-sm text-neutral-700">
               {phase === "done" ? `${counts.saved}벌을 옷장에 등록했어요.` : "체크한 옷만 등록돼요. 실측이 없는 옷은 나중에 옷장에서 채울 수 있어요."}
             </span>
