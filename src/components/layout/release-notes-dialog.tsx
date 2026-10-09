@@ -73,6 +73,24 @@ export function ReleaseNotesDialog({
     };
   }, [onClose]);
 
+  // 창이 열려 있는 동안 Tab이 창 밖(뒤 화면)으로 나가지 않게 처음·끝에서 돌린다.
+  const trapTab = (e: React.KeyboardEvent) => {
+    if (e.key !== "Tab" || !panel.current) return;
+    const focusable = [...panel.current.querySelectorAll<HTMLElement>("button, a[href], input, select, textarea, summary, [tabindex]:not([tabindex='-1'])")].filter(
+      (el) => !el.hasAttribute("disabled") && el.getClientRects().length > 0,
+    );
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === panel.current)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
   const pick = (m: string) => {
     setMajor(m);
     scroller.current?.scrollTo({ top: 0 });
@@ -87,6 +105,7 @@ export function ReleaseNotesDialog({
         aria-modal="true"
         aria-labelledby="release-notes-title"
         tabIndex={-1}
+        onKeyDown={trapTab}
         className="relative flex max-h-[min(640px,85dvh)] w-[min(480px,100%)] flex-col border border-border bg-bg outline-none"
       >
         <div className="flex items-center justify-between gap-3 border-b border-divider px-5 py-3">

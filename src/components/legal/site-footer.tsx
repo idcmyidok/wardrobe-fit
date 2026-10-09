@@ -9,10 +9,10 @@ export function SiteFooter({ className }: { className?: string }) {
   return (
     <footer className={`flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-neutral-600 md:justify-start ${className ?? ""}`}>
       <span>© {SERVICE_NAME}</span>
-      <Link href="/privacy" className="font-semibold text-neutral-700 no-underline hover:underline">
+      <Link href="/privacy" className="touch-hit font-semibold text-neutral-700 no-underline hover:underline">
         개인정보처리방침
       </Link>
-      <Link href="/terms" className="text-neutral-600 no-underline hover:underline">
+      <Link href="/terms" className="touch-hit text-neutral-600 no-underline hover:underline">
         이용약관
       </Link>
     </footer>

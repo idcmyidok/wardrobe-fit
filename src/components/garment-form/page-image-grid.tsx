@@ -43,7 +43,7 @@ export function PageImageGrid({
               {/* eslint-disable-next-line @next/next/no-img-element -- 서버가 대신 받아 주는 미리보기 */}
               <img
                 src={src}
-                alt=""
+                alt={`상품 사진 ${n + 1}`}
                 loading="lazy"
                 className="size-full object-contain"
                 onError={() => onBroken(i)}

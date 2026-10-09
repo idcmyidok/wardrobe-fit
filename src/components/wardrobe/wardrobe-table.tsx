@@ -130,7 +130,7 @@ export function WardrobeTable({
                       <GarmentThumbnail item={item} className="max-h-21 rounded-xs" fit="natural" />
                     </div>
                   </td>
-                  <td className={cn(cell, "truncate")}>{item.subcategoryId ? SUBCATEGORY_NAME[item.subcategoryId] : "—"}</td>
+                  <td className={cn(cell, "truncate")} title={item.subcategoryId ? SUBCATEGORY_NAME[item.subcategoryId] : undefined}>{item.subcategoryId ? SUBCATEGORY_NAME[item.subcategoryId] : "—"}</td>
                   <td className={cn(cell, "leading-tight font-semibold")} title={item.brand || undefined}>
                     <span className="line-clamp-2 break-words">{item.brand || "—"}</span>
                   </td>
@@ -240,7 +240,7 @@ function MobileList({
               <GarmentThumbnail item={item} className="max-h-17.5 rounded-xs" fit="natural" />
             </span>
             <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="truncate text-base">
+              <span className="truncate text-base" title={[item.brand, item.productName].filter(Boolean).join(" ")}>
                 {item.brand && <span className="font-semibold">{item.brand} </span>}
                 {item.productName}
               </span>
