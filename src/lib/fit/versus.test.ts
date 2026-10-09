@@ -36,6 +36,19 @@ describe("VS 비교", () => {
     expect(ranks[0].basis).toBe("body");
     expect(versusSummary(ranks, { A: "A", B: "B" }, "regular", "top")).toContain("B");
   });
+  it("어깨만 넓은 옷(드롭숄더)은 감점하지 않고, 이유는 한 줄로만", () => {
+    const [r] = rankVersus([entry("A", 51.5, 56)], "regular");
+    const e = entry("A", 51.5, 56);
+    if (e.body?.status !== "ok") throw new Error("body");
+    expect(r.score).toBe(e.body.scores.regular);
+    expect(r.reasons).toHaveLength(1);
+    expect(r.reasons[0]).not.toContain("점");
+  });
+  it("가슴이 너무 작으면 감점 이유를 한 줄 붙인다", () => {
+    const [r] = rankVersus([entry("A", 44, 45)], "regular");
+    expect(r.reasons.at(-1)).toContain("가슴");
+    expect(r.reasons.at(-1)).toContain("감점");
+  });
   it("정보가 없으면 추천하지 않는다", () => {
     const ranks = rankVersus([{ key: "A", name: "A", garment: { ...base, measurements: {} }, body: null, wardrobe: undefined }], "regular");
     expect(ranks[0].score).toBeNull();

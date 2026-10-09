@@ -111,6 +111,9 @@ function BodyFitDetails({
   collapseReasons: boolean;
 }) {
   const name = (l: FitLevel) => fitLevelName(l, r.kind);
+  // 판단 근거를 펼쳐 보여 줄 때는 부위별 칸에 같은 내용이 있어 문제 목록을 따로 쓰지 않는다.
+  const issues = collapseReasons ? r.issues : [];
+  const warned = r.issues.some((i) => i.severe || i.caution);
   const differs = userFit != null && userFit !== r.level;
   const facts = [
     `${fitGroupName(r.group)} 기준`,
@@ -162,9 +165,9 @@ function BodyFitDetails({
         <BodyFitCompare dimensions={r.dimensions} reasons={bodyFitReasons(r)} kind={r.kind} />
       </Reasons>
 
-      {(r.issues.length > 0 || r.stretch) && (
+      {(issues.length > 0 || r.stretch) && (
         <ul className="flex flex-col gap-1 text-sm">
-          {r.issues.map((i) => (
+          {issues.map((i) => (
             <li key={`i-${i.key}`} className={i.severe ? "text-accent-800" : undefined}>
               {i.severe ? "⚠ " : "· "}
               {i.text}
@@ -173,7 +176,7 @@ function BodyFitDetails({
           {r.stretch && <li className="text-neutral-700">· 니트·스판처럼 늘어나는 소재로 보여요. 소재 특성상 실제 핏과 다를 수 있어요.</li>}
         </ul>
       )}
-      {r.issues.length === 0 && <p className="text-sm text-neutral-700">내 치수와 크게 어긋나는 곳이 없어요.</p>}
+      {(collapseReasons ? r.issues.length === 0 : !warned) && <p className="text-sm text-neutral-700">내 치수와 크게 어긋나는 곳이 없어요.</p>}
     </div>
   );
 }
