@@ -34,6 +34,14 @@ export interface ReleaseNote {
 
 const ALL_NOTES: ReleaseNote[] = [
   {
+    version: "1.5.3",
+    date: "2026-10-09",
+    time: "15:14",
+    features: [],
+    changes: [],
+    fixes: ["로그인 화면에서 로그인 칸에 가려져 있던 화면 모드(라이트·다크) 버튼을 없앴습니다. 로그인 후 계정 메뉴에서 바꿀 수 있습니다."],
+  },
+  {
     version: "1.5.2",
     date: "2026-10-09",
     time: "14:18",
