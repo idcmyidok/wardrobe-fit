@@ -98,6 +98,9 @@ const INDEX_LEVEL: FitLevel[] = ["too_small", "slim", "regular", "semi_over", "o
 const BOUNDARY_CM = 1;
 /** 어깨는 범위를 벗어나도 가슴보다 완만하게 감점한다(드롭숄더 등 어깨만 넓은 옷이 있어서). 범위 밖 거리에 곱한다. */
 const SHOULDER_OUTSIDE = 0.5;
+const TIGHT = "끼거나 입기 어려울 수 있어요.";
+const SHOULDER_TIGHT = "어깨가 불편할 수 있어요.";
+const SHOULDER_WIDE = "드롭숄더 디자인일 수 있어 감점하지 않았어요.";
 /** 상의에서 보조 축(어깨) 비중이 이 값 미만이면 두 단계 이상 차이가 나도 기본 축을 옮기지 않는다. */
 const SHIFT_MIN_WEIGHT = 0.3;
 /** "정확하지 않아요" 치수는 이만큼(cm) 느슨하게 본다. */
@@ -307,7 +310,7 @@ export interface BodyFitIssue {
   text: string;
   /** 너무 작음·너무 큼처럼 입기 어려운 문제 */
   severe: boolean;
-  /** 어깨가 범위를 크게 벗어남: 감점 없이 주의로만 알린다(비교 화면에도 한 줄 보여 준다) */
+  /** 어깨가 범위를 크게 벗어남: 감점 없이 주의로만 알린다 */
   caution?: boolean;
 }
 
@@ -520,10 +523,10 @@ export function computeBodyFit(garment: BodyFitGarment, body: BodyProfile): Body
     if (d.level === "too_small") {
       const gap = d.t[0] - d.ease;
       // 어깨만으로 입기 어렵다고 단정하지 않는다: 주의 표시만.
-      issues.push({ key: d.key, severe: d.key !== "shoulder", caution: d.key === "shoulder", text: `${iga(d.label)} ${name("slim")} 기준보다도 ${formatNum(round1(gap))}cm 작아요. ${d.key === "shoulder" ? "어깨가 불편할 수 있어요." : "끼거나 입기 어려울 수 있어요."}` });
+      issues.push({ key: d.key, severe: d.key !== "shoulder", caution: d.key === "shoulder", text: `${iga(d.label)} ${name("slim")} 기준보다도 ${formatNum(round1(gap))}cm 작아요. ${d.key === "shoulder" ? SHOULDER_TIGHT : TIGHT}` });
     } else if (d.level === "too_big") {
       const gap = d.ease - d.t[4];
-      issues.push({ key: d.key, severe: d.key !== "shoulder", caution: d.key === "shoulder", text: `${iga(d.label)} ${name("over")} 기준보다도 ${formatNum(round1(gap))}cm 커요.${d.key === "shoulder" ? " 드롭숄더 디자인일 수 있어요." : ""}` });
+      issues.push({ key: d.key, severe: d.key !== "shoulder", caution: d.key === "shoulder", text: `${iga(d.label)} ${name("over")} 기준보다도 ${formatNum(round1(gap))}cm 커요.${d.key === "shoulder" ? ` ${SHOULDER_WIDE}` : ""}` });
     } else if (level !== "too_small" && level !== "too_big" && d.level !== level) {
       issues.push({ key: d.key, severe: false, text: `${eunNeun(d.label)} ${name(d.level)}에 가까워요(전체는 ${name(level)}).` });
     }
@@ -646,8 +649,8 @@ export function bodyFitReasons(r: Extract<BodyFitResult, { status: "ok" }>): Bod
       const b = d.bands[l];
       return `${d.half ? "여유" : "차이"} ${bandText(b)}, ${d.half ? "단면" : d.label} ${formatNum(g(b[0]))}~${formatNum(g(b[1]))}cm`;
     };
-    if (d.level === "too_small") verdict = `가장 작은 ${name("slim")} 범위(${range("slim")})보다도 작아요.`;
-    else if (d.level === "too_big") verdict = `가장 큰 ${name("over")} 범위(${range("over")})보다도 커요.`;
+    if (d.level === "too_small") verdict = `가장 작은 ${name("slim")} 범위(${range("slim")})보다도 작아요. ${d.key === "shoulder" ? SHOULDER_TIGHT : TIGHT}`;
+    else if (d.level === "too_big") verdict = `가장 큰 ${name("over")} 범위(${range("over")})보다도 커요.${d.key === "shoulder" ? ` ${SHOULDER_WIDE}` : ""}`;
     else {
       const b = d.bands[d.level as WearableLevel];
       const inside = d.ease >= b[0] && d.ease <= b[1];
@@ -712,6 +715,8 @@ function overallText(r: Extract<BodyFitResult, { status: "ok" }>): string {
   }
   if (b.chestEdge && b.rule !== "axis_shift") text = `가슴이 ${name("slim")} 하한보다 1cm 안으로 작아 매우 타이트한 ${euro(name("slim"))} 봤어요. ${text}`;
   if (b.pulledBy) text += ` ${iga(label(b.pulledBy))} ${name("slim")} 범위보다 작아 한 단계 작은 쪽으로 봤어요.`;
+  const shoulder = dim("shoulder");
+  if (shoulder && (shoulder.level === "too_big" || shoulder.level === "too_small") && b.rule === "average") text += " 어깨는 보조 기준이라 범위를 벗어나도 가슴 기준을 크게 바꾸지 않았어요.";
   if (r.kind === "bottom") text += " 허리는 핏 판정에 넣지 않아요.";
   return text;
 }

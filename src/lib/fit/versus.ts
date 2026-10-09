@@ -79,11 +79,11 @@ export function rankVersus(entries: VersusEntry[], target: WearableLevel): Versu
       const score = bodyScore(r, target);
       if (!r || r.status !== "ok" || score == null) return { key: e.key, score: null, basis: "none", reasons: ["실측이 부족해 내 치수와 비교하지 못했어요."] };
       const name = (l: typeof r.level) => fitLevelName(l, r.kind);
+      // 점수는 옆 칸에, 부위별 문제는 표의 "맞지 않을 수 있는 곳"에 있어 여기서는 한 줄로만 말한다.
+      const severe = r.issues.filter((i) => i.severe).map((i) => MEASUREMENT_LABELS[i.key]);
       const reasons = [
-        r.level === target
-          ? `원하는 ${name(target)}으로 입을 수 있어요(${score}점).`
-          : `원하는 ${name(target)}보다 ${name(r.level)}에 가까워요(${name(target)} ${r.scores[target]}점).`,
-        ...r.issues.filter((i) => i.severe || i.caution).map((i) => i.text),
+        r.level === target ? `원하는 ${name(target)}으로 입을 수 있어요.` : `원하는 ${name(target)}보다 ${name(r.level)}에 가까워요.`,
+        ...(severe.length ? [`${severe.join("·")}이(가) 너무 작거나 커서 감점했어요.`] : []),
       ];
       return { key: e.key, score, basis: "body", reasons };
     }

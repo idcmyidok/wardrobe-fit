@@ -114,6 +114,9 @@ describe("상의: 가슴이 기본 축, 어깨는 실루엣", () => {
     expect(issue.severe).toBe(false);
     expect(issue.caution).toBe(true);
     expect(issue.text).toContain("드롭숄더");
+    const reasons = bodyFitReasons(wide);
+    expect(reasons.find((x) => x.key === "shoulder")!.verdict).toContain("드롭숄더");
+    expect(reasons.at(-1)!.text).toContain("어깨는 보조 기준");
     const narrow = ok(computeBodyFit(tee(51.5, 43), body));
     expect(narrow.dimensions.find((d) => d.key === "shoulder")!.level).toBe("too_small");
     expect(narrow.level).toBe("regular");
