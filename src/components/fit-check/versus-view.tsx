@@ -670,7 +670,7 @@ export function VersusView() {
             const s = profile ? bodyScore(e.body, target) : wardrobeScore(e.wardrobe);
             return cell(<span className="font-mono text-xl font-semibold tabular-nums">{s == null ? "—" : `${s}점`}</span>, `score-${e.key}`);
           })}
-          {rec(<span className="text-xs text-neutral-700">{profile ? "내 치수 기준 · 문제 치수 감점" : "옷장에서 만족했던 범위 기준"}</span>)}
+          {rec(<span className="text-xs text-neutral-700">{profile ? "내 치수 기준 · 가슴·엉덩이·허벅지 문제만 감점" : "옷장에서 만족했던 범위 기준"}</span>)}
 
           {measureKeys.map((key) => {
             const band = recRange(key);
@@ -681,10 +681,12 @@ export function VersusView() {
               ...entries.map((e) => {
                 const v = e.garment.measurements[key];
                 const out = band && v != null && (v < band[0] || v > band[1]);
+                // 어깨는 보조 기준: 넓은 쪽은 드롭숄더일 수 있어 빨간색 대신 회색으로만 표시한다.
+                const soft = out && key === "shoulder" && v! > band![1];
                 return cell(
-                  <span className={cn("font-mono text-lg tabular-nums", out ? "font-semibold text-accent-800" : undefined)}>
+                  <span className={cn("font-mono text-lg tabular-nums", out && (soft ? "text-neutral-700" : "font-semibold text-accent-800"))}>
                     {formatCm(v)}
-                    {out && <span className="ml-1 text-xs">{v! < band![0] ? "작음" : "큼"}</span>}
+                    {out && <span className="ml-1 text-xs">{v! < band![0] ? "작음" : soft ? "넓음" : "큼"}</span>}
                   </span>,
                   `m-${key}-${e.key}`,
                 );

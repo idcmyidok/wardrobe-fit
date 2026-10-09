@@ -29,9 +29,8 @@ export type LengthOverrides = Partial<Record<LengthGroup, Partial<Record<LengthL
 export const REFERENCE_HEIGHT = 177;
 /** 키 177cm 기준 경계 6개: 크롭 [0]~[1], 세미크롭 ~[2], 정핏 ~[3], 세미오버 ~[4], 오버핏 ~[5] */
 export const LENGTH_BASE: Record<LengthGroup, readonly [number, number, number, number, number, number]> = {
-  inner: [60, 64, 67, 71, 74, 78],
-  // 아우터는 안에 입은 옷을 덮도록 이너보다 2cm 길게
-  outer: [62, 66, 69, 73, 76, 80],
+  inner: [59, 63, 67, 71, 75, 79],
+  outer: [58, 63, 67, 71, 75, 80],
 };
 
 /** 길이감을 보지 않는 아우터 세부분류(셔츠·블레이저·코트·롱패딩) */
