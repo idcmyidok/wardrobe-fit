@@ -2,7 +2,6 @@ import { parseAuthMode } from "@/components/auth/auth-mode";
 import { AuthPanel } from "@/components/auth/auth-panel";
 import { PromoBanner } from "@/components/landing/promo-banner";
 import { ServiceIntro } from "@/components/landing/service-intro";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { SiteFooter } from "@/components/legal/site-footer";
 import { cookies } from "next/headers";
 import { isAuthConfigured, LAST_EMAIL_COOKIE, safeNextPath } from "@/lib/supabase/config";
@@ -31,9 +30,6 @@ export default async function LandingPage({
       {/* 한 줄로 쌓이는 좁은 화면(두 칸 440px 미만)에서는 로그인 패널이 먼저 온다(PROJECT_SPEC.md 5.1).
           HTML에서도 먼저 둬야 느린 회선에서 소개가 먼저 그려졌다가 아래로 밀려나지 않는다. 넓은 화면에서만 오른쪽으로 보낸다. */}
       <section className="relative flex items-center p-[clamp(24px,5vw,64px)] min-[880px]:order-last">
-        <div className="absolute top-5 right-[clamp(16px,3vw,32px)]">
-          <ThemeToggle />
-        </div>
         <div className="glass mx-auto flex w-full max-w-130 flex-col gap-8 rounded-lg p-[clamp(20px,4vw,40px)]">
           <AuthPanel mode={mode} next={next} notice={notice} savedEmail={savedEmail} configured={isAuthConfigured()} />
           {(mode === "signin" || mode === "signup") && <PromoBanner />}
