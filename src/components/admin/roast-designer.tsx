@@ -299,8 +299,8 @@ function Structure({ cfg, M, ctx, go }: P & { go: (t: Tab, q?: string) => void }
     },
     { title: "항목 점수", body: "다섯 항목을 0~1로 매기고 비중을 곱해 더합니다(0~100). 브랜드 자료가 적으면 안목 비중을 절반으로 줄입니다.", tab: "score" },
     {
-      title: "몰입 보너스 · 최종 점수",
-      body: `A·B 등급 유형이 붙으면 보너스(옷장 A ${T.bonus.closet.A}·B ${T.bonus.closet.B}, 주문내역 A ${T.bonus.orders.A}·B ${T.bonus.orders.B})를 더합니다. 일관성·핏이 낮으면 보너스가 줄거나 0입니다. 표시 점수 = ${T.floor} + 원점수 × ${T.scale}(31~100). 퀴즈 정답은 +${T.quizRight}.`,
+      title: "몰입 보너스 · 감점 · 최종 점수",
+      body: `A·B 등급 유형이 붙으면 보너스(옷장 A ${T.bonus.closet.A}·B ${T.bonus.closet.B}, 주문내역 A ${T.bonus.orders.A}·B ${T.bonus.orders.B})를 더합니다. 일관성·핏이 낮으면 보너스가 줄거나 0입니다. 감점: 흔한 옷장(SPA·대중·인기 브랜드 쏠림) 최대 ${T.penalty.common}점, 핏 실패(너무 크거나 작은 옷) 최대 ${T.penalty.fit}점. 표시 점수 = ${T.floor} + ${Math.round(100 * T.scale)} × (원점수/100)^${T.curve}로, 곡선이 클수록 중간 점수가 내려갑니다. 퀴즈 정답은 +${T.quizRight}.`,
       tab: "score",
     },
     { title: "대화", body: "아래 '대화 순서'대로 말하고, 중간에 특수 질문(브랜드 퀴즈·밴드·언더아머·짱구·침착맨)과 마지막 '스스로 패셔너블한가요?'를 묻습니다.", tab: "special" },
@@ -588,7 +588,7 @@ function Tune({ value, M, ctx }: { value: Cfg["tune"]; M: Meta; ctx: Ctx }) {
           </tbody>
         </table>
       </div>
-      <h3 className="text-sm font-semibold">몰입 보너스 · 점수 환산</h3>
+      <h3 className="text-sm font-semibold">몰입 보너스 · 감점 · 점수 환산</h3>
       <div className="flex flex-wrap gap-4">
         {(["closet", "orders"] as const).flatMap((m) =>
           (["A", "B"] as const).map((g) => (
@@ -600,8 +600,11 @@ function Tune({ value, M, ctx }: { value: Cfg["tune"]; M: Meta; ctx: Ctx }) {
             />
           )),
         )}
-        {n("floor", "최저 점수", "표시 점수 = 최저 + 원점수 × 환산")}
+        {n("floor", "최저 점수", "표시 점수 = 최저 + 100×환산×(원점수/100)^곡선")}
         {n("scale", "환산 계수", "0.3~1", 0.01)}
+        {n("curve", "곡선", "1이면 직선, 클수록 중간 점수가 낮아짐(1~2.5)", 0.05)}
+        <Num label="감점: 흔한 옷장" hint="SPA·대중·인기 브랜드가 35%를 넘으면 늘어남(보너스를 받으면 줄어듦)" value={d.penalty.common} onChange={(v) => set({ penalty: { ...d.penalty, common: v ?? 0 } })} />
+        <Num label="감점: 핏 실패" hint="너무 크거나 작은 옷 비율(40%면 최대)" value={d.penalty.fit} onChange={(v) => set({ penalty: { ...d.penalty, fit: v ?? 0 } })} />
       </div>
       <h3 className="text-sm font-semibold">자료가 적을 때 · 대화 · 질문</h3>
       <div className="flex flex-wrap gap-4">

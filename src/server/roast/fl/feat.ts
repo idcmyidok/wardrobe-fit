@@ -43,7 +43,7 @@ export interface Feat {
   topColors3: number;
   cat: Record<"outer" | "top" | "bottom" | "hat" | "shoes", number>;
   /** 내가 표기한 핏과 앱이 내 치수로 계산한 예상 핏 */
-  fits: { marked: number; expected: number; over: number; big: number; slim: number; regular: number; bothOver: number; mismatch: number; wide: number };
+  fits: { marked: number; expected: number; over: number; big: number; slim: number; regular: number; bothOver: number; mismatch: number; wide: number; bad: number };
   season: Record<"spring" | "summer" | "fall" | "winter", number>;
   avg: { formal: number; trend: number; heritage: number; hype: number; pop: number; price: number };
   /** 옷 값 평균(원) */
@@ -184,6 +184,7 @@ export function features(items: Item[], body: BodyProfile | null, mode: Mode, no
       regular: fitShare(["regular"]),
       bothOver,
       mismatch,
+      bad: fitShare(["too_big", "too_small"]),
       wide: share((i) => i.cat === "bottom" && (i.families.includes("wide") || i.families.includes("balloon") || i.families.includes("parachute") || (i.fit ? BIG_LEVELS.includes(i.fit.level) : false)), clothes.filter((i) => i.cat === "bottom")),
     },
     season: { spring: seasonShare("spring"), summer: seasonShare("summer"), fall: seasonShare("fall"), winter: seasonShare("winter") },

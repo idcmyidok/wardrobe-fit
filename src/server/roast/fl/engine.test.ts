@@ -67,16 +67,19 @@ describe("패션 수준 평가", () => {
       const sumShare = ev.types.reduce((a, t) => a + t.share, 0);
       if (ev.types.length) expect(sumShare).toBeCloseTo(1);
       expect(Object.values(ev.weights).reduce((a, b) => a + b, 0)).toBeCloseTo(100);
-      rows.push(`${name.padEnd(18)} ${String(ev.score).padStart(3)}점 raw ${ev.raw.toFixed(1)} sum ${ev.sum.toFixed(1)} bonus ${ev.bonus.grade}${ev.bonus.points} | ${ev.types.map((t) => `${t.id}:${t.fitness.toFixed(2)}`).join(", ")} | ${(["c", "t", "b", "f", "x"] as const).map((k) => `${k}=${ev.axes[k].value == null ? "-" : ev.axes[k].value!.toFixed(2)}`).join(" ")}`);
+      rows.push(`${name.padEnd(18)} ${String(ev.score).padStart(3)}점 raw ${ev.raw.toFixed(1)} sum ${ev.sum.toFixed(1)} bonus ${ev.bonus.grade}${ev.bonus.points} pen ${ev.penalties.map((p) => `${p.id}${p.points}`).join(",")} | ${ev.types.map((t) => `${t.id}:${t.fitness.toFixed(2)}`).join(", ")} | ${(["c", "t", "b", "f", "x"] as const).map((k) => `${k}=${ev.axes[k].value == null ? "-" : ev.axes[k].value!.toFixed(2)}`).join(" ")}`);
     }
     console.log("\n" + rows.join("\n"));
   });
 
-  it("디자이너 올블랙 > 비싸지만 못 입는 옷장, 캠퍼스·SPA는 중상위", () => {
+  it("디자이너 올블랙 > 비싸지만 못 입는 옷장, 평범한 대학생·SPA는 60점대", () => {
     expect(run(personas.allblackDesigner).score).toBeGreaterThan(run(personas.expensiveBad).score + 10);
     expect(run(personas.allblackDesigner).score).toBeGreaterThanOrEqual(80);
-    expect(run(personas.campus).score).toBeGreaterThanOrEqual(55);
-    expect(run(personas.spaStylish).score).toBeGreaterThanOrEqual(60);
+    for (const k of ["campus", "spaStylish"]) {
+      expect(run(personas[k]).score).toBeGreaterThanOrEqual(60);
+      expect(run(personas[k]).score).toBeLessThan(70);
+    }
+    expect(run(personas.expensiveBad).penalties.some((p) => p.id === "fit")).toBe(true);
   });
 
   it("대표 유형이 붙는다", () => {

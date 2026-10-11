@@ -30,6 +30,14 @@ export interface Bonus {
   by: string | null;
 }
 
+export interface Penalty {
+  id: "common" | "fit";
+  label: string;
+  why: string;
+  /** 깎는 점수(양수) */
+  points: number;
+}
+
 export interface Evaluation {
   mode: Mode;
   F: Feat;
@@ -39,6 +47,7 @@ export interface Evaluation {
   weights: Record<AxisKey, number>;
   axes: Record<AxisKey, AxisOut & { points: number; weight: number }>;
   bonus: Bonus;
+  penalties: Penalty[];
   /** 항목 합계(0~100) */
   sum: number;
   /** 퀴즈 등을 더하기 전 원점수 */
@@ -56,7 +65,9 @@ const BONUS_GATE: Record<string, (F: Feat) => boolean> = {
   one_brand: (F) => (F.topBrand ? (F.known.find((i) => i.brand!.name && F.topBrand!.ids.includes(i.id))?.brand!.pop ?? 5) <= 4 : false),
 };
 
-export const displayScore = (raw: number, floor: number, scale: number) => Math.round(floor + Math.max(0, Math.min(100, raw)) * scale);
+/** 표시 점수: floor + 100×scale×(원점수/100)^curve. 곡선이 1보다 크면 중간 점수가 내려가고 위쪽은 덜 내려간다. */
+export const displayScore = (raw: number, T: { floor: number; scale: number; curve: number }) =>
+  Math.round(T.floor + 100 * T.scale * Math.pow(Math.max(0, Math.min(100, raw)) / 100, T.curve));
 
 export function evaluate(items: Item[], body: BodyProfile | null, mode: Mode, now: Date, C: FlConfig, orders?: OrderContext): Evaluation {
   const F = features(items, body, mode, now, orders);
@@ -137,6 +148,17 @@ export function evaluate(items: Item[], body: BodyProfile | null, mode: Mode, no
     sum += points;
     axes[k] = { ...raw[k], points, weight: w[k] };
   }
-  const rawScore = Math.min(100, sum + bonus.points);
-  return { mode, F, types, all, weights: w, axes, bonus, sum, raw: rawScore, score: displayScore(rawScore, T.floor, T.scale), lowData, tasteHalved };
+  // 6) 감점
+  const clamp = (v: number) => Math.max(0, Math.min(1, v));
+  const pct = (v: number) => Math.round(v * 100);
+  const common = F.kshare((i) => i.groups.includes("spa") || i.groups.includes("mass") || i.brand!.trend >= 4 || i.brand!.labels.includes("무신사 인기"));
+  const penalties: Penalty[] = [];
+  const pc = Math.round(T.penalty.common * clamp((common - 0.35) / 0.4) * (1 - bonus.points / Math.max(bonus.max, 1)) * 10) / 10;
+  if (pc > 0) penalties.push({ id: "common", label: "흔한 옷장", why: `SPA·대중·인기 브랜드 ${pct(common)}%`, points: pc });
+  const pf = Math.round(T.penalty.fit * clamp(F.fits.bad / 0.4) * 10) / 10;
+  if (pf > 0) penalties.push({ id: "fit", label: "핏 실패", why: `너무 크거나 작은 옷 ${pct(F.fits.bad)}%`, points: pf });
+  const minus = penalties.reduce((a, p) => a + p.points, 0);
+
+  const rawScore = Math.max(0, Math.min(100, sum + bonus.points - minus));
+  return { mode, F, types, all, weights: w, axes, bonus, penalties, sum, raw: rawScore, score: displayScore(rawScore, T), lowData, tasteHalved };
 }

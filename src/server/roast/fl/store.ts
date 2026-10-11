@@ -118,6 +118,7 @@ export function sanitizeTune(v: unknown): R<FlConfig["tune"]> {
   pick("maxTypes", 1, 6, "유형 최대 수(1~6)", true);
   pick("floor", 0, 60, "최저 점수(0~60)", true);
   pick("scale", 0.3, 1, "환산 계수(0.3~1)");
+  pick("curve", 1, 2.5, "곡선(1~2.5)");
   pick("knownMin", 0, 1, "브랜드 자료 비율(0~1)");
   pick("ordersMin", 1, 100, "주문내역 최소 구매 수(1~100)", true);
   pick("talkTypes", 0, 4, "대화 유형 수(0~4)", true);
@@ -133,6 +134,12 @@ export function sanitizeTune(v: unknown): R<FlConfig["tune"]> {
     const bl = x.blend.map((n) => num(n, 1, 100, true));
     if (bl.some((n) => n == null)) return fail("섞는 비율은 1~100 정수입니다.");
     out.blend = bl as number[];
+  }
+  if (x.penalty !== undefined) {
+    const c = num(x.penalty?.common, 0, 30, true);
+    const f = num(x.penalty?.fit, 0, 30, true);
+    if (c == null || f == null) return fail("감점은 0~30 정수입니다.");
+    out.penalty = { common: c, fit: f };
   }
   for (const mode of ["closet", "orders"] as const) {
     const xb = x.bonus?.[mode];

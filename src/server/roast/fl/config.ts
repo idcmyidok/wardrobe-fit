@@ -41,6 +41,10 @@ export interface FlConfig {
     /** 표시 점수 = floor + 원점수 × scale */
     floor: number;
     scale: number;
+    /** 곡선(1이면 직선). 클수록 중간 점수를 더 낮춘다: floor + 100×scale×(원점수/100)^curve */
+    curve: number;
+    /** 감점 상한: 흔한 옷장(SPA·대중·인기 브랜드 쏠림), 핏 실패(너무 크거나 작은 옷) */
+    penalty: { common: number; fit: number };
     bonus: Record<Mode, { A: number; B: number }>;
     weights: Record<Mode, Record<AxisKey, number>>;
     /** 브랜드 자료가 있는 옷 비율이 이 값 미만이면 안목 비중을 절반으로 */
@@ -122,6 +126,8 @@ export const DEFAULT_CONFIG: FlConfig = {
     blend: [40, 30, 20, 10],
     floor: 31,
     scale: 0.69,
+    curve: 1.35,
+    penalty: { common: 8, fit: 10 },
     bonus: { closet: { A: 20, B: 10 }, orders: { A: 12, B: 6 } },
     weights: structuredClone(BASE_WEIGHTS),
     knownMin: 0.5,

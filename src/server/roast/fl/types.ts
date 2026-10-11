@@ -474,5 +474,3 @@ export const TYPE_DEFS: TypeDef[] = [
     lines: L(["주문 {orders}건에 반품 거의 없음. 사야 할 때만 사는 타입이네요.", "필요한 것만 사고 후회가 적은 쇼핑입니다."],
       ["살 때 신중한 습관이 보입니다. 반품이 없는 게 증거죠."], ["자료가 적어서 평가가 덜 정확합니다. 옷장 쪽도 함께 해보세요."]) },
 ];
-
-export const TYPE_BY_ID = new Map(TYPE_DEFS.map((t) => [t.id, t]));

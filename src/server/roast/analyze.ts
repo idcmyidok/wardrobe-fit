@@ -13,18 +13,6 @@ import { productFamilies, type FamilyId } from "./keywords";
  */
 
 export const ACHROMATIC = ["블랙", "그레이", "화이트"];
-/** 훈수를 받으려면 모자·신발을 뺀 옷이 이만큼 있어야 한다 */
-export const MIN_GARMENTS = 30;
-
-/** 핏 이름(상의·하의 공통으로 부를 때) */
-export const FIT_WORD: Record<FitLevel, string> = {
-  too_small: "작은 핏",
-  slim: "슬림",
-  regular: "레귤러",
-  semi_over: "세미오버",
-  over: "오버",
-  too_big: "큰 핏",
-};
 
 /** 분석용으로 정리한 옷 한 벌 */
 export interface Item {
@@ -71,9 +59,6 @@ export function brandKindOf(label: string, known: boolean): Item["brandKind"] {
   if (VINTAGE.test(t)) return "vintage";
   return "unknown";
 }
-
-/** 색 계산에 넣는 옷(색이 있고 데님이 아님) */
-export const colorCounted = (i: Item) => Boolean(i.color) && !i.denim;
 
 export function prepare(garments: Garment[], body: BodyProfile | null, usdRate: number): Item[] {
   return garments

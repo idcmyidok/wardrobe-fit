@@ -182,7 +182,7 @@ export function buildReport(ev: Evaluation, C: FlConfig, seed: number, asked: As
     else if (key === "wrong") quizDelta += T.quizWrong;
   }
   const raw = Math.max(0, Math.min(100, ev.raw + quizDelta));
-  const score = displayScore(raw, T.floor, T.scale);
+  const score = displayScore(raw, T);
 
   const band = C.bands.find((b) => score <= b.max) ?? C.bands[C.bands.length - 1];
   const headline = tryFill(r, band.say, { score }) ?? `${score}점, ${band.name}입니다.`;
@@ -248,9 +248,13 @@ export function buildReport(ev: Evaluation, C: FlConfig, seed: number, asked: As
         items: [
           ...AXIS_KEYS.filter((k) => ev.axes[k].value != null).map((k) => ({ label: axisName(ev, k), why: `${ev.axes[k].why} · 비중 ${Math.round(ev.axes[k].weight)}`, delta: ev.axes[k].points })),
           ...(ev.bonus.points ? [{ label: `몰입 보너스 ${ev.bonus.grade} (${ev.bonus.by ? C.types[ev.bonus.by].name : ""})`, why: `상한 ${ev.bonus.max} · 신호 ${Math.round(ev.bonus.strength * 100)}% · 제동 ${Math.round(ev.bonus.brake * 100)}%`, delta: ev.bonus.points }] : []),
+          ...ev.penalties.map((p) => ({ label: `감점: ${p.label}`, why: p.why, delta: -p.points })),
           ...(quizDelta ? [{ label: "퀴즈 답", why: "", delta: quizDelta }] : []),
-          ...(raw !== Math.min(100, ev.sum + ev.bonus.points + quizDelta) ? [{ label: "100점 상한", why: "", delta: raw - (ev.sum + ev.bonus.points + quizDelta) }] : []),
-          { label: `표시 점수 환산 (${T.floor} + 원점수 × ${T.scale})`, why: `원점수 ${Math.round(raw * 10) / 10}`, delta: score - raw },
+          ...(() => {
+            const plain = ev.sum + ev.bonus.points - ev.penalties.reduce((a, p) => a + p.points, 0) + quizDelta;
+            return raw !== plain ? [{ label: raw > plain ? "0점 하한" : "100점 상한", why: "", delta: raw - plain }] : [];
+          })(),
+          { label: `표시 점수 환산 (${T.floor} + ${Math.round(100 * T.scale)} × (원점수/100)^${T.curve})`, why: `원점수 ${Math.round(raw * 10) / 10}`, delta: score - raw },
         ],
         total: score,
       }
