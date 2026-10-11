@@ -4,6 +4,8 @@ import type { Item } from "../analyze";
 import { fill, MissingVar, rng, type Rng, type Vars } from "../text";
 import type { FlConfig } from "./config";
 import { displayScore, type Evaluation } from "./engine";
+import { buildAsks } from "./asks";
+import { KIND_NAME, mixOf, topBrands } from "./brand-talk";
 import { buildSpecials, type AskedQuestion } from "./special";
 import { AXIS_KEYS, AXIS_NAME, type AxisKey } from "./types";
 import { typeVars } from "./vars";
@@ -85,7 +87,10 @@ export function buildPlan(ev: Evaluation, C: FlConfig, seed: number, name: strin
   const steps: RoastStep[] = [];
   const say = (text: string, photos?: string[], gap?: boolean) => steps.push({ t: "say", text, ...(photos?.length ? { photos } : {}), ...(gap ? { gap: true } : {}) });
   const tier = tierOf(ev.score, C);
-  const asked = buildSpecials({ items: ev.F.items, brandNames }, r, C, tier);
+  // 재미 질문 → 점수 질문 → (항상 마지막) 패셔너블 질문
+  const specials = buildSpecials({ items: ev.F.items, brandNames }, r, C, tier);
+  const lastQ = specials.at(-1)?.id === "fashionable_q" ? specials.slice(-1) : [];
+  const asked = [...specials.slice(0, specials.length - lastQ.length), ...buildAsks(ev, C.asks, r, C.tune.maxAsks), ...lastQ];
   const V = typeVars(ev);
   const T = C.tune;
 
@@ -131,6 +136,19 @@ export function buildPlan(ev: Evaluation, C: FlConfig, seed: number, name: strin
         const worst = lines(ex.worst, "low");
         if (worst) say(worst);
       }
+    } else if (b.id === "brands") {
+      const rows = topBrands(ev.F);
+      if (rows.length) {
+        const st = tryFill(r, C.brands.status, V);
+        if (st) steps.push({ t: "status", text: st, gap: true });
+        rows.slice(0, 2).forEach((b) => {
+          const t = tryFill(r, C.brands.kind[b.kind], { brand: b.label, n: b.n, pct: b.pct, level: b.level, kind: KIND_NAME[b.kind] });
+          const photos = ev.F.items.filter((i) => i.hasPhoto && b.ids.includes(i.id)).slice(0, MAX_PHOTOS).map((i) => i.id);
+          if (t) say(t, photos);
+        });
+        const mix = tryFill(r, C.brands.mix[mixOf(ev.F)], brandMixVars(ev));
+        if (mix) say(mix);
+      }
     } else if (b.id === "bonus") {
       if (ev.bonus.points >= 1) {
         const t = tryFill(r, C.common.BONUS_SAY, { grade: ev.bonus.grade, points: Math.round(ev.bonus.points) });
@@ -161,6 +179,11 @@ export function buildPlan(ev: Evaluation, C: FlConfig, seed: number, name: strin
   return { script: { seed, steps, questions }, asked };
 }
 
+function brandMixVars(ev: Evaluation): Vars {
+  const top = topBrands(ev.F)[0];
+  return { count: ev.F.brandCount, ...(top ? { brand: top.label, pct: top.pct } : {}) };
+}
+
 export interface Built {
   report: RoastReport;
   closing: string[];
@@ -173,13 +196,20 @@ export function buildReport(ev: Evaluation, C: FlConfig, seed: number, asked: As
   const V = typeVars(ev);
   const T = C.tune;
 
-  // 퀴즈 답이 원점수에 더하는 값
+  // 퀴즈·점수 질문 답이 원점수에 더하는 값
   let quizDelta = 0;
+  const answerItems: { label: string; why: string; delta: number }[] = [];
   for (const q of asked) {
     const a = answers[q.id];
-    const key = a && q.scoreKey?.[a];
-    if (key === "right") quizDelta += T.quizRight;
-    else if (key === "wrong") quizDelta += T.quizWrong;
+    if (!a) continue;
+    const key = q.scoreKey?.[a];
+    let d = 0;
+    if (key === "right") d = T.quizRight;
+    else if (key === "wrong") d = T.quizWrong;
+    else if (q.points?.[a] != null) d = q.points[a];
+    if (!d) continue;
+    quizDelta += d;
+    answerItems.push({ label: `질문 답: ${q.text}`, why: q.options.find((o) => o.id === a)?.label ?? a, delta: d });
   }
   const raw = Math.max(0, Math.min(100, ev.raw + quizDelta));
   const score = displayScore(raw, T);
@@ -215,6 +245,15 @@ export function buildReport(ev: Evaluation, C: FlConfig, seed: number, asked: As
     points.push({ id: `ask-${q.id}`, lead: "", text: r.pick(pool) });
   }
 
+  // 브랜드 분석
+  const brandRows = topBrands(ev.F);
+  const brands = brandRows.map((b) => {
+    const text = tryFill(r, C.brands.kind[b.kind], { brand: b.label, n: b.n, pct: b.pct, level: b.level, kind: KIND_NAME[b.kind] }) ?? "";
+    const photos = ev.F.items.filter((i) => i.hasPhoto && b.ids.includes(i.id)).slice(0, 40).map((i) => i.id);
+    return { id: `brand-${b.label}`, lead: `${b.label} ${b.n}벌 · ${[b.level, KIND_NAME[b.kind]].filter(Boolean).join(" ")}`, text, ...(photos.length ? { photos } : {}) };
+  });
+  const mixLine = brandRows.length ? tryFill(r, C.brands.mix[mixOf(ev.F)], brandMixVars(ev)) : null;
+
   // 항목별 점수
   const ex = extremes(ev);
   const axes = AXIS_KEYS.filter((k) => ev.axes[k].value != null).map((k) => {
@@ -249,7 +288,7 @@ export function buildReport(ev: Evaluation, C: FlConfig, seed: number, asked: As
           ...AXIS_KEYS.filter((k) => ev.axes[k].value != null).map((k) => ({ label: axisName(ev, k), why: `${ev.axes[k].why} · 비중 ${Math.round(ev.axes[k].weight)}`, delta: ev.axes[k].points })),
           ...(ev.bonus.points ? [{ label: `몰입 보너스 ${ev.bonus.grade} (${ev.bonus.by ? C.types[ev.bonus.by].name : ""})`, why: `상한 ${ev.bonus.max} · 신호 ${Math.round(ev.bonus.strength * 100)}% · 제동 ${Math.round(ev.bonus.brake * 100)}%`, delta: ev.bonus.points }] : []),
           ...ev.penalties.map((p) => ({ label: `감점: ${p.label}`, why: p.why, delta: -p.points })),
-          ...(quizDelta ? [{ label: "퀴즈 답", why: "", delta: quizDelta }] : []),
+          ...answerItems,
           ...(() => {
             const plain = ev.sum + ev.bonus.points - ev.penalties.reduce((a, p) => a + p.points, 0) + quizDelta;
             return raw !== plain ? [{ label: raw > plain ? "0점 하한" : "100점 상한", why: "", delta: raw - plain }] : [];
@@ -260,7 +299,7 @@ export function buildReport(ev: Evaluation, C: FlConfig, seed: number, asked: As
       }
     : undefined;
 
-  const REPORT_KEY: Record<string, string> = { types: "lists", points: "points", axes: "axes", notes: "notes" };
+  const REPORT_KEY: Record<string, string> = { types: "lists", points: "points", brands: "brands", axes: "axes", notes: "notes" };
   const order = C.report.filter((b) => b.on).map((b) => REPORT_KEY[b.id]).filter(Boolean);
 
   const report: RoastReport = {
@@ -269,6 +308,7 @@ export function buildReport(ev: Evaluation, C: FlConfig, seed: number, asked: As
     total: { score },
     points,
     axes,
+    ...(brands.length ? { brands: { title: C.brands.title, items: brands, ...(mixLine ? { mix: mixLine } : {}) } } : {}),
     ...(summary ? { summary } : {}),
     notes,
     ...(detail ? { scoreDetail: detail } : {}),

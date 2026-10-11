@@ -20,13 +20,15 @@ type Var = { key: string; label: string };
 type TypeConf = Cfg["types"][string];
 type Quiz = Cfg["quiz"][string];
 
-type Tab = "structure" | "types" | "score" | "common" | "special" | "quiz" | "screen";
+type Tab = "structure" | "types" | "score" | "brands" | "asks" | "common" | "special" | "quiz" | "screen";
 const TABS: { id: Tab; label: string }[] = [
   { id: "structure", label: "전체 구조" },
   { id: "types", label: "패션 유형" },
   { id: "score", label: "점수 기준" },
+  { id: "brands", label: "브랜드 분석" },
+  { id: "asks", label: "점수 질문" },
   { id: "common", label: "공통 문장" },
-  { id: "special", label: "특수 질문" },
+  { id: "special", label: "재미 질문" },
   { id: "quiz", label: "패션 퀴즈" },
   { id: "screen", label: "화면 문구" },
 ];
@@ -235,6 +237,8 @@ export function RoastDesigner({ data }: { data: DesignerData }) {
         types: Object.entries(cfg.types).filter(([id, t]) => has({ id, t }, q)).length,
         score: (Object.entries(cfg.axisLines).filter(([k, v]) => has({ k, v, n: M.axes.find((a) => a.key === k) }, q)).length) + cfg.bands.filter((b) => has(b, q)).length,
         common: Object.entries(cfg.common).filter(([k, v]) => has({ k, v, w: M.common[k as keyof typeof M.common] }, q)).length,
+        brands: [...Object.entries(cfg.brands.kind), ...Object.entries(cfg.brands.mix)].filter(([k, v]) => has({ k, v }, q)).length,
+        asks: Object.entries(cfg.asks).filter(([k, v]) => has({ k, v }, q)).length,
         special: Object.entries(cfg.special).filter(([k, v]) => has({ k, v, w: M.special[k] }, q)).length,
         quiz: Object.entries(cfg.quiz).filter(([, v]) => has(v, q)).length,
         screen: [...Object.entries(cfg.screen), ...Object.entries(cfg.orderScreen)].filter(([k, v]) => has({ k, v, w: M.screen[k] }, q)).length,
@@ -271,6 +275,8 @@ export function RoastDesigner({ data }: { data: DesignerData }) {
       {tab === "types" && <Types cfg={cfg} M={M} ctx={ctx} q={q} />}
       {tab === "score" && <Score cfg={cfg} M={M} ctx={ctx} q={q} />}
       {tab === "common" && <Common cfg={cfg} M={M} ctx={ctx} q={q} />}
+      {tab === "brands" && <Brands cfg={cfg} M={M} ctx={ctx} q={q} />}
+      {tab === "asks" && <Asks cfg={cfg} M={M} ctx={ctx} q={q} />}
       {tab === "special" && <Special cfg={cfg} M={M} ctx={ctx} q={q} go={go} />}
       {tab === "quiz" && <Quizzes cfg={cfg} D={D} M={M} ctx={ctx} q={q} />}
       {tab === "screen" && <Screen cfg={cfg} M={M} ctx={ctx} q={q} />}
@@ -303,7 +309,8 @@ function Structure({ cfg, M, ctx, go }: P & { go: (t: Tab, q?: string) => void }
       body: `A·B 등급 유형이 붙으면 보너스(옷장 A ${T.bonus.closet.A}·B ${T.bonus.closet.B}, 주문내역 A ${T.bonus.orders.A}·B ${T.bonus.orders.B})를 더합니다. 일관성·핏이 낮으면 보너스가 줄거나 0입니다. 감점: 흔한 옷장(SPA·대중·인기 브랜드 쏠림, 코디력이 좋으면 없음) 최대 ${T.penalty.common}점, 핏 실패(너무 크거나 작은 옷) 최대 ${T.penalty.fit}점. 표시 점수 = ${T.floor} + ${Math.round(100 * T.scale)} × (원점수/100)^${T.curve}로, 곡선이 클수록 중간 점수가 내려갑니다. 퀴즈 정답은 +${T.quizRight}.`,
       tab: "score",
     },
-    { title: "대화", body: "아래 '대화 순서'대로 말하고, 중간에 특수 질문(브랜드 퀴즈·밴드·언더아머·짱구·침착맨)과 마지막 '스스로 패셔너블한가요?'를 묻습니다.", tab: "special" },
+    { title: "브랜드 분석", body: "많이 가진 브랜드(2벌 이상, 최대 3개)를 계열(스트릿·SPA·디자이너 등)에 맞는 말로 짚고, 옷장 전체 브랜드 구성(한 브랜드 쏠림·브랜드 난립·SPA 위주 등)을 한마디 합니다.", tab: "brands" },
+    { title: "대화와 질문", body: `아래 '대화 순서'대로 말합니다. 질문은 재미 질문(브랜드 퀴즈·밴드·언더아머·짱구·침착맨) → 점수 질문(상황이 맞는 것 최대 ${T.maxAsks}개, 답에 따라 원점수 증감) → 마지막 '스스로 패셔너블한가요?' 순서입니다.`, tab: "asks" },
     { title: "결과 페이지", body: "등급 한 줄(점수 구간) → 아래 '결과 순서' 블록 → 마무리 말 순서로 보여 줍니다.", tab: "score", find: "" },
   ];
   return (
@@ -349,11 +356,14 @@ function Blocks({ title, section, value, defs, M, ctx, go }: { title: string; se
       "talk:types": [{ label: "유형별 '근거 말'", tab: "types" }],
       "talk:axes": [{ label: "항목 문장(칭찬·조언)", tab: "score" }],
       "talk:questions": [
-        { label: "특수 질문", tab: "special" },
+        { label: "재미 질문", tab: "special" },
+        { label: "점수 질문", tab: "asks" },
         { label: "패션 퀴즈", tab: "quiz" },
       ],
+      "talk:brands": [{ label: "브랜드 분석 문장", tab: "brands" }],
+      "report:brands": [{ label: "브랜드 분석 문장", tab: "brands" }],
       "report:types": [{ label: "유형 이름", tab: "types" }],
-      "report:points": [{ label: "유형별 근거·칭찬·조언", tab: "types" }, { label: "특수 질문 결과 문단", tab: "special" }],
+      "report:points": [{ label: "유형별 근거·칭찬·조언", tab: "types" }, { label: "점수 질문 결과 문단", tab: "asks" }, { label: "재미 질문 결과 문단", tab: "special" }],
       "report:axes": [{ label: "항목 문장(구간별)", tab: "score" }],
     };
     return [...(extra[key] ?? []), ...common];
@@ -616,6 +626,7 @@ function Tune({ value, M, ctx }: { value: Cfg["tune"]; M: Meta; ctx: Ctx }) {
         {n("tierLow", "패셔너블 질문: 낮음 경계", "이 점수 미만이면 낮음 반응")}
         {n("quizRight", "퀴즈 정답 점수", "원점수에 더함")}
         {n("quizWrong", "퀴즈 오답 점수", "원점수에 더함(음수면 감점)")}
+        {n("maxAsks", "점수 질문 최대 수", "조건이 맞는 점수 질문 중 순서대로 이만큼(0~8)")}
       </div>
     </section>
   );
@@ -923,5 +934,100 @@ function ScreenPart({ title, section, value, M, ctx, q }: { title: string; secti
         })}
       </ul>
     </section>
+  );
+}
+
+// ───────────────────────── 브랜드 분석 ─────────────────────────
+
+function Brands({ cfg, M, ctx, q }: P & { q: string }) {
+  const s = useSection("brands", cfg.brands, ctx);
+  const d = s.draft;
+  const v = M.vars.brand;
+  return (
+    <div className="flex flex-col">
+      <p className="py-3 text-sm text-pretty text-neutral-700">
+        대화에서는 많이 가진 브랜드 2개와 구성 한마디를, 결과 페이지에서는 최대 3개 브랜드를 한 문단씩 보여 줍니다. 브랜드 문장은 그 브랜드의 계열(브랜드 자료 기준)로 골라집니다.
+      </p>
+      <SaveBar s={s} sticky />
+      {!q && (
+        <div className="flex flex-col gap-3 border-b border-neutral-300 py-4">
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">결과 페이지 제목</span>
+            <Input className="w-48" value={d.title} onChange={(e) => s.setDraft({ ...d, title: e.target.value })} />
+          </label>
+          <List label="대화 상태 줄" hint="브랜드 이야기 앞에 붙는 한 줄" value={d.status} onChange={(l) => s.setDraft({ ...d, status: l })} min={0} />
+        </div>
+      )}
+      <h2 className="pt-4 text-body font-semibold">브랜드 계열별 한마디</h2>
+      <ul className="flex flex-col">
+        {M.brandKinds
+          .filter((k) => has({ k, v: d.kind[k.key as keyof typeof d.kind] }, q))
+          .map((k) => (
+            <Fold key={k.key} title={k.name} sub={`계열이 ${k.name}인 브랜드를 많이 가졌을 때`} open={Boolean(q)}>
+              <List value={d.kind[k.key as keyof typeof d.kind]} onChange={(l) => s.setDraft({ ...d, kind: { ...d.kind, [k.key]: l } })} vars={v} />
+            </Fold>
+          ))}
+      </ul>
+      <h2 className="pt-4 text-body font-semibold">브랜드 구성 한마디</h2>
+      <ul className="flex flex-col">
+        {M.brandMix
+          .filter((k) => has({ k, v: d.mix[k.key as keyof typeof d.mix] }, q))
+          .map((k) => (
+            <Fold key={k.key} title={k.name} sub="위에서부터 먼저 맞는 하나만 씁니다" open={Boolean(q)}>
+              <List value={d.mix[k.key as keyof typeof d.mix]} onChange={(l) => s.setDraft({ ...d, mix: { ...d.mix, [k.key]: l } })} vars={v} />
+            </Fold>
+          ))}
+      </ul>
+    </div>
+  );
+}
+
+// ───────────────────────── 점수 질문 ─────────────────────────
+
+function Asks({ cfg, M, ctx, q }: P & { q: string }) {
+  const s = useSection("asks", cfg.asks, ctx);
+  const d = s.draft;
+  const v = M.vars.ask;
+  return (
+    <div className="flex flex-col">
+      <p className="py-3 text-sm text-pretty text-neutral-700">
+        옷장에서 잡힌 상황마다 묻는 질문입니다. 조건이 맞는 질문을 위에서부터 최대 {cfg.tune.maxAsks}개(점수 기준 탭에서 조정) 묻고, 고른 답의 점수를 원점수에 더합니다. 묻는 조건은 코드에 있고, 여기서는 켜기·문장·선택지·점수를 고칩니다.
+      </p>
+      <SaveBar s={s} sticky />
+      <ul className="flex flex-col">
+        {M.asks
+          .filter((a) => has({ a, v: d[a.id] }, q))
+          .map((a) => {
+            const x = d[a.id];
+            const set = (patch: Partial<typeof x>) => s.setDraft({ ...d, [a.id]: { ...x, ...patch } });
+            return (
+              <Fold key={a.id} title={x.text} sub={`언제: ${a.when}`} badges={!x.on ? <Badge>꺼짐</Badge> : undefined} open={Boolean(q)}>
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={x.on} onChange={(e) => set({ on: e.target.checked })} />이 질문 쓰기
+                </label>
+                <List label="앞말" hint="질문 전에 차례로 모두 말합니다" value={x.lead} onChange={(l) => set({ lead: l })} min={0} />
+                <Text label="질문" value={x.text} onChange={(t) => set({ text: t })} />
+                {Object.entries(x.options).map(([k, o]) => {
+                  const setO = (patch: Partial<typeof o>) => set({ options: { ...x.options, [k]: { ...o, ...patch } } });
+                  return (
+                    <div key={k} className="flex flex-col gap-2 border-t border-neutral-200 pt-3">
+                      <div className="flex flex-wrap items-end gap-3">
+                        <label className="flex flex-col gap-1">
+                          <span className="text-sm font-medium">선택지</span>
+                          <Input className="w-72" value={o.label} onChange={(e) => setO({ label: e.target.value })} />
+                        </label>
+                        <Num label="점수" hint="원점수에 더함(-10~10)" value={o.points} onChange={(n) => setO({ points: n ?? 0 })} />
+                      </div>
+                      <List label="바로 반응" value={o.react} onChange={(l) => setO({ react: l })} />
+                      <List label="결과 문단" value={o.roast} onChange={(l) => setO({ roast: l })} />
+                    </div>
+                  );
+                })}
+                <Vars vars={v} />
+              </Fold>
+            );
+          })}
+      </ul>
+    </div>
   );
 }

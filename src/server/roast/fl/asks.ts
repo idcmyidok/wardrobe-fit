@@ -1,0 +1,202 @@
+import "server-only";
+import { fill, MissingVar, type Rng, type Vars } from "../text";
+import type { Evaluation } from "./engine";
+import type { AskedQuestion } from "./special";
+
+/**
+ * 점수 질문: 옷장에서 잡힌 상황마다 묻고, 답에 따라 원점수를 올리거나 내리고 결과 문단을 붙인다.
+ * 언제 묻는지(조건)는 코드, 문장·선택지·점수는 설계(FlConfig.asks)에서 고친다. 한 번에 tune.maxAsks개까지, 아래 순서대로 고른다.
+ */
+
+export interface AskOption {
+  label: string;
+  /** 원점수 증감 */
+  points: number;
+  react: string[];
+  roast: string[];
+}
+
+export interface AskText {
+  on: boolean;
+  lead: string[];
+  text: string;
+  options: Record<string, AskOption>;
+}
+
+const pct = (v: number) => Math.round(v * 100);
+const NEUTRAL = new Set(["블랙", "그레이", "화이트", "베이지", "브라운", "카키", "네이비", "데님"]);
+const LOGO = /로고|그래픽|프린트|레터링|아트웍|캐릭터|graphic|logo|print|lettering/i;
+const DECOY = ["미니멀", "스트릿", "아메카지", "고프코어", "프레피", "Y2K", "시티보이", "워크웨어", "댄디", "스포티"];
+
+/** 조건: 맞으면 문장 자리 값, 아니면 null */
+export const ASK_WHEN: Record<string, { label: string; when: (ev: Evaluation) => Vars | null }> = {
+  loud_colors: {
+    label: "튀는 색이 4가지 이상",
+    when: ({ F }) => {
+      const loud = new Set(F.clothes.filter((i) => i.color && !i.denim && !NEUTRAL.has(i.color)).map((i) => i.color));
+      return loud.size >= 4 ? { hues: loud.size } : null;
+    },
+  },
+  logo_heavy: {
+    label: "상의의 40% 이상이 로고·그래픽",
+    when: ({ F }) => {
+      const tops = F.clothes.filter((i) => i.cat === "top");
+      const s = tops.length >= 6 ? tops.filter((i) => LOGO.test(i.g.productName)).length / tops.length : 0;
+      return s >= 0.4 ? { logoPct: pct(s) } : null;
+    },
+  },
+  top_brand_why: {
+    label: "한 브랜드가 20% 이상이고 4벌 이상",
+    when: ({ F }) => (F.topBrand && F.topBrand.share >= 0.2 && F.topBrand.count >= 4 ? { brand: F.items.find((i) => F.topBrand!.ids.includes(i.id))?.brandLabel || F.topBrand.name, brandN: F.topBrand.count } : null),
+  },
+  bottoms_few: {
+    label: "하의가 상의의 35% 미만",
+    when: ({ F }) => {
+      const tops = F.clothes.filter((i) => i.cat === "top").length;
+      const bottoms = F.clothes.filter((i) => i.cat === "bottom").length;
+      return tops >= 8 && bottoms / tops < 0.35 ? { tops, bottoms } : null;
+    },
+  },
+  trend_buy: {
+    label: "무신사 인기 브랜드가 50% 이상",
+    when: ({ F }) => (F.popular >= 0.5 ? { popularPct: pct(F.popular) } : null),
+  },
+  unworn: {
+    label: "옷이 60벌 이상",
+    when: ({ F }) => (F.n >= 60 ? { n: F.n } : null),
+  },
+  size_pick: {
+    label: "핏 표시가 있는 옷이 30% 이상(사이즈 고르는 법)",
+    when: ({ F }) => (F.fits.marked >= 0.3 ? {} : null),
+  },
+  style_self: {
+    label: "항상(스타일 태그가 2개 이상 잡히면)",
+    when: ({ F }) => (F.topTags.length >= 2 ? { tag: F.topTags[0], tag2: F.topTags[1], decoy: DECOY.find((d) => !F.topTags.includes(d)) ?? "포멀" } : null),
+  },
+};
+export const ASK_ORDER = Object.keys(ASK_WHEN);
+
+const O = (label: string, points: number, react: string[], roast: string[]): AskOption => ({ label, points, react, roast });
+
+export const DEFAULT_ASKS: Record<string, AskText> = {
+  loud_colors: {
+    on: true,
+    lead: ["색 얘기 좀 하죠.", "튀는 색이 {hues}가지나 있네요."],
+    text: "이거 실제로 같이 입으세요?",
+    options: {
+      point: O("하나만 포인트로 입어요", 2, ["그나마 다행입니다. 색은 한 번에 하나만 떠드는 게 예의죠."], ["튀는 색을 한 번에 하나씩만 쓴다고 하셨습니다. 말은 맞는데, 옷장을 보면 그 말을 믿기가 좀 어렵네요."]),
+      mix: O("섞어 입어요, 그게 멋이죠", -2, ["아, 신호등 콘셉트였군요.", "자신감은 만점입니다. 보는 사람 눈은 좀 쉬어야겠지만."], ["튀는 색을 섞어 입는 게 멋이라고 하셨습니다. 그게 멋이 되려면 나머지가 아주 차분해야 하는데, 지금은 전부 소리를 지르고 있어요."]),
+      closet: O("사실 거의 안 입어요", -1, ["그럼 그 옷들은 옷장 인테리어였네요."], ["튀는 색 옷은 거의 안 입는다고 하셨습니다. 안 입을 옷에 쓴 돈으로 기본 바지 하나 더 사셨으면 좋았겠네요."]),
+    },
+  },
+  logo_heavy: {
+    on: true,
+    lead: ["상의를 보니 {logoPct}%가 로고·그래픽입니다."],
+    text: "일부러 모으신 거죠?",
+    options: {
+      fan: O("좋아하는 브랜드라 그래요", 0, ["팬심은 존중합니다. 걸어 다니는 광고판이 되셨지만."], ["로고 옷이 많은 건 브랜드 사랑 때문이라고 하셨습니다. 브랜드도 고마워할 거예요. 공짜 광고니까."]),
+      cheap: O("싸고 무난해서요", -2, ["로고 티가 무난하다는 건 처음 듣네요."], ["로고·그래픽 티를 무난해서 샀다고 하셨습니다. 무난한 건 무지 티예요. 그 옷들은 꽤 시끄럽습니다."]),
+      layer: O("무지 옷이랑 섞어 입어요", 2, ["그거면 됐습니다. 로고는 하나만 보여야 멋이죠."], ["로고 옷은 무지 옷과 섞어 입는다고 하셨습니다. 아는 사람이네요. 다음엔 무지 옷 비율을 좀 더 늘려 보시죠."]),
+    },
+  },
+  top_brand_why: {
+    on: true,
+    lead: ["{brand}만 {brandN}벌이네요."],
+    text: "{brand} 왜 좋아하세요?",
+    options: {
+      fit: O("디자인이랑 핏이 잘 맞아서", 2, ["이유가 있는 충성심이네요. 인정합니다."], ["{brand|는} 디자인과 핏 때문에 산다고 하셨습니다. 이유 있는 단골은 칭찬받을 만하죠. 다만 그 핏을 다른 브랜드에서도 찾아보면 옷장이 덜 지루해집니다."]),
+      others: O("주변에서 다들 입어서", -2, ["주변 사람들이 대신 쇼핑해 주는 셈이네요."], ["{brand|를} 주변에서 다들 입어서 샀다고 하셨습니다. 그럼 그건 본인 취향이 아니라 친구들 취향이에요."]),
+      sale: O("세일할 때 싸게 사서", -1, ["알림 설정해 두신 거 다 압니다."], ["{brand|는} 세일 때 산다고 하셨습니다. 싸게 산 건 좋은데, 싸서 산 옷은 대개 옷장에서 제일 먼저 잊힙니다."]),
+      habit: O("그냥 손이 가요", 0, ["습관성 구매로 기록해 두겠습니다."], ["{brand}에 그냥 손이 간다고 하셨습니다. 편한 건 알겠는데 그게 쌓이면 유니폼이 됩니다."]),
+    },
+  },
+  bottoms_few: {
+    on: true,
+    lead: ["상의 {tops}벌에 하의 {bottoms}벌입니다."],
+    text: "이걸로 돌려 입는 거 괜찮으세요?",
+    options: {
+      enough: O("하의는 기본만 있으면 돼요", 0, ["기본 하의가 정말 기본색이길 바랍니다."], ["하의는 기본만 있으면 된다고 하셨습니다. 맞는 말인데, 그 기본이 {bottoms}벌이면 매일 같은 바지라는 뜻이에요."]),
+      same: O("거의 매일 같은 바지예요", -2, ["그 바지 고생이 많네요."], ["거의 매일 같은 바지를 입는다고 하셨습니다. 상의를 아무리 바꿔도 사람들은 그 바지를 기억합니다."]),
+      buy: O("안 그래도 사려던 참이에요", 1, ["상의 말고 하의 사러 가시는 거 맞죠?"], ["하의를 살 생각이라고 하셨습니다. 좋습니다. 이번엔 상의 코너 앞에서 멈추지 마세요."]),
+    },
+  },
+  trend_buy: {
+    on: true,
+    lead: ["무신사 인기 브랜드가 {popularPct}%네요."],
+    text: "랭킹 보고 사신 거, 솔직히 몇 개예요?",
+    options: {
+      few: O("거의 없어요, 우연이에요", -1, ["우연이 이렇게 많이 겹치기도 하네요."], ["랭킹은 안 본다고 하셨는데 옷장의 {popularPct}%가 인기 브랜드입니다. 우연치고는 무신사 알고리즘이 본인을 너무 잘 아네요."]),
+      some: O("몇 개는 그래요", 0, ["솔직해서 좋네요."], ["랭킹을 보고 산 옷이 몇 벌 있다고 하셨습니다. 참고는 괜찮아요. 1위부터 장바구니에 넣는 것만 아니면."]),
+      most: O("랭킹이 곧 제 취향이죠", -2, ["무신사 MD가 좋아하겠네요."], ["랭킹이 곧 취향이라고 하셨습니다. 그럼 본인 취향은 매주 월요일에 바뀌는 셈이네요."]),
+    },
+  },
+  unworn: {
+    on: true,
+    lead: ["옷이 {n}벌이나 되네요."],
+    text: "1년 동안 한 번도 안 입은 옷은 몇 벌쯤 될까요?",
+    options: {
+      none: O("거의 없어요", 2, ["{n}벌을 다 입는다고요? 존경합니다. 반쯤은 믿겠습니다."], ["{n}벌을 거의 다 입는다고 하셨습니다. 사실이라면 옷장 관리는 최상급이에요."]),
+      some: O("열 벌 안팎이요", 0, ["그 정도면 평균입니다. 평균이 칭찬은 아니지만요."], ["안 입는 옷이 열 벌쯤이라고 하셨습니다. 그 열 벌만 정리해도 옷장이 훨씬 똑똑해 보일 겁니다."]),
+      many: O("솔직히 절반은 될걸요", -3, ["옷장이 아니라 창고였네요."], ["안 입는 옷이 절반쯤이라고 하셨습니다. 옷은 입어야 옷이에요. 지금은 보관료 안 받는 창고입니다."]),
+    },
+  },
+  size_pick: {
+    on: true,
+    lead: ["핏 얘기는 제가 실측만 보고 하는 거라 한 가지만 묻죠."],
+    text: "옷 살 때 사이즈는 어떻게 고르세요?",
+    options: {
+      measure: O("실측표랑 가진 옷을 비교해요", 3, ["교과서적이네요. 그런데 왜 큰 옷이 섞여 있는지는 미스터리입니다."], ["사이즈를 실측으로 비교해 고른다고 하셨습니다. 이 정도 성의면 핏 점수는 믿어 드려야겠네요."]),
+      fitting: O("매장에서 입어 보고 사요", 2, ["요즘 보기 드문 성실함이네요."], ["입어 보고 산다고 하셨습니다. 실패할 확률이 제일 낮은 방법이죠. 귀찮음을 이겨 낸 걸 칭찬합니다."]),
+      usual: O("늘 입던 사이즈로요", 0, ["브랜드마다 사이즈가 다른 건 알고 계시죠?"], ["늘 입던 사이즈로 산다고 하셨습니다. 브랜드마다 M이 다 다르다는 걸 옷장이 증명하고 있어요."]),
+      big: O("넉넉하게 큰 걸로요", -1, ["오버핏이랑 그냥 큰 옷은 다릅니다. 아시죠?"], ["넉넉하게 큰 사이즈로 산다고 하셨습니다. 의도한 오버핏과 사이즈 실패는 어깨선에서 티가 납니다."]),
+    },
+  },
+  style_self: {
+    on: true,
+    lead: ["마지막 전에 자기소개 한번 해 보시죠."],
+    text: "본인 스타일을 하나만 고르면?",
+    options: {
+      own: O("{tag}", 2, ["옷장도 같은 말을 하네요. 본인을 잘 아시네요."], ["스스로 {tag} 스타일이라고 하셨는데, 옷장도 동의합니다. 자기 객관화는 잘 되어 있네요."]),
+      second: O("{tag2}", 1, ["반쯤 맞았습니다. 옷장은 {tag} 쪽을 더 밀고 있어요."], ["스스로 {tag2} 스타일이라고 하셨는데, 옷장은 {tag} 쪽에 더 가깝습니다. 그래도 방향은 맞아요."]),
+      decoy: O("{decoy}", -2, ["옷장을 보면 전혀 아닌데요."], ["스스로 {decoy} 스타일이라고 하셨는데, 옷장에서 {decoy|은} 찾기 어렵습니다. 되고 싶은 모습과 실제 옷장 사이가 꽤 머네요."]),
+      none: O("잘 모르겠어요", -1, ["모르겠다는 게 제일 솔직한 답이긴 하죠."], ["본인 스타일을 모르겠다고 하셨습니다. 옷장은 {tag} 쪽이라고 말하고 있으니, 거기서부터 정리해 보시죠."]),
+    },
+  },
+};
+
+const tryFill = (t: string, v: Vars) => {
+  try {
+    return fill(t, v);
+  } catch (e) {
+    if (e instanceof MissingVar) return null;
+    throw e;
+  }
+};
+
+/** 조건이 맞는 점수 질문(최대 max개) */
+export function buildAsks(ev: Evaluation, asks: Record<string, AskText>, r: Rng, max: number): AskedQuestion[] {
+  const out: AskedQuestion[] = [];
+  for (const id of ASK_ORDER) {
+    if (out.length >= max) break;
+    const tx = asks[id];
+    if (!tx?.on) continue;
+    const vars = ASK_WHEN[id].when(ev);
+    if (!vars) continue;
+    const lead = tx.lead.map((l) => tryFill(l, vars));
+    const text = tryFill(tx.text, vars);
+    const opts = Object.entries(tx.options).map(([k, o]) => ({ id: k, label: tryFill(o.label, vars) }));
+    if (text == null || lead.some((l) => l == null) || opts.some((o) => o.label == null)) continue;
+    const pickFilled = (list: string[]) => r.shuffle(list).map((t) => tryFill(t, vars)).find((t): t is string => t != null) ?? "";
+    out.push({
+      id: `ask_${id}`,
+      lead: lead as string[],
+      text,
+      options: (id === "style_self" ? r.shuffle(opts) : opts) as { id: string; label: string }[],
+      reactions: Object.fromEntries(Object.entries(tx.options).map(([k, o]) => [k, pickFilled(o.react)])),
+      roast: Object.fromEntries(Object.entries(tx.options).map(([k, o]) => [k, o.roast.map((t) => tryFill(t, vars)).filter((t): t is string => t != null)])),
+      photos: [],
+      points: Object.fromEntries(Object.entries(tx.options).map(([k, o]) => [k, o.points])),
+    });
+  }
+  return out;
+}

@@ -67,6 +67,8 @@ export interface RoastReport {
   points: { id: string; lead: string; text: string; answer?: string; photos?: string[]; vs?: { achro: string[]; chroma: string[] } }[];
   /** 항목별 점수(label, score/max, 해석 한 줄). 새 평가 방식의 결과에만 있다. */
   axes?: { label: string; score: number; max: number; text: string }[];
+  /** 브랜드 분석(많이 가진 브랜드마다 한 문단 + 구성 한마디). 새 평가 방식의 결과에만 있다. */
+  brands?: { title: string; items: { id: string; lead: string; text: string; photos?: string[] }[]; mix?: string };
   /** 제목 바로 아래 한 문장: 가장 뚜렷한 특징 두세 개를 이은 요약 */
   summary?: string;
   /** 예전 결과의 옷장 DNA(굵은 앞말 + 문장들). 새 결과에는 없고 summary를 쓴다. */
