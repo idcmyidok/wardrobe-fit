@@ -31,7 +31,7 @@ const nameSchema = z
 const ageSchema = z.number().int().min(10).max(99).nullable();
 const AGE_REQUIRED = "나이를 입력해 주세요.";
 
-async function prepare(items: unknown): Promise<{ run: Run; C: FlConfig; signedIn: boolean; userId: string | null } | { error: string }> {
+async function prepare(items: unknown, age: number | null): Promise<{ run: Run; C: FlConfig; signedIn: boolean; userId: string | null } | { error: string }> {
   const parsed = orderListSchema.safeParse(items);
   if (!parsed.success) return { error: "주문내역을 읽지 못했습니다. 처음부터 다시 해 주세요." };
   let supabase = null;
@@ -44,7 +44,7 @@ async function prepare(items: unknown): Promise<{ run: Run; C: FlConfig; signedI
   }
   const [C, usdRate, body] = await Promise.all([getFlConfig(supabase), userId ? getUsdRate() : DEFAULT_USD_KRW, userId ? getMyBodyProfile() : null]);
   const { garments, ctx } = toGarments(parsed.data as OrderRoastItem[]);
-  return { run: runEvaluation(garments, body, usdRate, "orders", C, ctx), C, signedIn: Boolean(userId), userId };
+  return { run: runEvaluation(garments, body, usdRate, "orders", C, ctx, age), C, signedIn: Boolean(userId), userId };
 }
 
 /**
@@ -96,7 +96,7 @@ export async function orderRoastUsed(): Promise<boolean> {
 
 export async function startOrderRoast(input: { name: string | null; age?: number | null; items: unknown }): Promise<RoastStart> {
   try {
-    const p = await prepare(input.items);
+    const p = await prepare(input.items, ageSchema.safeParse(input.age ?? null).data ?? null);
     if ("error" in p) return { ok: false, code: "error", message: p.error };
     if (p.run.clothes < MIN_CLOTHES) return { ok: false, code: "too_few", count: p.run.clothes };
     const name = nameSchema.safeParse(input.name).data ?? null;
@@ -113,7 +113,7 @@ export async function startOrderRoast(input: { name: string | null; age?: number
 
 export async function finishOrderRoast(input: { seed: number; name: string | null; age?: number | null; answers: Record<string, string>; items: unknown }): Promise<RoastFinish> {
   try {
-    const p = await prepare(input.items);
+    const p = await prepare(input.items, ageSchema.safeParse(input.age ?? null).data ?? null);
     if ("error" in p) return { ok: false, message: p.error };
     const { run, C } = p;
     if (run.clothes < MIN_CLOTHES) return { ok: false, message: fill(String(C.orderScreen.TOO_FEW), { n: run.clothes }) };

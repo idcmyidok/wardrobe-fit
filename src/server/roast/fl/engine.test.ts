@@ -158,7 +158,7 @@ describe("패션 수준 평가", () => {
   });
 
   it("기본 문장은 모두 저장 검사를 통과한다", () => {
-    for (const sec of ["tune", "axisLines", "bands", "talk", "report", "common", "special", "screen", "orderScreen", "brands", "asks"] as const) {
+    for (const sec of ["tune", "axisLines", "bands", "talk", "report", "common", "special", "screen", "orderScreen", "brands", "asks", "life"] as const) {
       const r = sanitizeSection(sec, (DEFAULT_CONFIG as unknown as Record<string, unknown>)[sec]);
       expect(r, sec).toMatchObject({ ok: true });
     }
@@ -177,5 +177,75 @@ describe("패션 수준 평가", () => {
     // 쓸 수 없는 자리는 거부
     const bad = sanitizeSection("type.spa", { ...next, lines: { ...next.lines, say: ["{모르는자리}"] } });
     expect(bad.ok).toBe(false);
+  });
+
+  it("질문은 관련 이야기 바로 뒤에서 묻고, 패셔너블 질문만 맨 끝", () => {
+    const ev = run(personas.campusBad);
+    const plan = buildPlan(ev, DEFAULT_CONFIG, 3, null, ["Musinsa Standard"]);
+    const steps = plan.script.steps;
+    const firstAsk = steps.findIndex((s) => s.t === "ask");
+    const lastSay = steps.map((s) => s.t).lastIndexOf("say");
+    expect(firstAsk).toBeGreaterThan(-1);
+    // 첫 질문 뒤에도 분석 이야기가 이어진다
+    expect(steps.slice(firstAsk).some((s) => s.t === "status")).toBe(true);
+    expect(firstAsk).toBeLessThan(lastSay);
+    const asks = steps.filter((s): s is { t: "ask"; q: number } => s.t === "ask").map((s) => s.q);
+    expect(asks).toEqual(asks.map((_, i) => i));
+    expect(plan.asked.at(-1)?.id).toBe("fashionable_q");
+    // 튀는 색 질문에는 옷 사진이 붙는다
+    const loud = plan.asked.find((q) => q.id === "ask_loud_colors");
+    if (loud) expect(loud.photos.length).toBeGreaterThan(0);
+  });
+
+  it("나이와 안 맞는 스타일을 가려낸다", () => {
+    const young = evaluate(prepare(personas.campusBad, null, 1400), null, "closet", now, DEFAULT_CONFIG, undefined, 36);
+    expect(young.age?.verdict).toBe("young");
+    expect(young.penalties.some((p) => p.id === "age")).toBe(true);
+    const same = evaluate(prepare(personas.campusBad, null, 1400), null, "closet", now, DEFAULT_CONFIG, undefined, 21);
+    expect(same.age?.verdict).toBe("fits");
+    expect(young.score).toBeLessThan(same.score);
+    const golf = listOf(Array.from({ length: 34 }, (_, i) => [(["outer", "top", "top", "bottom"] as const)[i % 4], "UNIQLO", "네이비", i % 2 ? "골프 카라 니트" : "등산 바람막이", "regular"] as [Row["cat"], string, string, string, FitLevel]));
+    const old = evaluate(prepare(golf, null, 1400), null, "closet", now, DEFAULT_CONFIG, undefined, 22);
+    expect(old.age?.verdict).toBe("old");
+    expect(old.age!.styleAge).toBeGreaterThan(40);
+    const plan = buildPlan(old, DEFAULT_CONFIG, 1, null, []);
+    expect(plan.asked.some((q) => q.id === "ask_age_old")).toBe(true);
+  });
+
+  it("구매 시기에 따른 변화를 잡는다", () => {
+    const before = Array.from({ length: 16 }, (_, i) => g({ brand: "Mahagrid", cat: i % 3 ? "top" : "bottom", color: ["레드", "옐로", "그린", "퍼플"][i % 4], name: "빅로고 그래픽 티", date: `2023-0${(i % 9) + 1}-10` }));
+    const after = Array.from({ length: 16 }, (_, i) => g({ brand: "Musinsa Standard", cat: i % 3 ? "top" : "bottom", color: ["블랙", "네이비", "그레이", "화이트"][i % 4], name: "무지 옥스퍼드 셔츠", date: `2025-0${(i % 9) + 1}-10` }));
+    const ev = evaluate(prepare([...before, ...after], null, 1400), null, "closet", now, DEFAULT_CONFIG);
+    expect(ev.shift?.verdict).toBe("grown");
+    expect(ev.shift?.then).toBe("2023년");
+    expect(ev.shiftPoints).toBeGreaterThan(0);
+    const back = evaluate(prepare([...after.map((x) => ({ ...x, purchasedOn: x.purchasedOn!.replace("2025", "2023") })), ...before.map((x) => ({ ...x, purchasedOn: x.purchasedOn!.replace("2023", "2025") }))], null, 1400), null, "closet", now, DEFAULT_CONFIG);
+    expect(back.shift?.verdict).toBe("slipped");
+    expect(back.shiftPoints).toBeLessThan(0);
+    // 최근 1~2년만 입력했으면 비교하지 않는다
+    const short = evaluate(prepare([...before.map((x) => ({ ...x, purchasedOn: x.purchasedOn!.replace("2023", "2024") })), ...after], null, 1400), null, "closet", now, DEFAULT_CONFIG);
+    expect(short.shift).toBeNull();
+    const plan = buildPlan(ev, DEFAULT_CONFIG, 2, null, []);
+    expect(plan.asked.some((q) => q.id === "ask_taste_shift")).toBe(true);
+    const rep = buildReport(ev, DEFAULT_CONFIG, 2, plan.asked, {}, { admin: true, partial: false });
+    expect(rep.report.points.some((p) => p.id === "life-shift")).toBe(true);
+    expect(rep.report.scoreDetail?.items.reduce((s, x) => s + x.delta, 0)).toBeCloseTo(rep.report.total.score, 5);
+  });
+
+  it("예전 문장 편집 화면에서 고친 퀴즈를 그대로 쓴다", () => {
+    const id = Object.keys(DEFAULT_CONFIG.quiz)[0];
+    const C = applyEdits({ [`quiz.${id}.question`]: "고친 문제?", [`quiz.${id}.options`]: JSON.stringify(["가", "나"]), [`quiz.${id}.answer`]: "1" });
+    expect(C.quiz[id].question).toBe("고친 문제?");
+    expect(C.quiz[id].options).toEqual(["가", "나"]);
+    expect(C.quiz[id].answer).toBe(1);
+    // 새 설계에서 저장한 값이 있으면 그것이 먼저
+    const C2 = applyEdits({ [`quiz.${id}.question`]: "고친 문제?", ...toRows(`quiz.${id}`, { ...DEFAULT_CONFIG.quiz[id], question: "새 문제?" }) });
+    expect(C2.quiz[id].question).toBe("새 문제?");
+    const del = applyEdits({ [`quiz.${id}.deleted`]: "1" });
+    expect(del.quiz[id]).toBeUndefined();
+    // 예전 대화 구조를 저장해 둔 경우에도 새 블록이 켜진 채로 들어간다
+    const talk = applyEdits(toRows("talk", DEFAULT_CONFIG.talk.filter((b) => b.id !== "age" && b.id !== "timeline")));
+    expect(talk.talk.map((b) => b.id).slice(3, 6)).toEqual(["brands", "age", "timeline"]);
+    expect(talk.talk.find((b) => b.id === "age")?.on).toBe(true);
   });
 });

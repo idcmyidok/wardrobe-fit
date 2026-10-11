@@ -20,12 +20,13 @@ type Var = { key: string; label: string };
 type TypeConf = Cfg["types"][string];
 type Quiz = Cfg["quiz"][string];
 
-type Tab = "structure" | "types" | "score" | "brands" | "asks" | "common" | "special" | "quiz" | "screen";
+type Tab = "structure" | "types" | "score" | "brands" | "life" | "asks" | "common" | "special" | "quiz" | "screen";
 const TABS: { id: Tab; label: string }[] = [
   { id: "structure", label: "전체 구조" },
   { id: "types", label: "패션 유형" },
   { id: "score", label: "점수 기준" },
   { id: "brands", label: "브랜드 분석" },
+  { id: "life", label: "나이·구매 시기" },
   { id: "asks", label: "점수 질문" },
   { id: "common", label: "공통 문장" },
   { id: "special", label: "재미 질문" },
@@ -238,6 +239,7 @@ export function RoastDesigner({ data }: { data: DesignerData }) {
         score: (Object.entries(cfg.axisLines).filter(([k, v]) => has({ k, v, n: M.axes.find((a) => a.key === k) }, q)).length) + cfg.bands.filter((b) => has(b, q)).length,
         common: Object.entries(cfg.common).filter(([k, v]) => has({ k, v, w: M.common[k as keyof typeof M.common] }, q)).length,
         brands: [...Object.entries(cfg.brands.kind), ...Object.entries(cfg.brands.mix)].filter(([k, v]) => has({ k, v }, q)).length,
+        life: [...Object.entries(cfg.life.age), ...Object.entries(cfg.life.shift)].filter(([k, v]) => has({ k, v }, q)).length,
         asks: Object.entries(cfg.asks).filter(([k, v]) => has({ k, v }, q)).length,
         special: Object.entries(cfg.special).filter(([k, v]) => has({ k, v, w: M.special[k] }, q)).length,
         quiz: Object.entries(cfg.quiz).filter(([, v]) => has(v, q)).length,
@@ -276,6 +278,7 @@ export function RoastDesigner({ data }: { data: DesignerData }) {
       {tab === "score" && <Score cfg={cfg} M={M} ctx={ctx} q={q} />}
       {tab === "common" && <Common cfg={cfg} M={M} ctx={ctx} q={q} />}
       {tab === "brands" && <Brands cfg={cfg} M={M} ctx={ctx} q={q} />}
+      {tab === "life" && <Life cfg={cfg} M={M} ctx={ctx} q={q} />}
       {tab === "asks" && <Asks cfg={cfg} M={M} ctx={ctx} q={q} />}
       {tab === "special" && <Special cfg={cfg} M={M} ctx={ctx} q={q} go={go} />}
       {tab === "quiz" && <Quizzes cfg={cfg} D={D} M={M} ctx={ctx} q={q} />}
@@ -306,11 +309,12 @@ function Structure({ cfg, M, ctx, go }: P & { go: (t: Tab, q?: string) => void }
     { title: "항목 점수", body: "다섯 항목을 0~1로 매기고 비중을 곱해 더합니다(0~100). 안목은 브랜드 40% + 코디력 60%로, 코디력은 가격과 상관없이 색 조화·하의/아우터 기본색·로고 절제·기본템(기본색 아우터·데님·무지 상의·기본색 신발)·상하의 짝을 봅니다. 그래서 같은 가격대 옷장도 크게 갈립니다. 브랜드 자료가 적으면 안목 비중을 절반으로 줄입니다.", tab: "score" },
     {
       title: "몰입 보너스 · 감점 · 최종 점수",
-      body: `A·B 등급 유형이 붙으면 보너스(옷장 A ${T.bonus.closet.A}·B ${T.bonus.closet.B}, 주문내역 A ${T.bonus.orders.A}·B ${T.bonus.orders.B})를 더합니다. 일관성·핏이 낮으면 보너스가 줄거나 0입니다. 감점: 흔한 옷장(SPA·대중·인기 브랜드 쏠림, 코디력이 좋으면 없음) 최대 ${T.penalty.common}점, 핏 실패(너무 크거나 작은 옷) 최대 ${T.penalty.fit}점. 표시 점수 = ${T.floor} + ${Math.round(100 * T.scale)} × (원점수/100)^${T.curve}로, 곡선이 클수록 중간 점수가 내려갑니다. 퀴즈 정답은 +${T.quizRight}.`,
+      body: `A·B 등급 유형이 붙으면 보너스(옷장 A ${T.bonus.closet.A}·B ${T.bonus.closet.B}, 주문내역 A ${T.bonus.orders.A}·B ${T.bonus.orders.B})를 더합니다. 일관성·핏이 낮으면 보너스가 줄거나 0입니다. 감점: 흔한 옷장(SPA·대중·인기 브랜드 쏠림, 코디력이 좋으면 없음) 최대 ${T.penalty.common}점, 핏 실패(너무 크거나 작은 옷) 최대 ${T.penalty.fit}점, 나이와 안 맞는 스타일 최대 ${T.penalty.age}점. 구매 흐름(최근 산 옷이 나아졌으면 +, 나빠졌으면 -) 최대 ${T.shift}점. 표시 점수 = ${T.floor} + ${Math.round(100 * T.scale)} × (원점수/100)^${T.curve}로, 곡선이 클수록 중간 점수가 내려갑니다. 퀴즈 정답은 +${T.quizRight}.`,
       tab: "score",
     },
     { title: "브랜드 분석", body: "많이 가진 브랜드(2벌 이상, 최대 3개)를 계열(스트릿·SPA·디자이너 등)에 맞는 말로 짚고, 옷장 전체 브랜드 구성(한 브랜드 쏠림·브랜드 난립·SPA 위주 등)을 한마디 합니다.", tab: "brands" },
-    { title: "대화와 질문", body: `아래 '대화 순서'대로 말합니다. 질문은 재미 질문(브랜드 퀴즈·밴드·언더아머·짱구·침착맨) → 점수 질문(상황이 맞는 것 최대 ${T.maxAsks}개, 답에 따라 원점수 증감) → 마지막 '스스로 패셔너블한가요?' 순서입니다.`, tab: "asks" },
+    { title: "나이·구매 시기", body: "입력한 나이와 옷장 나이(어려 보이는 옷·나이 들어 보이는 옷 비율로 어림)를 비교하고, 최근 1년에 산 옷과 그보다 2년 이상 앞서 산 옷을 비교해 어떻게 달라졌는지 짚습니다.", tab: "life" },
+    { title: "대화와 질문", body: `아래 '대화 순서'대로 말하고, 질문은 관련 이야기 바로 뒤에서 묻습니다(예: 브랜드 퀴즈·대표 브랜드 질문은 브랜드 분석 뒤, 튀는 색 질문은 유형 이야기 뒤). 점수 질문은 상황이 맞는 것 최대 ${T.maxAsks}개이고 답에 따라 원점수가 바뀝니다. '스스로 패셔너블한가요?'는 항상 마지막입니다.`, tab: "asks" },
     { title: "결과 페이지", body: "등급 한 줄(점수 구간) → 아래 '결과 순서' 블록 → 마무리 말 순서로 보여 줍니다.", tab: "score", find: "" },
   ];
   return (
@@ -361,6 +365,8 @@ function Blocks({ title, section, value, defs, M, ctx, go }: { title: string; se
         { label: "패션 퀴즈", tab: "quiz" },
       ],
       "talk:brands": [{ label: "브랜드 분석 문장", tab: "brands" }],
+      "talk:age": [{ label: "나이 문장", tab: "life" }],
+      "talk:timeline": [{ label: "구매 시기 문장", tab: "life" }],
       "report:brands": [{ label: "브랜드 분석 문장", tab: "brands" }],
       "report:types": [{ label: "유형 이름", tab: "types" }],
       "report:points": [{ label: "유형별 근거·칭찬·조언", tab: "types" }, { label: "점수 질문 결과 문단", tab: "asks" }, { label: "재미 질문 결과 문단", tab: "special" }],
@@ -615,6 +621,7 @@ function Tune({ value, M, ctx }: { value: Cfg["tune"]; M: Meta; ctx: Ctx }) {
         {n("curve", "곡선", "1이면 직선, 클수록 중간 점수가 낮아짐(1~2.5)", 0.05)}
         <Num label="감점: 흔한 옷장" hint="SPA·대중·인기 브랜드가 35%를 넘으면 늘어남(코디력이 좋거나 보너스를 받으면 줄어듦)" value={d.penalty.common} onChange={(v) => set({ penalty: { ...d.penalty, common: v ?? 0 } })} />
         <Num label="감점: 핏 실패" hint="너무 크거나 작은 옷 비율(40%면 최대)" value={d.penalty.fit} onChange={(v) => set({ penalty: { ...d.penalty, fit: v ?? 0 } })} />
+        <Num label="감점: 나이와 안 맞는 스타일" hint="29살 이상인데 어려 보이는 옷, 26살 이하인데 나이 들어 보이는 옷이 많을수록" value={d.penalty.age} onChange={(v) => set({ penalty: { ...d.penalty, age: v ?? 0 } })} />
       </div>
       <h3 className="text-sm font-semibold">자료가 적을 때 · 대화 · 질문</h3>
       <div className="flex flex-wrap gap-4">
@@ -627,6 +634,7 @@ function Tune({ value, M, ctx }: { value: Cfg["tune"]; M: Meta; ctx: Ctx }) {
         {n("quizRight", "퀴즈 정답 점수", "원점수에 더함")}
         {n("quizWrong", "퀴즈 오답 점수", "원점수에 더함(음수면 감점)")}
         {n("maxAsks", "점수 질문 최대 수", "조건이 맞는 점수 질문 중 순서대로 이만큼(0~8)")}
+        {n("shift", "구매 흐름 가감점", "최근 산 옷이 나아졌으면 +, 나빠졌으면 -(0~10)")}
       </div>
     </section>
   );
@@ -982,6 +990,48 @@ function Brands({ cfg, M, ctx, q }: P & { q: string }) {
   );
 }
 
+// ───────────────────────── 나이·구매 시기 ─────────────────────────
+
+function Life({ cfg, M, ctx, q }: P & { q: string }) {
+  const s = useSection("life", cfg.life, ctx);
+  const d = s.draft;
+  const v = M.vars.life;
+  return (
+    <div className="flex flex-col">
+      <p className="py-3 text-sm text-pretty text-neutral-700">
+        대화의 &quot;나이와 스타일&quot;·&quot;구매 시기 변화&quot; 블록과 결과 페이지 진단 문단에 쓰는 문장입니다. 상황이 맞으면 그 바로 뒤에 관련 점수 질문(점수 질문 탭)을 사진과 함께 묻습니다.
+      </p>
+      <SaveBar s={s} sticky />
+      {!q && (
+        <div className="flex flex-col gap-3 border-b border-neutral-300 py-4">
+          <List label="나이 이야기 상태 줄" value={d.ageStatus} onChange={(l) => s.setDraft({ ...d, ageStatus: l })} min={0} vars={v} />
+          <List label="구매 시기 이야기 상태 줄" value={d.shiftStatus} onChange={(l) => s.setDraft({ ...d, shiftStatus: l })} min={0} vars={v} />
+        </div>
+      )}
+      <h2 className="pt-4 text-body font-semibold">나이와 스타일</h2>
+      <ul className="flex flex-col">
+        {M.ageVerdicts
+          .filter((k) => has({ k, v: d.age[k.key as keyof typeof d.age] }, q))
+          .map((k) => (
+            <Fold key={k.key} title={k.name} open={Boolean(q)}>
+              <List value={d.age[k.key as keyof typeof d.age]} onChange={(l) => s.setDraft({ ...d, age: { ...d.age, [k.key]: l } })} vars={v} />
+            </Fold>
+          ))}
+      </ul>
+      <h2 className="pt-4 text-body font-semibold">구매 시기 변화</h2>
+      <ul className="flex flex-col">
+        {M.shiftVerdicts
+          .filter((k) => has({ k, v: d.shift[k.key as keyof typeof d.shift] }, q))
+          .map((k) => (
+            <Fold key={k.key} title={k.name} sub="최근 1년에 산 옷과 그보다 2년 이상 앞서 산 옷이 각각 5벌 이상일 때" open={Boolean(q)}>
+              <List value={d.shift[k.key as keyof typeof d.shift]} onChange={(l) => s.setDraft({ ...d, shift: { ...d.shift, [k.key]: l } })} vars={v} />
+            </Fold>
+          ))}
+      </ul>
+    </div>
+  );
+}
+
 // ───────────────────────── 점수 질문 ─────────────────────────
 
 function Asks({ cfg, M, ctx, q }: P & { q: string }) {
@@ -1001,7 +1051,7 @@ function Asks({ cfg, M, ctx, q }: P & { q: string }) {
             const x = d[a.id];
             const set = (patch: Partial<typeof x>) => s.setDraft({ ...d, [a.id]: { ...x, ...patch } });
             return (
-              <Fold key={a.id} title={x.text} sub={`언제: ${a.when}`} badges={!x.on ? <Badge>꺼짐</Badge> : undefined} open={Boolean(q)}>
+              <Fold key={a.id} title={x.text} sub={`언제: ${a.when} · 묻는 자리: ${a.at}`} badges={!x.on ? <Badge>꺼짐</Badge> : undefined} open={Boolean(q)}>
                 <label className="flex items-center gap-1.5 text-sm">
                   <input type="checkbox" checked={x.on} onChange={(e) => set({ on: e.target.checked })} />이 질문 쓰기
                 </label>

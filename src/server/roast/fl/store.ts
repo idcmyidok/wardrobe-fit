@@ -3,6 +3,7 @@ import { findBrand } from "../brands";
 import type { QuizEntry } from "../quiz";
 import type { AskText } from "./asks";
 import { BRAND_KINDS, MIX_KEYS } from "./brand-talk";
+import { AGE_VERDICTS, SHIFT_VERDICTS } from "./life";
 import { DEFAULT_CONFIG, REPORT_BLOCKS, TALK_BLOCKS, type Block, type FlConfig, type TypeConf } from "./config";
 import { AXIS_KEYS, RULES, TYPE_DEFS, type AxisKey, type Grade, type RuleId } from "./types";
 
@@ -21,14 +22,15 @@ export const VARS = {
   type: [
     "n", "brand", "brandPct", "brandN", "brandCount", "achroPct", "chromaPct", "overPct", "slimPct", "regularPct", "widePct", "outerPct", "shoesPct", "hatPct",
     "spaPct", "massPct", "lowPct", "midPct", "highPct", "designerPct", "cultPct", "usedPct", "heritagePct", "popularPct", "sportsPct", "streetPct", "domesticPct",
-    "minimalPct", "logoPct", "workPct", "denimPct", "outdoorPct", "preppyPct", "y2kPct", "femPct", "recentPct", "salePct", "seasonName", "seasonPct", "orders", "events", "topTag",
+    "minimalPct", "logoPct", "workPct", "denimPct", "outdoorPct", "preppyPct", "y2kPct", "femPct", "recentPct", "salePct", "seasonName", "seasonPct", "orders", "events", "topTag", "spaBrand", "spaN", "stdPct",
   ],
   axis: ["axis", "score"],
   special: ["n", "name", "color", "brand", "band", "wrong", "wrongBy", "priceWon", "count", "tier"],
   quiz: ["brand"],
   band: ["score"],
   brand: ["brand", "n", "pct", "level", "kind", "count"],
-  ask: ["n", "brand", "brandN", "hues", "logoPct", "tops", "bottoms", "popularPct", "tag", "tag2", "decoy"],
+  ask: ["n", "brand", "brandN", "hues", "logoPct", "tops", "bottoms", "popularPct", "tag", "tag2", "decoy", "age", "styleAge", "youngPct", "oldPct", "then", "now", "what", "before", "after"],
+  life: ["age", "styleAge", "youngPct", "oldPct", "then", "now", "what", "before", "after"],
 } as const;
 export type VarArea = keyof typeof VARS;
 
@@ -132,6 +134,7 @@ export function sanitizeTune(v: unknown): R<FlConfig["tune"]> {
   pick("quizRight", -5, 10, "퀴즈 정답 점수(-5~10)", true);
   pick("quizWrong", -10, 5, "퀴즈 오답 점수(-10~5)", true);
   pick("maxAsks", 0, 8, "점수 질문 수(0~8)", true);
+  pick("shift", 0, 10, "구매 흐름 가감점(0~10)", true);
   const bad = checks.find(Boolean);
   if (bad) return fail(`${bad} 범위를 확인해 주세요.`);
   if (x.blend !== undefined) {
@@ -143,8 +146,9 @@ export function sanitizeTune(v: unknown): R<FlConfig["tune"]> {
   if (x.penalty !== undefined) {
     const c = num(x.penalty?.common, 0, 30, true);
     const f = num(x.penalty?.fit, 0, 30, true);
-    if (c == null || f == null) return fail("감점은 0~30 정수입니다.");
-    out.penalty = { common: c, fit: f };
+    const a = x.penalty?.age === undefined ? out.penalty.age : num(x.penalty.age, 0, 30, true);
+    if (c == null || f == null || a == null) return fail("감점은 0~30 정수입니다.");
+    out.penalty = { common: c, fit: f, age: a };
   }
   for (const mode of ["closet", "orders"] as const) {
     const xb = x.bonus?.[mode];
@@ -199,6 +203,9 @@ export function sanitizeBands(v: unknown): R<FlConfig["bands"]> {
   return { ok: true, value: out };
 }
 
+/** 설계를 저장한 뒤에 새로 생긴 대화 블록 */
+const LATER_BLOCKS = ["age", "timeline"];
+
 function sanitizeBlocks(v: unknown, known: Record<string, unknown>): R<Block[]> {
   if (!Array.isArray(v)) return fail("목록이 아닙니다.");
   const seen = new Set<string>();
@@ -208,8 +215,17 @@ function sanitizeBlocks(v: unknown, known: Record<string, unknown>): R<Block[]> 
     seen.add(b.id);
     out.push({ id: b.id, on: b.on !== false });
   }
-  // 빠진 블록은 끝에 꺼진 채로 붙인다(구조에서 지운 것을 되살릴 수 있게)
-  for (const id of Object.keys(known)) if (!seen.has(id)) out.push({ id, on: false });
+  // 나중에 생긴 블록이 빠져 있으면 기본 자리(앞 블록 바로 뒤)에 켜서 넣는다
+  const ids = Object.keys(known);
+  for (const id of LATER_BLOCKS) {
+    if (seen.has(id) || !(id in known)) continue;
+    const prev = ids[ids.indexOf(id) - 1];
+    const at = out.findIndex((b) => b.id === prev);
+    out.splice(at < 0 ? out.length : at + 1, 0, { id, on: true });
+    seen.add(id);
+  }
+  // 그 밖에 빠진 블록은 끝에 꺼진 채로 붙인다(구조에서 지운 것을 되살릴 수 있게)
+  for (const id of ids) if (!seen.has(id)) out.push({ id, on: false });
   return { ok: true, value: out };
 }
 export const sanitizeTalk = (v: unknown) => sanitizeBlocks(v, TALK_BLOCKS);
@@ -318,6 +334,31 @@ export function sanitizeBrands(v: unknown): R<FlConfig["brands"]> {
   return { ok: true, value: out };
 }
 
+/** 나이·구매 시기 문장 */
+export function sanitizeLife(v: unknown): R<FlConfig["life"]> {
+  const out = structuredClone(DEFAULT_CONFIG.life);
+  const x = (v ?? {}) as Partial<FlConfig["life"]>;
+  for (const k of ["ageStatus", "shiftStatus"] as const) {
+    if (x[k] === undefined) continue;
+    const l = list(x[k], "life", 0, 10);
+    if (typeof l === "string") return fail(l);
+    out[k] = l;
+  }
+  for (const k of AGE_VERDICTS) {
+    if (x.age?.[k] === undefined) continue;
+    const l = list(x.age[k], "life", 1, 12);
+    if (typeof l === "string") return fail(l);
+    out.age[k] = l;
+  }
+  for (const k of SHIFT_VERDICTS) {
+    if (x.shift?.[k] === undefined) continue;
+    const l = list(x.shift[k], "life", 1, 12);
+    if (typeof l === "string") return fail(l);
+    out.shift[k] = l;
+  }
+  return { ok: true, value: out };
+}
+
 /** 점수 질문: 기본에 있는 질문·선택지만, 점수는 -10~10 정수 */
 export function sanitizeAsks(v: unknown): R<FlConfig["asks"]> {
   const out = structuredClone(DEFAULT_CONFIG.asks);
@@ -395,12 +436,13 @@ export function sanitizeSection(section: string, value: unknown): R<unknown> {
     case "common": return sanitizeCommon(value);
     case "brands": return sanitizeBrands(value);
     case "asks": return sanitizeAsks(value);
+    case "life": return sanitizeLife(value);
     default: return fail("없는 구역입니다.");
   }
 }
 
 export const isSection = (s: string) =>
-  s.startsWith("type.") ? TYPE_DEFS.some((t) => `type.${t.id}` === s) : s.startsWith("quiz.") ? isQuizId(s.slice(5)) : ["tune", "axisLines", "bands", "talk", "report", "common", "special", "screen", "orderScreen", "brands", "asks"].includes(s);
+  s.startsWith("type.") ? TYPE_DEFS.some((t) => `type.${t.id}` === s) : s.startsWith("quiz.") ? isQuizId(s.slice(5)) : ["tune", "axisLines", "bands", "talk", "report", "common", "special", "screen", "orderScreen", "brands", "asks", "life"].includes(s);
 
 /** 값 → 저장 행들(fl.<구역>, 길면 ~0, ~1 …) */
 export function toRows(section: string, value: unknown): Record<string, string> {
@@ -430,11 +472,53 @@ export function fromRows(rows: Record<string, string>): Record<string, unknown> 
   return out;
 }
 
+/**
+ * 예전 문장 편집 화면(main)에서 고친 퀴즈: "quiz.<id>.<칸>" 행(목록은 JSON 배열, 길면 "~1"…), "quiz.<id>.deleted".
+ * 새 설계로 저장한 적 없는 퀴즈는 이 값을 그대로 쓴다.
+ */
+export function legacyQuiz(rows: Record<string, string>): Record<string, QuizEntry | { deleted: true }> {
+  const fields = new Map<string, Partial<QuizEntry>>();
+  const lists = new Map<string, { n: number; items: unknown[] }[]>();
+  const deleted = new Set<string>();
+  for (const [k, body] of Object.entries(rows)) {
+    const m = k.match(/^quiz\.([^.]+)\.(brand|answer|question|options|correct|wrong|deleted)(?:~(\d+))?$/);
+    if (!m || !isQuizId(m[1])) continue;
+    const [, id, f, n] = m;
+    if (f === "deleted") deleted.add(id);
+    else if (f === "brand" || f === "question") fields.set(id, { ...fields.get(id), [f]: body });
+    else if (f === "answer") fields.set(id, { ...fields.get(id), answer: Number(body) });
+    else {
+      try {
+        const items = JSON.parse(body);
+        if (Array.isArray(items)) lists.set(`${id}.${f}`, [...(lists.get(`${id}.${f}`) ?? []), { n: Number(n ?? 0), items }]);
+      } catch {}
+    }
+  }
+  for (const [key, parts] of lists) {
+    const [id, f] = key.split(".");
+    fields.set(id, { ...fields.get(id), [f]: parts.sort((a, b) => a.n - b.n).flatMap((x) => x.items) });
+  }
+  const out: Record<string, QuizEntry | { deleted: true }> = {};
+  for (const id of deleted) out[id] = { deleted: true };
+  for (const [id, f] of fields) {
+    if (deleted.has(id)) continue;
+    const r = sanitizeQuiz(id, { ...DEFAULT_CONFIG.quiz[id], ...f });
+    if (r.ok) out[id] = r.value;
+  }
+  return out;
+}
+
 /** 기본값 위에 고친 값을 덮은 설계. 검사에 걸리는 구역은 무시한다. */
 export function applyEdits(rows: Record<string, string>): FlConfig {
   const edits = fromRows(rows);
-  if (!Object.keys(edits).length) return DEFAULT_CONFIG;
+  const legacy = legacyQuiz(rows);
+  if (!Object.keys(edits).length && !Object.keys(legacy).length) return DEFAULT_CONFIG;
   const out = structuredClone(DEFAULT_CONFIG);
+  // 예전 화면에서 고친 퀴즈 먼저, 새 설계에서 저장한 퀴즈가 있으면 그것으로 덮는다
+  for (const [id, q] of Object.entries(legacy)) {
+    if ("deleted" in q) delete out.quiz[id];
+    else out.quiz[id] = q;
+  }
   for (const [section, value] of Object.entries(edits)) {
     if (!isSection(section)) continue;
     const r = sanitizeSection(section, value);
@@ -455,6 +539,7 @@ export function applyEdits(rows: Record<string, string>): FlConfig {
     else if (section === "common") out.common = r.value as FlConfig["common"];
     else if (section === "brands") out.brands = r.value as FlConfig["brands"];
     else if (section === "asks") out.asks = r.value as FlConfig["asks"];
+    else if (section === "life") out.life = r.value as FlConfig["life"];
   }
   return out;
 }

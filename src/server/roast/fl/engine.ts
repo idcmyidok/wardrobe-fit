@@ -5,6 +5,7 @@ import type { OrderContext } from "../orders/context";
 import { computeAxes, styling, type AxisOut } from "./axes";
 import type { FlConfig } from "./config";
 import { features, type Feat, type Mode } from "./feat";
+import { ageCheck, shiftOf, type AgeCheck, type Shift } from "./life";
 import { AXIS_KEYS, FITNESS, TYPE_DEFS, type AxisKey, type RuleId } from "./types";
 
 /**
@@ -31,7 +32,7 @@ export interface Bonus {
 }
 
 export interface Penalty {
-  id: "common" | "fit";
+  id: "common" | "fit" | "age";
   label: string;
   why: string;
   /** 깎는 점수(양수) */
@@ -48,6 +49,12 @@ export interface Evaluation {
   axes: Record<AxisKey, AxisOut & { points: number; weight: number }>;
   bonus: Bonus;
   penalties: Penalty[];
+  /** 나이와 스타일(나이를 받았을 때) */
+  age: AgeCheck | null;
+  /** 구매 시기에 따른 변화(날짜 있는 옷이 충분할 때) */
+  shift: Shift | null;
+  /** 구매 흐름 가감점(최근 산 옷이 나아졌으면 +, 나빠졌으면 -) */
+  shiftPoints: number;
   /** 항목 합계(0~100) */
   sum: number;
   /** 퀴즈 등을 더하기 전 원점수 */
@@ -69,7 +76,7 @@ const BONUS_GATE: Record<string, (F: Feat) => boolean> = {
 export const displayScore = (raw: number, T: { floor: number; scale: number; curve: number }) =>
   Math.round(T.floor + 100 * T.scale * Math.pow(Math.max(0, Math.min(100, raw)) / 100, T.curve));
 
-export function evaluate(items: Item[], body: BodyProfile | null, mode: Mode, now: Date, C: FlConfig, orders?: OrderContext): Evaluation {
+export function evaluate(items: Item[], body: BodyProfile | null, mode: Mode, now: Date, C: FlConfig, orders?: OrderContext, age?: number | null): Evaluation {
   const F = features(items, body, mode, now, orders);
   const T = C.tune;
 
@@ -160,8 +167,13 @@ export function evaluate(items: Item[], body: BodyProfile | null, mode: Mode, no
   if (pc > 0) penalties.push({ id: "common", label: "흔한 옷장", why: `SPA·대중·인기 브랜드 ${pct(common)}% · 코디력 ${pct(st)}`, points: pc });
   const pf = Math.round(T.penalty.fit * clamp(F.fits.bad / 0.4) * 10) / 10;
   if (pf > 0) penalties.push({ id: "fit", label: "핏 실패", why: `너무 크거나 작은 옷 ${pct(F.fits.bad)}%`, points: pf });
+  const ac = ageCheck(F, age);
+  const pa = ac ? Math.round(T.penalty.age * ac.severity * 10) / 10 : 0;
+  if (ac && pa > 0) penalties.push({ id: "age", label: "나이와 안 맞는 스타일", why: `${ac.age}살 · 옷장 나이 ${ac.styleAge}살 · 어려 보이는 옷 ${pct(ac.young)}% · 나이 들어 보이는 옷 ${pct(ac.old)}%`, points: pa });
   const minus = penalties.reduce((a, p) => a + p.points, 0);
+  const shift = shiftOf(F);
+  const shiftPoints = shift ? Math.round(T.shift * Math.max(-1, Math.min(1, shift.quality / 0.25)) * 10) / 10 : 0;
 
-  const rawScore = Math.max(0, Math.min(100, sum + bonus.points - minus));
-  return { mode, F, types, all, weights: w, axes, bonus, penalties, sum, raw: rawScore, score: displayScore(rawScore, T), lowData, tasteHalved };
+  const rawScore = Math.max(0, Math.min(100, sum + bonus.points - minus + shiftPoints));
+  return { mode, F, types, all, weights: w, axes, bonus, penalties, age: ac, shift, shiftPoints, sum, raw: rawScore, score: displayScore(rawScore, T), lowData, tasteHalved };
 }
