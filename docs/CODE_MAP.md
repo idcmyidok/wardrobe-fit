@@ -366,7 +366,7 @@
 ### src/server/roast/fl
 - `feat.ts` Mode Feat features
 - `types.ts` AxisKey AXIS_NAME AXIS_KEYS BASE_WEIGHTS RULES RuleId GROUP_NAME Grade TypeLines TypeDef ramp FITNESS TYPE_DEFS TYPE_BY_ID
-- `axes.ts` AxisOut computeAxes (표본 30벌 미만은 0.5 쪽으로 당김)
+- `axes.ts` AxisOut styling(코디력: 색 조화·섞기·로고·기본템·하의 짝, 안목의 60%와 흔한 옷장 감점에 씀) computeAxes (표본 30벌 미만은 0.5 쪽으로 당김)
 - `engine.ts` ActiveType Bonus Penalty Evaluation evaluate displayScore (BONUS_GATE: 스트릿·신발·원브랜드 보너스 조건)
 - `config.ts` TypeConf Block FlConfig TALK_BLOCKS REPORT_BLOCKS DEFAULT_CONFIG
 - `store.ts` VARS checkSentence sanitize* CUSTOM_QUIZ_ID sanitizeSection isSection toRows fromRows applyEdits

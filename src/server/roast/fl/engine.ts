@@ -2,7 +2,7 @@ import "server-only";
 import type { BodyProfile } from "@/lib/fit/body-fit";
 import type { Item } from "../analyze";
 import type { OrderContext } from "../orders/context";
-import { computeAxes, type AxisOut } from "./axes";
+import { computeAxes, styling, type AxisOut } from "./axes";
 import type { FlConfig } from "./config";
 import { features, type Feat, type Mode } from "./feat";
 import { AXIS_KEYS, FITNESS, TYPE_DEFS, type AxisKey, type RuleId } from "./types";
@@ -153,8 +153,10 @@ export function evaluate(items: Item[], body: BodyProfile | null, mode: Mode, no
   const pct = (v: number) => Math.round(v * 100);
   const common = F.kshare((i) => i.groups.includes("spa") || i.groups.includes("mass") || i.brand!.trend >= 4 || i.brand!.labels.includes("무신사 인기"));
   const penalties: Penalty[] = [];
-  const pc = Math.round(T.penalty.common * clamp((common - 0.35) / 0.4) * (1 - bonus.points / Math.max(bonus.max, 1)) * 10) / 10;
-  if (pc > 0) penalties.push({ id: "common", label: "흔한 옷장", why: `SPA·대중·인기 브랜드 ${pct(common)}%`, points: pc });
+  // 흔한 브랜드여도 잘 골라 입으면(코디력 0.75 이상) 감점 없음
+  const st = styling(F, has)?.value ?? 0.5;
+  const pc = Math.round(T.penalty.common * clamp((common - 0.35) / 0.4) * clamp((0.75 - st) / 0.3) * (1 - bonus.points / Math.max(bonus.max, 1)) * 10) / 10;
+  if (pc > 0) penalties.push({ id: "common", label: "흔한 옷장", why: `SPA·대중·인기 브랜드 ${pct(common)}% · 코디력 ${pct(st)}`, points: pc });
   const pf = Math.round(T.penalty.fit * clamp(F.fits.bad / 0.4) * 10) / 10;
   if (pf > 0) penalties.push({ id: "fit", label: "핏 실패", why: `너무 크거나 작은 옷 ${pct(F.fits.bad)}%`, points: pf });
   const minus = penalties.reduce((a, p) => a + p.points, 0);

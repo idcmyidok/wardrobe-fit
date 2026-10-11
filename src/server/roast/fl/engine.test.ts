@@ -37,8 +37,35 @@ function wardrobe(brands: string[], colors: string[], fits: FitLevel[], opts: { 
   return cats.map((cat, i) => g({ brand: brands[i % brands.length], cat, color: colors[i % colors.length], fit: fits[i % fits.length], ...opts.extra }));
 }
 
+/** [분류, 브랜드, 색, 이름, 핏] 목록을 n번 돌려 옷장을 만든다 */
+const listOf = (rows: [Row["cat"], string, string, string, FitLevel?][]) => rows.map(([cat, brand, color, name, fit]) => g({ cat, brand, color, name, fit }));
+
+/** 같은 무신사 중저가 대학생 3명: 고르는 실력만 다르다 */
+const campusGood = listOf([
+  ...(["네이비", "차콜", "베이지", "블랙", "카키", "네이비"] as const).map((c, i) => ["outer", ["Musinsa Standard", "Partimento", "UNIQLO", "Covernat", "Lee", "Musinsa Standard"][i], c, ["울 블렌드 코트", "MA-1 자켓", "코튼 재킷", "후드 집업", "필드 재킷", "가디건"][i], "regular"] as [Row["cat"], string, string, string, FitLevel]),
+  ...Array.from({ length: 13 }, (_, i) => ["top", ["UNIQLO", "Musinsa Standard", "Lee", "Covernat", "Partimento"][i % 5], ["화이트", "그레이", "블랙", "네이비", "베이지", "블루"][i % 6], ["옥스퍼드 셔츠", "크루넥 니트", "무지 티셔츠", "스웨트셔츠", "스트라이프 셔츠", "헨리넥 티"][i % 6], (["regular", "semi_over"] as FitLevel[])[i % 2]] as [Row["cat"], string, string, string, FitLevel]),
+  ...Array.from({ length: 9 }, (_, i) => ["bottom", ["Lee", "Musinsa Standard", "UNIQLO", "Partimento"][i % 4], ["데님", "블랙", "베이지", "그레이", "네이비"][i % 5], ["스트레이트 데님 팬츠", "와이드 슬랙스", "치노 팬츠", "스웨트 팬츠", "카고 팬츠"][i % 5], "regular"] as [Row["cat"], string, string, string, FitLevel]),
+  ...Array.from({ length: 5 }, (_, i) => ["shoes", ["New Balance", "Converse", "Vans", "Dr. Martens", "adidas"][i], ["그레이", "화이트", "블랙", "블랙", "화이트"][i], "스니커즈", undefined] as [Row["cat"], string, string, string, FitLevel?]),
+]);
+const campusBad = listOf([
+  ...Array.from({ length: 3 }, (_, i) => ["outer", ["Mahagrid", "Covernat", "Musinsa Standard"][i], ["레드", "옐로", "그린"][i], ["빅로고 바시티 자켓", "그래픽 바람막이", "패딩"][i], (["too_big", "too_small", "regular"] as FitLevel[])[i]] as [Row["cat"], string, string, string, FitLevel]),
+  ...Array.from({ length: 22 }, (_, i) => ["top", ["Mahagrid", "Covernat", "LMC", "Musinsa Standard", "thisisneverthat"][i % 5], ["레드", "옐로", "그린", "퍼플", "핑크", "오렌지", "블루", "블랙"][i % 8], ["빅로고 반팔 티", "그래픽 후드티", "레터링 맨투맨", "캐릭터 프린트 티", "로고 스웨트셔츠", "무지 티셔츠"][i % 6], (["too_big", "regular", "too_small", "over"] as FitLevel[])[i % 4]] as [Row["cat"], string, string, string, FitLevel]),
+  ...Array.from({ length: 4 }, (_, i) => ["bottom", ["Musinsa Standard", "Mahagrid", "Covernat", "LMC"][i], ["레드", "그린", "퍼플", "데님"][i], ["트레이닝 팬츠", "카고 팬츠", "조거 팬츠", "데님 팬츠"][i], (["too_small", "too_big", "regular", "too_big"] as FitLevel[])[i]] as [Row["cat"], string, string, string, FitLevel]),
+  ...Array.from({ length: 3 }, (_, i) => ["shoes", ["Nike", "adidas", "Puma"][i], ["옐로", "레드", "그린"][i], "스니커즈", undefined] as [Row["cat"], string, string, string, FitLevel?]),
+]);
+
+const campusAvg = listOf([
+  ...Array.from({ length: 5 }, (_, i) => ["outer", ["Covernat", "Musinsa Standard", "Nike", "thisisneverthat", "UNIQLO"][i], ["블랙", "네이비", "블루", "그레이", "블랙"][i], ["후드 집업", "블루종", "로고 바람막이", "그래픽 후드 집업", "패딩"][i], (["regular", "semi_over", "too_big", "over", "regular"] as FitLevel[])[i]] as [Row["cat"], string, string, string, FitLevel]),
+  ...Array.from({ length: 16 }, (_, i) => ["top", ["Covernat", "Musinsa Standard", "thisisneverthat", "UNIQLO", "Nike", "LMC"][i % 6], ["블랙", "화이트", "그레이", "네이비", "그린", "블랙", "레드", "화이트"][i % 8], ["로고 반팔 티", "무지 티셔츠", "그래픽 맨투맨", "후드티", "스트라이프 티", "레터링 티"][i % 6], (["regular", "semi_over", "over", "regular", "too_big"] as FitLevel[])[i % 5]] as [Row["cat"], string, string, string, FitLevel]),
+  ...Array.from({ length: 6 }, (_, i) => ["bottom", ["Musinsa Standard", "UNIQLO", "Covernat", "Nike"][i % 4], ["데님", "블랙", "그레이", "데님", "그레이", "블랙"][i], ["데님 팬츠", "와이드 슬랙스", "트레이닝 팬츠", "와이드 데님", "조거 팬츠", "카고 팬츠"][i], (["regular", "semi_over", "too_big", "regular", "regular", "over"] as FitLevel[])[i]] as [Row["cat"], string, string, string, FitLevel]),
+  ...Array.from({ length: 4 }, (_, i) => ["shoes", ["Nike", "adidas", "Converse", "New Balance"][i], ["화이트", "블랙", "화이트", "그레이"][i], "스니커즈", undefined] as [Row["cat"], string, string, string, FitLevel?]),
+]);
+
 const personas: Record<string, Garment[]> = {
-  campus: wardrobe(["Musinsa Standard", "UNIQLO", "Nike", "Covernat", "thisisneverthat", "adidas", "Converse"], ["블랙", "그레이", "화이트", "네이비", "블랙"], ["regular", "semi_over"]),
+  campusAvg,
+  campusGood,
+  campusBad,
+  campusNeat: wardrobe(["Musinsa Standard", "UNIQLO", "Nike", "Covernat", "thisisneverthat", "adidas", "Converse"], ["블랙", "그레이", "화이트", "네이비", "블랙"], ["regular", "semi_over"]),
   spaStylish: wardrobe(["UNIQLO", "ZARA", "COS", "SPAO"], ["블랙", "화이트", "그레이", "베이지"], ["regular", "semi_over", "regular"]),
   allblackDesigner: wardrobe(["Maison Margiela", "Acne Studios", "Lemaire", "Our Legacy", "Wooyoungmi", "Comme des Garçons"], ["블랙"], ["regular", "semi_over", "over"]),
   expensiveBad: wardrobe(["Maison Margiela", "Ader Error", "Comme des Garçons", "Arc'teryx", "Andersson Bell"], ["레드", "옐로우", "그린", "블랙", "퍼플", "핑크", "오렌지"], ["too_big", "too_small", "slim", "too_big"]),
@@ -75,10 +102,14 @@ describe("패션 수준 평가", () => {
   it("디자이너 올블랙 > 비싸지만 못 입는 옷장, 평범한 대학생·SPA는 60점대", () => {
     expect(run(personas.allblackDesigner).score).toBeGreaterThan(run(personas.expensiveBad).score + 10);
     expect(run(personas.allblackDesigner).score).toBeGreaterThanOrEqual(80);
-    for (const k of ["campus", "spaStylish"]) {
-      expect(run(personas[k]).score).toBeGreaterThanOrEqual(60);
-      expect(run(personas[k]).score).toBeLessThan(70);
-    }
+    // 같은 중저가 대학생이라도 고르는 실력에 따라 크게 갈린다
+    expect(run(personas.campusGood).score).toBeGreaterThanOrEqual(70);
+    expect(run(personas.campusBad).score).toBeLessThan(50);
+    expect(run(personas.campusAvg).score).toBeGreaterThanOrEqual(55);
+    expect(run(personas.campusAvg).score).toBeLessThan(70);
+    expect(run(personas.campusGood).score).toBeGreaterThanOrEqual(run(personas.campusAvg).score + 7);
+    expect(run(personas.campusAvg).score).toBeGreaterThanOrEqual(run(personas.campusBad).score + 10);
+    expect(run(personas.spaStylish).score).toBeGreaterThanOrEqual(60);
     expect(run(personas.expensiveBad).penalties.some((p) => p.id === "fit")).toBe(true);
   });
 
@@ -94,7 +125,7 @@ describe("패션 수준 평가", () => {
 
   it("A 등급 유형은 보너스를 받는다(받치는 옷장일 때)", () => {
     expect(run(personas.allblackDesigner).bonus.points).toBeGreaterThan(5);
-    expect(run(personas.campus).bonus.points).toBe(0);
+    expect(run(personas.campusNeat).bonus.points).toBe(0);
   });
 
   it("대화와 결과가 만들어지고 같은 seed면 같다", () => {

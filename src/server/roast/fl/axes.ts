@@ -62,13 +62,21 @@ export function complement(F: Feat): { value: number; why: string } | null {
   return { value, why: `어울림 ${Math.round(compat * 100)} · 빈틈 ${Math.round(fill * 100)} · 역할 ${Math.round(role * 100)}` };
 }
 
+const NEUTRAL = new Set(["블랙", "그레이", "화이트", "베이지", "브라운", "카키", "네이비", "데님"]);
+const isNeutral = (i: Item) => i.denim || (i.color != null && NEUTRAL.has(i.color));
+const LOGO = /로고|그래픽|프린트|레터링|아트웍|캐릭터|graphic|logo|print|lettering/i;
+
 function consistency(F: Feat, has: Has): AxisOut {
   if (F.known.length < 6 && !has("palette_free")) return { value: 0.55, why: "브랜드 자료가 적어 기본값" };
   const tag = clamp((F.tagFocus - 0.4) / 0.5);
   const formals = F.known.map((i) => i.brand!.formal);
   const spread = sd(formals);
   const tight = 1 - clamp(spread / 1.6);
-  const palette = has("palette_free") ? 1 : clamp((F.topColors3 - 0.5) / 0.4);
+  // 색 일관성: 상위 3색 쏠림이나 기본색 위주면 높고, 튀는 색 가짓수가 많으면 깎는다
+  const colored = F.clothes.filter((i) => i.color);
+  const neutralShare = colored.length ? colored.filter(isNeutral).length / colored.length : 0.5;
+  const loudHues = new Set(colored.filter((i) => !isNeutral(i)).map((i) => i.color)).size;
+  const palette = has("palette_free") ? 1 : Math.max(clamp((F.topColors3 - 0.5) / 0.4), clamp((neutralShare - 0.5) / 0.4)) * (1 - 0.5 * clamp((loudHues - 3) / 4));
   let v = 0.45 * tag + 0.2 * tight + 0.35 * palette;
   let why = `태그 ${Math.round(tag * 100)} · 포멀도 ${Math.round(tight * 100)} · 색 ${Math.round(palette * 100)}`;
   if (has("variety_ok")) {
@@ -117,6 +125,43 @@ function consistency(F: Feat, has: Has): AxisOut {
   return { value: clamp(v), why };
 }
 
+/**
+ * 코디력(가격과 무관): 같은 가격대 옷장도 크게 갈리게 하는 신호.
+ * 색 조화(튀는 색 가짓수) · 섞어 입기(하의·아우터가 기본색인지) · 로고 절제(상의 로고·그래픽 비율) · 기본템(기본색 아우터·하의·무지 상의·신발) · 품목 짝(상의 대비 하의 수)
+ */
+export function styling(F: Feat, has: Has): { value: number; why: string } | null {
+  const clothes = F.clothes.filter((i) => i.color);
+  if (clothes.length < 8) return null;
+  const loud = clothes.filter((i) => !isNeutral(i));
+  const hues = new Set(loud.map((i) => i.color)).size;
+  const loudShare = loud.length / clothes.length;
+  // 튀는 색은 2가지까지 자연스럽고, 5가지를 넘으면 0. 컬러 플레이 유형은 가짓수 대신 기본색 받침만 본다.
+  let harmony = has("palette_free") ? 1 : 1 - clamp((hues - 2) / 4);
+  if (loudShare > 0.45) harmony *= 1 - clamp((loudShare - 0.45) / 0.35) * 0.6;
+  const bottoms = F.clothes.filter((i) => i.cat === "bottom");
+  const outers = F.clothes.filter((i) => i.cat === "outer");
+  const nb = bottoms.length ? bottoms.filter(isNeutral).length / bottoms.length : 0;
+  const no = outers.length ? outers.filter(isNeutral).length / outers.length : 0.5;
+  const mix = 0.65 * nb + 0.35 * no;
+  const tops = F.clothes.filter((i) => i.cat === "top");
+  const logoShare = tops.length ? tops.filter((i) => LOGO.test(i.g.productName)).length / tops.length : 0;
+  const logo = has("logo_care") ? 1 - clamp((logoShare - 0.5) / 0.4) : 1 - clamp((logoShare - 0.2) / 0.45);
+  const shoes = F.items.filter((i) => i.cat === "shoes");
+  const basics =
+    [
+      outers.some(isNeutral),
+      bottoms.some((i) => i.denim),
+      bottoms.some((i) => isNeutral(i) && !i.denim),
+      tops.some((i) => isNeutral(i) && !LOGO.test(i.g.productName)),
+      shoes.length === 0 || shoes.some(isNeutral),
+    ].filter(Boolean).length / 5;
+  // 상의 3벌에 하의 1벌 이상이면 충분, 하의가 너무 적으면 돌려 입을 수 없다
+  const pair = tops.length ? clamp((bottoms.length / tops.length) / 0.4) : 0.5;
+  const value = 0.3 * harmony + 0.25 * mix + 0.2 * logo + 0.15 * basics + 0.1 * pair;
+  const p = (v: number) => Math.round(v * 100);
+  return { value, why: `코디력 ${p(value)}(색 ${p(harmony)}·섞기 ${p(mix)}·로고 ${p(logo)}·기본템 ${p(basics)}·하의 짝 ${p(pair)})` };
+}
+
 function taste(F: Feat, has: Has): AxisOut {
   if (F.known.length < 5) return { value: null, why: "브랜드 자료가 있는 옷이 5벌 미만" };
   const outerShoes = new Set(F.items.filter((i) => i.cat === "outer" || i.cat === "shoes").map((i) => i.id));
@@ -148,6 +193,12 @@ function taste(F: Feat, has: Has): AxisOut {
       v = 0.7 * v + 0.3 * (0.3 + 0.7 * near);
       why += ` · 결제가 적정 ${Math.round(near * 100)}`;
     }
+  }
+  // 가격이 아니라 고르는 실력이 더 크게: 브랜드 40% + 코디력 60%
+  const st = styling(F, has);
+  if (st) {
+    v = 0.4 * v + 0.6 * st.value;
+    why += ` · ${st.why}`;
   }
   return { value: clamp(v), why };
 }
