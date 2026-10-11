@@ -921,6 +921,22 @@ function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string
         <b>{report.dnaLead}</b> {report.dna.join(" ")}
       </p>
     ),
+    brands: report.brands && (
+      <div>
+        <p>
+          <b>{report.brands.title}</b>
+        </p>
+        {report.brands.items.map((b) => (
+          <div key={b.id}>
+            <p>
+              <b>{b.lead}</b> {b.text}
+            </p>
+            <PhotoRow ids={b.photos} photoOf={photoOf} />
+          </div>
+        ))}
+        {report.brands.mix && <p>{report.brands.mix}</p>}
+      </div>
+    ),
     axes: report.axes && report.axes.length > 0 && (
       <div>
         <p>

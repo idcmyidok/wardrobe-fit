@@ -102,6 +102,7 @@ describe("패션 수준 평가", () => {
   it("디자이너 올블랙 > 비싸지만 못 입는 옷장, 평범한 대학생·SPA는 60점대", () => {
     expect(run(personas.allblackDesigner).score).toBeGreaterThan(run(personas.expensiveBad).score + 10);
     expect(run(personas.allblackDesigner).score).toBeGreaterThanOrEqual(80);
+    expect(run(personas.expensiveBad).score).toBeLessThan(60);
     // 같은 중저가 대학생이라도 고르는 실력에 따라 크게 갈린다
     expect(run(personas.campusGood).score).toBeGreaterThanOrEqual(70);
     expect(run(personas.campusBad).score).toBeLessThan(50);
@@ -138,6 +139,30 @@ describe("패션 수준 평가", () => {
     expect(built.report.total.score).toBe(ev.score);
     expect(built.report.axes?.length).toBe(5);
     expect(built.report.scoreDetail?.items.reduce((s, x) => s + x.delta, 0)).toBeCloseTo(ev.score, 5);
+  });
+
+  it("브랜드 분석과 점수 질문이 나오고, 답이 점수를 바꾼다", () => {
+    const ev = run(personas.campusBad);
+    const plan = buildPlan(ev, DEFAULT_CONFIG, 3, null, []);
+    const asks = plan.asked.filter((q) => q.id.startsWith("ask_"));
+    expect(asks.length).toBeGreaterThan(0);
+    expect(asks.length).toBeLessThanOrEqual(DEFAULT_CONFIG.tune.maxAsks);
+    expect(plan.asked.at(-1)?.id).toBe("fashionable_q");
+    const q = asks[0];
+    const [best, worst] = Object.entries(q.points!).sort((a, b) => b[1] - a[1]).map(([k]) => k).filter((_, i, l) => i === 0 || i === l.length - 1);
+    const up = buildReport(ev, DEFAULT_CONFIG, 3, plan.asked, { [q.id]: best }, { admin: true, partial: false });
+    const down = buildReport(ev, DEFAULT_CONFIG, 3, plan.asked, { [q.id]: worst }, { admin: true, partial: false });
+    expect(up.report.total.score).toBeGreaterThan(down.report.total.score);
+    expect(up.report.brands?.items.length).toBeGreaterThan(0);
+    expect(up.report.scoreDetail?.items.reduce((s, x) => s + x.delta, 0)).toBeCloseTo(up.report.total.score, 5);
+  });
+
+  it("기본 문장은 모두 저장 검사를 통과한다", () => {
+    for (const sec of ["tune", "axisLines", "bands", "talk", "report", "common", "special", "screen", "orderScreen", "brands", "asks"] as const) {
+      const r = sanitizeSection(sec, (DEFAULT_CONFIG as unknown as Record<string, unknown>)[sec]);
+      expect(r, sec).toMatchObject({ ok: true });
+    }
+    for (const t of TYPE_DEFS) expect(sanitizeSection(`type.${t.id}`, DEFAULT_CONFIG.types[t.id]), t.id).toMatchObject({ ok: true });
   });
 
   it("설계를 저장하고 불러오면 기본값 위에 덮인다", () => {

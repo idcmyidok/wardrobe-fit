@@ -25,6 +25,8 @@ export interface AskedQuestion {
   quizId?: string;
   /** 퀴즈 정답·오답 판정용(선택지 id → right/wrong) */
   scoreKey?: Record<string, string>;
+  /** 점수 질문: 선택지 id → 원점수 증감 */
+  points?: Record<string, number>;
 }
 
 export interface SpecialInput {

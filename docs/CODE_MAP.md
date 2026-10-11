@@ -372,6 +372,7 @@
 - `store.ts` VARS checkSentence sanitize* CUSTOM_QUIZ_ID sanitizeSection isSection toRows fromRows applyEdits
 - `script.ts` buildPlan buildReport tierOf
 - `special.ts` AskedQuestion twinsOf buildSpecials · `special-texts.ts` QuestionText SPECIAL_Q_TEXT
+- `brand-talk.ts` BRAND_KINDS KIND_NAME MIX_KEYS topBrands mixOf DEFAULT_BRAND_TEXT (브랜드 분석) · `asks.ts` ASK_WHEN(조건) ASK_ORDER DEFAULT_ASKS buildAsks (점수 질문: 답→원점수 증감, 재미 질문과 패셔너블 질문 사이에 묻는다)
 - `vars.ts` typeVars · `screen.ts` ORDER_SCREEN · `run.ts` MIN_CLOTHES runEvaluation planOf resultOf · `admin-meta.ts` designerData DesignerData
 
 ### src/server/roast/orders

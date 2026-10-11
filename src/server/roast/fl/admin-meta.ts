@@ -1,5 +1,7 @@
 import "server-only";
 import { BRANDS } from "../brands";
+import { ASK_ORDER, ASK_WHEN } from "./asks";
+import { BRAND_KINDS, KIND_NAME, MIX_KEYS, MIX_NAME } from "./brand-talk";
 import { DEFAULT_CONFIG, REPORT_BLOCKS, TALK_BLOCKS, type FlConfig } from "./config";
 import { AXIS_KEYS, AXIS_NAME, BASE_WEIGHTS, GROUP_NAME, RULES, TYPE_DEFS } from "./types";
 import { VARS, type VarArea } from "./store";
@@ -65,6 +67,15 @@ const VAR_LABEL: Record<string, string> = {
   priceWon: "가격",
   count: "개수",
   tier: "점수 구간",
+  pct: "비율(%)",
+  level: "가격대(저가·중가…)",
+  kind: "브랜드 계열",
+  hues: "튀는 색 가짓수",
+  tops: "상의 수",
+  bottoms: "하의 수",
+  tag: "옷장에서 가장 많은 스타일",
+  tag2: "두 번째 스타일",
+  decoy: "옷장에 없는 스타일(오답)",
 };
 
 const varsOf = (area: VarArea) => VARS[area].map((key) => ({ key, label: VAR_LABEL[key] ?? key }));
@@ -145,7 +156,10 @@ export function designerData(C: FlConfig, editedSections: string[]) {
       common: COMMON_WHERE,
       special: SPECIAL_WHEN,
       screen: SCREEN_WHERE,
-      vars: { common: varsOf("common"), type: varsOf("type"), axis: varsOf("axis"), special: varsOf("special"), quiz: varsOf("quiz"), band: varsOf("band") },
+      vars: { common: varsOf("common"), type: varsOf("type"), axis: varsOf("axis"), special: varsOf("special"), quiz: varsOf("quiz"), band: varsOf("band"), brand: varsOf("brand"), ask: varsOf("ask") },
+      brandKinds: BRAND_KINDS.map((k) => ({ key: k, name: KIND_NAME[k] })),
+      brandMix: MIX_KEYS.map((k) => ({ key: k, name: MIX_NAME[k] })),
+      asks: ASK_ORDER.map((id) => ({ id, when: ASK_WHEN[id].label })),
       brands: BRANDS.map((b) => b.name).sort((a, b) => a.localeCompare(b)),
     },
   };

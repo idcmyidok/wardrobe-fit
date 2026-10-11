@@ -117,7 +117,8 @@ export function evaluate(items: Item[], body: BodyProfile | null, mode: Mode, no
 
   // 4) 보너스
   const cV = raw.c.value ?? 0.6;
-  const fV = raw.f.value ?? 0.6;
+  // 핏 점수는 0.5~1로 완화돼 있어 제동에는 원래 크기(0~1)로 되돌려 쓴다
+  const fV = raw.f.value == null ? 0.6 : Math.max(0, (raw.f.value - 0.5) * 2);
   // 일관성·핏 중 낮은 쪽이 0.4 이하면 보너스 0, 0.7 이상이면 전부
   const brake = Math.max(0, Math.min(1, (Math.min(cV, fV) - 0.4) / 0.3));
   const premium = types.find((t) => t.id === "premium_seeker");

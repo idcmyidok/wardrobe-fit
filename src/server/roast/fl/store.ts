@@ -1,6 +1,8 @@
 import "server-only";
 import { findBrand } from "../brands";
 import type { QuizEntry } from "../quiz";
+import type { AskText } from "./asks";
+import { BRAND_KINDS, MIX_KEYS } from "./brand-talk";
 import { DEFAULT_CONFIG, REPORT_BLOCKS, TALK_BLOCKS, type Block, type FlConfig, type TypeConf } from "./config";
 import { AXIS_KEYS, RULES, TYPE_DEFS, type AxisKey, type Grade, type RuleId } from "./types";
 
@@ -25,6 +27,8 @@ export const VARS = {
   special: ["n", "name", "color", "brand", "band", "wrong", "wrongBy", "priceWon", "count", "tier"],
   quiz: ["brand"],
   band: ["score"],
+  brand: ["brand", "n", "pct", "level", "kind", "count"],
+  ask: ["n", "brand", "brandN", "hues", "logoPct", "tops", "bottoms", "popularPct", "tag", "tag2", "decoy"],
 } as const;
 export type VarArea = keyof typeof VARS;
 
@@ -127,6 +131,7 @@ export function sanitizeTune(v: unknown): R<FlConfig["tune"]> {
   pick("tierLow", 31, 100, "낮음 경계(31~100)", true);
   pick("quizRight", -5, 10, "퀴즈 정답 점수(-5~10)", true);
   pick("quizWrong", -10, 5, "퀴즈 오답 점수(-10~5)", true);
+  pick("maxAsks", 0, 8, "점수 질문 수(0~8)", true);
   const bad = checks.find(Boolean);
   if (bad) return fail(`${bad} 범위를 확인해 주세요.`);
   if (x.blend !== undefined) {
@@ -285,6 +290,75 @@ function sanitizeScreen(v: unknown, base: Record<string, string | string[]>): R<
 export const sanitizeScreenCopy = (v: unknown) => sanitizeScreen(v, DEFAULT_CONFIG.screen);
 export const sanitizeOrderScreen = (v: unknown) => sanitizeScreen(v, DEFAULT_CONFIG.orderScreen);
 
+/** 브랜드 분석 문장: 계열별·구성별 목록 */
+export function sanitizeBrands(v: unknown): R<FlConfig["brands"]> {
+  const out = structuredClone(DEFAULT_CONFIG.brands);
+  const x = (v ?? {}) as Partial<FlConfig["brands"]>;
+  if (x.title !== undefined) {
+    if (typeof x.title !== "string" || !x.title.trim() || x.title.length > 30) return fail("제목은 1~30자입니다.");
+    out.title = x.title.trim();
+  }
+  if (x.status !== undefined) {
+    const l = list(x.status, "brand", 0, 10);
+    if (typeof l === "string") return fail(l);
+    out.status = l;
+  }
+  for (const k of BRAND_KINDS) {
+    if (x.kind?.[k] === undefined) continue;
+    const l = list(x.kind[k], "brand", 1, 12);
+    if (typeof l === "string") return fail(l);
+    out.kind[k] = l;
+  }
+  for (const k of MIX_KEYS) {
+    if (x.mix?.[k] === undefined) continue;
+    const l = list(x.mix[k], "brand", 1, 12);
+    if (typeof l === "string") return fail(l);
+    out.mix[k] = l;
+  }
+  return { ok: true, value: out };
+}
+
+/** 점수 질문: 기본에 있는 질문·선택지만, 점수는 -10~10 정수 */
+export function sanitizeAsks(v: unknown): R<FlConfig["asks"]> {
+  const out = structuredClone(DEFAULT_CONFIG.asks);
+  for (const [id, q] of Object.entries((v ?? {}) as Record<string, Partial<AskText>>)) {
+    const base = out[id];
+    if (!base || !q) continue;
+    if (q.on !== undefined) base.on = q.on !== false;
+    if (q.lead !== undefined) {
+      const l = list(q.lead, "ask", 0, 6);
+      if (typeof l === "string") return fail(l);
+      base.lead = l;
+    }
+    if (q.text !== undefined) {
+      const e = checkSentence(q.text, "ask");
+      if (e) return fail(e);
+      base.text = (q.text as string).trim();
+    }
+    for (const [k, o] of Object.entries(q.options ?? {})) {
+      const bo = base.options[k];
+      if (!bo || !o) continue;
+      if (o.label !== undefined) {
+        const e = checkSentence(o.label, "ask");
+        if (e) return fail(e);
+        bo.label = o.label.trim();
+      }
+      if (o.points !== undefined) {
+        const n = num(o.points, -10, 10, true);
+        if (n == null) return fail("질문 점수는 -10~10 정수입니다.");
+        bo.points = n;
+      }
+      for (const g of ["react", "roast"] as const) {
+        if (o[g] === undefined) continue;
+        const l = list(o[g], "ask", 1, 12);
+        if (typeof l === "string") return fail(l);
+        bo[g] = l;
+      }
+    }
+  }
+  return { ok: true, value: out };
+}
+
 /** 퀴즈 하나: 값이 {deleted:true}이면 빼는 표시 */
 export function sanitizeQuiz(id: string, v: unknown): R<QuizEntry | { deleted: true }> {
   if (!isQuizId(id)) return fail("없는 퀴즈입니다.");
@@ -319,12 +393,14 @@ export function sanitizeSection(section: string, value: unknown): R<unknown> {
     case "talk": return sanitizeTalk(value);
     case "report": return sanitizeReport(value);
     case "common": return sanitizeCommon(value);
+    case "brands": return sanitizeBrands(value);
+    case "asks": return sanitizeAsks(value);
     default: return fail("없는 구역입니다.");
   }
 }
 
 export const isSection = (s: string) =>
-  s.startsWith("type.") ? TYPE_DEFS.some((t) => `type.${t.id}` === s) : s.startsWith("quiz.") ? isQuizId(s.slice(5)) : ["tune", "axisLines", "bands", "talk", "report", "common", "special", "screen", "orderScreen"].includes(s);
+  s.startsWith("type.") ? TYPE_DEFS.some((t) => `type.${t.id}` === s) : s.startsWith("quiz.") ? isQuizId(s.slice(5)) : ["tune", "axisLines", "bands", "talk", "report", "common", "special", "screen", "orderScreen", "brands", "asks"].includes(s);
 
 /** 값 → 저장 행들(fl.<구역>, 길면 ~0, ~1 …) */
 export function toRows(section: string, value: unknown): Record<string, string> {
@@ -377,6 +453,8 @@ export function applyEdits(rows: Record<string, string>): FlConfig {
     else if (section === "talk") out.talk = r.value as Block[];
     else if (section === "report") out.report = r.value as Block[];
     else if (section === "common") out.common = r.value as FlConfig["common"];
+    else if (section === "brands") out.brands = r.value as FlConfig["brands"];
+    else if (section === "asks") out.asks = r.value as FlConfig["asks"];
   }
   return out;
 }

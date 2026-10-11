@@ -255,8 +255,9 @@ function fit(F: Feat, has: Has): AxisOut {
     if (vals.length) scored.push(vals.every((v) => v === "good") ? 1 : vals.some((v) => v === "tight") ? 0.5 : 0.75);
   }
   if (scored.length < 5) return { value: null, why: "핏 자료(표기·내 치수)가 5벌 미만" };
-  let v = mean(scored);
-  let why = `맞음 ${scored.length}벌 평균 ${Math.round(v * 100)}`;
+  // 표기·실측이 실제 핏을 다 담지 못하므로 가운데 쪽으로 당긴다(0.5~1)
+  let v = 0.5 + 0.5 * mean(scored);
+  let why = `맞음 ${scored.length}벌 평균 ${Math.round(mean(scored) * 100)}(완화)`;
   if (has("fit_weight")) {
     v = v ** 1.4;
     why += " (엄격)";
