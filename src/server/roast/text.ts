@@ -62,16 +62,6 @@ export function josa(word: string, particle: string): string {
   return word + (b ? pair[0] : pair[1]);
 }
 
-/** 1240000 → "124만 원", 85000 → "8만 5천 원", 9900 → "9,900원" */
-export function won(v: number): string {
-  const n = Math.round(v);
-  if (n < 10_000) return `${n.toLocaleString("ko-KR")}원`;
-  const man = Math.floor(n / 10_000);
-  const chun = Math.round((n % 10_000) / 1000);
-  if (chun === 10) return `${(man + 1).toLocaleString("ko-KR")}만 원`;
-  return chun && man < 100 ? `${man}만 ${chun}천 원` : `${man.toLocaleString("ko-KR")}만 원`;
-}
-
 export type Vars = Record<string, string | number>;
 
 /** 모르는 자리가 있으면 오류(문장에 없는 값을 지어내지 않게). */
@@ -86,9 +76,6 @@ export function fill(template: string, vars: Vars): string {
     return particle ? josa(s, particle) : s;
   });
 }
-
-/** 틀에 쓰인 자리 이름 */
-export const varsOf = (template: string) => [...template.matchAll(/\{(\w+)(?:\|[^}]+)?\}/g)].map((m) => m[1]);
 
 /** 시드가 같으면 같은 순서로 나오는 난수(같은 분석을 서버에서 다시 만들 때 결과가 같게) */
 export function rng(seed: number) {

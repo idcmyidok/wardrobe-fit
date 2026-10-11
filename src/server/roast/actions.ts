@@ -12,11 +12,8 @@ import { isAdmin } from "@/server/admin/guard";
 import { getMyBodyProfile } from "@/server/body/queries";
 import { listMyGarments } from "@/server/garments/queries";
 import { getUsdRate } from "@/server/settings/queries";
-import { analyze, MIN_GARMENTS } from "./analyze";
-import { buildScript, composeResult } from "./compose";
-import { getRoastTexts, signGarments } from "./queries";
-import { buildReport } from "./report";
-import type { ScoreRules } from "./score-deltas";
+import { getFlConfig, signGarments } from "./queries";
+import { MIN_CLOTHES, planOf, resultOf, runEvaluation } from "./fl/run";
 
 /**
  * AI 옷장 분석 서버 액션.
@@ -80,11 +77,11 @@ export async function startRoast(input: { name: string | null; age?: number | nu
     const age = ageSchema.safeParse(input.age ?? null).data ?? null;
     if (age == null) return { ok: false, code: "error", message: AGE_REQUIRED };
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
-    const texts = await getRoastTexts(s.supabase);
-    const a = analyze(s.garments, body, usdRate, new Date(), texts.score.rules as Partial<ScoreRules> | undefined);
-    if (a.clothesTotal < MIN_GARMENTS) return { ok: false, code: "too_few", count: a.clothesTotal };
+    const C = await getFlConfig(s.supabase);
+    const run = runEvaluation(s.garments, body, usdRate, "closet", C);
+    if (run.clothes < MIN_CLOTHES) return { ok: false, code: "too_few", count: run.clothes };
     const seed = Math.floor(Math.random() * 2 ** 31);
-    const { script } = buildScript(a, seed, name, texts, age);
+    const { script } = planOf(run, C, seed, name);
     return { ok: true, script };
   } catch (e) {
     console.error("[roast] start", e instanceof Error ? e.message : e);
@@ -103,14 +100,13 @@ export async function finishRoast(input: { seed: number; name: string | null; ag
     const answers = z.record(z.string().max(60), z.string().max(200)).safeParse(input.answers).data ?? {};
 
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
-    const texts = await getRoastTexts(s.supabase);
-    const a = analyze(s.garments, body, usdRate, new Date(), texts.score.rules as Partial<ScoreRules> | undefined);
-    if (a.clothesTotal < MIN_GARMENTS) return { ok: false, message: "모자·신발을 제외한 옷이 30개 이상일 때 분석할 수 있습니다." };
-    const plan = buildScript(a, seed, name, texts, age);
-    const composed = composeResult(a, seed, texts);
-    const report = buildReport(a, name, seed, texts.report, plan.asked, answers, texts.score, age, undefined, input.partial === true);
+    const C = await getFlConfig(s.supabase);
+    const run = runEvaluation(s.garments, body, usdRate, "closet", C);
+    if (run.clothes < MIN_CLOTHES) return { ok: false, message: "모자·신발을 제외한 옷이 30개 이상일 때 분석할 수 있습니다." };
     // 점수 풀이는 관리자에게만 보인다(미리보기 모드는 로그인 없는 개발용 화면이라 확인용으로 보여 준다).
-    if (s.userId && !(await isAdmin(s.userId))) delete report.scoreDetail;
+    const admin = !s.userId || (await isAdmin(s.userId));
+    const { plan, built } = resultOf(run, C, seed, name, answers, { admin, partial: input.partial === true });
+    const report = built.report;
 
     // 결과에 나온 옷의 브랜드·제품명·사진 경로를 복사해 둔다(옷을 지워도 문장은 남는다).
     const ids = [
@@ -123,7 +119,7 @@ export async function finishRoast(input: { seed: number; name: string | null; ag
     }
     const garments: Record<string, RoastGarmentRef> = {};
     for (const id of ids) {
-      const item = a.items.find((i) => i.id === id);
+      const item = run.ev.F.items.find((i) => i.id === id);
       if (!item) continue;
       const p = paths.get(id);
       garments[id] = {
@@ -137,17 +133,17 @@ export async function finishRoast(input: { seed: number; name: string | null; ag
     const result: RoastResult = {
       name,
       createdAt: new Date().toISOString(),
-      garmentCount: a.clothesTotal,
+      garmentCount: run.clothes,
       headline: "",
       paragraphs: [],
-      closing: composed.closing,
-      disclaimer: texts.screen.DISCLAIMER,
+      closing: built.closing,
+      disclaimer: String(C.screen.DISCLAIMER),
       report,
       garments,
       answers: plan.asked
         .filter((q) => answers[q.id])
         .map((q) => ({ id: q.id, question: q.text, answer: q.options.find((o) => o.id === answers[q.id])?.label ?? "" })),
-      patterns: composed.used.map((p) => ({ id: p.id, stats: p.stats })),
+      patterns: run.ev.types.map((t) => ({ id: t.id, stats: { fitness: Math.round(t.fitness * 100), share: Math.round(t.share * 100) } })),
       wardrobeHash: wardrobeHash(s.garments),
     };
 

@@ -47,15 +47,6 @@ export const BRANDS = ALL.filter((b): b is BrandInfo => !("partial" in b));
 
 export const MUSINSA_POPULAR = "무신사 인기";
 
-/** 좋아요가 1 이상인 브랜드의 좋아요 수, 큰 순 */
-const LIKES_DESC = BRANDS.map((b) => b.likes ?? 0).filter((n) => n > 0).sort((a, b) => b - a);
-
-/** 좋아요 상위 topPct%에 드는 최소 좋아요 수. topPct가 0 이하이면 null(기준 끔) */
-export function musinsaLikesCut(topPct: number): number | null {
-  if (!(topPct > 0) || !LIKES_DESC.length) return null;
-  return LIKES_DESC[Math.min(LIKES_DESC.length, Math.ceil((LIKES_DESC.length * Math.min(topPct, 100)) / 100)) - 1];
-}
-
 export type BrandGroup =
   | "luxury"
   | "designer"
@@ -69,37 +60,6 @@ export type BrandGroup =
   | "outdoor"
   | "spa"
   | "mass";
-
-export const BRAND_GROUPS: BrandGroup[] = [
-  "luxury",
-  "designer",
-  "contemporary",
-  "premium_casual",
-  "specialist",
-  "jp_denim",
-  "heritage",
-  "street",
-  "sports",
-  "outdoor",
-  "spa",
-  "mass",
-];
-
-/** 브랜드 그룹을 문장에 쓸 때 */
-export const GROUP_WORD: Record<BrandGroup, string> = {
-  luxury: "명품",
-  designer: "디자이너 브랜드",
-  contemporary: "컨템포러리 브랜드",
-  premium_casual: "프리미엄 캐주얼",
-  specialist: "한 제품 전문 브랜드",
-  jp_denim: "일본 데님·워크웨어",
-  heritage: "헤리티지 브랜드",
-  street: "스트릿 브랜드",
-  sports: "스포츠 브랜드",
-  outdoor: "아웃도어 브랜드",
-  spa: "SPA 브랜드",
-  mass: "대중 브랜드",
-};
 
 /** 비교용 이름: NFKC → 소문자 → 한글·영문·숫자만 */
 export function normalizeBrand(s: string): string {
@@ -162,19 +122,6 @@ export function brandGroups(b: BrandInfo): BrandGroup[] {
   if (has(b.positions, "SPA")) out.push("spa");
   if (has(b.positions, "매스마켓")) out.push("mass");
   return out;
-}
-
-const LABELED = new Map<string, string[]>();
-for (const b of ALL)
-  if (b.labels.length)
-    for (const raw of [b.name, ...b.aliases]) {
-      const key = normalizeBrand(raw);
-      if (key && !LABELED.has(key)) LABELED.set(key, b.labels);
-    }
-
-/** 옷의 브랜드 문자열에 붙은 기타 태그. 분석용 자료가 있는 브랜드는 그 브랜드의 태그(앞부분 일치 포함), 없으면 태그만 있는 브랜드에서 찾는다. */
-export function brandLabels(input: string | null | undefined): string[] {
-  return findBrand(input)?.labels ?? LABELED.get(normalizeBrand(input ?? "")) ?? [];
 }
 
 /** 너무 유명해서(또는 명품 하우스라서) 헤리티지 가점에서 뺀 브랜드 */

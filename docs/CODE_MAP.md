@@ -12,11 +12,10 @@
 | `package-lock.json`, `src/lib/supabase/database.types.ts`(832줄, 생성) | | 필요한 테이블만 `grep -n -A20 "테이블명"` |
 
 ## 핵심 영역 길잡이
-- **훈수(/roast)**: 화면 `src/components/roast/roast-view.tsx`(914), 서버 `src/server/roast/`. 점수 `score.ts`(`scoreWardrobe`)·점수 규칙값 `score-deltas.ts`·등급 `bands.ts`; 분석 `analyze.ts`; 대화 조립 `compose.ts`(`buildScript`, 결과 마무리 `composeResult`)·결과 본문 `report.ts`(`buildReport`)·문장 원문 `lines.ts`(대화 문장 say만)/`report-text.ts`; 질문 `questions.ts`(1295, `QUESTIONS`/`pickQuestions`), 퀴즈 `quiz.ts`(`QUIZ`); 질문 반응(1번·2번…)마다 붙이는 조건·조건별 결과 글 `react-when.ts`(`WHEN_DEFS`/`reactPool`, 저장 키 `questions.<질문>.when|result.<반응>`, 관리자 화면은 `roast-text-editor.tsx`의 `ReactField`·`WhenPicker`); 관리자 편집 단위·조건 `meta.ts`(`textGroups`)·`texts.ts`(저장된 문구 덮어쓰기 `DEFAULT_TEXTS`); 서버 액션 `actions.ts`(`startRoast`/`finishRoast`), 관리자 저장 `admin-actions.ts`. 훈수에는 AI 글쓰기가 없다(2026-10-01 제거; 옛 저장 결과 `headline`/`paragraphs`는 report 없는 결과를 열 때만 쓰임).
-- **무신사 주문내역 훈수(/roast/orders, 메뉴 없음)**: 화면 `src/app/(app)/roast/orders/page.tsx` → `roast-view.tsx`(`orders` prop) + 붙여넣기·로딩 `src/components/roast/order-roast.tsx`(`OrderPaste`, 북마크 안내는 주문 가져오기와 같은 `garment-form/order-guide.tsx`의 `OrderGuide`, 사진은 `/api/imports/{id}/image` 프록시 주소). 서버 액션 `src/server/roast/order-actions.ts`(`startOrderRoast`/`finishOrderRoast`, 저장·AI 없음). 주문내역 전용 `src/server/roast/orders/`: 입력 `input.ts`(`toGarments`), 분석 `analysis.ts`(`analyzeOrders`), 수치 `metrics.ts`(랭킹템·스탠다드·반품), 점수 `score.ts`(`scoreOrders`)·기준값 `rules.ts`(`ORDER_RULES`/`ORDER_AGE_RULES`/`ORDER_DELTAS`), 질문 `questions.ts`(`ORDER_QUESTIONS`), 결과 문단 `report.ts`(`orderOverride` → `buildReport`의 override), 문장 `texts.ts`. 관리자 편집은 "주문내역 훈수" 탭(`meta.ts` textGroups의 kind "orders"). 주문내역에 실제로 나가는 옷장 훈수 문장(패턴 `orders.lines.*`·대화 공통 `orders.common.*`·공유 질문 quiz/food_vs_clothes/fashionable_q `orders.questions.*`·결과 문단 `orders.report.*`·화면 일부)은 전용 칸으로 복사돼 있다(`texts.ts`의 `ORDER_MIRROR`, 대상 목록 `orders/texts.ts`의 `ORDER_MIRROR_*`·`ORDER_SKIP_PATTERNS`). 전용 DB 값이 없으면 옷장 쪽 값을 따라가고(`applyTextEdits`), 있으면 전용 값이 우선, 주문내역 실행은 `forOrders(T)` 사본을 쓴다(`order-actions.ts` prepare). 퀴즈 항목(`quiz.*`)은 아직 옷장과 공유. 상품 하트·후기 수는 `parsers/musinsa.ts`(`popularityIn`), 주문 나누기는 `musinsa-orders.ts`(`parseOrdersForRoast`), 상품 읽기 API `/api/order-imports/item`(`roast: true`면 kind "roast"로 하루 분석 한도 대신 `ORDER_ROAST_DAILY_CAP`, 기록은 parser_version 끝 `ORDER_ROAST_SUFFIX`). 메뉴·노트 공개는 `src/lib/features.ts`의 `orderRoastMenu`.
+- **훈수(/roast)**: 화면 `src/components/roast/roast-view.tsx`, 서버 `src/server/roast/`. 평가 엔진은 `src/server/roast/fl/`(2026-10-11 전면 교체, 옛 score/compose/report/questions/texts 등은 삭제): 특징 `feat.ts`(`features`) → 52개 유형 `types.ts`(`TYPE_DEFS`, 판정 `FITNESS`, 평가 기준 `RULES`) → 항목 점수 `axes.ts`(`computeAxes`: c 일관성·t 안목·b 균형·f 핏·x 개성/구매 규율) → `engine.ts`(`evaluate`: 유형 최대 4개 섞기·비중·보너스 A/B·감점(흔한 옷장·핏 실패), 표시 점수 31+69×(원점수/100)^1.35) → 대화·결과 `script.ts`(`buildPlan`/`buildReport`), 특수 질문 `special.ts`(`buildSpecials`: 브랜드 퀴즈·밴드·언더아머·짱구·침착맨·패셔너블만 남김, 문구 `special-texts.ts`), 실행 `run.ts`(`runEvaluation`/`planOf`/`resultOf`). 설계 기본값 `config.ts`(`DEFAULT_CONFIG`, `TALK_BLOCKS`/`REPORT_BLOCKS`), 저장·검사 `store.ts`(roast_text_edits의 `fl.<구역>~n` JSON 행, `applyEdits`/`sanitizeSection`/`VARS`). 입력 준비 `analyze.ts`(`prepare`·`Item`만), 퀴즈 문제 `quiz.ts`(`QUIZ`), 밴드 `bands.ts`. 서버 액션 `actions.ts`(`startRoast`/`finishRoast`). 테스트 `fl/engine.test.ts`(페르소나 8개).
+- **무신사 주문내역 훈수(/roast/orders, 메뉴 없음)**: 화면 `src/app/(app)/roast/orders/page.tsx` → `roast-view.tsx`(`orders` prop) + 붙여넣기·로딩 `src/components/roast/order-roast.tsx`(`OrderPaste`, 북마크 안내는 주문 가져오기와 같은 `garment-form/order-guide.tsx`의 `OrderGuide`, 사진은 `/api/imports/{id}/image` 프록시 주소). 서버 액션 `src/server/roast/order-actions.ts`(`startOrderRoast`/`finishOrderRoast`, 저장·AI 없음). 주문내역은 같은 엔진(`fl/`)을 mode "orders"로 돌린다(`order-actions.ts`, 입력 `orders/input.ts`의 `toGarments`, 반품·하트 `orders/context.ts`). 화면 문구는 `fl/screen.ts`(`ORDER_SCREEN`). 상품 하트·후기 수는 `parsers/musinsa.ts`(`popularityIn`), 주문 나누기는 `musinsa-orders.ts`(`parseOrdersForRoast`). 메뉴·노트 공개는 `src/lib/features.ts`의 `orderRoastMenu`.
 - **SPA 분리(2026-10-03)**: 브랜드 그룹 `spa`(positions SPA)와 `mass`(매스마켓)를 나눔(`brands.ts` `BRAND_GROUPS`). 패턴 `group_spa`(`lines.ts`), 질문 `spa_why`(`questions.ts`, 점수 `SCORE_DELTAS.spa_why`), 결과 진단 `report-text.ts` `diag.spa`(`report.ts`에서 SPA 브랜드명 `{brands}`를 넣음). 점수의 대중·SPA 제외 조건은 `mass`나 `spa` 둘 다 본다.
-- **관리자 점수 판정 기준 페이지**: `src/app/(app)/admin/score-criteria/page.tsx`(`ScoreCriteriaPage`, 읽기 전용). 코드 값(`score-deltas.ts`·`orders/rules.ts`)과 항목 이름(`meta.ts`)을 그대로 읽고 DB 수정값은 "수정됨"으로 표시해, 기준이 바뀌면 화면도 저절로 바뀜. 인기·유행 쏠림 나이 보정 `youngWeight`/`youngNote`(`score.ts`, 규칙 `young_age`/`young_end`/`young_pct`, 옷장·주문내역 공통, 인기 쏠림에서 SPA는 제외).
-- **관리자 점수/결과 구성 탭**: `src/components/admin/roast-text-editor.tsx`(`RoastTextEditor`), 페이지 `src/app/(app)/admin/roast-texts/`, 저장 `src/server/roast/admin-actions.ts`. 기본값 없음: 저장된 값(DB)이 기준이고 묶음(`GroupBlock`·`QuizForm`) 단위로 입력 1초 뒤·칸을 벗어날 때 자동 저장(`useAutosave`, 서버 `saveRoastUnits`/`saveRoastQuiz`). 코드 문장은 DB에 값이 없는 칸의 처음 값으로만 쓰임. "결과 구성"은 옷장·주문내역 두 탭(kind `layout`/`orders-layout`, 주문내역 값은 `orders.report.layout.*`로 따로 저장되고 없으면 옷장 값을 따름; 총점 문단·`TOTAL`/`TOTAL_LEAD` 문장은 화면에 안 나와 삭제)이고 `LayoutOverview`가 실제 화면 순서를 보여 줌. 접었다 펴도 저장값이 보이도록 부모의 `saved`를 칸에 반영하고, 저장값이 코드 문장(`EditorUnit.base`)과 다르면 제목 옆 "고친 문장 (n/전체)"·칸 이름 옆 "(직접 수정함)"을 버건디색으로 표시.
+- **관리자 훈수 설계**: 페이지 `src/app/(app)/admin/roast-texts/page.tsx` → `src/components/admin/roast-designer.tsx`(`RoastDesigner`, 탭: 전체 구조·패션 유형·점수 기준·공통 문장·특수 질문·패션 퀴즈·화면 문구, 구역마다 `useSection`으로 저장/기본값 되돌리기). 설명 자료 `src/server/roast/fl/admin-meta.ts`(`designerData`: 자리 이름·문장이 쓰이는 곳), 저장 `src/server/roast/admin-actions.ts`(`saveDesignSection`/`resetDesignSection`).
 - **브랜드 데이터**: csv → `scripts/build-brands.mjs` → `brands.json` → `src/server/roast/brands.ts`(`findBrand`, `normalizeBrand`, `BRAND_GROUPS`). 무신사 수집 스크립트 `scripts/musinsa/`.
 - **핏 계산**: `src/lib/fit/compute.ts`(`computeFit`/`computeSize`), 내 치수 기반 `body-fit.ts`(`FIT_GROUPS`), 길이 `length-fit.ts`, 신발 `shoes.ts`, VS 비교 `versus.ts`, 비교 대상 선택 `select-comparables.ts`, 서버 `src/server/fit/service.ts`, AI 설명 `src/server/ai/fit-interpreter.ts`.
 - **구매 판단기(핏체크)**: 화면 `src/components/fit-check/`(`fit-check-view`, `fit-result-view`, `versus-view`), API `src/app/api/fit-checks`, 링크 파싱 `src/server/import/`(`parsers/`, `registry.ts`, `service.ts`).
@@ -43,12 +42,8 @@
 ### src/app/(app)/admin
 - `page.tsx` (16줄) metadata:6 AdminPage:9
 
-### src/app/(app)/admin/score-criteria
-- `page.tsx` (~115줄) metadata ScoreCriteriaPage Section: 옷장·주문내역 점수 판정 기준 표(읽기 전용, 코드 값 자동 반영)
-
 ### src/app/(app)/admin/roast-texts
-- `page.tsx` (40줄) metadata:10 RoastTextsPage:13
-- `export/route.ts` (~45줄) GET: 지금 쓰이는 훈수 문장 전체 CSV(코드 기본값·DB 저장값·실제 나오는 값), 관리자만, 편집 화면 머리글의 "문장 전체 내려받기" 링크
+- `page.tsx` (16줄) RoastDesignPage
 
 ### src/app/(app)/analysis
 - `page.tsx` (8줄) metadata:3 AnalysisPage:5
@@ -122,7 +117,7 @@
 
 ### src/components/admin
 - `admin-view.tsx` (217줄) AdminView:31
-- `roast-text-editor.tsx` EditorUnit EditorGroup WhenOption QuizValue EditorQuiz LayoutInfo RoastTextEditor useAutosave GroupBlock UnitField ReactField WhenPicker QuizForm
+- `roast-designer.tsx` RoastDesigner useSection SaveBar List Structure Blocks Types TypeCard Score Tune Bands AxisLines Common Special Quizzes QuizCard Screen
 - `usd-rate-form.tsx` (45줄) UsdRateForm:9
 - `user-actions.tsx` (71줄) UserActions:8
 
@@ -356,39 +351,32 @@
 - `actions.ts` (138줄) ReleaseNoteEditResult:22 getReleaseNoteEdits:32 saveReleaseNoteEdit:63 resetReleaseNoteEdit:80 getReleaseNoteImages:92 ReleaseNoteImageResult:104 saveReleaseNoteImage:107 removeReleaseNoteImage:126
 
 ### src/server/roast
-- `actions.ts` (178줄) startRoast:77 finishRoast:96
-- `admin-actions.ts` (~115줄) RoastTextResult:14 saveRoastUnits deleteRoastQuiz saveRoastQuiz
-- `analyze.ts` (678줄) ACHROMATIC:20 MIN_GARMENTS:21 FIT_WORD:24 Item:34 brandKindOf:70 colorCounted:80 Stat:82 Pattern:84 …
-- `bands.ts` (104줄) Band:11 BANDS:23 bandOf:80 findBand:92
-- `brands.ts` (191줄) BrandInfo:9 BRANDS:46 MUSINSA_POPULAR:48 musinsaLikesCut:54 BrandGroup:59 BRAND_GROUPS:72 GROUP_WORD:87 normalizeBrand:102 isTrueHeritage:187(진짜 헤리티지 판정) …
-- `compose.ts` (289줄) varsOf:29 arrangeBlocks:107(질문 섹션 EXTRA_QUESTION_SECTION, 주문내역 질문 포함) Plan:129 quotesAnswer:137 buildScript:145 asOrders:262 Composed:275 composeResult:283(마무리 문장·뚜렷한 패턴만, 결과 본문은 report.ts)
-- `keywords.ts` (50줄) FAMILIES:4 FamilyId:33 FAMILY_IDS:34 familyName:35 productFamilies:40
-- `lines.ts` (357줄) Section:13 PatternLines:28 COMMON:34 LINE_SECTION:98 LINE_TEXT:162
-- `meta.ts` (549줄) VAR_LABEL:15 SECTION_NAME:24 PATTERN_COND:28 QUESTION_COND:92 REACT_NAME:145 SCREEN_NAME:152 COMMON_NAME:171 varLabel:187 textGroups(주문내역 전용 칸 묶음 포함) fieldLabel …
-- `order-actions.ts` (162줄) beginOrderRoast:60 orderRoastUsed:78 startOrderRoast:86 finishOrderRoast:102 (하루 1회: 붙여넣기 직후 beginOrderRoast가 roast_runs kind='orders'에 기록, 관리자·테스터 예외, 상품 읽기 API도 기록 없으면 403)
-- `order-limit.ts` (31줄) kstDayStart:14 orderRoastUsedToday:19 (한국 시간 0시 기준 하루 1회)
-- `react-when.ts` (~75줄) WhenDef WHEN_DEFS checkWhen whenMatches reactPool (반응별 조건)
-- `queries.ts` (57줄) getLatestRoast:12 signGarments:27 getRoastTextEdits:43 getRoastTexts:54
-- `questions.ts` (1295줄) QuestionDef:19 QuestionText:34 chimchakItems:69(침착맨 질문 조건) fromShop:78 QUESTIONS:80 Q_TEXT:243 AskedQuestion:1063 brandTrio:1085 …
-- `quiz.ts` (680줄) QuizEntry:14 QUIZ:24 PickedQuiz:668 pickQuiz:673
-- `report-text.ts` (246줄) REPORT_TEXT:10 ReportTexts:246
-- `report.ts` (603줄) ReportOverride:89 buildReport:102 limitPhotos:568 splitLead:589 tryFill:594
-- `score-deltas.ts` (249줄) SCORE_DELTAS:9 SCORE_RULES:88 ScoreRules:184 AGE_RULES:191 AGE_BANDS:238 headlineBand·headlineRange(첫 줄 10칸 구간, 옷장·주문내역 공통)
-- `score.ts` (385줄) totalSpendBonus(총 구매액 가점, 옷장·주문내역 공통) ScorePart:16 WardrobeScore:25 ScoreOptions:33 isTopDesigner:44 isMidTier:46 isHeritage:48 isGood:50 isNice:52 isFormalLux:55 isRepro:56 monthIndex:59(판정 함수는 주문내역 점수도 씀) scoreWardrobe:64 fitContrast:302 ageAt:307 bandName:314 bandOf:322 floorTotal(옷장·주문내역 공통 최저 32점 꺾은선 보정: 0→32·50→68·100→100, 리포트 총점과 마지막 질문 구간이 같이 씀) tierOf …
-- `shift.ts` (64줄) ShiftRules:3 TasteShift:9 detectTasteShift:40
-- `text.ts` (119줄) josa:56 won:66 Vars:75 MissingVar:78 fill:80 varsOf:91 rng:94 Rng:118
-- `texts.ts` (266줄) DEFAULT_TEXTS:40 RoastTexts:50 ROAST_TEXT_MAX:52 CUSTOM_QUIZ_ID:55 UnitKind:57 UnitValue:58 TextUnit:60 unitsOf:69 orderMirrorKeys forOrders(주문내역 전용 칸 덮기) …
+- `actions.ts` startRoast finishRoast
+- `admin-actions.ts` DesignResult saveDesignSection resetDesignSection
+- `analyze.ts` ACHROMATIC MIN_GARMENTS FIT_WORD Item brandKindOf colorCounted prepare shopOf
+- `bands.ts` Band BANDS bandOf findBand
+- `brands.ts` BrandInfo BRANDS MUSINSA_POPULAR BrandGroup BRAND_GROUPS GROUP_WORD normalizeBrand isTrueHeritage …
+- `keywords.ts` FAMILIES FamilyId FAMILY_IDS familyName productFamilies
+- `order-actions.ts` beginOrderRoast orderRoastUsed startOrderRoast finishOrderRoast (하루 1회)
+- `order-limit.ts` kstDayStart orderRoastUsedToday
+- `queries.ts` getLatestRoast signGarments getRoastTextEdits getFlConfig
+- `quiz.ts` QuizEntry QUIZ PickedQuiz pickQuiz
+- `text.ts` josa won Vars MissingVar fill varsOf rng Rng
+
+### src/server/roast/fl
+- `feat.ts` Mode Feat features
+- `types.ts` AxisKey AXIS_NAME AXIS_KEYS BASE_WEIGHTS RULES RuleId GROUP_NAME Grade TypeLines TypeDef ramp FITNESS TYPE_DEFS TYPE_BY_ID
+- `axes.ts` AxisOut styling(코디력: 색 조화·섞기·로고·기본템·하의 짝, 안목의 60%와 흔한 옷장 감점에 씀) computeAxes (표본 30벌 미만은 0.5 쪽으로 당김)
+- `engine.ts` ActiveType Bonus Penalty Evaluation evaluate displayScore (BONUS_GATE: 스트릿·신발·원브랜드 보너스 조건)
+- `config.ts` TypeConf Block FlConfig TALK_BLOCKS REPORT_BLOCKS DEFAULT_CONFIG
+- `store.ts` VARS checkSentence sanitize* CUSTOM_QUIZ_ID sanitizeSection isSection toRows fromRows applyEdits
+- `script.ts` buildPlan buildReport tierOf
+- `special.ts` AskedQuestion twinsOf buildSpecials · `special-texts.ts` QuestionText SPECIAL_Q_TEXT
+- `vars.ts` typeVars · `screen.ts` ORDER_SCREEN · `run.ts` MIN_CLOTHES runEvaluation planOf resultOf · `admin-meta.ts` designerData DesignerData
 
 ### src/server/roast/orders
-- `analysis.ts` (18줄) analyzeOrders:12(마지막 인자 body: 내 치수를 입력한 사람만 넣음, order-actions prepare가 getMyBodyProfile로 불러 줌)
-- `context.ts` (38줄) OrderPop:7 OrderEvent:14 OrderContext:23(orderOf·measure: 같은 옷 반복용)
-- `input.ts` (86줄) orderItemSchema:16 OrderRoastItem:35 orderListSchema:36 measurementsOf(실측 문자열→옷 실측, 내 치수 비교용) toGarments:51
-- `metrics.ts` (106줄) orderRules:8 isStandard:10 likesOf:13 reviewsOf:14 isRanking:17 isHidden:27 thirds:35 busiestMonth:50 … styleShiftOf(오래된·최근 1/3 주 스타일, 질문·결과 글 공용)
-- `questions.ts` (92줄) ORDER_QUESTIONS:33
-- `report.ts` (105줄) orderOverride:29
-- `rules.ts` (176줄) ORDER_RULES:6 OrderRules:142 ORDER_AGE_RULES:149 ORDER_DELTAS:162
-- `score.ts` (286줄) OrderAgeKind:18 OrderScore:19 scoreOrders:42 orderTier:283 (점수 계산표 /mnt/project-files/roast/order-score-table.md; 새 감점: tiny 극단적 저가·size_mess 사이즈 갈팡질팡·body_off 내 치수에 안 맞는 옷)
-- `texts.ts` (529줄) ORDER_SKIP_PATTERNS ORDER_MIRROR_SCREEN/QUESTIONS/REPORT_SKIP ORDER_SCREEN:9 ORDER_COMMON:41 ORDER_Q_TEXT:49 ORDER_REPORT_TEXT:248 ORDER_QUESTION_COND:300 ORDER_PART_NAME:317 ORDER_RULE_NAME:368 ORDER_AGE_KEY_NAME:480 …
+- `context.ts` OrderPop OrderEvent OrderContext
+- `input.ts` orderItemSchema OrderRoastItem orderListSchema measurementsOf toGarments
 
 ### src/server/security
 - `url-guard.ts` (89줄) isBlockedIp:56 ALLOWED_PORTS:67 UrlCheck:69 checkUrlShape:72

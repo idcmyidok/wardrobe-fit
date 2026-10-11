@@ -72,15 +72,11 @@ export function AdminView({
 
       <section className={section} aria-labelledby="admin-roast-texts">
         <h2 id="admin-roast-texts" className="text-body font-semibold">
-          내 패션 훈수 문장
+          내 패션 훈수 설계
         </h2>
-        <p className="text-sm text-neutral-700">패턴별 멘트, 질문과 반응, 패션 퀴즈 문장을 모두 보고 고칠 수 있습니다.</p>
+        <p className="text-sm text-neutral-700">훈수 전체 구조(대화·결과 순서), 패션 유형 52개, 점수 기준, 모든 문장과 패션 퀴즈를 한곳에서 보고 고칩니다.</p>
         <Link href="/admin/roast-texts" className="w-fit text-base underline underline-offset-4">
-          문장 고치러 가기
-        </Link>
-        <p className="text-sm text-neutral-700">옷장·주문내역 훈수의 점수 판정 기준을 코드의 현재 값 그대로 정리해 봅니다.</p>
-        <Link href="/admin/score-criteria" className="w-fit text-base underline underline-offset-4">
-          점수 판정 기준 보기
+          훈수 설계 열기
         </Link>
       </section>
     </main>

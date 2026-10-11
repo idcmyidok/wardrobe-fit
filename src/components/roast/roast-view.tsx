@@ -921,6 +921,20 @@ function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string
         <b>{report.dnaLead}</b> {report.dna.join(" ")}
       </p>
     ),
+    axes: report.axes && report.axes.length > 0 && (
+      <div>
+        <p>
+          <b>항목별 점수</b>
+        </p>
+        <ul className="roast-list">
+          {report.axes.map((a) => (
+            <li key={a.label}>
+              <b>{a.label}</b> {a.score}/{a.max} {a.text}
+            </li>
+          ))}
+        </ul>
+      </div>
+    ),
     notes: report.notes.map((n) => (
       <p key={n} className="text-sm text-neutral-700">
         {n}

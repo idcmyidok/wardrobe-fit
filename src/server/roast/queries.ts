@@ -4,7 +4,7 @@ import { GARMENT_IMAGE_BUCKET } from "@/lib/images/upload-garment-image";
 import type { RoastGarmentRef, RoastResult } from "@/lib/roast/types";
 import type { Database } from "@/lib/supabase/database.types";
 import { createSupabaseServerClient, getActiveUser } from "@/lib/supabase/server";
-import { applyTextEdits } from "./texts";
+import { applyEdits } from "./fl/store";
 
 /**
  * 가장 최근 내 옷장 훈수 결과(사용자당 1개). 없거나 표가 아직 없으면(마이그레이션 20 전) null.
@@ -50,7 +50,7 @@ export async function getRoastTextEdits(supabase: SupabaseClient<Database> | nul
   return Object.fromEntries(data.map((r) => [r.key, r.body]));
 }
 
-/** 분석에 쓸 문장(기본 문장 + 관리자가 고친 문장) */
-export async function getRoastTexts(supabase: SupabaseClient<Database> | null) {
-  return applyTextEdits(await getRoastTextEdits(supabase));
+/** 훈수 설계(기본값 + 관리자가 고친 값) */
+export async function getFlConfig(supabase: SupabaseClient<Database> | null) {
+  return applyEdits(await getRoastTextEdits(supabase));
 }
