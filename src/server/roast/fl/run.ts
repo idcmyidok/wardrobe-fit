@@ -19,9 +19,9 @@ export interface Run {
 }
 
 /** 옷 목록 → 평가. 옷장과 주문내역이 같이 쓴다. */
-export function runEvaluation(garments: Garment[], body: BodyProfile | null, usdRate: number, mode: Mode, C: FlConfig, orders?: OrderContext): Run {
+export function runEvaluation(garments: Garment[], body: BodyProfile | null, usdRate: number, mode: Mode, C: FlConfig, orders?: OrderContext, age?: number | null): Run {
   const items = prepare(garments, body, usdRate);
-  const ev = evaluate(items, body, mode, new Date(), C, orders);
+  const ev = evaluate(items, body, mode, new Date(), C, orders, age);
   return {
     ev,
     clothes: items.filter((i) => !i.accessory).length,

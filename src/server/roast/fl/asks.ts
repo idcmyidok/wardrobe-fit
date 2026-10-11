@@ -1,6 +1,8 @@
 import "server-only";
+import type { Item } from "../analyze";
 import { fill, MissingVar, type Rng, type Vars } from "../text";
 import type { Evaluation } from "./engine";
+import { lifeVars } from "./life";
 import type { AskedQuestion } from "./special";
 
 /**
@@ -28,49 +30,90 @@ const NEUTRAL = new Set(["블랙", "그레이", "화이트", "베이지", "브�
 const LOGO = /로고|그래픽|프린트|레터링|아트웍|캐릭터|graphic|logo|print|lettering/i;
 const DECOY = ["미니멀", "스트릿", "아메카지", "고프코어", "프레피", "Y2K", "시티보이", "워크웨어", "댄디", "스포티"];
 
-/** 조건: 맞으면 문장 자리 값, 아니면 null */
-export const ASK_WHEN: Record<string, { label: string; when: (ev: Evaluation) => Vars | null }> = {
+const isLoud = (i: Item) => Boolean(i.color) && !i.denim && !NEUTRAL.has(i.color!);
+const isLogoTop = (i: Item) => i.cat === "top" && LOGO.test(i.g.productName);
+const photosOf = (ev: Evaluation, ok: (i: Item) => boolean) => ev.F.items.filter((i) => i.hasPhoto && ok(i)).slice(0, 8).map((i) => i.id);
+
+/** 대화에서 묻는 자리(그 이야기 바로 뒤). 자리가 꺼져 있으면 "남은 질문"에서 묻는다. */
+export type AskAt = "scan" | "types" | "brands" | "age" | "timeline" | "axes";
+export const AT_NAME: Record<AskAt, string> = { scan: "훑어보기 뒤", types: "유형 이야기 뒤", brands: "브랜드 분석 뒤", age: "나이 이야기 뒤", timeline: "구매 시기 이야기 뒤", axes: "항목 이야기 뒤" };
+
+/** 조건: 맞으면 문장 자리 값, 아니면 null. 위에 있을수록 먼저 고른다. photos: 질문과 함께 보여 줄 옷 */
+export const ASK_WHEN: Record<string, { label: string; at: AskAt; when: (ev: Evaluation) => Vars | null; photos?: (ev: Evaluation) => string[] }> = {
+  age_young: {
+    label: "29살 이상인데 어려 보이는 옷이 30% 이상",
+    at: "age",
+    when: (ev) => (ev.age?.verdict === "young" ? lifeVars(ev.age, null) : null),
+    photos: (ev) => photosOf(ev, (i) => ev.age!.youngIds.includes(i.id)),
+  },
+  age_old: {
+    label: "26살 이하인데 나이 들어 보이는 옷이 20% 이상",
+    at: "age",
+    when: (ev) => (ev.age?.verdict === "old" ? lifeVars(ev.age, null) : null),
+    photos: (ev) => photosOf(ev, (i) => ev.age!.oldIds.includes(i.id)),
+  },
+  taste_shift: {
+    label: "예전에 산 옷과 최근 산 옷이 크게 다를 때",
+    at: "timeline",
+    when: (ev) => (ev.shift && ev.shift.verdict !== "steady" ? lifeVars(null, ev.shift) : null),
+    photos: (ev) => photosOf(ev, (i) => ev.shift!.ids.includes(i.id)),
+  },
+  top_brand_why: {
+    label: "한 브랜드가 20% 이상이고 4벌 이상",
+    at: "brands",
+    when: ({ F }) => (F.topBrand && F.topBrand.share >= 0.2 && F.topBrand.count >= 4 ? { brand: F.items.find((i) => F.topBrand!.ids.includes(i.id))?.brandLabel || F.topBrand.name, brandN: F.topBrand.count } : null),
+  },
   loud_colors: {
     label: "튀는 색이 4가지 이상",
+    at: "types",
     when: ({ F }) => {
-      const loud = new Set(F.clothes.filter((i) => i.color && !i.denim && !NEUTRAL.has(i.color)).map((i) => i.color));
+      const loud = new Set(F.clothes.filter(isLoud).map((i) => i.color));
       return loud.size >= 4 ? { hues: loud.size } : null;
+    },
+    photos: (ev) => {
+      // 색마다 한 벌씩
+      const seen = new Set<string>();
+      return photosOf(ev, (i) => !i.accessory && isLoud(i) && !seen.has(i.color!) && Boolean(seen.add(i.color!)));
     },
   },
   logo_heavy: {
     label: "상의의 40% 이상이 로고·그래픽",
+    at: "types",
     when: ({ F }) => {
       const tops = F.clothes.filter((i) => i.cat === "top");
-      const s = tops.length >= 6 ? tops.filter((i) => LOGO.test(i.g.productName)).length / tops.length : 0;
+      const s = tops.length >= 6 ? tops.filter(isLogoTop).length / tops.length : 0;
       return s >= 0.4 ? { logoPct: pct(s) } : null;
     },
-  },
-  top_brand_why: {
-    label: "한 브랜드가 20% 이상이고 4벌 이상",
-    when: ({ F }) => (F.topBrand && F.topBrand.share >= 0.2 && F.topBrand.count >= 4 ? { brand: F.items.find((i) => F.topBrand!.ids.includes(i.id))?.brandLabel || F.topBrand.name, brandN: F.topBrand.count } : null),
+    photos: (ev) => photosOf(ev, isLogoTop),
   },
   bottoms_few: {
     label: "하의가 상의의 35% 미만",
+    at: "axes",
     when: ({ F }) => {
       const tops = F.clothes.filter((i) => i.cat === "top").length;
       const bottoms = F.clothes.filter((i) => i.cat === "bottom").length;
       return tops >= 8 && bottoms / tops < 0.35 ? { tops, bottoms } : null;
     },
+    photos: (ev) => photosOf(ev, (i) => i.cat === "bottom"),
+  },
+  size_pick: {
+    label: "핏 표시가 있는 옷이 30% 이상(사이즈 고르는 법)",
+    at: "axes",
+    when: ({ F }) => (F.fits.marked >= 0.3 ? {} : null),
   },
   trend_buy: {
     label: "무신사 인기 브랜드가 50% 이상",
+    at: "brands",
     when: ({ F }) => (F.popular >= 0.5 ? { popularPct: pct(F.popular) } : null),
   },
   unworn: {
     label: "옷이 60벌 이상",
+    at: "scan",
     when: ({ F }) => (F.n >= 60 ? { n: F.n } : null),
-  },
-  size_pick: {
-    label: "핏 표시가 있는 옷이 30% 이상(사이즈 고르는 법)",
-    when: ({ F }) => (F.fits.marked >= 0.3 ? {} : null),
   },
   style_self: {
     label: "항상(스타일 태그가 2개 이상 잡히면)",
+    at: "types",
     when: ({ F }) => (F.topTags.length >= 2 ? { tag: F.topTags[0], tag2: F.topTags[1], decoy: DECOY.find((d) => !F.topTags.includes(d)) ?? "포멀" } : null),
   },
 };
@@ -79,9 +122,40 @@ export const ASK_ORDER = Object.keys(ASK_WHEN);
 const O = (label: string, points: number, react: string[], roast: string[]): AskOption => ({ label, points, react, roast });
 
 export const DEFAULT_ASKS: Record<string, AskText> = {
+  age_young: {
+    on: true,
+    lead: ["특히 이 옷들이요."],
+    text: "이거 지금도 밖에 입고 나가세요?",
+    options: {
+      proud: O("네, 당당하게 입어요", -2, ["자신감은 인정합니다. 주변 시선은 제가 책임 못 집니다."], ["{age}살에 어려 보이는 옷을 당당하게 입는다고 하셨습니다. 마음은 청춘인데, 옷이 그걸 너무 크게 외치고 있어요. 한 벌씩만 섞으시죠."]),
+      home: O("집 앞이나 편할 때만요", 1, ["다행입니다. 편의점 정도는 봐 드리죠."], ["어려 보이는 옷은 집 앞에서만 입는다고 하셨습니다. 선은 지키시네요. 그럼 그 옷 살 돈은 밖에 입을 옷에 쓰시죠."]),
+      old: O("예전에 산 거예요", 0, ["그럼 정리할 때가 됐다는 뜻이네요."], ["어려 보이는 옷은 예전에 산 거라고 하셨습니다. 추억은 사진으로 남기고 옷은 보내 주셔도 됩니다."]),
+    },
+  },
+  age_old: {
+    on: true,
+    lead: ["특히 이 옷들이요."],
+    text: "이거 직접 고르신 거 맞죠?",
+    options: {
+      self: O("제가 골랐어요, 이게 클래식이죠", -1, ["클래식이랑 아저씨는 한 끗 차이입니다."], ["{age}살에 이 옷들을 직접 골랐다고 하셨습니다. 점잖은 취향은 존중하는데, 지금은 클래식보다 아버지 옷장 쪽에 가까워요."]),
+      family: O("가족이 사 줬어요", 0, ["그럼 본인 탓은 아니네요. 반만요."], ["나이 들어 보이는 옷은 가족이 사 준 거라고 하셨습니다. 고마운 마음은 간직하고, 매일 입는 옷은 직접 고르시죠."]),
+      work: O("일 때문에 필요해서요", 1, ["사정이 있었군요. 그럼 주말 옷은 좀 젊게 가시죠."], ["일 때문에 점잖은 옷이 많다고 하셨습니다. 이해합니다. 대신 쉬는 날 옷까지 출근하지 않게 해 주세요."]),
+    },
+  },
+  taste_shift: {
+    on: true,
+    lead: ["최근 산 옷은 이쪽이네요."],
+    text: "취향이 바뀐 거예요, 그냥 그때그때 산 거예요?",
+    options: {
+      grew: O("일부러 바꿨어요", 2, ["의도한 변화면 칭찬해 드리죠."], ["{then}에서 {now}로 오면서 일부러 취향을 바꿨다고 하셨습니다. 방향을 정하고 바꾼 거라면 옷장이 점점 나아질 겁니다."]),
+      friends: O("주변 영향이에요", -1, ["친구가 바뀌면 옷장도 바뀌는군요."], ["취향이 바뀐 건 주변 영향이라고 하셨습니다. 다음 친구가 누구냐에 따라 옷장이 또 바뀌겠네요."]),
+      random: O("그냥 그때그때 사요", -2, ["그래서 옷장이 갈팡질팡했군요."], ["그때그때 끌리는 대로 산다고 하셨습니다. 그래서 {then} 옷과 {now} 옷이 서로 모르는 사이처럼 보이는 거예요."]),
+      back: O("예전 스타일로 돌아갈 거예요", 0, ["돌고 도는 게 유행이라지만 사람은 좀 정해야죠."], ["예전 스타일로 돌아갈 거라고 하셨습니다. 그럼 최근에 산 옷은 뭐였는지, 결제 내역이 궁금해지네요."]),
+    },
+  },
   loud_colors: {
     on: true,
-    lead: ["색 얘기 좀 하죠.", "튀는 색이 {hues}가지나 있네요."],
+    lead: ["유형 얘기 나온 김에, 튀는 색이 {hues}가지나 있네요. 이 친구들이요."],
     text: "이거 실제로 같이 입으세요?",
     options: {
       point: O("하나만 포인트로 입어요", 2, ["그나마 다행입니다. 색은 한 번에 하나만 떠드는 게 예의죠."], ["튀는 색을 한 번에 하나씩만 쓴다고 하셨습니다. 말은 맞는데, 옷장을 보면 그 말을 믿기가 좀 어렵네요."]),
@@ -91,7 +165,7 @@ export const DEFAULT_ASKS: Record<string, AskText> = {
   },
   logo_heavy: {
     on: true,
-    lead: ["상의를 보니 {logoPct}%가 로고·그래픽입니다."],
+    lead: ["그리고 상의를 보니 {logoPct}%가 로고·그래픽입니다. 이런 거요."],
     text: "일부러 모으신 거죠?",
     options: {
       fan: O("좋아하는 브랜드라 그래요", 0, ["팬심은 존중합니다. 걸어 다니는 광고판이 되셨지만."], ["로고 옷이 많은 건 브랜드 사랑 때문이라고 하셨습니다. 브랜드도 고마워할 거예요. 공짜 광고니까."]),
@@ -101,7 +175,7 @@ export const DEFAULT_ASKS: Record<string, AskText> = {
   },
   top_brand_why: {
     on: true,
-    lead: ["{brand}만 {brandN}벌이네요."],
+    lead: ["방금 본 {brand} 말인데요, {brandN}벌이나 되네요."],
     text: "{brand} 왜 좋아하세요?",
     options: {
       fit: O("디자인이랑 핏이 잘 맞아서", 2, ["이유가 있는 충성심이네요. 인정합니다."], ["{brand|는} 디자인과 핏 때문에 산다고 하셨습니다. 이유 있는 단골은 칭찬받을 만하죠. 다만 그 핏을 다른 브랜드에서도 찾아보면 옷장이 덜 지루해집니다."]),
@@ -112,7 +186,7 @@ export const DEFAULT_ASKS: Record<string, AskText> = {
   },
   bottoms_few: {
     on: true,
-    lead: ["상의 {tops}벌에 하의 {bottoms}벌입니다."],
+    lead: ["균형 얘기 나온 김에, 상의 {tops}벌에 하의 {bottoms}벌입니다. 하의는 이게 전부고요."],
     text: "이걸로 돌려 입는 거 괜찮으세요?",
     options: {
       enough: O("하의는 기본만 있으면 돼요", 0, ["기본 하의가 정말 기본색이길 바랍니다."], ["하의는 기본만 있으면 된다고 하셨습니다. 맞는 말인데, 그 기본이 {bottoms}벌이면 매일 같은 바지라는 뜻이에요."]),
@@ -122,7 +196,7 @@ export const DEFAULT_ASKS: Record<string, AskText> = {
   },
   trend_buy: {
     on: true,
-    lead: ["무신사 인기 브랜드가 {popularPct}%네요."],
+    lead: ["브랜드 얘기 하나 더. 무신사 인기 브랜드가 {popularPct}%네요."],
     text: "랭킹 보고 사신 거, 솔직히 몇 개예요?",
     options: {
       few: O("거의 없어요, 우연이에요", -1, ["우연이 이렇게 많이 겹치기도 하네요."], ["랭킹은 안 본다고 하셨는데 옷장의 {popularPct}%가 인기 브랜드입니다. 우연치고는 무신사 알고리즘이 본인을 너무 잘 아네요."]),
@@ -132,7 +206,7 @@ export const DEFAULT_ASKS: Record<string, AskText> = {
   },
   unworn: {
     on: true,
-    lead: ["옷이 {n}벌이나 되네요."],
+    lead: ["시작부터 하나 묻고 가죠. 옷이 {n}벌이나 되네요."],
     text: "1년 동안 한 번도 안 입은 옷은 몇 벌쯤 될까요?",
     options: {
       none: O("거의 없어요", 2, ["{n}벌을 다 입는다고요? 존경합니다. 반쯤은 믿겠습니다."], ["{n}벌을 거의 다 입는다고 하셨습니다. 사실이라면 옷장 관리는 최상급이에요."]),
@@ -142,7 +216,7 @@ export const DEFAULT_ASKS: Record<string, AskText> = {
   },
   size_pick: {
     on: true,
-    lead: ["핏 얘기는 제가 실측만 보고 하는 거라 한 가지만 묻죠."],
+    lead: ["핏 점수는 제가 실측만 보고 매긴 거라 하나 확인하죠."],
     text: "옷 살 때 사이즈는 어떻게 고르세요?",
     options: {
       measure: O("실측표랑 가진 옷을 비교해요", 3, ["교과서적이네요. 그런데 왜 큰 옷이 섞여 있는지는 미스터리입니다."], ["사이즈를 실측으로 비교해 고른다고 하셨습니다. 이 정도 성의면 핏 점수는 믿어 드려야겠네요."]),
@@ -153,7 +227,7 @@ export const DEFAULT_ASKS: Record<string, AskText> = {
   },
   style_self: {
     on: true,
-    lead: ["마지막 전에 자기소개 한번 해 보시죠."],
+    lead: ["유형은 제가 이렇게 봤는데, 본인 생각도 들어 보죠."],
     text: "본인 스타일을 하나만 고르면?",
     options: {
       own: O("{tag}", 2, ["옷장도 같은 말을 하네요. 본인을 잘 아시네요."], ["스스로 {tag} 스타일이라고 하셨는데, 옷장도 동의합니다. 자기 객관화는 잘 되어 있네요."]),
@@ -174,8 +248,8 @@ const tryFill = (t: string, v: Vars) => {
 };
 
 /** 조건이 맞는 점수 질문(최대 max개) */
-export function buildAsks(ev: Evaluation, asks: Record<string, AskText>, r: Rng, max: number): AskedQuestion[] {
-  const out: AskedQuestion[] = [];
+export function buildAsks(ev: Evaluation, asks: Record<string, AskText>, r: Rng, max: number): (AskedQuestion & { at: AskAt })[] {
+  const out: (AskedQuestion & { at: AskAt })[] = [];
   for (const id of ASK_ORDER) {
     if (out.length >= max) break;
     const tx = asks[id];
@@ -194,7 +268,8 @@ export function buildAsks(ev: Evaluation, asks: Record<string, AskText>, r: Rng,
       options: (id === "style_self" ? r.shuffle(opts) : opts) as { id: string; label: string }[],
       reactions: Object.fromEntries(Object.entries(tx.options).map(([k, o]) => [k, pickFilled(o.react)])),
       roast: Object.fromEntries(Object.entries(tx.options).map(([k, o]) => [k, o.roast.map((t) => tryFill(t, vars)).filter((t): t is string => t != null)])),
-      photos: [],
+      photos: ASK_WHEN[id].photos?.(ev) ?? [],
+      at: ASK_WHEN[id].at,
       points: Object.fromEntries(Object.entries(tx.options).map(([k, o]) => [k, o.points])),
     });
   }

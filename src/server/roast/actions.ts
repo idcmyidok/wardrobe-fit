@@ -78,7 +78,7 @@ export async function startRoast(input: { name: string | null; age?: number | nu
     if (age == null) return { ok: false, code: "error", message: AGE_REQUIRED };
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
     const C = await getFlConfig(s.supabase);
-    const run = runEvaluation(s.garments, body, usdRate, "closet", C);
+    const run = runEvaluation(s.garments, body, usdRate, "closet", C, undefined, age);
     if (run.clothes < MIN_CLOTHES) return { ok: false, code: "too_few", count: run.clothes };
     const seed = Math.floor(Math.random() * 2 ** 31);
     const { script } = planOf(run, C, seed, name);
@@ -101,7 +101,7 @@ export async function finishRoast(input: { seed: number; name: string | null; ag
 
     const [body, usdRate] = s.userId ? await Promise.all([getMyBodyProfile(), getUsdRate()]) : [null, DEFAULT_USD_KRW];
     const C = await getFlConfig(s.supabase);
-    const run = runEvaluation(s.garments, body, usdRate, "closet", C);
+    const run = runEvaluation(s.garments, body, usdRate, "closet", C, undefined, age);
     if (run.clothes < MIN_CLOTHES) return { ok: false, message: "모자·신발을 제외한 옷이 30개 이상일 때 분석할 수 있습니다." };
     // 점수 풀이는 관리자에게만 보인다(미리보기 모드는 로그인 없는 개발용 화면이라 확인용으로 보여 준다).
     const admin = !s.userId || (await isAdmin(s.userId));

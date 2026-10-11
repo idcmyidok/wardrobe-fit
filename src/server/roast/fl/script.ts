@@ -4,7 +4,8 @@ import type { Item } from "../analyze";
 import { fill, MissingVar, rng, type Rng, type Vars } from "../text";
 import type { FlConfig } from "./config";
 import { displayScore, type Evaluation } from "./engine";
-import { buildAsks } from "./asks";
+import { buildAsks, type AskAt } from "./asks";
+import { lifeVars } from "./life";
 import { KIND_NAME, mixOf, topBrands } from "./brand-talk";
 import { buildSpecials, type AskedQuestion } from "./special";
 import { AXIS_KEYS, AXIS_NAME, type AxisKey } from "./types";
@@ -35,6 +36,9 @@ const PHOTO_OF: Record<string, (i: Item) => boolean> = {
   sports_daily: (i) => i.groups.includes("sports"),
 };
 const MAX_PHOTOS = 12;
+
+/** 재미 질문을 묻는 자리(없으면 "남은 질문") */
+const SPECIAL_AT: Record<string, AskAt> = { quiz: "brands", band_quiz: "brands", three_500: "brands", chimchak_q: "brands", jjanggu_q: "scan" };
 
 /** 틀 중 채울 수 있는 것 하나 */
 function tryFill(r: Rng, templates: readonly string[], vars: Vars): string | null {
@@ -87,11 +91,26 @@ export function buildPlan(ev: Evaluation, C: FlConfig, seed: number, name: strin
   const steps: RoastStep[] = [];
   const say = (text: string, photos?: string[], gap?: boolean) => steps.push({ t: "say", text, ...(photos?.length ? { photos } : {}), ...(gap ? { gap: true } : {}) });
   const tier = tierOf(ev.score, C);
-  // 재미 질문 → 점수 질문 → (항상 마지막) 패셔너블 질문
+  // 질문은 관련 이야기 바로 뒤에서 묻는다. 자리가 꺼진 질문과 마지막 '패셔너블' 질문은 "남은 질문"에서.
   const specials = buildSpecials({ items: ev.F.items, brandNames }, r, C, tier);
-  const lastQ = specials.at(-1)?.id === "fashionable_q" ? specials.slice(-1) : [];
-  const asked = [...specials.slice(0, specials.length - lastQ.length), ...buildAsks(ev, C.asks, r, C.tune.maxAsks), ...lastQ];
+  const pending: { q: AskedQuestion; at: string }[] = [
+    ...specials.map((q) => ({ q, at: q.id === "fashionable_q" ? "questions" : (SPECIAL_AT[q.id] ?? "questions") })),
+    ...buildAsks(ev, C.asks, r, C.tune.maxAsks).map(({ at, ...q }) => ({ q, at })),
+  ];
+  const onBlocks = new Set(C.talk.filter((b) => b.on).map((b) => b.id));
+  for (const p of pending) if (!onBlocks.has(p.at)) p.at = "questions";
+  // 패셔너블 질문은 항상 맨 끝
+  pending.sort((a, b) => Number(a.q.id === "fashionable_q") - Number(b.q.id === "fashionable_q"));
+  const asked: AskedQuestion[] = [];
+  const askAt = (block: string) => {
+    for (const p of pending.filter((x) => x.at === block)) {
+      asked.push(p.q);
+      steps.push({ t: "think" });
+      steps.push({ t: "ask", q: asked.length - 1 });
+    }
+  };
   const V = typeVars(ev);
+  const LV = lifeVars(ev.age, ev.shift);
   const T = C.tune;
 
   for (const b of C.talk) {
@@ -141,13 +160,36 @@ export function buildPlan(ev: Evaluation, C: FlConfig, seed: number, name: strin
       if (rows.length) {
         const st = tryFill(r, C.brands.status, V);
         if (st) steps.push({ t: "status", text: st, gap: true });
+        // 같은 계열 브랜드가 둘이면 같은 문장 틀을 다시 쓰지 않는다
+        const usedT = new Set<string>();
         rows.slice(0, 2).forEach((b) => {
-          const t = tryFill(r, C.brands.kind[b.kind], { brand: b.label, n: b.n, pct: b.pct, level: b.level, kind: KIND_NAME[b.kind] });
+          const pool = C.brands.kind[b.kind].filter((x) => !usedT.has(x));
+          const tpl = r.shuffle(pool.length ? pool : C.brands.kind[b.kind])[0];
+          if (tpl) usedT.add(tpl);
+          const t = tpl ? tryFill(r, [tpl], { brand: b.label, n: b.n, pct: b.pct, level: b.level, kind: KIND_NAME[b.kind] }) : null;
           const photos = ev.F.items.filter((i) => i.hasPhoto && b.ids.includes(i.id)).slice(0, MAX_PHOTOS).map((i) => i.id);
           if (t) say(t, photos);
         });
         const mix = tryFill(r, C.brands.mix[mixOf(ev.F)], brandMixVars(ev));
         if (mix) say(mix);
+      }
+    } else if (b.id === "age") {
+      if (ev.age) {
+        const st = tryFill(r, C.life.ageStatus, LV);
+        if (st) steps.push({ t: "status", text: st, gap: true });
+        const ids = ev.age.verdict === "young" ? ev.age.youngIds : ev.age.verdict === "old" ? ev.age.oldIds : [];
+        const t = tryFill(r, C.life.age[ev.age.verdict], LV);
+        // 사진은 이어지는 질문에서 보여 주므로, 질문이 없을 때만 여기서
+        const asks = pending.some((p) => p.at === "age");
+        if (t) say(t, asks ? undefined : ev.F.items.filter((i) => i.hasPhoto && ids.includes(i.id)).slice(0, MAX_PHOTOS).map((i) => i.id));
+      }
+    } else if (b.id === "timeline") {
+      if (ev.shift) {
+        const st = tryFill(r, C.life.shiftStatus, LV);
+        if (st) steps.push({ t: "status", text: st, gap: true });
+        const t = tryFill(r, C.life.shift[ev.shift.verdict], LV);
+        const asks = pending.some((p) => p.at === "timeline");
+        if (t) say(t, asks ? undefined : ev.F.items.filter((i) => i.hasPhoto && ev.shift!.ids.includes(i.id)).slice(0, MAX_PHOTOS).map((i) => i.id));
       }
     } else if (b.id === "bonus") {
       if (ev.bonus.points >= 1) {
@@ -155,15 +197,13 @@ export function buildPlan(ev: Evaluation, C: FlConfig, seed: number, name: strin
         if (t) say(t, undefined, true);
       }
     } else if (b.id === "questions") {
-      asked.forEach((_, i) => {
-        steps.push({ t: "think" });
-        steps.push({ t: "ask", q: i });
-      });
+      // askAt 아래에서 함께 처리
     } else if (b.id === "wrap") {
       steps.push({ t: "think" });
       const t = tryFill(r, C.common.WRAP_UP, V);
       if (t) say(t);
     }
+    askAt(b.id);
   }
 
   const questions: RoastQuestion[] = asked.map((q) => ({
@@ -245,10 +285,28 @@ export function buildReport(ev: Evaluation, C: FlConfig, seed: number, asked: As
     points.push({ id: `ask-${q.id}`, lead: "", text: r.pick(pool) });
   }
 
+  // 나이·구매 시기
+  const LV = lifeVars(ev.age, ev.shift);
+  if (ev.age) {
+    const t = tryFill(r, C.life.age[ev.age.verdict], LV);
+    const ids = ev.age.verdict === "young" ? ev.age.youngIds : ev.age.verdict === "old" ? ev.age.oldIds : [];
+    const photos = ev.F.items.filter((i) => i.hasPhoto && ids.includes(i.id)).slice(0, 40).map((i) => i.id);
+    if (t) points.push({ id: "life-age", lead: "나이와 스타일", text: t, ...(photos.length ? { photos } : {}) });
+  }
+  if (ev.shift) {
+    const t = tryFill(r, C.life.shift[ev.shift.verdict], LV);
+    const photos = ev.F.items.filter((i) => i.hasPhoto && ev.shift!.ids.includes(i.id)).slice(0, 40).map((i) => i.id);
+    if (t) points.push({ id: "life-shift", lead: "구매 시기 변화", text: t, ...(photos.length ? { photos } : {}) });
+  }
+
   // 브랜드 분석
   const brandRows = topBrands(ev.F);
+  const usedT = new Set<string>();
   const brands = brandRows.map((b) => {
-    const text = tryFill(r, C.brands.kind[b.kind], { brand: b.label, n: b.n, pct: b.pct, level: b.level, kind: KIND_NAME[b.kind] }) ?? "";
+    const pool = C.brands.kind[b.kind].filter((x) => !usedT.has(x));
+    const tpl = r.shuffle(pool.length ? pool : C.brands.kind[b.kind])[0];
+    if (tpl) usedT.add(tpl);
+    const text = (tpl ? tryFill(r, [tpl], { brand: b.label, n: b.n, pct: b.pct, level: b.level, kind: KIND_NAME[b.kind] }) : null) ?? "";
     const photos = ev.F.items.filter((i) => i.hasPhoto && b.ids.includes(i.id)).slice(0, 40).map((i) => i.id);
     return { id: `brand-${b.label}`, lead: `${b.label} ${b.n}벌 · ${[b.level, KIND_NAME[b.kind]].filter(Boolean).join(" ")}`, text, ...(photos.length ? { photos } : {}) };
   });
@@ -288,9 +346,10 @@ export function buildReport(ev: Evaluation, C: FlConfig, seed: number, asked: As
           ...AXIS_KEYS.filter((k) => ev.axes[k].value != null).map((k) => ({ label: axisName(ev, k), why: `${ev.axes[k].why} · 비중 ${Math.round(ev.axes[k].weight)}`, delta: ev.axes[k].points })),
           ...(ev.bonus.points ? [{ label: `몰입 보너스 ${ev.bonus.grade} (${ev.bonus.by ? C.types[ev.bonus.by].name : ""})`, why: `상한 ${ev.bonus.max} · 신호 ${Math.round(ev.bonus.strength * 100)}% · 제동 ${Math.round(ev.bonus.brake * 100)}%`, delta: ev.bonus.points }] : []),
           ...ev.penalties.map((p) => ({ label: `감점: ${p.label}`, why: p.why, delta: -p.points })),
+          ...(ev.shiftPoints ? [{ label: `구매 흐름: ${ev.shift!.then} → ${ev.shift!.now}`, why: `${ev.shift!.what ?? ""} 좋아진 정도 ${Math.round(ev.shift!.quality * 100)}`, delta: ev.shiftPoints }] : []),
           ...answerItems,
           ...(() => {
-            const plain = ev.sum + ev.bonus.points - ev.penalties.reduce((a, p) => a + p.points, 0) + quizDelta;
+            const plain = ev.sum + ev.bonus.points - ev.penalties.reduce((a, p) => a + p.points, 0) + ev.shiftPoints + quizDelta;
             return raw !== plain ? [{ label: raw > plain ? "0점 하한" : "100점 상한", why: "", delta: raw - plain }] : [];
           })(),
           { label: `표시 점수 환산 (${T.floor} + ${Math.round(100 * T.scale)} × (원점수/100)^${T.curve})`, why: `원점수 ${Math.round(raw * 10) / 10}`, delta: score - raw },

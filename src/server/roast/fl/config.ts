@@ -4,6 +4,7 @@ import { QUIZ, type QuizEntry } from "../quiz";
 import type { Mode } from "./feat";
 import { DEFAULT_ASKS, type AskText } from "./asks";
 import { DEFAULT_BRAND_TEXT, type BrandText } from "./brand-talk";
+import { DEFAULT_LIFE_TEXT, type LifeText } from "./life";
 import { ORDER_SCREEN } from "./screen";
 import { SPECIAL_Q_TEXT, type QuestionText } from "./special-texts";
 import { BASE_WEIGHTS, TYPE_DEFS, type AxisKey, type Grade, type RuleId, type TypeLines } from "./types";
@@ -46,7 +47,9 @@ export interface FlConfig {
     /** 곡선(1이면 직선). 클수록 중간 점수를 더 낮춘다: floor + 100×scale×(원점수/100)^curve */
     curve: number;
     /** 감점 상한: 흔한 옷장(SPA·대중·인기 브랜드 쏠림), 핏 실패(너무 크거나 작은 옷) */
-    penalty: { common: number; fit: number };
+    penalty: { common: number; fit: number; age: number };
+    /** 구매 흐름 가감점 최대 */
+    shift: number;
     bonus: Record<Mode, { A: number; B: number }>;
     weights: Record<Mode, Record<AxisKey, number>>;
     /** 브랜드 자료가 있는 옷 비율이 이 값 미만이면 안목 비중을 절반으로 */
@@ -67,6 +70,8 @@ export interface FlConfig {
   };
   /** 브랜드 분석 문장 */
   brands: BrandText;
+  /** 나이·구매 시기 문장 */
+  life: LifeText;
   /** 점수 질문(상황별로 묻고 답에 따라 점수 증감) */
   asks: Record<string, AskText>;
   /** 항목별 문장: 점수 구간(low<0.45, mid<0.72, high)에 따라 하나 고름 */
@@ -110,7 +115,9 @@ export const TALK_BLOCKS: Record<string, { name: string; hint: string }> = {
   axes: { name: "항목 칭찬·조언", hint: "가장 높은 항목 칭찬, 가장 낮은 항목 조언" },
   bonus: { name: "몰입 보너스 한마디", hint: "패션 몰입 보너스를 받았을 때만" },
   brands: { name: "브랜드 분석", hint: "많이 가진 브랜드 한두 개를 짚고, 브랜드 구성 한마디" },
-  questions: { name: "질문·퀴즈", hint: "브랜드 퀴즈·밴드·언더아머·침착맨·짱구(재미 질문) → 점수 질문 → 마지막 '패셔너블한가요?'" },
+  age: { name: "나이와 스타일", hint: "입력한 나이와 옷장 나이를 비교합니다" },
+  timeline: { name: "구매 시기 변화", hint: "예전에 산 옷과 최근 산 옷을 비교합니다(날짜 있는 옷 12벌 이상)" },
+  questions: { name: "남은 질문", hint: "질문은 관련 이야기 바로 뒤에서 묻고, 자리가 꺼졌거나 없는 질문과 마지막 '패셔너블한가요?'만 여기서 묻습니다" },
   wrap: { name: "마무리 말", hint: "결과를 쓰기 전 한마디" },
 };
 export const REPORT_BLOCKS: Record<string, { name: string; hint: string }> = {
@@ -137,7 +144,8 @@ export const DEFAULT_CONFIG: FlConfig = {
     floor: 31,
     scale: 0.69,
     curve: 1.35,
-    penalty: { common: 8, fit: 4 },
+    penalty: { common: 8, fit: 4, age: 5 },
+    shift: 3,
     bonus: { closet: { A: 20, B: 10 }, orders: { A: 12, B: 6 } },
     weights: structuredClone(BASE_WEIGHTS),
     knownMin: 0.5,
@@ -148,9 +156,10 @@ export const DEFAULT_CONFIG: FlConfig = {
     tierLow: 55,
     quizRight: 1,
     quizWrong: 0,
-    maxAsks: 3,
+    maxAsks: 4,
   },
   brands: structuredClone(DEFAULT_BRAND_TEXT),
+  life: structuredClone(DEFAULT_LIFE_TEXT),
   asks: structuredClone(DEFAULT_ASKS),
   axisLines: {
     c: AX(
@@ -201,6 +210,8 @@ export const DEFAULT_CONFIG: FlConfig = {
     { id: "scan", on: true },
     { id: "types", on: true },
     { id: "brands", on: true },
+    { id: "age", on: true },
+    { id: "timeline", on: true },
     { id: "axes", on: true },
     { id: "bonus", on: true },
     { id: "questions", on: true },

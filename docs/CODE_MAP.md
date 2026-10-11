@@ -372,7 +372,7 @@
 - `store.ts` VARS checkSentence sanitize* CUSTOM_QUIZ_ID sanitizeSection isSection toRows fromRows applyEdits
 - `script.ts` buildPlan buildReport tierOf
 - `special.ts` AskedQuestion twinsOf buildSpecials · `special-texts.ts` QuestionText SPECIAL_Q_TEXT
-- `brand-talk.ts` BRAND_KINDS KIND_NAME MIX_KEYS topBrands mixOf DEFAULT_BRAND_TEXT (브랜드 분석) · `asks.ts` ASK_WHEN(조건) ASK_ORDER DEFAULT_ASKS buildAsks (점수 질문: 답→원점수 증감, 재미 질문과 패셔너블 질문 사이에 묻는다)
+- `brand-talk.ts` BRAND_KINDS KIND_NAME MIX_KEYS topBrands mixOf DEFAULT_BRAND_TEXT (브랜드 분석) · `asks.ts` ASK_WHEN(조건) ASK_ORDER DEFAULT_ASKS buildAsks (점수 질문: 답→원점수 증감, ASK_WHEN.at 대화 블록 바로 뒤에 사진과 함께 묻는다) · `life.ts` ageCheck(나이 vs 옷장 나이) shiftOf(구매 시기 변화) DEFAULT_LIFE_TEXT · store.ts legacyQuiz(예전 화면 "quiz.<id>.*" 행을 읽음)
 - `vars.ts` typeVars · `screen.ts` ORDER_SCREEN · `run.ts` MIN_CLOTHES runEvaluation planOf resultOf · `admin-meta.ts` designerData DesignerData
 
 ### src/server/roast/orders

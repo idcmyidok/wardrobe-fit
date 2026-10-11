@@ -1,6 +1,7 @@
 import "server-only";
 import { BRANDS } from "../brands";
-import { ASK_ORDER, ASK_WHEN } from "./asks";
+import { ASK_ORDER, ASK_WHEN, AT_NAME } from "./asks";
+import { AGE_NAME, AGE_VERDICTS, SHIFT_NAME, SHIFT_VERDICTS } from "./life";
 import { BRAND_KINDS, KIND_NAME, MIX_KEYS, MIX_NAME } from "./brand-talk";
 import { DEFAULT_CONFIG, REPORT_BLOCKS, TALK_BLOCKS, type FlConfig } from "./config";
 import { AXIS_KEYS, AXIS_NAME, BASE_WEIGHTS, GROUP_NAME, RULES, TYPE_DEFS } from "./types";
@@ -76,6 +77,15 @@ const VAR_LABEL: Record<string, string> = {
   tag: "옷장에서 가장 많은 스타일",
   tag2: "두 번째 스타일",
   decoy: "옷장에 없는 스타일(오답)",
+  age: "입력한 나이",
+  styleAge: "옷장 나이(어림)",
+  youngPct: "어려 보이는 옷 비율",
+  oldPct: "나이 들어 보이는 옷 비율",
+  then: "예전 구매 시기(예: 2023년)",
+  now: "최근 구매 시기",
+  what: "가장 크게 바뀐 것",
+  before: "예전 비율(%)",
+  after: "최근 비율(%)",
 };
 
 const varsOf = (area: VarArea) => VARS[area].map((key) => ({ key, label: VAR_LABEL[key] ?? key }));
@@ -156,10 +166,12 @@ export function designerData(C: FlConfig, editedSections: string[]) {
       common: COMMON_WHERE,
       special: SPECIAL_WHEN,
       screen: SCREEN_WHERE,
-      vars: { common: varsOf("common"), type: varsOf("type"), axis: varsOf("axis"), special: varsOf("special"), quiz: varsOf("quiz"), band: varsOf("band"), brand: varsOf("brand"), ask: varsOf("ask") },
+      vars: { common: varsOf("common"), type: varsOf("type"), axis: varsOf("axis"), special: varsOf("special"), quiz: varsOf("quiz"), band: varsOf("band"), brand: varsOf("brand"), ask: varsOf("ask"), life: varsOf("life") },
       brandKinds: BRAND_KINDS.map((k) => ({ key: k, name: KIND_NAME[k] })),
       brandMix: MIX_KEYS.map((k) => ({ key: k, name: MIX_NAME[k] })),
-      asks: ASK_ORDER.map((id) => ({ id, when: ASK_WHEN[id].label })),
+      asks: ASK_ORDER.map((id) => ({ id, when: ASK_WHEN[id].label, at: AT_NAME[ASK_WHEN[id].at] })),
+      ageVerdicts: AGE_VERDICTS.map((k) => ({ key: k, name: AGE_NAME[k] })),
+      shiftVerdicts: SHIFT_VERDICTS.map((k) => ({ key: k, name: SHIFT_NAME[k] })),
       brands: BRANDS.map((b) => b.name).sort((a, b) => a.localeCompare(b)),
     },
   };
