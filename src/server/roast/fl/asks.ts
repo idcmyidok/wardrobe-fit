@@ -1,4 +1,5 @@
 import "server-only";
+import { findColorFamily, normalizeColorName } from "@/lib/constants/colors";
 import type { Item } from "../analyze";
 import { fill, MissingVar, type Rng, type Vars } from "../text";
 import type { Evaluation } from "./engine";
@@ -30,7 +31,33 @@ const NEUTRAL = new Set(["블랙", "그레이", "화이트", "베이지", "브�
 const LOGO = /로고|그래픽|프린트|레터링|아트웍|캐릭터|graphic|logo|print|lettering/i;
 const DECOY = ["미니멀", "스트릿", "아메카지", "고프코어", "프레피", "Y2K", "시티보이", "워크웨어", "댄디", "스포티"];
 
-const isLoud = (i: Item) => Boolean(i.color) && !i.denim && !NEUTRAL.has(i.color!);
+/** 색 계열별로 얼마나 튀는지 */
+const HUE_LOUD: Record<string, number> = { 옐로: 1, 오렌지: 1, 레드: 0.95, 핑크: 0.85, 그린: 0.8, 퍼플: 0.8, 블루: 0.75 };
+/** 같은 계열 안에서 차분한 색 이름(버건디·세이지 등)과 흐리게·어둡게 하는 말 */
+const MUTED = /버건디|와인|마룬|옥스블러드|브릭|머스타드|오커|골드|버터|세이지|모스|피스타치오|포레스트|헌터|보틀|라벤더|라일락|플럼|모브|더스티|로즈|파우더|스틸|틸|피치/;
+const SOFT = /라이트|페일|베이비|연|파스텔|다크|딥|진/;
+/** 얼마나 튀는 색인지(0~1). 여러 색이면 가장 튀는 색. 무채색·기본색·데님은 0 */
+export function loudness(i: Item): number {
+  if (i.denim) return 0;
+  let best = 0;
+  for (const seg of (normalizeColorName(i.g.colorName) ?? "").split("/")) {
+    const fam = findColorFamily(seg);
+    if (!fam || NEUTRAL.has(fam)) continue;
+    let v = HUE_LOUD[fam] ?? 0.6;
+    if (MUTED.test(seg)) v *= 0.5;
+    if (SOFT.test(seg)) v *= 0.7;
+    best = Math.max(best, v);
+  }
+  return best;
+}
+const isLoud = (i: Item) => loudness(i) >= 0.25;
+/** 가장 튀는 색부터, 색 계열마다 한 벌씩 먼저 고르고 남는 자리는 다음으로 튀는 옷 */
+function loudPhotos(ev: Evaluation): string[] {
+  const list = ev.F.items.filter((i) => !i.accessory && i.hasPhoto && isLoud(i)).sort((a, b) => loudness(b) - loudness(a));
+  const seen = new Set<string>();
+  const first = list.filter((i) => !seen.has(i.color ?? i.id) && Boolean(seen.add(i.color ?? i.id)));
+  return [...first, ...list.filter((i) => !first.includes(i))].slice(0, 8).map((i) => i.id);
+}
 const isLogoTop = (i: Item) => i.cat === "top" && LOGO.test(i.g.productName);
 const photosOf = (ev: Evaluation, ok: (i: Item) => boolean) => ev.F.items.filter((i) => i.hasPhoto && ok(i)).slice(0, 8).map((i) => i.id);
 
@@ -67,14 +94,10 @@ export const ASK_WHEN: Record<string, { label: string; at: AskAt; when: (ev: Eva
     label: "튀는 색이 4가지 이상",
     at: "types",
     when: ({ F }) => {
-      const loud = new Set(F.clothes.filter(isLoud).map((i) => i.color));
+      const loud = new Set(F.clothes.filter(isLoud).map((i) => i.color ?? i.id));
       return loud.size >= 4 ? { hues: loud.size } : null;
     },
-    photos: (ev) => {
-      // 색마다 한 벌씩
-      const seen = new Set<string>();
-      return photosOf(ev, (i) => !i.accessory && isLoud(i) && !seen.has(i.color!) && Boolean(seen.add(i.color!)));
-    },
+    photos: loudPhotos,
   },
   logo_heavy: {
     label: "상의의 40% 이상이 로고·그래픽",
@@ -156,11 +179,12 @@ export const DEFAULT_ASKS: Record<string, AskText> = {
   loud_colors: {
     on: true,
     lead: ["유형 얘기하다 보니 색이 자꾸 눈에 밟히네요. 튀는 색만 {hues}가지예요. 이 친구들이요."],
-    text: "이거 실제로 같이 입으세요?",
+    text: "이 색들, 평소에 어떻게 입으세요?",
     options: {
-      point: O("하나만 포인트로 입어요", 2, ["그거면 됩니다. 색은 한 번에 하나만 떠드는 게 예의죠."], ["튀는 색은 한 번에 하나씩만 쓴다고 하셨죠. 말은 맞는데, 산 옷 목록을 보면 그 말을 믿기가 조금 어렵습니다."]),
-      mix: O("섞어 입어요, 그게 멋이죠", -2, ["아, 신호등 콘셉트였군요.", "자신감은 만점입니다. 보는 사람 눈은 좀 쉬어야겠지만요."], ["튀는 색을 섞어 입는 게 멋이라니 배짱 하나는 좋습니다. 그게 멋이 되려면 나머지가 아주 조용해야 하는데, 지금은 다 같이 소리를 지르고 있습니다."]),
-      closet: O("사실 거의 안 입어요", -1, ["그럼 그 옷들은 인테리어 소품이었네요."], ["튀는 색 옷은 거의 안 입는다고요. 그 돈이면 매일 입을 기본 바지가 하나 더 생겼을 텐데요."]),
+      point: O("한 벌만 튀게, 나머지는 무채색으로요", 2, ["정답에 가깝습니다. 색은 한 번에 한 벌만 말하게 두는 거죠."], ["튀는 색은 한 벌만 쓰고 나머지는 무채색으로 받친다고 하셨죠. 공식은 아시네요. 다만 옷장을 보면 그 공식을 쓸 무채색이 좀 모자라 보입니다."]),
+      clash: O("튀는 색끼리 위아래로 맞춰 입어요", -2, ["노란 티에 초록 바지 같은 거요? 신호등이 출근하는 줄 알았습니다.", "용기는 만점입니다. 같이 걷는 사람이 눈을 어디 둘지 몰라서 그렇죠."], ["튀는 색끼리 위아래로 맞춰 입는다고 하셨습니다. 그게 멋이 되려면 색 사이에 쉴 틈이 있어야 하는데, 지금은 둘이 서로 먼저 말하겠다고 싸우는 중이에요."]),
+      rare: O("사 놓고 거의 안 입어요", -1, ["그럼 그 옷들은 옷장 인테리어였네요."], ["튀는 색 옷은 거의 안 입는다고 하셨죠. 그 돈이면 매일 입을 기본 바지가 하나 더 생겼을 텐데요."]),
+      random: O("그날 손에 잡히는 대로요", -1, ["색 조합을 운에 맡기시는군요. 오늘 운세는 괜찮으셨나요?"], ["튀는 색을 그날 손에 잡히는 대로 입는다고 하셨습니다. 운이 좋은 날은 포인트, 나쁜 날은 사고입니다. 확률을 운에 맡기지 마세요."]),
     },
   },
   logo_heavy: {

@@ -940,12 +940,12 @@ function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string
     axes: report.axes && report.axes.length > 0 && (
       <div>
         <p>
-          <b>항목별 점수</b>
+          <b>{report.axes.some((a) => a.grade) ? "항목별 평가" : "항목별 점수"}</b>
         </p>
         <ul className="roast-list">
           {report.axes.map((a) => (
             <li key={a.label}>
-              <b>{a.label}</b> {a.score}/{a.max} {a.text}
+              <b>{a.label}</b> {a.grade ? `(${a.grade})` : `${a.score}/${a.max}`} {a.text}
             </li>
           ))}
         </ul>

@@ -24,7 +24,7 @@ export const VARS = {
     "spaPct", "massPct", "lowPct", "midPct", "highPct", "designerPct", "cultPct", "usedPct", "heritagePct", "popularPct", "sportsPct", "streetPct", "domesticPct",
     "minimalPct", "logoPct", "workPct", "denimPct", "outdoorPct", "preppyPct", "y2kPct", "femPct", "recentPct", "salePct", "seasonName", "seasonPct", "orders", "events", "topTag", "spaBrand", "spaN", "stdPct",
   ],
-  axis: ["axis", "score"],
+  axis: ["axis"],
   special: ["n", "name", "color", "brand", "band", "wrong", "wrongBy", "priceWon", "count", "tier"],
   quiz: ["brand"],
   band: ["score"],

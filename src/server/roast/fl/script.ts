@@ -69,6 +69,8 @@ export type Tier = "high" | "mid" | "low";
 export const tierOf = (score: number, C: FlConfig): Tier => (score >= C.tune.tierHigh ? "high" : score < C.tune.tierLow ? "low" : "mid");
 
 /** 항목 점수 구간 */
+/** 결과 페이지 항목별 평가(숫자 대신 말로) */
+const AXIS_GRADE = { low: "아쉬움", mid: "보통", high: "좋음" } as const;
 const bandOfAxis = (v: number): "low" | "mid" | "high" => (v < 0.45 ? "low" : v < 0.72 ? "mid" : "high");
 
 /** 가장 높은/낮은 항목(자료 있는 것만) */
@@ -146,7 +148,7 @@ export function buildPlan(ev: Evaluation, C: FlConfig, seed: number, name: strin
         const lines = (k: AxisKey, kind: "high" | "low") => {
           const g = C.axisLines[k];
           const band = bandOfAxis(ev.axes[k].value!);
-          const main = tryFill(r, g[kind === "high" ? (band === "low" ? "mid" : band) : band === "high" ? "mid" : band], { axis: axisName(ev, k), score: Math.round(ev.axes[k].points) });
+          const main = tryFill(r, g[kind === "high" ? (band === "low" ? "mid" : band) : band === "high" ? "mid" : band], { axis: axisName(ev, k) });
           const extra = tryFill(r, kind === "high" ? g.praise : g.tip, { axis: axisName(ev, k) });
           return [main, extra].filter((x): x is string => Boolean(x)).join(" ");
         };
@@ -317,9 +319,9 @@ export function buildReport(ev: Evaluation, C: FlConfig, seed: number, asked: As
   const axes = AXIS_KEYS.filter((k) => ev.axes[k].value != null).map((k) => {
     const g = C.axisLines[k];
     const bd = bandOfAxis(ev.axes[k].value!);
-    const base = tryFill(r, g[bd], { axis: axisName(ev, k), score: Math.round(ev.axes[k].points) }) ?? "";
+    const base = tryFill(r, g[bd], { axis: axisName(ev, k) }) ?? "";
     const extra = ex && ex.worst === k ? tryFill(r, g.tip, { axis: axisName(ev, k) }) : ex && ex.best === k ? tryFill(r, g.praise, { axis: axisName(ev, k) }) : null;
-    return { label: axisName(ev, k), score: Math.round(ev.axes[k].points), max: Math.round(ev.axes[k].weight), text: [base, extra].filter(Boolean).join(" ") };
+    return { label: axisName(ev, k), grade: AXIS_GRADE[bd], text: [base, extra].filter(Boolean).join(" ") };
   });
 
   const notes: string[] = [];
