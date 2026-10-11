@@ -5,7 +5,7 @@ import type { Feat } from "./feat";
 /**
  * 나이와 구매 시기로 보는 분석.
  * - 나이: 옷마다 "어려 보이는 옷"·"나이 들어 보이는 옷"을 가려 옷장 나이를 어림하고, 실제 나이와 크게 어긋나면 감점·질문.
- * - 구매 시기: 날짜가 있는 옷을 산 순서로 반씩 나눠 예전·최근 옷장을 비교하고, 가장 크게 바뀐 점을 짚는다.
+ * - 구매 시기: 최근 1년에 산 옷과 2년 이상 앞서 산 옷을 비교하고, 가장 크게 바뀐 점을 짚는다.
  * 문장은 설계(FlConfig.life)에서 고친다.
  */
 
@@ -118,12 +118,13 @@ const period = (list: Item[]) => {
 
 export function shiftOf(F: Feat): Shift | null {
   const dated = F.clothes.filter((i) => i.date && !Number.isNaN(Date.parse(i.date))).sort((a, b) => Date.parse(a.date!) - Date.parse(b.date!));
-  if (dated.length < 12) return null;
-  const span = Date.parse(dated.at(-1)!.date!) - Date.parse(dated[0].date!);
-  if (span < 240 * 86_400_000) return null;
-  const half = Math.floor(dated.length / 2);
-  const before = dated.slice(0, half);
-  const after = dated.slice(half);
+  if (dated.length < 10) return null;
+  // 최근 1년에 산 옷과 그보다 2년 이상 앞서 산 옷만 비교한다(사이에 최소 1년, 평균 2~3년 간격). 최근 몇 년만 입력했으면 비교하지 않는다.
+  const last = Date.parse(dated.at(-1)!.date!);
+  const YEAR = 365 * 86_400_000;
+  const after = dated.filter((i) => Date.parse(i.date!) > last - YEAR);
+  const before = dated.filter((i) => Date.parse(i.date!) <= last - 2 * YEAR);
+  if (before.length < 5 || after.length < 5) return null;
   const shareIn = (list: Item[], m: Metric) => {
     const b = list.filter(m.base);
     return b.length >= 4 ? b.filter(m.hit).length / b.length : null;

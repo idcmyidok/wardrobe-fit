@@ -116,7 +116,7 @@ export const TALK_BLOCKS: Record<string, { name: string; hint: string }> = {
   bonus: { name: "몰입 보너스 한마디", hint: "패션 몰입 보너스를 받았을 때만" },
   brands: { name: "브랜드 분석", hint: "많이 가진 브랜드 한두 개를 짚고, 브랜드 구성 한마디" },
   age: { name: "나이와 스타일", hint: "입력한 나이와 옷장 나이를 비교합니다" },
-  timeline: { name: "구매 시기 변화", hint: "예전에 산 옷과 최근 산 옷을 비교합니다(날짜 있는 옷 12벌 이상)" },
+  timeline: { name: "구매 시기 변화", hint: "최근 1년에 산 옷과 2년 이상 앞서 산 옷을 비교합니다(각각 5벌 이상)" },
   questions: { name: "남은 질문", hint: "질문은 관련 이야기 바로 뒤에서 묻고, 자리가 꺼졌거나 없는 질문과 마지막 '패셔너블한가요?'만 여기서 묻습니다" },
   wrap: { name: "마무리 말", hint: "결과를 쓰기 전 한마디" },
 };

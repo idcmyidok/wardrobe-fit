@@ -313,7 +313,7 @@ function Structure({ cfg, M, ctx, go }: P & { go: (t: Tab, q?: string) => void }
       tab: "score",
     },
     { title: "브랜드 분석", body: "많이 가진 브랜드(2벌 이상, 최대 3개)를 계열(스트릿·SPA·디자이너 등)에 맞는 말로 짚고, 옷장 전체 브랜드 구성(한 브랜드 쏠림·브랜드 난립·SPA 위주 등)을 한마디 합니다.", tab: "brands" },
-    { title: "나이·구매 시기", body: "입력한 나이와 옷장 나이(어려 보이는 옷·나이 들어 보이는 옷 비율로 어림)를 비교하고, 날짜 있는 옷을 산 순서로 반씩 나눠 예전 옷과 최근 옷이 어떻게 달라졌는지 짚습니다.", tab: "life" },
+    { title: "나이·구매 시기", body: "입력한 나이와 옷장 나이(어려 보이는 옷·나이 들어 보이는 옷 비율로 어림)를 비교하고, 최근 1년에 산 옷과 그보다 2년 이상 앞서 산 옷을 비교해 어떻게 달라졌는지 짚습니다.", tab: "life" },
     { title: "대화와 질문", body: `아래 '대화 순서'대로 말하고, 질문은 관련 이야기 바로 뒤에서 묻습니다(예: 브랜드 퀴즈·대표 브랜드 질문은 브랜드 분석 뒤, 튀는 색 질문은 유형 이야기 뒤). 점수 질문은 상황이 맞는 것 최대 ${T.maxAsks}개이고 답에 따라 원점수가 바뀝니다. '스스로 패셔너블한가요?'는 항상 마지막입니다.`, tab: "asks" },
     { title: "결과 페이지", body: "등급 한 줄(점수 구간) → 아래 '결과 순서' 블록 → 마무리 말 순서로 보여 줍니다.", tab: "score", find: "" },
   ];
@@ -1023,7 +1023,7 @@ function Life({ cfg, M, ctx, q }: P & { q: string }) {
         {M.shiftVerdicts
           .filter((k) => has({ k, v: d.shift[k.key as keyof typeof d.shift] }, q))
           .map((k) => (
-            <Fold key={k.key} title={k.name} sub="날짜 있는 옷 12벌 이상, 8개월 이상에 걸쳐 샀을 때" open={Boolean(q)}>
+            <Fold key={k.key} title={k.name} sub="최근 1년에 산 옷과 그보다 2년 이상 앞서 산 옷이 각각 5벌 이상일 때" open={Boolean(q)}>
               <List value={d.shift[k.key as keyof typeof d.shift]} onChange={(l) => s.setDraft({ ...d, shift: { ...d.shift, [k.key]: l } })} vars={v} />
             </Fold>
           ))}

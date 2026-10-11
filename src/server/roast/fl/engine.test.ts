@@ -222,6 +222,9 @@ describe("패션 수준 평가", () => {
     const back = evaluate(prepare([...after.map((x) => ({ ...x, purchasedOn: x.purchasedOn!.replace("2025", "2023") })), ...before.map((x) => ({ ...x, purchasedOn: x.purchasedOn!.replace("2023", "2025") }))], null, 1400), null, "closet", now, DEFAULT_CONFIG);
     expect(back.shift?.verdict).toBe("slipped");
     expect(back.shiftPoints).toBeLessThan(0);
+    // 최근 1~2년만 입력했으면 비교하지 않는다
+    const short = evaluate(prepare([...before.map((x) => ({ ...x, purchasedOn: x.purchasedOn!.replace("2023", "2024") })), ...after], null, 1400), null, "closet", now, DEFAULT_CONFIG);
+    expect(short.shift).toBeNull();
     const plan = buildPlan(ev, DEFAULT_CONFIG, 2, null, []);
     expect(plan.asked.some((q) => q.id === "ask_taste_shift")).toBe(true);
     const rep = buildReport(ev, DEFAULT_CONFIG, 2, plan.asked, {}, { admin: true, partial: false });

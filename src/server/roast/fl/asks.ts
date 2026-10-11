@@ -53,7 +53,7 @@ export const ASK_WHEN: Record<string, { label: string; at: AskAt; when: (ev: Eva
     photos: (ev) => photosOf(ev, (i) => ev.age!.oldIds.includes(i.id)),
   },
   taste_shift: {
-    label: "예전에 산 옷과 최근 산 옷이 크게 다를 때",
+    label: "최근 1년에 산 옷이 2년 이상 전에 산 옷과 크게 다를 때",
     at: "timeline",
     when: (ev) => (ev.shift && ev.shift.verdict !== "steady" ? lifeVars(null, ev.shift) : null),
     photos: (ev) => photosOf(ev, (i) => ev.shift!.ids.includes(i.id)),
