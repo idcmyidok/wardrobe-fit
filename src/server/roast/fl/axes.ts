@@ -127,7 +127,7 @@ function consistency(F: Feat, has: Has): AxisOut {
 
 /**
  * 코디력(가격과 무관): 같은 가격대 옷장도 크게 갈리게 하는 신호.
- * 색 조화(튀는 색 가짓수) · 섞어 입기(하의·아우터가 기본색인지) · 로고 절제(상의 로고·그래픽 비율) · 기본템(기본색 아우터·하의·무지 상의·신발) · 품목 짝(상의 대비 하의 수)
+ * 색 조화(튀는 색 가짓수) · 섞어 입기(하의·아우터가 기본색인지) · 로고 절제(상의 로고·그래픽 비율) · 기본템(기본색 아우터·데님·무지 상의·기본색 신발) · 품목 짝(상의 대비 하의 수)
  */
 export function styling(F: Feat, has: Has): { value: number; why: string } | null {
   const clothes = F.clothes.filter((i) => i.color);
@@ -151,10 +151,9 @@ export function styling(F: Feat, has: Has): { value: number; why: string } | nul
     [
       outers.some(isNeutral),
       bottoms.some((i) => i.denim),
-      bottoms.some((i) => isNeutral(i) && !i.denim),
       tops.some((i) => isNeutral(i) && !LOGO.test(i.g.productName)),
       shoes.length === 0 || shoes.some(isNeutral),
-    ].filter(Boolean).length / 5;
+    ].filter(Boolean).length / 4;
   // 상의 3벌에 하의 1벌 이상이면 충분, 하의가 너무 적으면 돌려 입을 수 없다
   const pair = tops.length ? clamp((bottoms.length / tops.length) / 0.4) : 0.5;
   const value = 0.3 * harmony + 0.25 * mix + 0.2 * logo + 0.15 * basics + 0.1 * pair;
