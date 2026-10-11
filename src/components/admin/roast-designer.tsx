@@ -680,7 +680,7 @@ function AxisLines({ value, M, ctx, q }: { value: Cfg["axisLines"]; M: Meta; ctx
   return (
     <section className={box}>
       <h2 className="text-body font-semibold">항목 문장</h2>
-      <p className="text-sm text-neutral-700">결과 &quot;항목별 점수&quot;에는 점수 구간(낮음·보통·높음)의 문장이, 대화 &quot;항목 칭찬·조언&quot;에는 칭찬·조언 문장이 나옵니다.</p>
+      <p className="text-sm text-neutral-700">결과 &quot;항목별 평가&quot;에는 숫자 없이 구간(아쉬움·보통·좋음)과 그 구간의 문장이, 대화 &quot;항목 칭찬·조언&quot;에는 칭찬·조언 문장이 나옵니다.</p>
       <SaveBar s={s} sticky />
       <ul className="flex flex-col">
         {M.axes

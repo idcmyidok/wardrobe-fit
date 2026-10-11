@@ -7,6 +7,7 @@ import { evaluate } from "./engine";
 import { buildPlan, buildReport } from "./script";
 import { TYPE_DEFS } from "./types";
 import { applyEdits, sanitizeSection, toRows } from "./store";
+import { loudness } from "./asks";
 
 const now = new Date("2026-10-11T12:00:00+09:00");
 
@@ -247,5 +248,20 @@ describe("패션 수준 평가", () => {
     const talk = applyEdits(toRows("talk", DEFAULT_CONFIG.talk.filter((b) => b.id !== "age" && b.id !== "timeline")));
     expect(talk.talk.map((b) => b.id).slice(3, 6)).toEqual(["brands", "age", "timeline"]);
     expect(talk.talk.find((b) => b.id === "age")?.on).toBe(true);
+  });
+
+  it("튀는 색은 채도로 가려내고, 질문 사진은 가장 튀는 옷부터", () => {
+    const items = prepare(["옐로", "노랑", "버건디", "세이지", "블랙", "베이지", "화이트/옐로", "라이트 핑크"].map((c) => g({ brand: "UNIQLO", cat: "top", color: c })), null, 1400);
+    const v = Object.fromEntries(items.map((i) => [i.g.colorName, loudness(i)]));
+    expect(v["옐로"]).toBeGreaterThan(0.8);
+    expect(v["노랑"]).toBeGreaterThan(0.8);
+    expect(v["화이트/옐로"]).toBeGreaterThan(0.8);
+    expect(v["블랙"]).toBe(0);
+    expect(v["베이지"]).toBe(0);
+    expect(v["세이지"]).toBeLessThan(v["버건디"] + 0.01);
+    expect(v["라이트 핑크"]).toBeLessThan(v["옐로"]);
+    const ev = run(personas.campusBad);
+    const q = buildPlan(ev, DEFAULT_CONFIG, 3, null, []).asked.find((x) => x.id === "ask_loud_colors");
+    expect(q?.photos.map((id) => ev.F.items.find((i) => i.id === id)!.color)).toContain("옐로");
   });
 });
