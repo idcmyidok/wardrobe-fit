@@ -1,5 +1,5 @@
 import "server-only";
-import type { Analysis, Item } from "./analyze";
+import type { Item } from "./analyze";
 
 /**
  * 밴드 퀴즈(사용자 요청): 옷 이름이나 브랜드 칸에 밴드 이름이 있으면 "다음 중 {밴드}의 노래가 아닌 것은?"을 꼭 낸다.
@@ -89,7 +89,7 @@ export function bandOf(i: Item): Band | null {
 }
 
 /** 옷장에서 처음 찾은 밴드와 그 밴드 옷 */
-export function findBand(a: Analysis): { band: Band; items: Item[] } | null {
+export function findBand(a: { items: Item[] }): { band: Band; items: Item[] } | null {
   const byBand = new Map<string, { band: Band; items: Item[] }>();
   for (const i of a.items) {
     const b = bandOf(i);

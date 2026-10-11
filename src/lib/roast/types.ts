@@ -65,6 +65,8 @@ export interface RoastReport {
   total: { score: number };
   /** 진단 문단: lead는 굵게, answer는 관련 질문 답에 붙는 한 줄, photos는 옆으로 넘기는 사진 줄 */
   points: { id: string; lead: string; text: string; answer?: string; photos?: string[]; vs?: { achro: string[]; chroma: string[] } }[];
+  /** 항목별 점수(label, score/max, 해석 한 줄). 새 평가 방식의 결과에만 있다. */
+  axes?: { label: string; score: number; max: number; text: string }[];
   /** 제목 바로 아래 한 문장: 가장 뚜렷한 특징 두세 개를 이은 요약 */
   summary?: string;
   /** 예전 결과의 옷장 DNA(굵은 앞말 + 문장들). 새 결과에는 없고 summary를 쓴다. */
