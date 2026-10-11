@@ -1,6 +1,7 @@
 import "server-only";
 import type { Evaluation } from "./engine";
 import type { Vars } from "../text";
+import { isMusinsaStd } from "./types";
 
 /** 유형 문장에 쓸 수 있는 자리 값(store.ts의 VARS.type과 같은 이름). 값이 없는 자리는 넣지 않아 그 문장은 건너뛴다. */
 export function typeVars(ev: Evaluation): Vars {
@@ -47,6 +48,16 @@ export function typeVars(ev: Evaluation): Vars {
     v.brandN = F.topBrand.count;
   }
   if (F.topTags[0]) v.topTag = F.topTags[0];
+  // 가장 많이 가진 SPA 브랜드(문장에서 실제로 가진 브랜드만 부르도록)
+  const spa = new Map<string, number>();
+  for (const i of F.known) if (i.groups.includes("spa")) spa.set(i.brandLabel || i.brand!.name, (spa.get(i.brandLabel || i.brand!.name) ?? 0) + 1);
+  const topSpa = [...spa.entries()].sort((a, b) => b[1] - a[1])[0];
+  if (topSpa) {
+    v.spaBrand = topSpa[0];
+    v.spaN = topSpa[1];
+  }
+  const std = F.kshare((i) => isMusinsaStd(i.brand!.name));
+  if (std > 0) v.stdPct = pct(std);
   // 가장 몰린 계절
   const seasons = [["봄", "spring"], ["여름", "summer"], ["가을", "fall"], ["겨울", "winter"]] as const;
   const only = seasons.map(([name, s]) => ({ name, p: F.share((i) => i.seasons.length === 1 && i.seasons[0] === s) })).sort((a, b) => b.p - a.p)[0];

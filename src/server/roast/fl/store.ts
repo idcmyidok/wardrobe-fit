@@ -22,7 +22,7 @@ export const VARS = {
   type: [
     "n", "brand", "brandPct", "brandN", "brandCount", "achroPct", "chromaPct", "overPct", "slimPct", "regularPct", "widePct", "outerPct", "shoesPct", "hatPct",
     "spaPct", "massPct", "lowPct", "midPct", "highPct", "designerPct", "cultPct", "usedPct", "heritagePct", "popularPct", "sportsPct", "streetPct", "domesticPct",
-    "minimalPct", "logoPct", "workPct", "denimPct", "outdoorPct", "preppyPct", "y2kPct", "femPct", "recentPct", "salePct", "seasonName", "seasonPct", "orders", "events", "topTag",
+    "minimalPct", "logoPct", "workPct", "denimPct", "outdoorPct", "preppyPct", "y2kPct", "femPct", "recentPct", "salePct", "seasonName", "seasonPct", "orders", "events", "topTag", "spaBrand", "spaN", "stdPct",
   ],
   axis: ["axis", "score"],
   special: ["n", "name", "color", "brand", "band", "wrong", "wrongBy", "priceWon", "count", "tier"],

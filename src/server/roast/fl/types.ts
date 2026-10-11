@@ -103,7 +103,7 @@ const re = {
 };
 
 const bigLevel = (l: string | undefined) => l === "semi_over" || l === "over" || l === "too_big";
-const isMusinsaStd = (name: string) => /^musinsa standard/i.test(name);
+export const isMusinsaStd = (name: string) => /^musinsa standard/i.test(name);
 
 const need = (F: Feat, n: number) => F.n >= n;
 
@@ -210,7 +210,7 @@ export const TYPE_DEFS: TypeDef[] = [
   { id: "spa", name: "SPA 실속형", group: "price", grade: "-", mode: "both", priority: 3,
     who: "유니클로·자라·탑텐 같은 SPA가 절반 이상", how: "브랜드로 깎지 않고 색 조합·핏·품목의 짝으로 봅니다. 핵심 아우터·신발을 한 단계 위로 올리면 가점",
     w: { t: -10, f: 5, b: 5 }, rules: ["price_free", "core_upgrade"],
-    lines: L(["SPA 비중이 {spaPct}%입니다. 유니클로 앱 알림을 끄면 금단 증상이 오실 것 같은데요.", "자라에서 하나, 탑텐에서 하나, 유니클로에서 또 하나. 쇼핑 동선이 거의 쇼핑몰 1층 순환 버스예요.", "고르는 기준이 '매장 입구에서 제일 가까운 것'이었던 것 같아요. 이 정도면 SPA 본사에서 감사패라도 보내야죠."],
+    lines: L(["SPA 비중이 {spaPct}%입니다. {spaBrand} 앱 알림을 끄면 금단 증상이 오실 것 같은데요.", "{spaBrand}에서만 {spaN}벌. 매장 직원보다 신상 들어오는 날을 먼저 아실 것 같네요.", "고르는 기준이 '매장 입구에서 제일 가까운 것'이었던 것 같아요. 이 정도면 SPA 본사에서 감사패라도 보내야죠."],
       ["싼 옷으로 이 정도 색 조합을 뽑는 건 기술입니다. 재료는 편의점인데 요리는 레스토랑 흉내를 내셨어요.", "SPA를 이렇게 깔끔하게 입는 사람은 생각보다 드뭅니다. 대부분은 무릎 나온 트레이닝복에서 끝나거든요."],
       ["아우터나 신발 딱 하나만 한 단계 위로 올려 보세요. 나머지 옷들이 갑자기 몸값을 속이기 시작합니다.", "다음 세일 때 셔츠 세 장 살 돈으로 코트 한 벌을 사 보세요. 계산기는 울어도 거울은 웃습니다."]) },
   { id: "mass_trend", name: "매스·유행 추종형", group: "price", grade: "-", mode: "both", priority: 3,
@@ -228,7 +228,7 @@ export const TYPE_DEFS: TypeDef[] = [
   { id: "standard", name: "무신사 스탠다드형", group: "price", grade: "-", mode: "both", priority: 4,
     who: "무신사 스탠다드 같은 자체 브랜드가 30% 이상", how: "기본템 짝과 핏 적합 비중을 키우고, 색만 다른 반복은 감점, 포인트 한두 벌이 섞이면 가점",
     w: { f: 5, x: -5 }, rules: ["price_free", "repeat_penalty"],
-    lines: L(["무신사 스탠다드 비중이 {brandPct}%예요. 우수 고객 명단 맨 윗줄은 따 놓은 당상이네요.", "검정, 차콜, 진회색. 같은 슬랙스를 색만 바꿔 여러 번 담으셨죠? 남들 눈엔 다 그냥 바지예요.", "스탠다드로 쌓은 옷은 회사 탕비실 같아요. 다 있는데 설레는 건 하나도 없거든요."],
+    lines: L(["무신사 스탠다드 비중이 {stdPct}%예요. 우수 고객 명단 맨 윗줄은 따 놓은 당상이네요.", "같은 기본템을 색만 바꿔 여러 번 담으셨죠? 본인은 세 벌인데 남들 눈엔 그냥 한 벌이에요.", "스탠다드로 쌓은 옷은 회사 탕비실 같아요. 다 있는데 설레는 건 하나도 없거든요."],
       ["기본템 핏 하나는 믿음직합니다. 스탠다드를 고른 이유가 '안전해서'였다면 목표는 달성하셨어요.", "무난한 걸 깔끔하게 입는 것도 실력이죠. 적어도 출근길 지하철에서 튈 일은 없으시겠어요."],
       ["스탠다드는 바닥으로 깔고, 그 위에 얹을 한 벌만 다른 브랜드로 가 보세요. 사람들이 기억하는 건 그 한 벌입니다.", "색만 다른 같은 옷을 또 담으셨다면 결제 전에 멈추세요. 이번엔 소재나 디자인이 다른 걸로요."]) },
   { id: "popular_picks", name: "국민 인기템형", group: "price", grade: "-", mode: "both", priority: 2,
