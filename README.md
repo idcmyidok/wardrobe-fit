@@ -29,6 +29,27 @@
 | **옷장 데이터** | 구매 금액, 월별 구매, 브랜드·컬러 비율, 시즌 분포, 부족한 종류를 한 화면에 보여 줍니다. |
 | **내 패션 훈수** | 옷장 구성을 대화형으로 평가하고 유형·점수·조언을 돌려줍니다. |
 
+## 화면
+
+아래 화면은 로그인 없이 예시 데이터로 띄우는 미리보기 모드에서 찍었습니다. 예시 데이터에는 옷 사진이 없어 사진 칸이 비어 있습니다.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/readme-home.png" alt="첫 화면: 서비스 소개와 옷장 관리 예시"></td>
+    <td width="50%"><img src="docs/images/readme-home-fit.png" alt="첫 화면의 구매 판단 예시: 내 자켓과 새 자켓의 치수 차이"></td>
+  </tr>
+  <tr>
+    <td align="center">첫 화면</td>
+    <td align="center">구매 판단 예시</td>
+  </tr>
+</table>
+
+![내 옷장: 대분류별 실측 표](docs/images/readme-wardrobe.png)
+<p align="center">내 옷장: 대분류별 표에 실측·구매 정보를 모아 봅니다</p>
+
+![옷장 데이터: 총 구매 금액, 분류별 금액, 월별 구매](docs/images/readme-analysis.png)
+<p align="center">옷장 데이터: 구매 금액과 분류별·월별 구매를 한 화면에 보여 줍니다</p>
+
 구매 판단 결과는 이런 식입니다.
 
 ```
