@@ -11,7 +11,15 @@ export async function streamImport(
     onStage,
     purpose = "wardrobe",
     photosOnly = false,
-  }: { signal?: AbortSignal; onStage?: (stage: AnalyzeStage) => void; purpose?: "wardrobe" | "fit_check"; photosOnly?: boolean } = {},
+    prefetched,
+  }: {
+    signal?: AbortSignal;
+    onStage?: (stage: AnalyzeStage) => void;
+    purpose?: "wardrobe" | "fit_check";
+    photosOnly?: boolean;
+    /** 무신사 북마크 버튼이 보낸 페이지(html)와 그 JSON들 */
+    prefetched?: { html: string; json: Record<string, string> };
+  } = {},
 ): Promise<ImportOutcome> {
   const failed = (errorCode: ImportOutcome["errorCode"], errorDetail: string | null = null): ImportOutcome => ({
     importId: null,
@@ -29,7 +37,7 @@ export async function streamImport(
   const res = await fetch("/api/imports", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url, purpose, photosOnly }),
+    body: JSON.stringify({ url, purpose, photosOnly, html: prefetched?.html, json: prefetched?.json }),
     signal,
   });
   if (res.status === 401) return failed("signed_out");
