@@ -3,7 +3,7 @@ import type { ImportFailureCode } from "@/lib/import/messages";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { getQuotaExemption } from "@/server/admin/is-admin";
 import { aiSizeChart } from "./ai-size-chart";
-import { analyzeProductUrl, type AnalyzeStage } from "./analyze";
+import { analyzeProductUrl, siteOf, type AnalyzeStage, type PrefetchedPage } from "./analyze";
 import { ImportError, type NormalizedProduct } from "./types";
 import { normalizeProductUrl } from "./url";
 
@@ -56,7 +56,7 @@ export async function runImport(
    * photosOnly: 등록된 옷의 사진만 다시 고를 때. 실측 AI 추출을 건너뛴다(하루 분석 한도에는 센다).
    * kind: link(링크 가져오기) · order(무신사 주문 가져오기, ORDER_IMPORT_DAILY_LIMIT) · roast(주문내역 훈수, ORDER_ROAST_DAILY_CAP만 보고 AI는 부르지 않는다)
    */
-  { photosOnly = false, kind = "link" }: { photosOnly?: boolean; kind?: "link" | "order" | "roast" } = {},
+  { photosOnly = false, kind = "link", prefetched }: { photosOnly?: boolean; kind?: "link" | "order" | "roast"; prefetched?: PrefetchedPage } = {},
 ): Promise<ImportOutcome> {
   const started = Date.now();
   const base = { importId: null, reused: false, domain: null, sourceUrl: input.trim().slice(0, 2048), parserId: null, product: null };
@@ -74,6 +74,9 @@ export async function runImport(
   } catch (e) {
     return fail(e instanceof ImportError ? e.code : "invalid_url");
   }
+
+  // 브라우저가 대신 읽어 보낸 페이지는 무신사 상품 주소에만 쓴다.
+  if (prefetched && siteOf(normalizedUrl.hostname) !== "musinsa.com") return fail("invalid_url");
 
   if (!(await getQuotaExemption(supabase, userId))) {
     const counted = supabase
@@ -118,7 +121,7 @@ export async function runImport(
 
   let outcome: ImportOutcome;
   try {
-    const result = await analyzeProductUrl(normalizedUrl.toString(), { normalize: { knownBrands }, onStage, extractSizeChart: photosOnly || kind === "roast" ? undefined : aiSizeChart });
+    const result = await analyzeProductUrl(normalizedUrl.toString(), { normalize: { knownBrands }, onStage, prefetched, extractSizeChart: photosOnly || kind === "roast" ? undefined : aiSizeChart });
     const found = Boolean(result.product.productName);
     outcome = {
       ...base,
