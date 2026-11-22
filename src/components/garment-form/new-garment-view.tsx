@@ -21,8 +21,10 @@ import { importImageFile, streamImport, type AnalyzeStage, type ImportOutcome } 
 import { importFailure } from "@/lib/import/messages";
 import { takeStashedDraft } from "@/lib/session-expiry";
 import { notifyUsageChanged } from "@/lib/usage";
+import { MusinsaProductGuide } from "@/components/garment-form/musinsa-product-guide";
 import { UsageNote } from "@/components/usage/usage-note";
 
+type Prefetched = { html: string; json: Record<string, string> };
 type Phase = "url" | "analyzing" | "failed" | "review" | "manual" | "multi";
 
 /** 한 번에 가져올 수 있는 링크 수 */
@@ -118,10 +120,15 @@ export function NewGarmentView() {
   useEffect(() => cancelRequest, []);
 
   /** 링크 하나를 분석한다. 취소되면 null. */
-  const runOne = async (target: string, controller: AbortController, onStage: (stage: AnalyzeStage) => void): Promise<ImportOutcome | null> => {
+  const runOne = async (
+    target: string,
+    controller: AbortController,
+    onStage: (stage: AnalyzeStage) => void,
+    prefetched?: Prefetched,
+  ): Promise<ImportOutcome | null> => {
     let outcome: ImportOutcome;
     try {
-      outcome = await streamImport(target, { signal: controller.signal, onStage });
+      outcome = await streamImport(target, { signal: controller.signal, onStage, prefetched });
     } catch {
       if (controller.signal.aborted) return null;
       outcome = FAILED_OUTCOME(target);
@@ -171,7 +178,11 @@ export function NewGarmentView() {
       await analyzeMany(links);
       return;
     }
-    const target = links[0];
+    await analyzeSingle(links[0]);
+  };
+
+  /** 링크 하나를 분석해 확인 화면으로. prefetched는 무신사 북마크 버튼이 보낸 페이지. */
+  const analyzeSingle = async (target: string, prefetched?: Prefetched) => {
     cancelRequest();
     const controller = new AbortController();
     request.current = controller;
@@ -181,7 +192,7 @@ export function NewGarmentView() {
     setStep(0);
     setShowDetail(false);
     setFailure(null);
-    const outcome = await runOne(target, controller, (stage) => setStep(ANALYZE_STEPS.findIndex((s) => s.stage === stage)));
+    const outcome = await runOne(target, controller, (stage) => setStep(ANALYZE_STEPS.findIndex((s) => s.stage === stage)), prefetched);
     if (!outcome) return;
     request.current = null;
     if (outcome.status !== "failed" && outcome.product && outcome.importId) {
@@ -194,6 +205,25 @@ export function NewGarmentView() {
       setPhase("failed");
     }
   };
+
+  // 무신사 북마크 버튼(상품 페이지)이 보낸 페이지를 받는다. 이 화면이 ?musinsa=1로 열리면 준비 신호를 보낸다.
+  const analyzeSingleRef = useRef(analyzeSingle);
+  useEffect(() => {
+    analyzeSingleRef.current = analyzeSingle;
+  });
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (!/^https:\/\/([\w-]+\.)?musinsa\.com$/.test(e.origin)) return;
+      const d = e.data as { type?: unknown; url?: unknown; html?: unknown; json?: unknown } | null;
+      if (d?.type !== "wf-musinsa" || typeof d.url !== "string" || typeof d.html !== "string") return;
+      const json = typeof d.json === "object" && d.json ? (d.json as Record<string, string>) : {};
+      setUrl(d.url);
+      void analyzeSingleRef.current(d.url, { html: d.html, json });
+    };
+    window.addEventListener("message", onMessage);
+    if (params.get("musinsa") === "1") window.opener?.postMessage({ type: "wf-ready" }, "*");
+    return () => window.removeEventListener("message", onMessage);
+  }, [params]);
 
   /** 직접 입력으로. 실패했어도 분석에서 얻은 값(부분 결과)과 링크는 채워 넘긴다. */
   const startManual = (keepUrl = false) => {
@@ -432,6 +462,7 @@ export function NewGarmentView() {
               {showDetail && (
                 <div className="border-t border-divider pt-2.5 font-mono text-xs text-neutral-700 tabular-nums">{failDetail}</div>
               )}
+              {/musinsa\.com/.test(failDomain) && failure?.errorCode === "http_error" && <MusinsaProductGuide />}
             </div>
           )}
         </section>

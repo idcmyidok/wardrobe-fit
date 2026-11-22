@@ -40,6 +40,11 @@ function statusOf(p: NormalizedProduct): AnalyzeResult["status"] {
   return p.productName && p.brand && p.sizeChart ? "succeeded" : "partial";
 }
 
+export interface PrefetchedPage {
+  html: string;
+  json: Record<string, string>;
+}
+
 export async function analyzeProductUrl(
   input: string,
   options: {
@@ -48,18 +53,27 @@ export async function analyzeProductUrl(
     onStage?: (stage: AnalyzeStage) => void;
     /** 규칙으로 사이즈표를 못 찾았을 때 본문의 사이즈 관련 글을 표로(AI). 없거나 실패하면 건너뛴다. */
     extractSizeChart?: (snippet: string) => Promise<RawSizeChart | undefined>;
+    /** 사용자 브라우저가 미리 읽어 보낸 페이지(무신사가 서버 요청을 막을 때). 있으면 쇼핑몰에 요청하지 않는다. json은 주소 → 본문 */
+    prefetched?: PrefetchedPage;
   } = {},
 ): Promise<AnalyzeResult> {
   const started = Date.now();
   const url = normalizeProductUrl(input);
   options.onStage?.("fetching");
-  const page = await safeFetch(url, { ...options.fetch, accept: "html" });
+  const page = options.prefetched
+    ? { url, status: 200, contentType: "text/html", body: options.prefetched.html }
+    : await safeFetch(url, { ...options.fetch, accept: "html" });
   options.onStage?.("parsing");
 
   // 같은 사이트(하위 도메인 포함)의 공개 JSON만 부를 수 있다(Shopify 상품 JSON, 무신사 실측 등). SSRF 방어는 safeFetch가 다시 한다.
   const fetchJson = async (target: string) => {
     const t = new URL(target, page.url);
     if (siteOf(t.hostname) !== siteOf(page.url.hostname)) throw new ImportError("blocked_host", t.hostname);
+    if (options.prefetched) {
+      const body = options.prefetched.json[t.toString()];
+      if (body === undefined) throw new ImportError("http_error", "prefetched missing");
+      return JSON.parse(body) as unknown;
+    }
     const res = await safeFetch(t, { ...options.fetch, accept: "json" });
     return JSON.parse(res.body) as unknown;
   };

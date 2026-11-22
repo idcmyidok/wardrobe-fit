@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   const user = supabase ? await getActiveUser(supabase) : null;
   if (!supabase || !user) return Response.json({ type: "result", status: "failed", errorCode: "signed_out" }, { status: 401 });
 
-  let body: { url?: unknown; purpose?: unknown; photosOnly?: unknown };
+  let body: { url?: unknown; purpose?: unknown; photosOnly?: unknown; html?: unknown; json?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -28,12 +28,26 @@ export async function POST(request: Request) {
   const url = typeof body.url === "string" ? body.url : "";
   const purpose = body.purpose === "fit_check" ? "fit_check" : "wardrobe";
 
+  // 무신사처럼 서버 요청을 막는 곳은 사용자 브라우저가 읽어 보낸 페이지를 쓴다(북마크 버튼).
+  const prefetched =
+    typeof body.html === "string" && body.html.length <= 3_500_000
+      ? {
+          html: body.html,
+          json: Object.fromEntries(
+            Object.entries(typeof body.json === "object" && body.json ? body.json : {})
+              .filter(([k, v]) => typeof v === "string" && v.length <= 1_000_000 && k.length <= 500)
+              .slice(0, 8),
+          ) as Record<string, string>,
+        }
+      : undefined;
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (value: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`));
       const outcome = await runImport(supabase, user.id, url, purpose, (stage) => send({ type: "stage", stage }), {
         photosOnly: body.photosOnly === true,
+        prefetched,
       });
       send({ type: "result", ...outcome });
       controller.close();
