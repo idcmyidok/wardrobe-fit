@@ -16,6 +16,13 @@ import { ImportError } from "./types";
 export const FETCH_LIMITS = { maxBytes: 3 * 1024 * 1024, timeoutMs: 10_000, maxRedirects: 3 };
 export const USER_AGENT = "WardrobeFitBot/1.0 (+personal wardrobe size helper; one request per user action)";
 
+/** 무신사는 봇 이름표를 403으로 막아서 일반 브라우저 모양으로 요청한다(상품 페이지·실측 API 모두). */
+const BROWSER_USER_AGENT =
+  "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36";
+export function userAgentFor(hostname: string): string {
+  return /(^|\.)musinsa\.com$/i.test(hostname) ? BROWSER_USER_AGENT : USER_AGENT;
+}
+
 export interface FetchedPage {
   /** redirect를 따라간 뒤의 최종 주소 */
   url: URL;
@@ -117,7 +124,7 @@ function requestOnce(url: URL, options: FetchOptions, maxBytes: number, deadline
         agent: false,
         timeout: remaining,
         headers: {
-          "user-agent": USER_AGENT,
+          "user-agent": userAgentFor(url.hostname),
           accept,
           "accept-language": "ko-KR,ko;q=0.9,en;q=0.5",
           "accept-encoding": "gzip, deflate, br",
