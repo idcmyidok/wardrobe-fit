@@ -921,6 +921,36 @@ function Report({ report, photoOf }: { report: RoastReport; photoOf: (id: string
         <b>{report.dnaLead}</b> {report.dna.join(" ")}
       </p>
     ),
+    brands: report.brands && (
+      <div>
+        <p>
+          <b>{report.brands.title}</b>
+        </p>
+        {report.brands.items.map((b) => (
+          <div key={b.id}>
+            <p>
+              <b>{b.lead}</b> {b.text}
+            </p>
+            <PhotoRow ids={b.photos} photoOf={photoOf} />
+          </div>
+        ))}
+        {report.brands.mix && <p>{report.brands.mix}</p>}
+      </div>
+    ),
+    axes: report.axes && report.axes.length > 0 && (
+      <div>
+        <p>
+          <b>{report.axes.some((a) => a.grade) ? "항목별 평가" : "항목별 점수"}</b>
+        </p>
+        <ul className="roast-list">
+          {report.axes.map((a) => (
+            <li key={a.label}>
+              <b>{a.label}</b> {a.grade ? `(${a.grade})` : `${a.score}/${a.max}`} {a.text}
+            </li>
+          ))}
+        </ul>
+      </div>
+    ),
     notes: report.notes.map((n) => (
       <p key={n} className="text-sm text-neutral-700">
         {n}

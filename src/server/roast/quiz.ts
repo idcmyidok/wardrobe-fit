@@ -1,7 +1,5 @@
 import "server-only";
-import type { Analysis } from "./analyze";
 import type { Rng } from "./text";
-import type { RoastTexts } from "./texts";
 
 /**
  * 패션 퀴즈. 옷장에 있는 브랜드 중 퀴즈가 있는 브랜드로만 한 문제 낸다(없으면 퀴즈 없음).
@@ -670,9 +668,9 @@ export interface PickedQuiz extends QuizEntry {
 }
 
 /** 가진 브랜드의 문제에서만 고른다. 없으면 퀴즈를 내지 않는다. */
-export function pickQuiz(a: Analysis, r: Rng, T: RoastTexts): PickedQuiz | null {
+export function pickQuiz(a: { brandNames: string[] }, r: Rng, quizzes: Record<string, QuizEntry>): PickedQuiz | null {
   const owned = new Set(a.brandNames);
-  const mine = Object.entries(T.quiz).filter(([, q]) => owned.has(q.brand) && q.options[q.answer] != null);
+  const mine = Object.entries(quizzes).filter(([, q]) => owned.has(q.brand) && q.options[q.answer] != null);
   if (!mine.length) return null;
   const [id, q] = r.pick(mine);
   return { ...q, id };

@@ -11,7 +11,7 @@ import { lookupOf, saveOrderHandoff, type OrderLookup } from "@/lib/import/order
 import { matchSizeRow, parseOrdersForRoast } from "@/server/import/musinsa-orders";
 import type { NormalizedSizeChart } from "@/server/import/types";
 import type { OrderRoastItem } from "@/server/roast/orders/input";
-import type { ORDER_SCREEN } from "@/server/roast/orders/texts";
+import type { ORDER_SCREEN } from "@/server/roast/fl/screen";
 
 /**
  * 주문내역 훈수의 붙여넣기와 상품 읽기(숨은 주소 /roast/orders).
